@@ -21,7 +21,9 @@ import { MeasurePartsVisibility, type MeasurePlayersView } from '../measureParts
 import type { LayerVisibility } from '../playerSafeFrame';
 import type { ViewPlayback } from '../liquids/viewLiquids';
 import { cssColorToHexNumber, getObsidianAccentColor } from '../utils/colorUtils';
-import { watchMeasureLabelTheme } from '../utils/measureLabel';
+import { watchDarkTheme } from '../utils/canvasBadgeColors';
+import { watchSquareCorners } from '../utils/squareCorners';
+import { viewportDocument } from '../utils/viewportDocument';
 import type { MeasureLook } from './DrawnMeasure';
 import { AreaEffects } from './effects/AreaEffects';
 import { LiveMeasuring, type MeasureGrid } from './LiveMeasuring';
@@ -81,7 +83,7 @@ export class MeasureRenderer {
   /** The handles of the kept measurements: the viewport's dispatch hands them the pointer (`pointer`), the map's keys Escape and Delete. */
   public readonly handles: MeasureHandleInteraction;
   /**
-   * What the token renderer's dispatch hands the pointer: the pin beside a released measurement's
+   * What the map's pointer (`MapPointer`) hands the pointer: the pin beside a released measurement's
    * label first (it lifts under the pointer), then the kept measurements' handles.
    */
   public readonly pointer: MeasurePointerHandlers = {
@@ -115,6 +117,8 @@ export class MeasureRenderer {
   private drawnZoom = 1;
   private readonly stops: (() => void)[] = [];
   private view: MeasurePlayersView | null = null;
+  /** Ends the watch on the view the players' picture is drawn for. */
+  private stopFollowingPlayers: () => void = () => undefined;
 
   /** The measurements as data, for whoever passes them on: the live one and the kept ones players may see. */
   public readonly measurements = new MeasurementsSource();
@@ -172,7 +176,9 @@ export class MeasureRenderer {
       this.viewport.on(event, onZoom);
       this.stops.push(() => this.viewport.off(event, onZoom));
     }
-    this.stops.push(watchMeasureLabelTheme(() => this.redraw()));
+    const { body } = viewportDocument(this.viewport);
+    this.stops.push(watchDarkTheme(body, () => this.redraw()));
+    this.stops.push(watchSquareCorners(body, () => this.redraw()));
     this.stops.push(this.store.subscribe((state, previous) => this.follow(state, previous)));
 
     const state = this.store.getState();
@@ -201,9 +207,11 @@ export class MeasureRenderer {
     return this.view;
   }
 
-  /** Measurements drawn before it was known (kept ones of a scene already loaded) show by it at once. */
+  /** Measurements drawn before it was known (kept ones of a scene already loaded) show by it at once, and follow it from then on. */
   public set playersView(view: MeasurePlayersView | null) {
+    this.stopFollowingPlayers();
     this.view = view;
+    this.stopFollowingPlayers = view?.onChange(() => this.refreshVisibility()) ?? ((): void => undefined);
     this.refreshVisibility();
   }
 
@@ -256,6 +264,7 @@ export class MeasureRenderer {
   }
 
   public destroy(): void {
+    this.stopFollowingPlayers();
     for (const stop of this.stops) stop();
     this.stops.length = 0;
     this.live.destroy();
@@ -389,13 +398,18 @@ export class MeasureRenderer {
     const state = this.store.getState();
     const settings = this.settings(state);
     const grid = this.gridSystem.getOptions();
+    const scene = this.scene;
+    let map: AreaMap | null = null;
     return {
       zoom: this.viewport.scale.x,
       grid,
       settings,
       accent: cssColorToHexNumber(getObsidianAccentColor()),
       heightAt: this.heightAt,
-      map: this.scene.areaMap(state, grid, settings),
+      // Sealed walls are dear on a large map (40 ms at 18,000 walls), and only an area drawn reads them: a load with nothing drawn seals none.
+      get map(): AreaMap {
+        return (map ??= scene.areaMap(state, grid, settings));
+      },
       tokens: () => this.scene.tokens(),
       ringScale: state.tokenSettings?.tokenRingSize ?? 1,
     };

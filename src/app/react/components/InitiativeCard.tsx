@@ -5,6 +5,7 @@ import { visibleResources } from '../../resources/visibleResources';
 import React, { useCallback, useRef } from 'react';
 import { EyeOff, Skull, User, Bot } from 'lucide-react';
 import { DRAG_GROUP_ATTRIBUTE, type RowDrag } from '../hooks/useRowDrag';
+import { useTokensIgnoringPlaces } from '../hooks/useTokensIgnoringPlaces';
 import type { InitiativeEntry } from '../../types/initiativeTypes';
 import { useAtlasUI } from '../root/AtlasUIContext';
 import { useAtlasStore, useViewStoreHook } from '../ViewStoreContext';
@@ -22,6 +23,7 @@ import { t } from '../../i18n';
 import { DealtCard } from './DealtCard';
 import { entryToken } from '../../initiative/party';
 import { turnColor } from '../../initiative/turnColor';
+import { holdsTurn } from '../../initiative/turnHolders';
 import { sideOf } from '../../initiative/sides';
 import { CardConditions } from './CardConditions';
 import { useMapConditions } from '../hooks/useMapConditions';
@@ -90,7 +92,8 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
 }) => {
   const { app, view } = useAtlasUI();
   const store = useViewStoreHook();
-  const tokens = useAtlasStore((s) => s.objects?.tokens) || {};
+  // Blind to where tokens stand: no card shows it, and a dragged token would render every card at each step
+  const tokens = useTokensIgnoringPlaces();
   const badgesOn = useAtlasStore((s) => s.tokenSettings?.showInstanceBadges ?? true);
   const levels = useAtlasStore((s) => s.levels);
   // Its token is selected on the map (a click on the card selects it)
@@ -179,7 +182,7 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
     'atlas-initiative-card',
     !compact && 'atlas-initiative-card--tile',
     playerSide && 'atlas-initiative-card--ally',
-    entry.isActive && !bySides && 'atlas-initiative-card--active',
+    holdsTurn(entry) && !bySides && 'atlas-initiative-card--active',
     defeated && 'atlas-initiative-card--defeated',
     hiddenFromPlayers && 'atlas-initiative-card--hidden',
     offMap && 'atlas-initiative-card--off-map',

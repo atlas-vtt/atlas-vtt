@@ -22,9 +22,11 @@ import { normalizeImagePath } from '../utils/pathUtils';
 import { fixMapTokenPaths } from '../utils/fixMapPaths';
 import { getDataFilePath } from '../utils/dataFileMigration';
 import { sceneFromFile, sceneToFile, tokenFromFile } from '../resources/resourceFileFormat';
+import { sceneInitiativeFromFile, sceneInitiativeToFile } from '../initiative/initiativeFile';
 import { pausedTimers } from '../utils/timerWidget';
 import { preserveDamagedSceneFile, SceneFileError } from './sceneFileProblems';
 import { SceneFileWriter } from './sceneFileWriter';
+import { asKeptWalls, keepSceneWalls } from './keptSceneWalls';
 import type { LevelLink, LevelSurface, SceneLevel } from '../types/sceneLevelTypes';
 import type { SceneSound } from '../sound/soundTypes';
 import { LEVELS_FILE_VERSION, readSceneLevels, sceneFileVersion } from '../levels/levelFile';
@@ -191,7 +193,7 @@ export type AtlasPersistStorage<S> = PersistStorage<S> & { flush: () => Promise<
  * inside the debounced save, so frequent store writes (drags, selection)
  * never pay for a full-map JSON.stringify.
  */
-export function createAtlasStorage<T extends { mapPath: string | null; mapLoaded?: boolean }, S = unknown>(
+export function createAtlasStorage<T extends { mapPath: string | null; mapLoaded?: boolean; objects?: { walls?: Record<string, WallSegment> } }, S = unknown>(
   app: App, 
   store: { getState: () => T },
   plugin?: AtlasVTTPlugin
@@ -200,7 +202,7 @@ export function createAtlasStorage<T extends { mapPath: string | null; mapLoaded
     app,
     (path) => store.getState().mapPath === path,
     // Only here, once per write: the store hands over its state on every change
-    (value) => JSON.stringify(withFileVersion({ ...value, state: sceneToFile(value.state as object) })),
+    (value) => JSON.stringify(withFileVersion({ ...value, state: sceneToFile(sceneInitiativeToFile(value.state as object)) })),
   );
 
   return {
@@ -260,8 +262,8 @@ export function createAtlasStorage<T extends { mapPath: string | null; mapLoaded
       if (state?.objects) fillObjectKinds(state.objects);
       // Rooms as 0.14.0 saved them are walls now
       if (state?.objects) roomsIntoWalls(state.objects);
-      // Files keep the token fields older versions of Atlas read; in memory tokens hold resources
-      if (state) Object.assign(state, sceneFromFile(state));
+      // Files keep the token and turn fields older versions of Atlas read; in memory tokens hold resources
+      if (state) Object.assign(state, sceneFromFile(sceneInitiativeFromFile(state)));
       // A timer stops when its scene closes: a run in the file was cut short by a quit or crash
       const widgets = state?.widgetSettings?.widgets;
       if (state?.widgetSettings && isRecord(widgets)) state.widgetSettings.widgets = pausedTimers(widgets);
@@ -279,6 +281,8 @@ export function createAtlasStorage<T extends { mapPath: string | null; mapLoaded
       // file was moved or renamed is only outdated. Rejecting the data would
       // load the map without fog, walls and lights and save that over the file.
       if (state && state.mapPath !== mapPath) state.mapPath = mapPath;
+      // Walls as the scene was left with them come back as the very record, and with it what was worked out from them
+      if (state?.objects?.walls) state.objects.walls = asKeptWalls(mapPath, state.objects.walls);
 
       // Validated above; `S` is the caller's view of the same persisted envelope.
       return parsed as StorageValue<S>;
@@ -300,6 +304,8 @@ export function createAtlasStorage<T extends { mapPath: string | null; mapLoaded
       if (mapLoaded === false) {
         return;
       }
+      const walls = store.getState().objects?.walls;
+      if (walls) keepSceneWalls(mapPath, walls);
 
       // Skip persistence for streamed maps
       if (mapPath.startsWith('streamed_')) {

@@ -13,6 +13,7 @@ import { GENERIC_SOURCE } from './gmLighting.ts';
 import { fakeStoring } from './fakeStoring.ts';
 import { sceneState, shareHarness, token, type Sent } from './shareHarness.ts';
 import { settled } from './settled.ts';
+import { PlayerPages } from './playerPages.ts';
 
 const ANA = 'a'.repeat(20);
 const BEN = 'b'.repeat(20);
@@ -50,6 +51,8 @@ interface Table {
   readonly log: TableLog;
   readonly found: FoundShare;
   readonly sent: Sent[];
+  /** Ana's and Ben's pages. */
+  readonly pages: PlayerPages;
   shown(): readonly SharedPin[];
   open(from: string, alias: string): Promise<void>;
 }
@@ -77,13 +80,21 @@ function setUp(pins: Record<string, NotePin>, lit: boolean): Table {
   const vault = questVault({ [NOTE]: KEEP });
   vault.app.metadataCache.getFileCache = vi.fn((file: TFile) => ({ headings: headingsOf(vault.files.get(file.path) ?? '') }));
   const sent: Sent[] = [];
+  const pages = new PlayerPages();
+  pages.join(ANA, BEN);
+  const deliver = (body: GmMessage, to: string | undefined): void => {
+    sent.push({ body, to });
+    pages.deliver(body, to);
+  };
   const log = new TableLog({
-    send: (body, to) => void sent.push({ body, to }), clock: () => 1, now: () => 0, randomId: () => crypto.randomUUID().replace(/-/g, '').slice(0, 24),
-    nameOf: (player) => NAMES[player] ?? null, setTimer: () => 0, clearTimer: () => undefined, changed: () => undefined,
+    send: deliver, clock: () => 1, now: () => 0, randomId: () => crypto.randomUUID().replace(/-/g, '').slice(0, 24),
+    nameOf: (player) => NAMES[player] ?? null, setTimer: () => 0, clearTimer: () => undefined,
+    // As the table hands every change of the log on to the shared scene's pins.
+    changed: () => harness.share.layers.update(),
   });
   log.welcome([{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }]);
   const found = new FoundShare(log, {
-    app: vault.app, send: (body, to) => void sent.push({ body, to }), now: () => 0, nameOf: (player) => NAMES[player] ?? null,
+    app: vault.app, send: deliver, now: () => 0, nameOf: (player) => NAMES[player] ?? null,
     stored: fakeStoring(), layers: () => harness.share.layers,
   });
   harness.foundPin = (mapPath, pinId) => found.entryOf(mapPath, pinId);
@@ -96,7 +107,7 @@ function setUp(pins: Record<string, NotePin>, lit: boolean): Table {
     await settled();
     await harness.advance(MAP_LAYER_INTERVAL_MS);
   };
-  return { harness, vault, log, found, sent, shown, open };
+  return { harness, vault, log, found, sent, pages, shown, open };
 }
 
 describe('readable pins players are sent', () => {
@@ -136,7 +147,7 @@ describe('readable pins players are sent', () => {
 
 describe('finding a readable pin', () => {
   it('logs the note once for everyone, by who found it, and opens the same entry for later finders', async () => {
-    const { log, shown, open, sent } = await table({ keep: pin('keep', 300) });
+    const { log, shown, open, pages } = await table({ keep: pin('keep', 300) });
     const alias = shown()[0]?.id ?? '';
     await open(ANA, alias);
     const entries = log.entries().filter((entry) => entry.kind === 'found');
@@ -146,9 +157,12 @@ describe('finding a readable pin', () => {
     expect(JSON.stringify(entries[0])).not.toContain('secret');
     expect(JSON.stringify(entries[0])).not.toContain('hides a key');
     expect(shown()[0]?.found).toBe(entries[0]?.id);
+    const before = pages.mark();
     await open(BEN, alias);
     expect(log.entries().filter((entry) => entry.kind === 'found')).toHaveLength(1);
-    expect(sent.filter(({ body, to }) => body.t === 'log-entry' && to === BEN)).toHaveLength(1);
+    const told = pages.since(before, 'log-entry');
+    expect(Object.keys(told)).toEqual([BEN]);
+    expect(told[BEN]).toHaveLength(1);
   });
 
   it('gives a heading only its section, to the next heading of its level', async () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { barWidgets, hiddenOnNewScenes, newSceneTokenSettings, toggleHidden, withChangedBars } from '../../../src/app/resources/sceneVisibility';
 import { AMMO, HP, STRESS } from '../../mocks/resourceFixtures';
-import { DEFAULT_TOKEN_SETTINGS } from '../../../src/app/storeFactory';
+import { DEFAULT_TOKEN_SETTINGS } from '../../../src/app/types/viewState';
 import { sceneAdoption } from '../../../src/app/services/assetTransfer/sceneAdoption';
 
 describe('scene visibility of resources', () => {

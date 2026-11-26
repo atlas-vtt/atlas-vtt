@@ -39,6 +39,11 @@ button.atlas-accent-swatch {
     box-shadow: inset 0 0 0 $border-width-s color-mix(in oklch, var(--mono-100) $border-opacity-default, transparent);
   }
 
+  // Pressed in, as the other colour swatches are: a tint over the fill would hide the colour, and on a leaf it is a box.
+  &:active:not(:disabled) {
+    transform: scale(0.94);
+  }
+
   &[aria-checked='true'] {
     outline: $border-width-l solid var(--text-normal);
     outline-offset: $border-width-l;

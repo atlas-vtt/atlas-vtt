@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 import type { App } from 'obsidian';
+import { portalHost } from '../../../../host/portalHost';
 import { StatblockPreviewWindow } from '../../../../services/StatblockPreviewWindow';
 import type { LibraryTemplate } from '../../../../statblocks/model/resolvedTypes';
 import type { TokenVitals } from '../../../../services/statblockVitalsSync';
@@ -70,7 +71,7 @@ export function useModHoverStatblockPreview(options: ModHoverStatblockPreviewOpt
     hide();
     const openWindow = (text?: string): void => {
       const outsideNote = text === undefined ? undefined : { text, templates: options.bundleTemplates };
-      const preview = new StatblockPreviewWindow(options.app, target.notePath, target.token, null, { x, y }, outsideNote);
+      const preview = new StatblockPreviewWindow(options.app, target.notePath, target.token, null, { x, y }, outsideNote, undefined, undefined, portalHost(card.doc));
       preview.element?.addClass(OVER_MODAL);
       open.current = { key: target.key, preview };
     };
@@ -88,7 +89,7 @@ export function useModHoverStatblockPreview(options: ModHoverStatblockPreviewOpt
     if (!container) return undefined;
 
     const onMouseMove = (event: MouseEvent): void => {
-      const card = event.target instanceof Element ? event.target.closest<HTMLElement>(cardSelector) : null;
+      const card = event.targetNode?.instanceOf(Element) ? event.targetNode.closest<HTMLElement>(cardSelector) : null;
       const entered = card !== hover.current?.card;
       hover.current = card && { card, x: event.clientX, y: event.clientY };
       if (entered && hover.current && isModHeld(event)) show(hover.current);

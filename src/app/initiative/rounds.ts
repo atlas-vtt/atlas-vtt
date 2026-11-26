@@ -60,3 +60,6 @@ export interface RoundChanges {
   began(initiative: InitiativeState): void;
   steppedBack(initiative: InitiativeState): void;
 }
+
+/** A fight in turn order or by sides: nothing else changes where a round begins or is stepped back into. */
+export const NO_ROUND_CHANGES: RoundChanges = { began: () => undefined, steppedBack: () => undefined };

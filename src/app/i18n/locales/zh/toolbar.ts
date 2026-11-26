@@ -45,7 +45,7 @@ export const toolbar: Translation = {
   'toolbar.constrain': '约束',
   'toolbar.pinOptions': '图钉选项',
   'toolbar.stairs': '楼梯',
-  'toolbar.stairsNeedLevels': '楼梯连接场景的各个楼层。请先在命令面板的「场景楼层」页面添加一个楼层。',
+  'toolbar.stairsNeedLevels': '楼梯需要第二个楼层。请在「场景楼层」中添加',
   'toolbar.optionsOf': '{label}选项',
   'toolbar.lightingNeedsGmView': '切换到 GM 视图（{key}）来编辑光照',
   'toolbar.ruler': '标尺',

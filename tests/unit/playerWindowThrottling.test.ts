@@ -72,7 +72,7 @@ describe('PlayerWindowService and background throttling', () => {
     };
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
     // Test doubles: the service reads only what these give
-    return new PlayerWindowService({ workspace: { on: vi.fn(() => ({})), offref: vi.fn() } } as never, store as never, settings as never);
+    return new PlayerWindowService({ workspace: { containerEl: document.body, on: vi.fn(() => ({})), offref: vi.fn() } } as never, store as never, settings as never);
   }
 
   it('keeps the player window awake while it is one, and lets a popout that stays open as something else sleep again', () => {

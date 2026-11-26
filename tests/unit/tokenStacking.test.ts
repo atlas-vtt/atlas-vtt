@@ -7,7 +7,7 @@ import { InteractionController } from '../../src/app/pixi/token-renderer/Interac
 import { SpriteFactory } from '../../src/app/pixi/token-renderer/SpriteFactory';
 import { collectMapObjects } from '../../src/app/clipboard/mapObjectContent';
 import { getHistoryStore } from '../../src/app/stores/history';
-import { placeTokens, raiseTokens } from '../../src/app/stores/tokenStacking';
+import { pilePlaces, placeTokens, raiseTokens } from '../../src/app/stores/tokenStacking';
 import type { TokenEntity } from '../../src/app/types';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 
@@ -72,6 +72,14 @@ describe('raiseTokens', () => {
   });
 });
 
+describe('pilePlaces', () => {
+  it('piles tokens by layer, and tokens of one layer in the order the map lists them', () => {
+    const tokens = record(token('high', SQUARE, 5), token('first', SQUARE), token('low', ELSEWHERE, -1), token('second', SQUARE, 0));
+    const places = pilePlaces(tokens);
+    expect([...places.keys()].sort((a, b) => places.get(a)! - places.get(b)!)).toEqual(['low', 'first', 'second', 'high']);
+  });
+});
+
 describe('placeTokens', () => {
   const scene = (): { objects: { tokens: Record<string, TokenEntity> }; heldTokens: Record<string, { x: number; y: number }>; _audioDirty: boolean } => ({
     objects: { tokens: record(token('a', ELSEWHERE), token('b', SQUARE, 3), token('c', ELSEWHERE, 1)) },
@@ -99,7 +107,7 @@ describe('placeTokens', () => {
 describe('tokens put on the map', () => {
   it('places a new token above the tokens that lie there', () => {
     const store = createStore(token('old', SQUARE, 5), token('other', ELSEWHERE, 2));
-    const id = store.getState().addToken({ imagePath: 'new.png', ...SQUARE });
+    const id = store.getState().addTokens([{ imagePath: 'new.png', ...SQUARE }])[0]!;
     expect(stack(store.getState().objects.tokens).at(-1)).toBe(id);
   });
 

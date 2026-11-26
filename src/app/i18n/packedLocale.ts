@@ -66,13 +66,8 @@ function unpackTable(packed: PackedLocale, keys: readonly string[]): Translation
   return Object.fromEntries([...texts, ...Object.entries(packed.extra ?? {})]);
 }
 
-/**
- * The tables `packLocales` packed, read against the keys of `source` as it is now. Texts are matched to
- * keys by position alone, so a source table with other keys, or the same keys in another order, throws
- * instead of showing a text under the wrong key. A language's keys come back in the source table's
- * order, not its own, so nothing may go by the order of a table's keys.
- */
-export function unpackLocales(source: Translation, packed: PackedLocales): Translations {
+/** The keys `packed` was packed for, which `source` must still hold in that order: texts are matched to keys by position alone. */
+function keysPackedFor(source: Translation, packed: Pick<PackedLocales, 'keyCount' | 'keyHash'>): string[] {
   const keys = Object.keys(source);
   const hash = keyHash(keys);
   if (keys.length !== packed.keyCount || hash !== packed.keyHash) {
@@ -80,5 +75,43 @@ export function unpackLocales(source: Translation, packed: PackedLocales): Trans
       `Atlas' translations were packed for ${packed.keyCount} source texts (${packed.keyHash}), but this build holds ${keys.length} (${hash}). Build the plugin again.`,
     );
   }
+  return keys;
+}
+
+/**
+ * The tables `packLocales` packed, read against the keys of `source` as it is now. Texts are matched to
+ * keys by position alone, so a source table with other keys, or the same keys in another order, throws
+ * instead of showing a text under the wrong key. A language's keys come back in the source table's
+ * order, not its own, so nothing may go by the order of a table's keys.
+ */
+export function unpackLocales(source: Translation, packed: PackedLocales): Translations {
+  const keys = keysPackedFor(source, packed);
   return Object.fromEntries(packed.languages.map(([code, table]) => [code, table ? unpackTable(table, keys) : source]));
+}
+
+/** `PackedLocales` as a bundle holds them: every packed table as JSON text of its own, so a language costs nothing until it is read. */
+export interface StoredLocales {
+  readonly keyCount: number;
+  readonly keyHash: string;
+  readonly languages: ReadonlyArray<readonly [code: string, table: string | null]>;
+}
+
+export function storeLocales(packed: PackedLocales): StoredLocales {
+  return { ...packed, languages: packed.languages.map(([code, table]) => [code, table && JSON.stringify(table)]) };
+}
+
+/**
+ * The tables of `stored`, each unpacked when it is first read: Atlas reads the one language Obsidian speaks,
+ * and unpacking all of them at every start was time Obsidian waited for the plugin. A source table with
+ * other keys than the tables were packed for throws at that first read, as `unpackLocales` does.
+ */
+export function lazyLocales(source: Translation, stored: StoredLocales): Translations {
+  let keys: string[] | undefined;
+  const translations: Record<string, Translation> = {};
+  for (const [code, text] of stored.languages) {
+    let table: Translation | undefined;
+    const unpack = (packed: string): Translation => unpackTable(JSON.parse(packed) as PackedLocale, (keys ??= keysPackedFor(source, stored)));
+    Object.defineProperty(translations, code, { enumerable: true, get: () => (table ??= text === null ? source : unpack(text)) });
+  }
+  return translations;
 }

@@ -10,7 +10,7 @@ import type { LayerVisibility } from '../playerSafeFrame';
 
 import { Container } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
-import type { BarsSpan, ITokenUIManager, TokenGroupContainer } from './types';
+import type { BarsSpan, TokenGroupContainer } from './types';
 import type { TokenEntity } from '../../types';
 import type { ViewAtlasState, ViewAtlasStore } from '../../storeFactory';
 import { TokenUIRenderer } from '../TokenUIRenderer';
@@ -20,11 +20,12 @@ import { TokenResizeUI } from '../TokenResizeUI';
 import type { ConditionDefinition } from '../../types/collectionSettingsTypes';
 import type { MeasurementSettings } from '../../grid/measurementFormat';
 import { destroyTree } from '../utils/destroyTree';
+import { viewportDocument } from '../utils/viewportDocument';
 import { restingTokenUIScale } from './tokenSizing';
 import { levelObjects } from '../../levels/levelObjects';
 import { mapTokens } from '../../tokens/offMap';
 
-export class UIManager implements ITokenUIManager {
+export class UIManager {
   private viewport: Viewport;
   private store: ViewAtlasStore;
   private viewId: string;
@@ -35,6 +36,8 @@ export class UIManager implements ITokenUIManager {
   private playerUIContainer: Container | null = null;
   private playerTokenUIs: Record<string, TokenUIRenderer> = {};
   private tokenUIs: Record<string, TokenUIRenderer> = {};
+  /** Each token's place in the pile (`TokenRenderer`), which its UIs, the GM's and the players', follow. */
+  private readonly pilePlaces = new Map<string, number>();
   /** The canvas shows the players' view (session view, the peek): token UIs draw what players see. */
   private playersView = false;
   private tokenControlsUI?: TokenControlsUI;
@@ -78,8 +81,8 @@ export class UIManager implements ITokenUIManager {
     this.viewId = viewId;
     this.isPlayerView = isPlayerView;
     
-    // Create UI container for non-rotating elements
-    this.uiContainer = new Container();
+    // Create UI container for non-rotating elements: a render group, as the tokens' (`TokenRenderer`)
+    this.uiContainer = new Container({ isRenderGroup: true });
     this.uiContainer.sortableChildren = true;
     this.uiContainer.eventMode = 'passive'; // UI should not block token interactions
     this.uiContainer.interactiveChildren = true;
@@ -144,7 +147,7 @@ export class UIManager implements ITokenUIManager {
       return null;
     }
     
-    const ui = new TokenUIRenderer(this.store, this.viewport.options?.ticker);
+    const ui = new TokenUIRenderer(this.store, this.viewport.options?.ticker, viewportDocument(this.viewport));
     ui.conditionDefsProvider = this.conditionDefsProvider;
     ui.resourceDefsProvider = () => this.resourceDefsProvider();
     ui.measurementProvider = this.measurementProvider;
@@ -153,13 +156,14 @@ export class UIManager implements ITokenUIManager {
     ui.onScaleChange = (scale) => this.tokenControlsUI?.setScaleFor(tokenId, scale);
     ui.setPlayersView(this.playersView);
     this.tokenUIs[tokenId] = ui;
+    ui.setPilePlace(this.pilePlaces.get(tokenId) ?? 0);
     
     const uiElement = ui.getContainer();
     this.uiContainer.addChild(uiElement);
     
-    // Initial update and position sync
+    // Initial update, where the token is drawn
     ui.update(token, container.tokenSize || 70);
-    this.syncUIPosition(tokenId, container.position.x, container.position.y);
+    uiElement.position.copyFrom(container.position);
     
     // Set up hover handlers for the UI
     this.setupUIHoverHandlers(tokenId, container);
@@ -257,36 +261,14 @@ export class UIManager implements ITokenUIManager {
     }
   }
 
-  showTokenControls(tokenId: string, container: Container): void {
-    const sprite = container.getChildByLabel('tokenSprite');
-    const tokenSize = sprite?.width || 70;
-    
-    if (this.tokenControlsUI) {
-      this.tokenControlsUI.show(
-        tokenId,
-        container.position.x,
-        container.position.y,
-        tokenSize,
-        this.barScale(tokenId)
-      );
-    }
-    
-    if (this.tokenRotationUI) {
-      this.tokenRotationUI.show(tokenId, tokenSize);
-    }
-    
-    if (this.tokenResizeUI) {
-      this.tokenResizeUI.show(tokenId, tokenSize);
-    }
-  }
-
-  hideTokenControls(): void {
-    this.tokenControlsUI?.hide();
-    this.tokenRotationUI?.hide();
-    this.tokenResizeUI?.hide();
+  setPilePlace(tokenId: string, place: number): void {
+    this.pilePlaces.set(tokenId, place);
+    this.tokenUIs[tokenId]?.setPilePlace(place);
+    this.playerTokenUIs[tokenId]?.setPilePlace(place);
   }
 
   destroyTokenUI(tokenId: string): void {
+    this.pilePlaces.delete(tokenId);
     const playerUI = this.playerTokenUIs[tokenId];
     if (playerUI) {
       playerUI.getContainer().removeFromParent();
@@ -349,11 +331,11 @@ export class UIManager implements ITokenUIManager {
 
   // Helper methods
 
-  syncUIPosition(tokenId: string, x: number, y: number): void {
-    const ui = this.tokenUIs[tokenId];
-    if (ui) {
-      ui.getContainer().position.set(x, y);
-    }
+  /** Puts a token's UI where its sprite is drawn, and the +/- controls with it while it is the one token selected (`TokenPlaces`). */
+  moveWithToken(tokenId: string, x: number, y: number): void {
+    this.tokenUIs[tokenId]?.getContainer().position.set(x, y);
+    const { selectedIds } = this.store.getState();
+    if (selectedIds.length === 1 && selectedIds[0] === tokenId) this.tokenControlsUI?.updatePosition(x, y, this.getTokenSprite(tokenId)?.tokenSize || 70);
   }
 
   syncUIScale(tokenId: string, tokenSize: number): void {
@@ -368,10 +350,6 @@ export class UIManager implements ITokenUIManager {
     if (tokenGroup) {
       this.tokenControlsUI?.followTokenSize(tokenId, tokenGroup.position.x, tokenGroup.position.y, tokenSize);
     }
-  }
-
-  updateControlsPosition(x: number, y: number, tokenSize: number): void {
-    this.tokenControlsUI?.updatePosition(x, y, tokenSize);
   }
 
   /** Keeps the UI of `tokenIds` at rest while the pointer holds or drags them; the rest are released. */
@@ -426,7 +404,7 @@ export class UIManager implements ITokenUIManager {
     uiContainer.interactiveChildren = false;
 
     // No pointer event listeners needed — hover state is driven by
-    // TokenRenderer.onViewportPointerMove → UIManager.setHoverState().
+    // the map's pointer (`MapPointer`) → UIManager.setHoverState().
   }
 
   /** Viewport-driven hover state update. Pass null to clear all hover. */
@@ -550,6 +528,7 @@ export class UIManager implements ITokenUIManager {
     if (!this.playerUIContainer) {
       this.playerUIContainer = new Container();
       this.playerUIContainer.zIndex = this.uiContainer.zIndex;
+      this.playerUIContainer.sortableChildren = true;
       this.playerUIContainer.eventMode = 'none';
       this.playerUIContainer.visible = false;
       this.viewport.addChild(this.playerUIContainer);
@@ -561,8 +540,9 @@ export class UIManager implements ITokenUIManager {
       if (!token || token.kind !== 'character' || !sprite) continue;
       let ui = this.playerTokenUIs[tokenId];
       if (!ui) {
-        ui = new TokenUIRenderer(this.store, this.viewport.options?.ticker);
+        ui = new TokenUIRenderer(this.store, this.viewport.options?.ticker, viewportDocument(this.viewport));
         this.playerTokenUIs[tokenId] = ui;
+        ui.setPilePlace(this.pilePlaces.get(tokenId) ?? 0);
         this.playerUIContainer.addChild(ui.getContainer());
       }
       ui.conditionDefsProvider = this.conditionDefsProvider;

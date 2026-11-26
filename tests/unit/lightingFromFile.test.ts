@@ -64,9 +64,9 @@ describe('light zones of a map file', () => {
     const store = storeWith(load({ lightZones: { 'key-of-its-own': zone('another-id') } }));
     const [read] = lightZoneList(store.getState().objects.lightZones);
     expect(read!.id).toBe('key-of-its-own');
-    store.getState().updateLightZone(read!.id, { ambient: 0.9 });
+    store.getState().patchObject('lightZones', read!.id, { ambient: 0.9 });
     expect(lightZoneList(store.getState().objects.lightZones)[0]!.ambient).toBe(0.9);
-    store.getState().deleteLightZone(read!.id);
+    store.getState().removeObjects([read!.id]);
     expect(lightZoneList(store.getState().objects.lightZones)).toEqual([]);
   });
 
@@ -74,14 +74,14 @@ describe('light zones of a map file', () => {
     const objects = load({ lightZones: value });
     expect(objects.lightZones).toBeUndefined();
     const store = storeWith(objects);
-    const id = store.getState().addLightZone({ polygon: SQUARE, ambient: 0 });
+    const id = store.getState().addObject('lightZones', { polygon: SQUARE, ambient: 0 });
     expect(lightZoneList(store.getState().objects.lightZones).map((z) => z.id)).toEqual([id]);
   });
 
   it('can be added to whatever the store holds in their place', () => {
     for (const strange of ['text', 5, [zone('z')]]) {
       const store = storeWith({ ...load({}), lightZones: strange as never });
-      const id = store.getState().addLightZone({ polygon: SQUARE, ambient: 0 });
+      const id = store.getState().addObject('lightZones', { polygon: SQUARE, ambient: 0 });
       expect(lightZoneList(store.getState().objects.lightZones).map((z) => z.id)).toEqual([id]);
     }
   });

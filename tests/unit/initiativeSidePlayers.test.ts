@@ -6,11 +6,11 @@ import { playerTokensRevision, setPlayerTokenSource, subscribePlayerTokens } fro
 import { cardGroupOf } from '../../src/app/initiative/cardGroups';
 import { sideOf } from '../../src/app/initiative/sides';
 import { trackerSegments } from '../../src/app/initiative/trackerSegments';
-import { turnTokenIds } from '../../src/app/initiative/turnHolders';
+import { turnHolders } from '../../src/app/initiative/turnHolders';
 import type { TokenAsset } from '../../src/app/services/AssetService';
-import { entryTokenOf } from '../../src/app/services/playerInitiativeList';
 import type { TokenEntity } from '../../src/app/types';
 import { createDefaultInitiativeState, type InitiativeEntry } from '../../src/app/types/initiativeTypes';
+import { playersListOf } from '../helpers/playersInitiative';
 
 const record = (id: string, playerCharacter?: true): TokenAsset => ({
   id, type: 'token', name: id, imagePath: `art/${id}.webp`, tags: [], collection: 'Fen', createdAt: 1, modifiedAt: 1, ...(playerCharacter && { playerCharacter }),
@@ -83,9 +83,10 @@ describe('everything that reads a side', () => {
     const groups = trackerSegments(entries, tokens, { bySides: true, sides, fightRuns: false, round: 0, fromTurn: false })
       .flatMap((segment) => (segment.kind === 'round' ? [] : [[segment.side?.id, segment.items.map((item) => item.tokenId)]]));
     expect(groups).toEqual([['players', ['ranger']], ['opponents', ['wolf']]]);
-    expect([entryTokenOf(tokens.ranger, []).side, entryTokenOf(tokens.wolf, []).side]).toEqual(['players', 'opponents']);
+    const players = playersListOf({ ...createDefaultInitiativeState(), entries }, tokens).combatants;
+    expect(players.map(({ entry: listed, token: shown }) => [listed.tokenId, shown.side])).toEqual([['wolf', 'opponents'], ['ranger', 'players']]);
     const fight = { ...createDefaultInitiativeState(), isActive: true, round: 1, entries, sides: { first: 'players', active: 'players' } as const };
-    expect(turnTokenIds(fight, tokens)).toEqual(['ranger']);
+    expect(turnHolders(fight, tokens, [])).toEqual(['ranger']);
     // Look-alikes share a card only among those who are not the players'
     expect(entries.map(cardGroupOf(tokens, true))).toEqual(['art:art/wolf.webp', 'entry:e-ranger']);
   });

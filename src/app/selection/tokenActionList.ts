@@ -87,7 +87,7 @@ function charactersOf(state: ViewAtlasState, ids: readonly string[]): Character[
 }
 
 /** Adds the tokens to the initiative, or takes them out, and opens the tracker. */
-function toggleInitiative(store: StoreApi<ViewAtlasState>, tokenIds: readonly string[], remove: boolean): void {
+function toggleInitiative({ store }: TokenActionHost, tokenIds: readonly string[], remove: boolean): void {
   if (!store.getState().initiativeTrackerOpen) store.getState().setInitiativeTrackerOpen(true);
   for (const tokenId of tokenIds) {
     const state = store.getState();
@@ -230,7 +230,7 @@ export function tokenActions(host: TokenActionHost, token: TokenEntity, at: { x:
     kind: 'run', id: 'initiative', enabled: true,
     label: isInInitiative ? t('initiative.remove') : t('token.addInitiative'),
     icon: 'swords',
-    run: () => toggleInitiative(store, targets, isInInitiative),
+    run: () => toggleInitiative(host, targets, isInInitiative),
   });
 
   // The statblock a held Mod shows over the token, for a hand that holds no key

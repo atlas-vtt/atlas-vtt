@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, type RefObject } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { TokenCreator } from '../TokenCreator';
 import { EncounterBuilder } from '../encounter-builder/EncounterBuilder';
@@ -47,10 +47,12 @@ export interface ModalLayerProps {
   crud: AssetCrudActions;
   tags: TagsAndCollectionsState;
   statblock: StatblockLinkState;
+  /** An element of the asset manager's window. */
+  windowRef: RefObject<HTMLElement | null>;
 }
 
 export function ModalLayer({
-  isOpen, activeTab, selectedCollection, onClose, data, sel, crud, tags, statblock,
+  isOpen, activeTab, selectedCollection, onClose, data, sel, crud, tags, statblock, windowRef,
 }: ModalLayerProps): React.JSX.Element {
   const floors = useFloorsChoice(isOpen);
   const itemOpener = useInstalledItemOpener({ app: data.app, selectedCollection, setSettingsModalCollectionId: crud.setSettingsModalCollectionId, closeAssetManager: onClose });
@@ -64,6 +66,7 @@ export function ModalLayer({
     app: data.app,
     assetService: data.assetService,
     isOpen,
+    windowRef,
     isMapCreatorOpen: crud.isMapCreatorOpen,
     // Every dialog of this layer but the map creator, which says for itself whether it stays
     isBusy: crud.isTokenCreatorOpen || crud.isEncounterBuilderOpen || crud.isCreateSceneModalOpen || crud.isMoveModalOpen || crud.collectionPick !== null || crud.isCreateFolderModalOpen

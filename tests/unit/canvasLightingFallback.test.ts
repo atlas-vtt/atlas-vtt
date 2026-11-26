@@ -112,7 +112,7 @@ describe('CanvasLightingFallback', () => {
     const open = (): [number, number][] => openSpans(shapes(), 100);
     expect(open()).toEqual([[69, 181]]);
     // A wall 8 px right of the bat's centre ends its footprint; the prey behind it is out of the echo's line.
-    store.getState().addWall({ type: 'solid', p1: { x: 108, y: 0 }, p2: { x: 108, y: 400 }, closed: true });
+    store.getState().addObject('walls', { type: 'solid', p1: { x: 108, y: 0 }, p2: { x: 108, y: 400 }, closed: true });
     expect(open()).toEqual([[69, 108]]);
     store.setState({ objects: { ...store.getState().objects, walls: {} } });
     expect(open()).toEqual([[69, 181]]);
@@ -128,7 +128,7 @@ describe('CanvasLightingFallback', () => {
     const perceived = (): string | undefined => playerTokenSight(fallback, store.getState().objects.tokens)?.('prey');
     expect(fallback.lightReaches()).toEqual([]);
     expect(perceived()).toBe('seen');
-    store.getState().addLight({ x: 150, y: 100, emission: { bright: 0, dim: 10, color: '#000000', intensity: 1, animation: 'none', darkness: true } });
+    store.getState().addObject('lights', { x: 150, y: 100, emission: { bright: 0, dim: 10, color: '#000000', intensity: 1, animation: 'none', darkness: true } });
     expect(fallback.lightReaches()).toMatchObject([{ darkness: true, origin: { x: 150, y: 100 }, dim: 140 }]);
     expect(perceived()).toBe('unseen');
     // The hero stands in the darkness and sees nothing: the map is black, and the darkness is black over it.
@@ -136,7 +136,7 @@ describe('CanvasLightingFallback', () => {
     expect(shapes()!.darkness).toHaveLength(1);
     expect([150, 400, 900].map((x) => maskCovers(shapes(), x, 100))).toEqual([true, true, true]);
     // A plain light is none of the fallback's business: it draws no light.
-    store.getState().addLight({ x: 300, y: 100, emission: { bright: 5, dim: 10, color: '#ffffff', intensity: 1, animation: 'none' } });
+    store.getState().addObject('lights', { x: 300, y: 100, emission: { bright: 5, dim: 10, color: '#ffffff', intensity: 1, animation: 'none' } });
     expect(fallback.lightReaches()).toHaveLength(1);
     expect(shapes()!.darkness).toHaveLength(1);
   });
@@ -149,7 +149,7 @@ describe('CanvasLightingFallback', () => {
     const scene = setup({ hero: warlock, prey }, {}, undefined, rules);
     const { fallback, store } = scene;
     const shapes = shownMask(scene);
-    store.getState().addLight({ x: 300, y: 100, emission: { bright: 0, dim: 10, color: '#000000', intensity: 1, animation: 'none', darkness: true } });
+    store.getState().addObject('lights', { x: 300, y: 100, emission: { bright: 0, dim: 10, color: '#000000', intensity: 1, animation: 'none', darkness: true } });
     expect(playerTokenSight(fallback, store.getState().objects.tokens, { conditions: [] })?.('prey')).toBe('seen');
     // Neither the map's black nor the darkness' lies on the prey, 60 px into the darkness, where the devil's sight looks.
     const preyCovered = (): boolean => maskCovers(shapes(), 220, 100);
@@ -170,7 +170,7 @@ describe('CanvasLightingFallback', () => {
   it('hands on the sight of a token that sees for miles as it is: the canvas the black is composed on cuts it to the map', () => {
     // 150,000 ft on 5 ft cells of 70 px: 2.1 million px.
     const scene = setup({ hero: { ...hero, vision: { enabled: true, range: 150_000 } } });
-    scene.store.getState().addWall({ type: 'solid', p1: { x: 500, y: 0 }, p2: { x: 500, y: 600 }, closed: true });
+    scene.store.getState().addObject('walls', { type: 'solid', p1: { x: 500, y: 0 }, p2: { x: 500, y: 600 }, closed: true });
     const shapes = shownMask(scene)();
     // Open ground up to the wall, and below it up to the wall's shadow.
     expect(openSpans(shapes, 100)).toEqual([[0, 500]]);

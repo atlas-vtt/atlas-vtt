@@ -188,6 +188,23 @@ function placeable(walls: readonly WallSegment[]): boolean {
 
 const grids: WallGrid[] = [];
 
+/** The wall arrays checked once while `withWallsHeld` runs, or null outside it. */
+let held: Set<readonly WallSegment[]> | null = null;
+
+/**
+ * Runs `work`, during which every wall array is checked against its grid once: for code that
+ * sweeps the same walls many times and writes no wall meanwhile (a scene's lights and sight).
+ */
+export function withWallsHeld<T>(work: () => T): T {
+  if (held) return work();
+  held = new Set();
+  try {
+    return work();
+  } finally {
+    held = null;
+  }
+}
+
 /**
  * The grid over `walls`, kept for the arrays used last: built again whenever a wall of the array
  * was replaced or moved since, so it never answers for walls that are no longer there. Null for
@@ -197,13 +214,15 @@ export function wallGridOf(walls: readonly WallSegment[]): WallGrid | null {
   const at = grids.findIndex((grid) => grid.walls === walls);
   if (at >= 0) {
     const [grid] = grids.splice(at, 1);
-    if (unchanged(grid!, walls)) {
+    if (held?.has(walls) || unchanged(grid!, walls)) {
+      held?.add(walls);
       grids.unshift(grid!);
       return grid!;
     }
   }
   if (!placeable(walls)) return null;
   const grid = buildWallGrid(walls);
+  held?.add(walls);
   grids.unshift(grid);
   grids.length = Math.min(grids.length, KEPT);
   return grid;

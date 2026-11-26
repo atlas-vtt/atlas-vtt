@@ -2,7 +2,7 @@ import type { AlignmentResult } from '../gridAlignmentMath';
 import type { ImageSize, MapGray } from './detectGrid';
 import type { DetectionEvent, DetectionOutcome } from './detectionJob';
 
-/** What `SpectralEngineClient` asks of the detection worker: one job at a time. */
+/** What `SpectralEngineClient` asks of a detection worker: one job at a time. */
 export interface DetectionRequest {
   id: number;
   /** Names the map image; its pixels come along only where the worker does not hold them yet. */
@@ -12,8 +12,8 @@ export interface DetectionRequest {
   picture?: { bitmap: ImageBitmap; size: ImageSize };
   candidates?: AlignmentResult[];
   ink: boolean;
-  /** Whether the outcome should say where the map's lines lie (`DetectionOutcome.lines`). */
-  lines: boolean;
+  /** Whether only where the map's lines lie is wanted (`DetectionJob.linesOnly`). */
+  linesOnly: boolean;
 }
 
 export type DetectionReply =

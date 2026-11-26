@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React from 'react';
 import { Tutorial, type TutorialStep } from './Tutorial';
 import { useAtlasSettings, useHotkeyLabels } from '../keyboard/useMapHotkeys';
 import type { MapHotkeyId } from '../keyboard/mapHotkeys';
@@ -6,8 +6,7 @@ import { useAtlasStore } from '../react/ViewStoreContext';
 import type { SettingsService } from '../services/SettingsService';
 import { t, tPointer } from '../i18n';
 import { isOnScreen, useWatched } from './useWatched';
-import { WelcomeWizard, shouldWelcome } from './WelcomeWizard';
-import { AtlasUIContext } from '../react/root/AtlasUIContext';
+import { shouldWelcome } from './WelcomeWizard';
 
 /** Online play's controls, added to the map by its own code once a table can be started or is running. */
 const ONLINE_DOCK = '.atlas-online-dock';
@@ -19,28 +18,20 @@ interface MapToursProps {
 }
 
 /**
- * The GM's first-run tours of a map view: the welcome wizard when a map is the first thing of Atlas the GM sees, the
- * map itself the first time a scene is loaded, then
- * online play's dock and table log the first time each appears. One at a time, only while the view
- * is on screen and nothing of its own stands over the map.
+ * The GM's first-run tours of a map view, once the welcome wizard is done: the map itself the first time a scene is
+ * loaded, then online play's dock and table log the first time each appears. One at a time, only while the view is on
+ * screen and nothing of its own stands over the map.
  */
 export function MapTours({ root, settings: explicit }: MapToursProps): React.JSX.Element | null {
   const settings = useAtlasSettings(explicit);
-  const app = useContext(AtlasUIContext)?.app;
   const key = useHotkeyLabels();
   const busy = useAtlasStore(s => s.isMapLoading || s.isHotkeyHelpOpen || s.isCommandPaletteOpen || s.isDMScreenOpen
     || s.isAssetManagerOpen || s.isToolbarEditing || !s.mapLoaded);
   const shown = useWatched(root, isOnScreen);
   const hasDock = useWatched(root, hasDockIn);
   const hasLog = useWatched(root, hasLogIn);
-  if (!settings || busy || !shown) return null;
-  // The wizard stays in the tree after it is done, in the same place, so it closes with its motion.
-  return (
-    <>
-      {app && <WelcomeWizard app={app} settings={settings} doc={root?.ownerDocument} />}
-      {!(app && shouldWelcome(settings)) && <MapTour settings={settings} root={root} keyLabel={key} hasDock={hasDock} hasLog={hasLog} />}
-    </>
-  );
+  if (!settings || busy || !shown || shouldWelcome(settings)) return null;
+  return <MapTour settings={settings} root={root} keyLabel={key} hasDock={hasDock} hasLog={hasLog} />;
 }
 
 interface MapTourProps {

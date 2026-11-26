@@ -33,18 +33,18 @@ export function FollowsToken({ measure }: { measure: KeptMeasure }): React.React
     const state = store.getState();
     if (on) {
       const token = under === null ? undefined : mapTokens(levelObjects(state))[under];
-      if (token && !follows) state.updateMeasure(measure.id, { follows: token.id, anchor: anchorOf(token) });
+      if (token && !follows) state.patchObject('measures', measure.id, { follows: token.id, anchor: anchorOf(token) });
       return;
     }
     if (!isAura(measure)) {
-      state.updateMeasure(measure.id, { follows: undefined, anchor: undefined });
+      state.patchObject('measures', measure.id, { follows: undefined, anchor: undefined });
       return;
     }
     // An aura is let go as the circle it shows around its token; where its token is gone from the map shown, where it lies.
     const token = mapTokens(levelObjects(state))[measure.follows];
     const { grid } = state;
     const points = token && grid ? auraPoints(token, auraCells(measure.aura, mapMeasurementSettings(rules, state).unitDistance), grid, auraDirection(measure)) : undefined;
-    state.updateMeasure(measure.id, { follows: undefined, aura: undefined, ...(points && { points }) });
+    state.patchObject('measures', measure.id, { follows: undefined, aura: undefined, ...(points && { points }) });
   };
 
   return <SwitchRow label={t('measure.followsToken')} value={follows} onChange={change} unavailable={follows || under !== null ? null : t('measure.noTokenUnder')} />;

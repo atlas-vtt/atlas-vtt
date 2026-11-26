@@ -171,12 +171,3 @@ export function applyStyle(draft: SceneState, write: StyleWrite): void {
     if (text) changeText(text, write.changes, TEXT_STYLE_FIELDS);
   }
 }
-
-/** Removes drawings and texts by id, and from the selection where the store has one. */
-export function removeFrom(draft: SceneState & { selectedIds?: string[] }, ids: ReadonlySet<string>): void {
-  for (const id of ids) {
-    delete draft.objects.drawings[id];
-    delete draft.objects.texts[id];
-  }
-  if (draft.selectedIds?.some((id) => ids.has(id))) draft.selectedIds = draft.selectedIds.filter((id) => !ids.has(id));
-}

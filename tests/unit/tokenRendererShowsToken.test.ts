@@ -7,7 +7,7 @@ function showsToken(tokenId: string, playersView: boolean, unseen: readonly stri
   const harness = {
     store: { getState: () => ({ objects: { tokens }, isPlayerView: playersView, isGMView: !playersView }) },
     playerSight: { perception: () => undefined, hides: (id: string) => unseen.includes(id) },
-    isInPlayerMode: () => playersView,
+    audience: { takesPlayersPerspective: () => playersView },
     hidesToken: Reflect.get(TokenRenderer.prototype, 'hidesToken') as unknown,
   };
   return TokenRenderer.prototype.showsToken.call(harness, tokenId);

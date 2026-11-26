@@ -4,7 +4,7 @@ import type { StoreApi } from 'zustand/vanilla';
 import type { GridGeometry } from '../../grid/gridDistance';
 import type { KeptMeasure, MeasureChanges } from '../../measure/measureTypes';
 import { beginHistoryTransaction } from '../../stores/history';
-import type { MeasuresSlice } from '../../stores/measuresSlice';
+import type { SceneObjectsSlice } from '../../stores/sceneObjectsSlice';
 import type { UISlice } from '../../stores/uiSlice';
 import type { Point } from '../../types/visionTypes';
 import { elementOf, LIGHT_DRAG_THRESHOLD } from '../lighting/LightInteraction';
@@ -23,7 +23,7 @@ const POPOVER = '.atlas-measure-popover';
 
 type HandleState = MeasureEditState
   & Pick<UISlice, 'measurePopover' | 'openMeasurePopover' | 'closeMeasurePopover'>
-  & Pick<MeasuresSlice, 'updateMeasure' | 'deleteMeasure'>
+  & Pick<SceneObjectsSlice, 'patchObject' | 'removeObjects'>
   & ToolSwitchState;
 
 /** What the handles read of their view's state, and what they write: a measurement moved or deleted, and whose popover is open. */
@@ -105,7 +105,7 @@ export class MeasureHandleInteraction {
     this.handles.moved();
   }
 
-  /** What the token renderer's dispatch calls. */
+  /** What the map's pointer (`MapPointer`) calls. */
   readonly pointer: MeasurePointerHandlers = {
     pointerDown: (x, y, event) => this.pointerDown({ x, y }, event),
     cursorAt: (x, y) => this.cursorAt({ x, y }),
@@ -155,7 +155,7 @@ export class MeasureHandleInteraction {
     if (!id || !mayEditMeasure(state, id)) return false;
     this.cancel();
     this.setHovered(null);
-    state.deleteMeasure(id);
+    state.removeObjects([id]);
     return true;
   }
 
@@ -250,7 +250,7 @@ export class MeasureHandleInteraction {
       // Snapped, most moves of the pointer leave it where it is: nothing is written then.
       if (sameDragChanges(changes, placed)) return;
       placed = changes;
-      store.getState().updateMeasure(id, changes);
+      store.getState().patchObject('measures', id, changes);
     };
     this.track({
       id,
@@ -260,7 +260,7 @@ export class MeasureHandleInteraction {
         if (dragging && drag) {
           handles.setDragging(null);
           settleDragStep(store, commit, later, () => {
-            if (keptMeasure(store.getState(), id)) store.getState().updateMeasure(id, drag.restore);
+            if (keptMeasure(store.getState(), id)) store.getState().patchObject('measures', id, drag.restore);
           });
         } else if (commit && !moved) {
           store.getState().openMeasurePopover(id);

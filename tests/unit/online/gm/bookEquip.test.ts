@@ -5,9 +5,10 @@ import type { LootDraw } from '../../../../src/app/loot/lootRoller';
 import { BOOK_BURST } from '../../../../src/app/online/gm/book/BookShare.ts';
 import { BookShelf } from '../../../../src/app/online/gm/book/BookShelf.ts';
 import { applyBookMessage, EMPTY_BOOK, readBooks, withItem, type StoredBook } from '../../../../src/app/online/gm/book/bookStore.ts';
-import { FakeSocket, workspace } from './fakeTable.ts';
-import { ANA, BEN, BRANNOCH_BOOK, delivered, MIRA_BOOK, ofType, openTable, traffic } from './bookTableHarness.ts';
+import { workspace } from './fakeTable.ts';
+import { ANA, BEN, BRANNOCH_BOOK, MIRA_BOOK, openTable, traffic } from './bookTableHarness.ts';
 import { advanceSettled as advance } from './settled.ts';
+import type { PlayerPages } from './playerPages.ts';
 
 vi.mock('obsidian', () => ({ Notice: class {}, normalizePath: (path: string) => path, requestUrl: () => Promise.resolve({ status: 201, json: null }), PluginSettingTab: class {}, Setting: class {}, Platform: { isDesktopApp: true, isMobile: false, isPhone: false } }));
 vi.mock('../../../../src/app/online/gm/gmMarks.ts', () => ({
@@ -95,10 +96,9 @@ describe('a book\'s slots as the GM keeps them', () => {
 
 const DRAW: LootDraw = { id: 'draw-1', notePath: 'Items/Moon Blade.md', name: 'Moon Blade', source: ['Weapons'], rarity: 'Rare', type: 'Weapon', price: '500 thorns', description: 'Glows.', properties: [] };
 
-/** The last whole book a player was sent, as the page reads it. */
-function lastBook(socket: FakeSocket, player: string): PlayerBook | undefined {
-  const read = ofType(delivered(socket), 'book').filter(({ to }) => to === player).map(({ body }) => parseGmMessage(JSON.parse(JSON.stringify(body))));
-  const last = read.at(-1);
+/** The last whole book a player's page read, as the page reads it. */
+function lastBook(pages: PlayerPages, player: string): PlayerBook | undefined {
+  const last = parseGmMessage(pages.of(player).last('book'));
   return last?.t === 'book' ? last.book : undefined;
 }
 
@@ -106,8 +106,6 @@ describe('slots at a running table', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'performance', 'Date'] });
     vi.stubGlobal('window', globalThis);
-    vi.stubGlobal('WebSocket', FakeSocket);
-    FakeSocket.all = [];
     workspace.leaves = [];
     workspace.presented = null;
   });
@@ -120,12 +118,12 @@ describe('slots at a running table', () => {
 
   it('keeps a player\'s slots in their own character\'s book only, and answers what it refuses with that player\'s book alone', async () => {
     const shelf = new BookShelf();
-    const { online, socket, from } = await openTable(shelf, [{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }]);
+    const { online, relay, pages, from } = await openTable(shelf, [{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }]);
     expect(giveLoot(ANA, DRAW)).toBe(1);
     expect(giveLoot(BEN, DRAW)).toBe(1);
     const blade = shelf.of(BRANNOCH_BOOK).items[0]?.id ?? '';
     const bens = shelf.of(MIRA_BOOK).items[0]?.id ?? '';
-    expect(lastBook(socket, ANA)).toMatchObject({ slots: { hidden: [], own: [] }, equipped: [] });
+    expect(lastBook(pages, ANA)).toMatchObject({ slots: { hidden: [], own: [] }, equipped: [] });
 
     from(ANA, { t: 'book-slots', slots: { hidden: ['ammunition'], own: [{ id: BAG, name: 'Scabbard' }] } });
     from(ANA, { t: 'book-equip', item: blade, slot: BAG });
@@ -133,31 +131,33 @@ describe('slots at a running table', () => {
     expect(shelf.of(BRANNOCH_BOOK)).toMatchObject({ slots: { hidden: ['ammunition'], own: [{ id: BAG, name: 'Scabbard' }] }, equipped: [{ slot: BAG, item: blade }] });
 
     // Ben's item is not in Ana's book, and a hidden slot takes nothing: refused, Ana alone is sent her book.
-    let since = delivered(socket).length;
+    let since = pages.mark();
     from(ANA, { t: 'book-equip', item: bens, slot: 'head' });
     await advance(100);
     from(ANA, { t: 'book-equip', item: blade, slot: 'ammunition' });
     await advance(6_000);
-    const answers = ofType(delivered(socket).slice(since), 'book');
-    expect(answers.length).toBeGreaterThan(0);
-    expect(answers.every(({ to }) => to === ANA)).toBe(true);
-    expect(lastBook(socket, ANA)).toMatchObject({ equipped: [{ slot: BAG, item: blade }], slots: { own: [{ name: 'Scabbard' }] } });
+    const answers = pages.since(since, 'book');
+    expect(Object.keys(answers)).toEqual([ANA]);
+    expect(answers[ANA]?.length).toBeGreaterThan(0);
+    expect(lastBook(pages, ANA)).toMatchObject({ equipped: [{ slot: BAG, item: blade }], slots: { own: [{ name: 'Scabbard' }] } });
     expect(shelf.of(MIRA_BOOK)).toMatchObject({ equipped: [], slots: { hidden: [], own: [] } });
 
     // A flood is cut at the book's rate like any other write.
-    since = delivered(socket).length;
+    since = pages.mark();
     for (let count = 0; count < BOOK_BURST + 10; count += 1) from(BEN, { t: 'book-equip', item: bens, slot: count < BOOK_BURST ? 'head' : null });
     await advance(100);
     expect(shelf.of(MIRA_BOOK).equipped).toEqual([{ slot: 'head', item: bens }]);
-    expect(ofType(delivered(socket).slice(since), 'book').map(({ to }) => to)).toEqual([BEN]);
+    const flood = pages.since(since, 'book');
+    expect(Object.keys(flood)).toEqual([BEN]);
+    expect(flood[BEN]).toHaveLength(1);
 
     // Ana's slots come back with her, and nothing of them ever reached Ben.
-    socket.relay({ t: 'player-left', id: ANA });
+    relay.outbox.leave(ANA);
     await advance(100);
-    socket.relay({ t: 'player-joined', id: ANA, name: 'Ana' });
+    relay.outbox.join({ id: ANA, name: 'Ana' });
     await advance(1_000);
-    expect(lastBook(socket, ANA)).toMatchObject({ slots: { hidden: ['ammunition'], own: [{ id: BAG, name: 'Scabbard' }] }, equipped: [{ slot: BAG, item: blade }] });
-    expect(traffic(delivered(socket).filter(({ to }) => to === BEN))).not.toContain('Scabbard');
+    expect(lastBook(pages, ANA)).toMatchObject({ slots: { hidden: ['ammunition'], own: [{ id: BAG, name: 'Scabbard' }] }, equipped: [{ slot: BAG, item: blade }] });
+    expect(traffic(pages.of(BEN).inbox)).not.toContain('Scabbard');
     online.stop();
   });
 });

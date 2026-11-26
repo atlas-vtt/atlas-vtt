@@ -83,16 +83,16 @@ async function table(): Promise<Table> {
   Object.assign(floating.style, { position: 'fixed', left: '300px', top: '300px', width: '160px', height: '120px' });
 
   const lighting = new LightingController({
-    viewport: m.viewport, app: m.app, store: m.store, eventBus: new EventEmitter(), obsApp: m.obsidian, viewId: 'table-mode',
+    viewport: m.viewport, app: m.app, store: m.store, eventBus: new EventEmitter(), obsApp: m.obsidian, viewId: 'table-mode', audience: m.audience,
     bounds: () => ({ x: 0, y: 0, ...TABLET }), albedo: () => null,
   });
   lighting.wire(m.tokens);
   const state = m.store.getState();
   state.setSceneLighting({ enabled: true, ambient: 1 });
-  state.addWall({ type: 'door', closed: true, p1: { x: 900, y: 200 }, p2: { x: 900, y: 280 } });
-  state.addLight({ x: 1000, y: 600, emission: { bright: 2, dim: 4, color: '#ffc080', intensity: 1, animation: 'none' } });
+  state.addObject('walls', { type: 'door', closed: true, p1: { x: 900, y: 200 }, p2: { x: 900, y: 280 } });
+  state.addObject('lights', { x: 1000, y: 600, emission: { bright: 2, dim: 4, color: '#ffc080', intensity: 1, animation: 'none' } });
   const spy: Character = { id: 'spy', x: 480, y: 200, size: 1, imagePath: '', kind: 'character', name: 'Spy', isHidden: true };
-  state.addToken(spy);
+  state.addTokens([spy]);
   await expect.poll(() => Object.keys(m.tokens.getTokenSprites()).length).toBe(2);
   m.store.setState({ mapLoaded: true });
   getHistoryStore(m.store)?.getState().clear();

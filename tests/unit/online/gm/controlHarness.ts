@@ -8,9 +8,9 @@ import type { SceneLightingChanges } from '../../../../src/app/types/lightingTyp
 import type { TokenUpdates, ViewState } from '../../../../src/app/types/viewState';
 import type { SceneState, SceneStore } from '../../../../src/app/online/gm/atlasView.ts';
 import { MAP_LAYER_INTERVAL_MS } from '../../../../src/app/online/gm/MapLayerShare.ts';
-import { TOKEN_INTERVAL_MS, TOKEN_POLL_MS } from '../../../../src/app/online/gm/TokenShare.ts';
+import { TOKEN_INTERVAL_MS } from '../../../../src/app/online/gm/TokenShare.ts';
 import { fakeLayers, gmGridOptions } from './fakeAtlasTab.ts';
-import { GENERIC_SOURCE, PLAYER_SETTINGS } from './gmLighting.ts';
+import { GENERIC_SOURCE } from './gmLighting.ts';
 import { sceneState, shareHarness, tokenLists, type ShareHarness } from './shareHarness.ts';
 
 /**
@@ -54,7 +54,7 @@ export function creature(id: string, x: number, changes: Partial<TokenEntity> = 
 export interface Gm {
   readonly store: ControlStore;
   readonly table: ShareHarness;
-  /** Lets the companion catch up with a store write (`TOKEN_INTERVAL_MS`) or, after a settings change, its poll. */
+  /** Lets the companion catch up with a store write or a settings change: the token list's and the map layers' pace by default. */
   readonly settle: (ms?: number) => Promise<void>;
   /** The last token list players hold, by GM id (the list's own order is the drawing order). */
   readonly tokens: () => Map<string, SharedToken>;
@@ -70,11 +70,11 @@ export async function gm(createViewAtlasStore: ControlStoreFactory, tokens: read
     draft.objects.tokens = Object.fromEntries(tokens.map((token) => [token.id, token]));
   }));
   const table = shareHarness(sceneState(), MAP, undefined, store);
-  table.settings = { ...PLAYER_SETTINGS, showNames: false };
+  table.settings = { ...table.settings, showNames: false };
   table.rules = { resources: RESOURCES, conditions: CONDITIONS };
   table.layers = fakeLayers({ state: () => store.getState(), source: GENERIC_SOURCE, bounds: BOUNDS, grid: () => gmGridOptions(store.getState()) });
   table.share.start();
-  await table.advance(TOKEN_POLL_MS);
+  await table.advance(1000);
   const lastOf = <T extends GmMessage['t']>(t: T): Extract<GmMessage, { t: T }> | undefined => table.sent.flatMap(({ body }) => (body.t === t ? [body as Extract<GmMessage, { t: T }>] : [])).at(-1);
   // The players' ids, back to the GM's: aliases are handed out in the store's order on the first list.
   const ids = new Map((tokenLists(table.sent)[0]?.tokens ?? []).map((token, index) => [token.id, tokens[index]?.id ?? '']));

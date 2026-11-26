@@ -62,7 +62,7 @@ const POPOVERS: readonly Popover[] = [
     host: async () => (await import('../../src/app/pixi/lighting/LightZonePopover')).LightZonePopoverHost,
     open: (store) => {
       store.getState().setSceneLighting({ enabled: true, ambient: 1 });
-      store.getState().openLightZonePopover(store.getState().addLightZone({ polygon: AREA, ambient: 0 }));
+      store.getState().openLightZonePopover(store.getState().addObject('lightZones', { polygon: AREA, ambient: 0 }));
     },
   },
 ];

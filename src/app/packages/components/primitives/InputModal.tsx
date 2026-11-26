@@ -4,6 +4,7 @@ import { CloseButton } from './CloseButton';
 import { Button } from './button';
 import { dialogOverlayMotion, useDialogWindowVariants } from './dialogMotion';
 import { useFocusTrap } from './useFocusTrap';
+import { getDomHost } from '../../../host/dom';
 import { t } from '../../../i18n';
 
 interface InputModalProps {
@@ -65,8 +66,9 @@ const InputModal: React.FC<InputModalProps> = ({
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    const doc = windowRef.current?.ownerDocument ?? getDomHost().activeDocument();
+    doc.addEventListener('keydown', handleKeyDown);
+    return () => doc.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
   const handleCancel = (): void => {

@@ -228,15 +228,20 @@ describe('a door\'s badge, which opens its door as it is pressed', () => {
 
   async function withDoor(): Promise<{ m: TouchMap; closed: () => boolean }> {
     const m = await map();
-    const door = m.store.getState().addWall({ type: 'door', p1: { x: BADGE.x - 40, y: BADGE.y }, p2: { x: BADGE.x + 40, y: BADGE.y }, closed: true });
+    const door = m.store.getState().addObject('walls', { type: 'door', p1: { x: BADGE.x - 40, y: BADGE.y }, p2: { x: BADGE.x + 40, y: BADGE.y }, closed: true });
     const doors = new DoorIcons(m.store, m.canvas);
     m.viewport.addChild(doors.view);
     // As the lighting wires it: the press opens or closes, and the gestures are told where it would
-    m.tokens.setDoorClickHandler((x, y) => {
-      const doorId = doors.hitTest(x, y);
-      if (doorId) doors.toggle(doorId);
-      return doorId !== null;
-    }, (x, y) => doors.hitTest(x, y) !== null);
+    m.pointer.attach('doors', {
+      click: (x, y) => {
+        const doorId = doors.hitTest(x, y);
+        if (doorId) doors.toggle(doorId);
+        return doorId !== null;
+      },
+      pressActsAt: (x, y) => doors.hitTest(x, y) !== null,
+      menuHitTest: () => null,
+      openMenu: () => undefined,
+    });
     getHistoryStore(m.store)?.getState().clear();
     await frame();
     return { m, closed: () => m.store.getState().objects.walls[door]!.closed === true };

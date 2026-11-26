@@ -17,7 +17,7 @@ async function renamePin(store: ViewAtlasStore, pin: NotePin): Promise<void> {
   });
   if (typed === null) return;
   const name = typed.slice(0, MAX_PIN_NAME);
-  store.getState().updateNotePin(pin.id, { name: name === '' ? undefined : name, showName: true });
+  store.getState().patchObject('pins', pin.id, { name: name === '' ? undefined : name, showName: true });
 }
 
 /** The pin menu's switch that shows the pin's name on the map, and the row that names it. */
@@ -29,7 +29,7 @@ export function pinNameEntries(store: ViewAtlasStore, pin: NotePin): ContextMenu
       label: t('pinMenu.showName'),
       icon: 'tag',
       checked: shown,
-      onClick: () => store.getState().updateNotePin(pin.id, { showName: shown ? undefined : true }),
+      onClick: () => store.getState().patchObject('pins', pin.id, { showName: shown ? undefined : true }),
     },
     {
       type: 'item',

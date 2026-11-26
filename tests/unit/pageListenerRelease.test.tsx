@@ -37,7 +37,7 @@ class FakeQuery extends EventTarget {
 function fakePlugin(): { plugin: Plugin; unload: () => void } {
   const cleanups: Array<() => void> = [];
   const plugin = {
-    app: { workspace: { iterateAllLeaves: (): void => undefined, on: (): object => ({}) } },
+    app: { workspace: { containerEl: document.body, iterateAllLeaves: (): void => undefined, on: (): object => ({}), offref: (): void => undefined } },
     register: (cleanup: () => void): void => { cleanups.push(cleanup); },
     registerEvent: (): void => undefined,
   } as unknown as Plugin;

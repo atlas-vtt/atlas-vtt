@@ -36,7 +36,7 @@ function createStore(grid: GridState = SQUARE) {
 }
 
 function addGoblin(store: ReturnType<typeof createStore>['store'], x: number, y: number): string {
-  return store.getState().addToken({ kind: 'character', x, y, imagePath: 'goblin.png', name: 'Goblin', resources: { hp: { current: 7, max: 7 } }, conditions: ['prone'] } as never);
+  return store.getState().addTokens([{ kind: 'character', x, y, imagePath: 'goblin.png', name: 'Goblin', resources: { hp: { current: 7, max: 7 } }, conditions: ['prone'] } as never])[0]!;
 }
 
 function tokenAt(store: ReturnType<typeof createStore>['store'], id: string): TokenEntity {

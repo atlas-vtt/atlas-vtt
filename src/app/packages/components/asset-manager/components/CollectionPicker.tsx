@@ -83,7 +83,7 @@ export function CollectionPicker({ collections, selectedCollection, onSelectColl
 
   useEffect(() => {
     if (!isOpen) return undefined;
-    const doc = rootRef.current?.ownerDocument ?? document;
+    const doc = rootRef.current?.ownerDocument ?? activeDocument;
     const handleClickOutside = (event: MouseEvent): void => {
       const target = event.target as Node;
       if (!rootRef.current?.contains(target) && !popover?.contains(target)) close(false);

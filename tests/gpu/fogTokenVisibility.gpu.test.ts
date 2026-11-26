@@ -69,7 +69,7 @@ it('removes sensed outlines under fog and restores them after erasing', async ()
   const s = await scene();
   s.setFog({ paint });
   s.tokens.setPlayerSightProvider(() => () => 'sensed');
-  s.tokens.refreshPlayerSight();
+  s.audience.refresh();
   const outlines = s.tokens.getSensedOutlineLayer();
   if (!(outlines instanceof Container)) throw new Error('Expected the real outline layer');
   outlines.visible = true;

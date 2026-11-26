@@ -5,7 +5,6 @@ export const appearance = {
   'appearance.title': 'Appearance settings',
   'appearance.commandHint': 'Your theme, Medieval or Sci-fi, and the accent colour',
   'appearance.look': 'Look',
-  'appearance.lookHint': 'Keep your Obsidian theme, or dress notes, menus and panels in one of Atlas’ looks.',
   'appearance.own': 'Your theme',
   'appearance.ownDefault': 'Obsidian’s default',
   'appearance.mediaeval': 'Medieval',

@@ -258,6 +258,34 @@ export function resolveSubpath(cache: { headings?: CachedHeading[] }, subpath: s
   return null;
 }
 
+/** Obsidian's debounce: calls `callback` with the latest arguments `timeout` ms after the first call, or after the latest with `resetTimer`. */
+export function debounce<T extends unknown[]>(callback: (...args: T) => unknown, timeout = 0, resetTimer = false): ((...args: T) => void) & { cancel(): void; run(): void } {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let latest: T | undefined;
+  const fire = (): void => {
+    timer = undefined;
+    const args = latest;
+    latest = undefined;
+    if (args) callback(...args);
+  };
+  const debounced = (...args: T): void => {
+    latest = args;
+    if (timer !== undefined && !resetTimer) return;
+    clearTimeout(timer);
+    timer = setTimeout(fire, timeout);
+  };
+  const cancel = (): void => {
+    clearTimeout(timer);
+    timer = undefined;
+    latest = undefined;
+  };
+  const run = (): void => {
+    clearTimeout(timer);
+    fire();
+  };
+  return Object.assign(debounced, { cancel, run });
+}
+
 export function normalizePath(path: string): string {
   return path.replace(/\\/g, '/').replace(/\/+/g, '/');
 }

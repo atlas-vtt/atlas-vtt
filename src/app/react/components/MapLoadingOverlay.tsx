@@ -1,6 +1,7 @@
 import React from 'react';
 import { AnimatePresence, MotionConfig, motion } from 'framer-motion';
-import { MAP_LOADING_OVERLAY_FADE_MS, MAP_LOADING_REVEAL_DELAY_MS } from '../../pixi/mapLoadingFrameHold';
+import { MAP_LOADING_REVEAL_DELAY_MS } from '../../pixi/mapLoadingFrameHold';
+import { MAP_LOADING_OVERLAY_FADE_MS } from '../../pixi/sceneLoadMotion';
 import { LoadingSpinner } from '../../packages/components/primitives/LoadingSpinner';
 import { EASE_OUT_CONTROL_POINTS, MOTION_NORMAL_MS } from '../../utils/motion';
 import { cn } from '../../../utils/cn';

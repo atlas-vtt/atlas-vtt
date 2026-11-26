@@ -6,7 +6,7 @@
 
 import type { CardsFight, InitiativeEntry, InitiativeState } from '../types/initiativeTypes';
 import type { RoundChanges } from './rounds';
-import { renumber } from './turnOrder';
+import { giveTurn, renumber } from './turnOrder';
 
 /** The group a combatant is dealt with: combatants of one group share a card. */
 export type CardGroupOf = (entry: InitiativeEntry) => string;
@@ -27,8 +27,6 @@ function byCard(a: InitiativeEntry, b: InitiativeEntry): number {
 export function sortByCards(initiative: InitiativeState): void {
   initiative.entries.sort(byCard);
   renumber(initiative.entries);
-  const active = initiative.entries.findIndex((entry) => entry.isActive);
-  if (active !== -1) initiative.currentIndex = active;
 }
 
 /** The combatants by group, in the order of the list. */
@@ -83,9 +81,7 @@ export function swapCards(initiative: InitiativeState, id: string, withId: strin
   }
   sortByCards(initiative);
   if (!initiative.isActive || turnCard === undefined || (turnCard !== a && turnCard !== b)) return;
-  const holder = entries.findIndex((entry) => entry.card === turnCard);
-  entries.forEach((entry, index) => { entry.isActive = index === holder; });
-  initiative.currentIndex = holder;
+  giveTurn(initiative, entries.findIndex((entry) => entry.card === turnCard));
 }
 
 /** Every combatant's card, by entry id. */

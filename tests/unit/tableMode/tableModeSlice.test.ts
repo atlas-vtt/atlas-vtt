@@ -112,7 +112,7 @@ describe('fingers on a map in Table mode', () => {
 
   it('take no step back or forward: a tap of two or three fingers is the GM\'s undo and redo', () => {
     const view = store();
-    view.getState().addWall({ type: 'solid', p1: { x: 0, y: 0 }, p2: { x: 100, y: 0 } });
+    view.getState().addObject('walls', { type: 'solid', p1: { x: 0, y: 0 }, p2: { x: 100, y: 0 } });
     const gestures = host(view);
     view.getState().enterTableMode();
     gestures.undo();

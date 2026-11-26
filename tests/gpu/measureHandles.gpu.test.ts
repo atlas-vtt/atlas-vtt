@@ -63,7 +63,7 @@ describe('the handle of a kept measurement', () => {
     const frame = s.frame();
     expect(atHandle(moved, frame, { x: 60, y: 220 })).toBeGreaterThan(200);
     expect(differingPixels(moved, frame)).toBe(atHandle(moved, frame, { x: 60, y: 220 }));
-    s.store.getState().deleteMeasure(s.id);
+    s.store.getState().removeObjects([s.id]);
     expect(samePixels(s.canvas(), s.frame())).toBe(true);
     expect(differingPixels(s.canvas(), before)).toBeGreaterThan(200);
   });

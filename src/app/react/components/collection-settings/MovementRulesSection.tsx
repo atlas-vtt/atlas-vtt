@@ -66,7 +66,7 @@ function StepColour({ label, color, onChange }: StepColourProps): React.ReactEle
   useEffect(() => {
     if (!isOpen) return undefined;
     // The document the dialog is in: a popout hears its presses there.
-    const doc = rootRef.current?.ownerDocument ?? document;
+    const doc = rootRef.current?.ownerDocument ?? activeDocument;
     const handlePointerDown = (event: MouseEvent): void => {
       if (!rootRef.current?.contains(event.target as Node | null)) setIsOpen(false);
     };

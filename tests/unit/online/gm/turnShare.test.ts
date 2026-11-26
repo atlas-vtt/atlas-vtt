@@ -46,7 +46,7 @@ describe('the turn players are told of', () => {
   });
 
   it('tells the page when the GM switched the banner off or keeps moves to the turn, and nothing otherwise', () => {
-    const inputs = { state: { initiative: fight('ogre'), initiativeTrackerOpen: true, mapPath: null, objects: { tokens } }, shown: true, showNames: false, rules: null, art: () => null };
+    const inputs = { state: { initiative: fight('ogre'), initiativeTrackerOpen: true, mapPath: null, objects: { tokens } }, shown: true, showNames: false, rules: null, presets: [], art: () => null };
     expect(sharedInitiative({ ...inputs, bannerOff: true, movesOnTurn: true })).toMatchObject({ bannerOff: true, movesOnTurn: true });
     const plain = sharedInitiative(inputs);
     expect(plain).not.toHaveProperty('bannerOff');

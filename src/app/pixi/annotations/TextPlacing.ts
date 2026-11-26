@@ -2,7 +2,7 @@ import { Graphics, type Container, type FederatedPointerEvent } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import type { Point } from '../../types/visionTypes';
 import { trackPointer } from '../measure/pointerTrack';
-import { hearPressesLast, isHandled } from '../utils/handledEvents';
+import { isHandled } from '../utils/handledEvents';
 import { isPrimaryPress } from '../utils/pointerButtons';
 import { DRAW_DRAG_THRESHOLD } from './drawGesture';
 import { dragThreshold } from '../utils/pointerReach';
@@ -42,11 +42,6 @@ export class TextPlacing {
     this.enabled = enabled;
     this.viewport[enabled ? 'on' : 'off']('pointerdown', this.onPointerDown);
     if (!enabled) this.cancel();
-  }
-
-  /** The dispatch that claims presses listens now: these presses are heard after it. */
-  hearPressesLast(): void {
-    if (this.enabled) hearPressesLast(this.viewport, this.onPointerDown);
   }
 
   /** Drops the drag under way: no text starts. Nothing is drawn anew where none was under way. */

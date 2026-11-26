@@ -279,8 +279,14 @@ export class DiceRenderer {
    * is still cleared and handed on to the next throw (`stagePool.ts`): its
    * scene, shadow map and canvas are ready for it.
    */
+  /** Whether the dice cast their shadow on the table; a still image may want the bodies alone. */
+  setShadowShown(shown: boolean): void {
+    this.shadow.setShown(shown);
+  }
+
   reset(): void {
     this.setPlan([]);
+    this.shadow.setShown(true);
     this.sparks.clear();
     this.view.resetShake();
     this.lastTime = null;

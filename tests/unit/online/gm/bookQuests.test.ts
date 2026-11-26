@@ -6,12 +6,13 @@ import { ownBookOf } from '../../../../src/app/online/gm/book/playerWritings.ts'
 import { setQuestGate, type HandedQuest, type QuestAsset } from '../../../../src/app/online/gm/book/questGate.ts';
 import { sha256Hex } from '../../../../src/app/online/gm/assetServe.ts';
 import { storedRef } from './fakeStoring.ts';
-import { FakeSocket, png, workspace } from './fakeTable.ts';
-import { ANA, ANA_OWN, BEN, BEN_OWN, CAL, delivered, keptBooks, nameWorldMap, nameWorldMapTree, ofType, openTable, WORLD_MAP, type OpenTable } from './bookTableHarness.ts';
+import { png, workspace } from './fakeTable.ts';
+import { ANA, ANA_OWN, BEN, BEN_OWN, CAL, keptBooks, nameWorldMap, nameWorldMapTree, openTable, WORLD_MAP, type OpenTable } from './bookTableHarness.ts';
 import { NO_STRETCH } from '../../../../src/app/grid/mapStretch';
 import { advanceSettled as advance } from './settled.ts';
+import type { PageMessage } from './playerPages.ts';
 
-vi.mock('obsidian', () => ({ Notice: class {}, normalizePath: (path: string) => path, requestUrl: () => Promise.resolve({ status: 201, json: null }), PluginSettingTab: class {}, Setting: class {} }));
+vi.mock('obsidian', () => ({ Notice: class {}, normalizePath: (path: string) => path, requestUrl: () => Promise.resolve({ status: 201, json: null }), PluginSettingTab: class {}, Setting: class {}, Platform: { isMacOS: false } }));
 // Node has no tile worker: a map's pyramid is still being cut for as long as the test runs, as on a slow device.
 vi.mock('../../../../src/app/pixi/mosaicCanvas/prebuildMosaicCanvas', async (original) => ({ ...(await original<typeof import('../../../../src/app/pixi/mosaicCanvas/prebuildMosaicCanvas')>()), buildMapPyramid: () => new Promise(() => undefined) }));
 vi.mock('../../../../src/app/pixi/mosaicCanvas/TesseraDecoderClient', async (original) => ({
@@ -69,8 +70,6 @@ describe('quests at a running table', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'performance', 'Date'] });
     vi.stubGlobal('window', globalThis);
-    vi.stubGlobal('WebSocket', FakeSocket);
-    FakeSocket.all = [];
     workspace.leaves = [];
     workspace.presented = null;
     quests = [];
@@ -94,8 +93,8 @@ describe('quests at a running table', () => {
 
   /** The last book each player was sent, as their page reads it. */
   function lastBook(table: OpenTable, player: string): PlayerBook | undefined {
-    return ofType(delivered(table.socket), 'book').filter(({ to }) => to === player).map(({ body }) => {
-      const read = parseGmMessage(JSON.parse(JSON.stringify(body)));
+    return table.pages.of(player).all('book').map((body) => {
+      const read = parseGmMessage(body);
       if (read?.t !== 'book') throw new Error('a book the page would not read');
       return read.book;
     }).at(-1);
@@ -111,19 +110,18 @@ describe('quests at a running table', () => {
     await advance(100);
     expect(lastBook(table, ANA)?.quests.map((kept) => [kept.title, kept.state])).toEqual([['The crown under the root', 'done'], ['Olm eggs', 'open']]);
     expect(lastBook(table, BEN)?.quests).toHaveLength(2);
-    const books = ofType(delivered(table.socket), 'book').length;
+    const books = table.pages.mark();
     // The same quests again (Atlas hands on the same list while no quest changed) send nothing.
     writeQuests(quests);
     await advance(100);
-    expect(ofType(delivered(table.socket), 'book')).toHaveLength(books);
+    expect(table.pages.since(books, 'book')).toEqual({});
     table.online.stop();
   });
 
   it('hands a page that draws the book\'s maps from their tiles the world map as its pyramid, and any other page as one image', async () => {
     const table = await openTable(new BookShelf(), [{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }]);
     const worldMapOf = (player: string): { readonly id: string; readonly tiles?: true } | undefined => {
-      const sent = delivered(table.socket).filter(({ to, body }) => to === player && (body.t === 'book' || body.t === 'book-map')).at(-1);
-      const read = parseGmMessage(JSON.parse(JSON.stringify(sent?.body)));
+      const read = parseGmMessage(table.pages.of(player).all('book', 'book-map').at(-1));
       return read?.t === 'book' ? read.book.worldMap?.image : read?.t === 'book-map' ? read.worldMap?.image : undefined;
     };
     expect(worldMapOf(ANA)?.tiles).toBeUndefined();
@@ -133,7 +131,7 @@ describe('quests at a running table', () => {
     await advance(100);
     expect(worldMapOf(ANA)).toMatchObject({ tiles: true });
     expect(worldMapOf(ANA)?.id).not.toBe(image);
-    expect(ofType(delivered(table.socket), 'book-map').filter(({ to }) => to === ANA)).toHaveLength(1);
+    expect(table.pages.of(ANA).all('book-map')).toHaveLength(1);
     expect(worldMapOf(BEN)).toMatchObject({ id: image });
     expect(worldMapOf(BEN)?.tiles).toBeUndefined();
     table.online.stop();
@@ -144,9 +142,9 @@ describe('quests at a running table', () => {
     const table = await openTable(new BookShelf(), [{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }]);
     table.from(ANA, { t: 'book-parts' });
     await advance(100);
-    const books = (player: string): number => ofType(delivered(table.socket), 'book').filter(({ to }) => to === player).length;
+    const books = (player: string): number => table.pages.of(player).all('book').length;
     const before = { ana: books(ANA), ben: books(BEN) };
-    const part = (type: string): unknown => ofType(delivered(table.socket), type).filter(({ to }) => to === ANA).map(({ body }) => parseGmMessage(JSON.parse(JSON.stringify(body)))).at(-1);
+    const part = (type: PageMessage['t']): unknown => parseGmMessage(table.pages.of(ANA).last(type));
 
     writeQuests([quest(1, { state: 'done' })]);
     await advance(100);
@@ -172,12 +170,12 @@ describe('quests at a running table', () => {
     writeQuests([quest(1, { state: 'done' }), quest(2, { state: 'active' }), quest(3, { state: 'active' })]);
     await advance(200);
     expect(lastBook(table, ANA)?.quests.map((sent) => sent.place)).toEqual([null, { x: 0.5, y: 0.5 }, null]);
-    const books = ofType(delivered(table.socket), 'book').length;
+    const books = table.pages.mark();
     // The same quests and the same pins read again send nothing.
     writeQuests(quests);
     nameWorldMapTree({ root: 'world', levels: [{ key: 'world', title: 'World', image: WORLD_MAP, stretch: NO_STRETCH, entrances: [], quests: pins }] });
     await advance(200);
-    expect(ofType(delivered(table.socket), 'book')).toHaveLength(books);
+    expect(table.pages.since(books, 'book')).toEqual({});
     table.online.stop();
   });
 
@@ -219,12 +217,12 @@ describe('quests at a running table', () => {
     await advance(100);
     expect(shelf.of(ANA_OWN).notes).toMatchObject([{ id: id(60), quest: id(1), body: 'Ask the abbot.' }]);
 
-    const before = ofType(delivered(table.socket), 'book').filter(({ to }) => to === ANA).length;
+    const before = table.pages.of(ANA).all('book').length;
     table.from(ANA, { t: 'book-note', note: { id: id(61), title: '', body: 'Not mine.', quest: id(9) } });
     // Answered with the whole book, at most one in five seconds.
     await advance(6_000);
     expect(shelf.of(ANA_OWN).notes.map((note) => note.id)).toEqual([id(60)]);
-    expect(ofType(delivered(table.socket), 'book').filter(({ to }) => to === ANA).length).toBe(before + 1);
+    expect(table.pages.of(ANA).all('book').length).toBe(before + 1);
     expect(shelf.of(BEN_OWN).notes).toEqual([]);
 
     // A quest written by a player, in any shape, changes nothing.

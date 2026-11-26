@@ -1,7 +1,7 @@
 import { ResourceBarHitArea } from './ResourceBarHitArea';
 import { colorNumber } from './token-renderer/resources/ResourceBarView';
 import type { AtlasSettings } from '../services/SettingsService';
-import { Container, Graphics, Text, TextStyle, type Ticker } from 'pixi.js';
+import { Container, Graphics, Text, type Ticker } from 'pixi.js';
 import type { Character, BaseToken } from '../types';
 import type { ViewAtlasState } from '../storeFactory';
 import type { StoreApi } from 'zustand';
@@ -13,6 +13,7 @@ import { heightChipText, tokenHeight } from '../measure/tokenHeight';
 import type { MeasurementSettings } from '../grid/measurementFormat';
 import { isNameplateVisible, nameplateShownToPlayers } from './token-renderer/nameplateVisibility';
 import { tokenDisplayName } from './token-renderer/tokenDisplayName';
+import { nameplateStyle } from './token-renderer/nameplateStyle';
 import type { ConditionDefinition } from '../types/collectionSettingsTypes';
 import type { TokenGestureEventDetail } from '../types/atlasWindowEvents';
 import { ResourceStack, type ResourceSlot } from './token-renderer/resources/ResourceStack';
@@ -22,7 +23,7 @@ import type { ResourceDefsProvider, ResourceViewer, VisibleResource } from '../r
 import { isDefeated, isSpent } from '../resources/resourceValues';
 import { shapeOf, visibleResources } from '../resources/visibleResources';
 import { destroyTree } from './utils/destroyTree';
-import { canvasBadgeColors, isDarkTheme } from './utils/canvasBadgeColors';
+import { canvasBadgeColors, isDarkTheme, watchDarkTheme } from './utils/canvasBadgeColors';
 import { computeTokenStrokeWidth, NAMEPLATE_HEIGHT, NAMEPLATE_TEXT, RESIZE_HANDLE_SIZE, restingTokenUIScale, selectedTokenUIScale, TOKEN_TEXT_RESOLUTION, tokenTextResolution, tokenUIScale } from './token-renderer/tokenSizing';
 import { getTokenRingCenterRadius } from './token-renderer/tokenRingMetrics';
 import { ValueTransition } from './utils/ValueTransition';
@@ -35,11 +36,11 @@ import { squareCorners, uiCorner } from './utils/squareCorners';
 const RESOURCE_MARK_Z_INDEX = 11;
 
 /**
- * Every token's UI lies in one layer. A selected token's lies above the others,
- * so a neighbour never covers the bars and wheels being edited.
+ * Every token's UI lies in one layer, whole, in the order of the tokens' pile (`pilePlaces`). A selected
+ * token's lies above all of them, so a neighbour never covers the bars and wheels being edited: it is
+ * raised by more places than a map holds tokens.
  */
-const RESTING_Z_INDEX = 10;
-const SELECTED_Z_INDEX = 11;
+const SELECTED_RAISE = 1_000_000;
 
 export class TokenUIRenderer {
   private container: Container;
@@ -79,14 +80,14 @@ export class TokenUIRenderer {
   /** Half the width of the nameplate shown, in UI units; 0 without one. The wheels stand clear of it. */
   private nameplateHalfWidth = 0;
   private difficultyBadge: Container;
-  private difficultyText: Text;
   private defeatedOverlay: Graphics;
-  private themeObserver: MutationObserver | null = null;
+  private stopThemeWatch: (() => void) | null = null;
   private editThemeObserver: MutationObserver | null = null;
   private currentToken: (BaseToken & Partial<Character>) | null = null;
   private currentTokenSize: number = 0;
   private isHovered: boolean = false;
   private isSelected: boolean = false;
+  private pilePlace = 0;
   /** The pointer is down on this token (a press or drag), which keeps its UI at rest. */
   private isHeld = false;
   /** Hovered without Cmd/Ctrl, which is reserved for the statblock preview. */
@@ -96,6 +97,8 @@ export class TokenUIRenderer {
   private lastUpdateData: string = ''; // Cache for checking if update is needed
   private isHiddenDuringResize: boolean = false;
   private isHiddenDuringRotation: boolean = false;
+  /** The zoom changed while nothing this UI shows followed it (`refreshScale`). */
+  private zoomMissed = false;
 
   // Name badge elements
   private nameBadge: Graphics;
@@ -125,14 +128,13 @@ export class TokenUIRenderer {
   public onScaleChange: ((scale: number) => void) | null = null;
   
 
-  /** Bar value changes animate on `ticker`, in step with the frames it renders. */
-  constructor(store?: StoreApi<ViewAtlasState>, ticker: Ticker | null = null) {
+  /** Bar value changes animate on `ticker`, in step with the frames it renders; `doc` is the document of the canvas it is drawn on. */
+  constructor(store?: StoreApi<ViewAtlasState>, ticker: Ticker | null = null, private readonly doc: Document = activeDocument) {
     this.store = store;
 
     // The container sits at the token centre in world units; the UI itself lives in
     // anchors on the token's edges, laid out in UI units and scaled with the token.
     this.container = new Container();
-    this.container.zIndex = RESTING_Z_INDEX;
     this.belowToken = new Container();
     this.belowToken.sortableChildren = true;
     this.besideToken = new Container();
@@ -151,17 +153,6 @@ export class TokenUIRenderer {
     this.difficultyBadge = new Container();
     this.difficultyBadge.zIndex = 5; // Not used anymore but keeping for compatibility
     // Event mode not set - let events propagate naturally
-    this.difficultyText = new Text({
-      text: '',
-      style: new TextStyle({
-        fontFamily: 'Arial',
-        fontSize: 10,
-        fill: 0xffffff,
-        fontWeight: 'bold'
-      }),
-      resolution: TOKEN_TEXT_RESOLUTION,
-    });
-    // Event mode not set - let events propagate naturally
     
     // Create defeated overlay
     this.defeatedOverlay = new Graphics();
@@ -174,16 +165,7 @@ export class TokenUIRenderer {
     this.nameBadge.eventMode = 'static'; // Make it interactive
     this.nameBadge.cursor = 'text'; // Show text cursor on hover
     
-    this.nameText = new Text({
-      text: '',
-      style: new TextStyle({
-        fontFamily: NAMEPLATE_TEXT.fontFamily,
-        fontSize: NAMEPLATE_TEXT.fontSize,
-        fill: 0xffffff,
-        fontWeight: NAMEPLATE_TEXT.fontWeight
-        // No stroke for cleaner look in the badge.
-      })
-    });
+    this.nameText = new Text({ text: '', style: nameplateStyle(0xffffff) });
     this.nameText.scale.set(NAMEPLATE_TEXT.textScale);
     this.nameText.resolution = TOKEN_TEXT_RESOLUTION;
     this.nameText.zIndex = 2; // Name text above name badge background
@@ -205,7 +187,6 @@ export class TokenUIRenderer {
     this.belowToken.addChild(this.editCursor); // z: 3 - edit cursor
     this.belowToken.addChild(this.resources.view); // z: 10
     this.belowToken.addChild(this.difficultyBadge); // z: 20
-    this.belowToken.addChild(this.difficultyText); // z: 21
     this.belowToken.addChild(this.defeatedOverlay); // z: 30 - on top
     
     // Initially visible
@@ -306,29 +287,13 @@ export class TokenUIRenderer {
     }
   };
   
+  /** The UI takes the light or dark theme's colours (`canvasBadgeColors`): a switch redraws it. */
   private setupThemeObserver(): void {
-    if (this.themeObserver) {
-      this.themeObserver.disconnect();
-    }
-
-    // Observe changes to the body class for theme switches
-    this.themeObserver = new MutationObserver((mutations) => {
-      for (const mutation of mutations) {
-        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-          // Theme changed, force update to redraw with new colors
-          if (this.currentToken && this.currentTokenSize > 0) {
-            // Clear the cache to force redraw
-            this.lastUpdateData = '';
-            this.update(this.currentToken, this.currentTokenSize);
-          }
-        }
-      }
-    });
-    
-    // Start observing
-    this.themeObserver.observe(document.body, {
-      attributes: true,
-      attributeFilter: ['class']
+    this.stopThemeWatch?.();
+    this.stopThemeWatch = watchDarkTheme(this.doc.body, () => {
+      if (!this.currentToken || this.currentTokenSize <= 0) return;
+      this.lastUpdateData = '';
+      this.update(this.currentToken, this.currentTokenSize);
     });
   }
   
@@ -424,7 +389,8 @@ export class TokenUIRenderer {
     if (showNameplate && displayName) {
       const isDarkMode = isDarkTheme();
       const { background: bgColor, stroke: strokeColor } = canvasBadgeColors();
-      if (this.nameText.style.fill !== strokeColor) this.nameText.style.fill = strokeColor;
+      const style = nameplateStyle(strokeColor);
+      if (this.nameText.style !== style) this.nameText.style = style;
       this.nameText.text = displayName;
       // In PIXI v8, text updates automatically when setting the text property
       const textBounds = this.nameText.getLocalBounds();
@@ -550,7 +516,7 @@ export class TokenUIRenderer {
   }
 
   private canAnimateValues(): boolean {
-    return !prefersReducedMotion(document.body);
+    return !prefersReducedMotion(this.doc.body);
   }
 
   public getContainer(): Container {
@@ -562,12 +528,27 @@ export class TokenUIRenderer {
     return this.belowToken.scale.x;
   }
 
-  /** Re-applies the UI scale after the viewport zoomed. */
+  /**
+   * Re-applies the UI scale after the viewport zoomed. A resting UI keeps its scale at every zoom:
+   * only its height chip and conditions card follow the zoom, and they are placed once they show.
+   */
   public refreshScale(): void {
     if (this.currentTokenSize <= 0) return;
+    this.zoomMissed = !this.followsZoom();
+    if (this.zoomMissed) return;
     this.layoutUIScale();
     const { ringRadius, cardScale } = this.conditionsLayout();
     this.conditionUI.setCardScale(ringRadius, cardScale);
+  }
+
+  /** Whether something this UI shows follows the zoom: a selected token's size, the height chip, the conditions card. */
+  private followsZoom(): boolean {
+    return this.emphasis.value > 0 || this.emphasis.targetValue > 0 || this.heightChip.view.visible || this.conditionUI.cardShown;
+  }
+
+  /** Places what follows the zoom, if the zoom changed while nothing of it showed. */
+  private catchUpZoom(): void {
+    if (this.zoomMissed) this.refreshScale();
   }
 
   /** Redraws the condition badges from the current definitions, e.g. after an icon or colour was edited. */
@@ -619,14 +600,16 @@ export class TokenUIRenderer {
   /** The chip steps aside while its token is resized, turned, pressed or dragged, as the conditions card does. */
   private updateHeightChipVisibility(): void {
     this.heightChip.view.visible = this.heightText !== '' && !this.isHiddenDuringResize && !this.isHiddenDuringRotation && !this.isHeld;
+    this.catchUpZoom();
   }
 
   /** Eases the UI to a selected token's on-screen size, or back to rest while unselected or held. */
   private updateEmphasis(): void {
     const target = this.isSelected && !this.isHeld ? 1 : 0;
     if (target === this.emphasis.targetValue) return;
-    if (prefersReducedMotion(document.body)) this.emphasis.jumpTo(target);
+    if (prefersReducedMotion(this.doc.body)) this.emphasis.jumpTo(target);
     else this.emphasis.animateTo(target);
+    this.catchUpZoom();
   }
 
   /** The scale of a selected token's UI: its constant size on screen, never below the resting size. */
@@ -699,6 +682,7 @@ export class TokenUIRenderer {
   /** The conditions card is for looking at a token: selecting, pressing or dragging it hides the card. */
   private updateConditionCard(): void {
     this.conditionUI.setHovered(this.showsConditionCard());
+    this.catchUpZoom();
   }
 
   /** Whether the card naming the token's conditions shows: the token is looked at, not selected, pressed or dragged. */
@@ -713,12 +697,23 @@ export class TokenUIRenderer {
    */
   public showConditionCard(shown: boolean): void {
     this.conditionUI.setHovered(shown);
+    this.catchUpZoom();
   }
   
+  /** Where the token lies in the pile, which this UI follows. */
+  public setPilePlace(place: number): void {
+    this.pilePlace = place;
+    this.restack();
+  }
+
+  private restack(): void {
+    this.container.zIndex = this.pilePlace + (this.isSelected ? SELECTED_RAISE : 0);
+  }
+
   public setSelectionState(selected: boolean): void {
     if (this.isSelected === selected) return;
     this.isSelected = selected;
-    this.container.zIndex = selected ? SELECTED_Z_INDEX : RESTING_Z_INDEX;
+    this.restack();
     this.updateEmphasis();
     this.updateConditionCard();
     this.updateTextVisibility();
@@ -743,7 +738,7 @@ export class TokenUIRenderer {
   public setBarButtonsShown(shown: boolean, span?: number): void {
     // The span is kept while the room is given back, so the wheels close in from where they stood
     if (shown) this.barButtonSpan = span;
-    if (shown || prefersReducedMotion(document.body)) this.barButtonRoom.jumpTo(shown ? 1 : 0);
+    if (shown || prefersReducedMotion(this.doc.body)) this.barButtonRoom.jumpTo(shown ? 1 : 0);
     else this.barButtonRoom.animateTo(0);
   }
 
@@ -815,10 +810,8 @@ export class TokenUIRenderer {
     }
     
     // Clean up theme observers
-    if (this.themeObserver) {
-      this.themeObserver.disconnect();
-      this.themeObserver = null;
-    }
+    this.stopThemeWatch?.();
+    this.stopThemeWatch = null;
     if (this.editThemeObserver) {
       this.editThemeObserver.disconnect();
       this.editThemeObserver = null;
@@ -857,7 +850,7 @@ export class TokenUIRenderer {
     this.nameText.visible = true;
     
     // Create a hidden HTML input to capture keyboard events
-    const input = document.body.createEl('input');
+    const input = this.doc.body.createEl('input');
     input.type = 'text';
     input.value = this.originalName || '';
     input.className = 'atlas-offscreen-input';
@@ -887,11 +880,11 @@ export class TokenUIRenderer {
       });
       
       // Observe changes to document root and body for theme changes
-      this.editThemeObserver.observe(document.documentElement, {
+      this.editThemeObserver.observe(this.doc.documentElement, {
         attributes: true,
         attributeFilter: ['class', 'style']
       });
-      this.editThemeObserver.observe(document.body, {
+      this.editThemeObserver.observe(this.doc.body, {
         attributes: true,
         attributeFilter: ['class', 'style']
       });
@@ -899,18 +892,18 @@ export class TokenUIRenderer {
     
     // Function to get Obsidian's accent color
     const getAccentColor = (): number => {
-      const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent-h');
-      const accentS = getComputedStyle(document.documentElement).getPropertyValue('--accent-s');
-      const accentL = getComputedStyle(document.documentElement).getPropertyValue('--accent-l');
+      const accentColor = getComputedStyle(this.doc.documentElement).getPropertyValue('--accent-h');
+      const accentS = getComputedStyle(this.doc.documentElement).getPropertyValue('--accent-s');
+      const accentL = getComputedStyle(this.doc.documentElement).getPropertyValue('--accent-l');
       
       let hexColor = 0x6366f1; // Default purple if CSS vars not available
       if (accentColor && accentS && accentL) {
         // Create HSL color string and convert to hex
         const hsl = `hsl(${accentColor}, ${accentS}, ${accentL})`;
-        const tempDiv = document.body.createDiv();
+        const tempDiv = this.doc.body.createDiv();
         tempDiv.style.color = hsl;
         const computedColor = getComputedStyle(tempDiv).color;
-        document.body.removeChild(tempDiv);
+        tempDiv.remove();
         
         // Parse rgb() to hex
         const rgbMatch = computedColor.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);

@@ -5,7 +5,7 @@ export const fog: Translation = {
   'fog.modes': 'Niebla',
   'fog.tools': 'Formas y acciones de niebla',
   'fog.fog': 'Niebla',
-  'fog.fogTip': 'Mantén Alt para borrar en su lugar. Clic derecho en la niebla para revelarla o eliminarla',
+  'fog.fogTip': 'Mantén Alt para borrar. Clic derecho en la niebla para revelarla o eliminarla',
   'fog.eraser': 'Borrador',
   'fog.eraserTip': 'Mantén Alt para añadir niebla en su lugar',
   'fog.reveal': 'Revelar',

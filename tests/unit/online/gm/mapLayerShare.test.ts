@@ -40,7 +40,7 @@ async function table(state: State, options: { grid?: Record<string, unknown> | n
   });
 }
 
-const FIGHT: ViewState['initiative'] = { entries: [entry('ogre', 1, 12), entry('spy', 2, 15), entry('hero', 0, 18)], currentIndex: 0, round: 3, isActive: true, config: { autoSort: true } };
+const FIGHT: ViewState['initiative'] = { entries: [entry('ogre', 1, 12), entry('spy', 2, 15), entry('hero', 0, 18)], round: 3, isActive: true, config: { autoSort: true } };
 
 const fight = (tokens: Record<string, TokenEntity>, extra: Partial<State> = {}): State => ({
   ...sceneState({ objects: { ...sceneState().objects, tokens } }),
@@ -62,8 +62,9 @@ describe("the map's layers players are sent", () => {
     expect(last(shared.sent, 'grid')?.grid).toEqual({
       type: 'hex-horizontal', size: 64, offsetX: 5, offsetY: 6, colour: '#336699', alpha: 0.4, lineWidth: 2, lineType: 'dotted', numbers: { format: 'column-row', opacity: 0.5 },
     });
+    // The GM hides the grid: a write of the store, which the grid Atlas draws follows.
     options.grid = { ...options.grid, enabled: false };
-    await shared.advance(1000);
+    await shared.show({ ...shared.state() });
     expect(last(shared.sent, 'grid')?.grid).toBeNull();
   });
 
@@ -130,9 +131,9 @@ describe("the map's layers players are sent", () => {
     const shared = await table(fight(TOKENS));
     expect(last(shared.sent, 'doors')).toBeUndefined();
     expect(last(shared.sent, 'sensed')).toBeUndefined();
-    const before = shared.sent.length;
+    shared.pages.join('ben');
     shared.share.resend('ben');
-    const resent = shared.sent.slice(before).filter(({ to }) => to === 'ben').map(({ body }) => body.t);
+    const resent = shared.pages.of('ben').inbox.map(({ t }) => t);
     expect(resent).toEqual(expect.arrayContaining(['grid', 'annotations', 'initiative']));
   });
 });

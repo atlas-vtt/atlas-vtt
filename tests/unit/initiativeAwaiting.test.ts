@@ -1,6 +1,7 @@
 import { produce } from 'immer';
 import { describe, expect, it } from 'vitest';
 import { createInitiativeActions } from '../../src/app/stores/initiativeSlice';
+import { NO_RULES } from '../mocks/rulesLookup';
 import { createDefaultInitiativeState, type InitiativeEntry } from '../../src/app/types/initiativeTypes';
 import type { TokenEntity } from '../../src/app/types';
 
@@ -10,7 +11,7 @@ const waiting = (id: string): InitiativeEntry => ({
 
 function setup(): { actions: ReturnType<typeof createInitiativeActions>; entry: (id: string) => InitiativeEntry | undefined } {
   let state = { initiative: { ...createDefaultInitiativeState(), entries: [waiting('a'), waiting('b')] }, initiativeTrackerOpen: false, objects: { tokens: {} as Record<string, TokenEntity> } };
-  const actions = createInitiativeActions((recipe) => { state = produce(state, recipe); }, 'awaiting', () => state, () => 0);
+  const actions = createInitiativeActions((recipe) => { state = produce(state, recipe); }, () => state, { rules: NO_RULES, random: () => 0 });
   return { actions, entry: (id) => state.initiative.entries.find((candidate) => candidate.id === id) };
 }
 

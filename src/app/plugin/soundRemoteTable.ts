@@ -2,7 +2,6 @@ import type { App } from 'obsidian';
 import { t } from '../i18n';
 import { showNotice } from '../ui/notice';
 import type { AtlasView } from '../atlas-view';
-import { defeatedOnMap } from '../initiative/defeatedOnMap';
 import { rollInitiative } from '../initiative/rollInitiative';
 import { handoutShown, takeBackHandout } from '../packages/components/player-window-bar/playerHandout';
 import { collectionDiceShelf } from '../react/components/dice/useDiceShelf';
@@ -30,7 +29,6 @@ function tableMap(app: App, view: AtlasView): TableMap {
   return {
     state: () => store.getState(),
     rules,
-    defeated: () => defeatedOnMap(app, store.getState()),
     roll: () => { void rollInitiative(app, store, rules()); },
     presented: () => activeTab() !== null && presentedSceneOf(app).get()?.tabId === activeTab(),
     present: (): void => {

@@ -40,7 +40,7 @@ function scene(settings: MeasurementSettings = FEET, movement: MovementRules = N
   const s = measureScene();
   const rules: RangeScene['rules'] = { settings, movement, speeds: { hero: 30 } };
   const prepared: string[] = [];
-  for (const token of [HERO, GOBLIN, OGRE]) s.store.getState().addToken({ kind: 'token', imagePath: '', size: 1, ...token } as TokenEntity);
+  for (const token of [HERO, GOBLIN, OGRE]) s.store.getState().addTokens([{ kind: 'token', imagePath: '', size: 1, ...token } as TokenEntity]);
   s.measure.measurementSettingsProvider = () => rules.settings;
   s.measure.rangeSources = {
     tokenAt: (x, y) => tokenStandingAt({ x, y }, Object.values(s.store.getState().objects.tokens), { type: 'square', size: GRID, offsetX: 0, offsetY: 0 })?.id ?? null,
@@ -115,7 +115,7 @@ describe('the range check', () => {
     s.hover(GOBLIN);
     s.store.getState().updateToken('hero', { ...cell(4, 1) });
     expect(check(s)).toBe('5ft');
-    s.store.getState().deleteToken('goblin');
+    s.store.getState().removeObjects(['goblin']);
     expect(check(s)).toBe('');
   });
 
@@ -220,7 +220,7 @@ describe('the Ranges mode', () => {
     s.store.getState().updateToken('ogre', { ...cell(6, 6) });
     expect(middle(s)).toBeCloseTo(around + 2 * GRID, 6);
     expect(redraw).not.toHaveBeenCalled();
-    s.store.getState().deleteToken('goblin');
+    s.store.getState().removeObjects(['goblin']);
     expect(rings(s)).toEqual([]);
   });
 
@@ -284,6 +284,7 @@ describe('the range marks in the players\' picture', () => {
     footprints: () => [],
     seenAtStart: () => (id) => seen.has(id),
     seenOnCanvas: () => (canvas.players ? (id: string): boolean => seen.has(id) : null),
+    onChange: () => () => undefined,
   });
   const shownIn = (layers: { layer: unknown; visible: boolean }[], part: unknown): boolean | undefined => layers.find((entry) => entry.layer === part)?.visible;
   /** Whether a players' frame shows the rings and the check, by `seen`. */

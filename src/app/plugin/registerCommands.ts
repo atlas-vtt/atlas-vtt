@@ -34,12 +34,18 @@ function isImageFile(file: TFile): boolean {
   return IMAGE_EXTENSIONS.includes(file.extension.toLowerCase());
 }
 
-/** Opens Atlas' start page in a new tab and brings it to the front. */
+/**
+ * Opens Atlas' start page in a new tab of the main window and brings it to the front. A new tab opens beside the active
+ * one, which may be in another window or a sidebar: the main window's last tab is made active first.
+ */
 export async function openDashboard(plugin: Plugin): Promise<void> {
   try {
-    const leaf = plugin.app.workspace.getLeaf(true);
+    const { workspace } = plugin.app;
+    const mainTab = workspace.getMostRecentLeaf(workspace.rootSplit);
+    if (mainTab) workspace.setActiveLeaf(mainTab, { focus: false });
+    const leaf = workspace.getLeaf(true);
     await leaf.setViewState({ type: DASHBOARD_VIEW_TYPE, state: {} });
-    plugin.app.workspace.setActiveLeaf(leaf);
+    workspace.setActiveLeaf(leaf);
   } catch (error) {
     console.error('[Atlas] Error opening dashboard:', error);
     showNotice(t('notice.dashboardOpenFailed'));

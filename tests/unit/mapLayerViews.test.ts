@@ -7,7 +7,8 @@ import type { DrawingAnnotation } from '../../src/app/annotations/annotationType
 import { createStampSprite, paintDrawing, placeStamp, StampTextures } from '../../src/app/pixi/drawingLayer';
 import { DoorIcons, type DoorIconsState } from '../../src/app/pixi/lighting/DoorIcons';
 import { createTextElementView, TEXT_CONTENT_LABEL, updateTextElementView } from '../../src/app/pixi/textElementView';
-import { entryTokenOf, listedForPlayers, playerInitiativeList, renderPlayerInitiative, type PlayerInitiativeEntry } from '../../src/app/services/playerInitiativeList';
+import type { PlayerInitiativeEntry } from '../../src/app/services/playerInitiativeList';
+import { renderPlayerInitiative } from '../../src/app/services/playerInitiativeView';
 import type { DrawingStroke, TextElement, TokenEntity } from '../../src/app/types';
 import type { InitiativeRules } from '../../src/app/types/initiativeRulesTypes';
 import { HP_RESOURCE } from '../../src/app/resources/resourceDefinitions';
@@ -16,6 +17,7 @@ import type { ResourceDefinition } from '../../src/app/resources/resourceTypes';
 import { DEFAULT_SCENE_LIGHTING } from '../../src/app/types/lightingTypes';
 import type { WallSegment } from '../../src/app/types/wallTypes';
 import { stubJsdomGraphics } from '../mocks/jsdomGraphics';
+import { playersListOf } from '../helpers/playersInitiative';
 
 vi.mock('../../src/app/pixi/utils/lucideIconTexture', async () => {
   const { Texture, TextureSource } = await import('pixi.js');
@@ -141,12 +143,11 @@ describe("the players' initiative list", () => {
     spy: { id: 'spy', kind: 'token', x: 0, y: 0, imagePath: '', isHidden: true },
   };
   const entries = [entry('ogre', 1, 12), entry('spy', 2, 9), entry('hero', 0, 18)];
-  const tokenOf = (listed: PlayerInitiativeEntry): ReturnType<typeof entryTokenOf> | null =>
-    (listedForPlayers(tokens[listed.tokenId]) ? entryTokenOf(tokens[listed.tokenId], [{ ...HP_RESOURCE }]) : null);
+  const HP = [{ ...HP_RESOURCE }];
 
   it('lists every combatant whose token is not hidden, in turn order, with hit points only where shown', () => {
     const fight = { entries, isActive: true, round: 3 };
-    const list = playerInitiativeList(fight, tokenOf, TURN_ORDER);
+    const list = playersListOf(fight, tokens, { resources: HP, initiative: TURN_ORDER });
     expect(list.combatants.map(({ entry: listed }) => listed.tokenId)).toEqual(['hero', 'ogre']);
     expect(list.combatants[0]?.token).toMatchObject({ hp: null, side: 'players' });
     expect(list).toMatchObject({ bySides: false, round: 3, activeSide: null });
@@ -154,7 +155,8 @@ describe("the players' initiative list", () => {
 
   it('shows hit points on the tokens players see them on, by side', () => {
     const wounded = { ...tokens, ogre: { ...tokens.ogre!, resources: { hp: { current: 7, max: 30 } } } };
-    const hpOf = (definition: ResourceDefinition) => (id: string): unknown => entryTokenOf(wounded[id], [definition]).hp;
+    const hpOf = (definition: ResourceDefinition) => (id: string): unknown => playersListOf({ entries, isActive: false, round: 0 }, wounded, { resources: [definition] })
+      .combatants.find(({ entry: listed }) => listed.tokenId === id)?.token.hp;
     const party = hpOf(withPlayerAudience({ ...HP_RESOURCE }, 'party'));
     const foes = hpOf(withPlayerAudience({ ...HP_RESOURCE }, 'opponents'));
     const all = hpOf(withPlayerAudience({ ...HP_RESOURCE }, 'everyone'));
@@ -164,14 +166,14 @@ describe("the players' initiative list", () => {
   });
 
   it('groups by side as a fight by sides runs, or as the rules say without one', () => {
-    expect(playerInitiativeList({ entries, isActive: false, round: 0 }, tokenOf, SIDES)).toMatchObject({ bySides: true, firstSide: 'opponents' });
+    expect(playersListOf({ entries, isActive: false, round: 0 }, tokens, { resources: HP, initiative: SIDES })).toMatchObject({ bySides: true, firstSide: 'opponents' });
     const running = { entries, isActive: true, round: 1, sides: { first: 'players' as const, active: 'opponents' as const } };
-    expect(playerInitiativeList(running, tokenOf, TURN_ORDER)).toMatchObject({ bySides: true, firstSide: 'players', activeSide: 'opponents' });
+    expect(playersListOf(running, tokens, { resources: HP, initiative: TURN_ORDER })).toMatchObject({ bySides: true, firstSide: 'players', activeSide: 'opponents' });
   });
 
   it('draws the turn, the round and names only where they are shown', () => {
     const container = createDiv();
-    const list = playerInitiativeList({ entries, isActive: true, round: 2 }, tokenOf, TURN_ORDER);
+    const list = playersListOf({ entries, isActive: true, round: 2 }, tokens, { resources: HP, initiative: TURN_ORDER });
     renderPlayerInitiative(container, list, { showNames: false, mapShowsNameplates: true, portraitSrc: () => null });
     expect(container.querySelectorAll('.atlas-initiative-card')).toHaveLength(2);
     expect(container.querySelector('.atlas-initiative-card--active')).not.toBeNull();
@@ -186,9 +188,7 @@ describe("the players' initiative list", () => {
 
   it('names only the combatants whose nameplate the GM\'s map shows, a placeholder standing for the rest', () => {
     const own = { ...tokens, ogre: { ...tokens.ogre!, showNameplate: true } };
-    const ownOf = (listed: PlayerInitiativeEntry): ReturnType<typeof entryTokenOf> | null =>
-      (listedForPlayers(own[listed.tokenId]) ? entryTokenOf(own[listed.tokenId], []) : null);
-    const list = playerInitiativeList({ entries, isActive: true, round: 1 }, ownOf, TURN_ORDER);
+    const list = playersListOf({ entries, isActive: true, round: 1 }, own, { initiative: TURN_ORDER });
     const container = createDiv();
     renderPlayerInitiative(container, list, { showNames: true, mapShowsNameplates: false, portraitSrc: () => 'art.png' });
     const names = [...container.querySelectorAll('.atlas-initiative-card__name')].map((name) => name.textContent);
@@ -198,10 +198,8 @@ describe("the players' initiative list", () => {
 
   it('marks defeated combatants and keeps delayed ones below the order, listing both', () => {
     const fallen = { ...tokens, ogre: { ...tokens.ogre!, resources: { hp: { current: 0, max: 30 } } } };
-    const fallenOf = (listed: PlayerInitiativeEntry): ReturnType<typeof entryTokenOf> | null =>
-      (listedForPlayers(fallen[listed.tokenId]) ? entryTokenOf(fallen[listed.tokenId], [{ ...HP_RESOURCE }]) : null);
     const waiting = [{ ...entry('ogre', 1, 12), imagePath: 'ogre.png' }, { ...entry('hero', 0, 18), isActive: false, delayed: true as const }];
-    const list = playerInitiativeList({ entries: waiting, isActive: true, round: 1 }, fallenOf, TURN_ORDER);
+    const list = playersListOf({ entries: waiting, isActive: true, round: 1 }, fallen, { resources: HP, initiative: TURN_ORDER });
     expect(list.combatants.map(({ token }) => token.defeated)).toEqual([false, true]);
 
     const container = createDiv();

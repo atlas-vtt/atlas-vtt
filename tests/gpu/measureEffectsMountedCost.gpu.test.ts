@@ -49,9 +49,9 @@ describe('the cost of kept areas with effects and lights on a lit map', () => {
     // Rooms around the view's middle: walls for every light to be traced through.
     for (let i = 0; i < 6; i++) {
       const x = 400 + i * 250;
-      state.addWall({ type: 'solid', p1: { x, y: 560 }, p2: { x, y: 800 } });
-      state.addWall({ type: 'solid', p1: { x, y: 1250 }, p2: { x, y: 1490 } });
-      state.addWall({ type: 'solid', p1: { x: x + 40, y: 1024 }, p2: { x: x + 170, y: 1024 } });
+      state.addObject('walls', { type: 'solid', p1: { x, y: 560 }, p2: { x, y: 800 } });
+      state.addObject('walls', { type: 'solid', p1: { x, y: 1250 }, p2: { x, y: 1490 } });
+      state.addObject('walls', { type: 'solid', p1: { x: x + 40, y: 1024 }, p2: { x: x + 170, y: 1024 } });
     }
     if (variant !== 'no measurements') {
       for (let i = 0; i < 8; i++) {
@@ -112,9 +112,9 @@ describe('the cost of kept areas with effects and lights on a lit map', () => {
     state.setSceneLighting({ enabled: true, ambient: 0.15 });
     for (let i = 0; i < 6; i++) {
       const x = 400 + i * 250;
-      state.addWall({ type: 'solid', p1: { x, y: 560 }, p2: { x, y: 800 } });
-      state.addWall({ type: 'solid', p1: { x, y: 1250 }, p2: { x, y: 1490 } });
-      state.addWall({ type: 'solid', p1: { x: x + 40, y: 1024 }, p2: { x: x + 170, y: 1024 } });
+      state.addObject('walls', { type: 'solid', p1: { x, y: 560 }, p2: { x, y: 800 } });
+      state.addObject('walls', { type: 'solid', p1: { x, y: 1250 }, p2: { x, y: 1490 } });
+      state.addObject('walls', { type: 'solid', p1: { x: x + 40, y: 1024 }, p2: { x: x + 170, y: 1024 } });
     }
     displayFrames(60);
     const lines: string[] = [];
@@ -135,7 +135,7 @@ describe('the cost of kept areas with effects and lights on a lit map', () => {
         let spent = 0;
         const ms = await gpuMs(renderer, () => {
           const start = performance.now();
-          store.getState().updateMeasure(id, { points });
+          store.getState().patchObject('measures', id, { points });
           displayFrames(1);
           spent = performance.now() - start;
         });
@@ -143,7 +143,7 @@ describe('the cost of kept areas with effects and lights on a lit map', () => {
         if (ms !== null) gpu.push(ms);
       }
       lines.push(`${name}: made in ${made.toFixed(1)} ms CPU; moved, a step ${median(cpu)!.toFixed(2)} ms CPU, ${median(gpu)?.toFixed(2) ?? 'no timer'} ms GPU`);
-      store.getState().deleteMeasure(id);
+      store.getState().removeObjects([id]);
       displayFrames(10);
     }
     console.log(`[measure effects mounted] a lit area made and dragged, 18 walls, Balanced:\n${lines.join('\n')}`);

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { parsePlayerMessage, type GmMessage } from '../../../../src/app/online/protocol/index.ts';
 import { CATCH_UP_MS, CoveredPages } from '../../../../src/app/online/gm/coveredPages.ts';
+import { SceneRoutes } from '../../../../src/app/online/gm/sceneRoutes.ts';
+import { sceneState } from './shareHarness.ts';
 
 const ANA = 'anaanaanaanaanaanaan';
 const BEN = 'benbenbenbenbenbenbe';
@@ -11,6 +13,8 @@ const UNCOVER = { t: 'book-cover', covered: false };
 
 interface Pages {
   readonly covers: CoveredPages;
+  /** Sends a live message of the shared scene, which leaves covered pages out of marks (`SceneRoutes`). */
+  sendLive(body: GmMessage, key: string, to?: string): void;
   readonly sent: { body: GmMessage; to: string }[];
   readonly caughtUp: string[];
   advance(ms: number): void;
@@ -23,7 +27,6 @@ function pages(batches = true): Pages {
   let ids = 0;
   const timers = new Map<number, { at: number; run: () => void }>();
   const covers = new CoveredPages({
-    sendLive: (body, _key, to = '*') => void sent.push({ body, to }),
     batches: () => batches,
     connected: () => [ANA, BEN],
     uncovered: (player) => void caughtUp.push(player),
@@ -41,7 +44,16 @@ function pages(batches = true): Pages {
     }
     now = end;
   };
-  return { covers, sent, caughtUp, advance };
+  const routes = new SceneRoutes({
+    send: () => undefined,
+    sendLive: (body, _key, to = '*') => void sent.push({ body, to }),
+    split: () => false,
+    onlinePlayers: () => [ANA, BEN],
+    sharedVision: () => true,
+    covers,
+  });
+  const floor = routes.open(null, () => sceneState());
+  return { covers, sendLive: (body, key, to) => floor.sendLive(body, key, to), sent, caughtUp, advance };
 }
 
 describe('pages whose book covers their map', () => {
@@ -51,14 +63,16 @@ describe('pages whose book covers their map', () => {
     expect(pages().covers.receive(ANA, { t: 'book-parts' })).toBe(false);
   });
 
-  it('leaves a covered page out of the marks only: drags and everything else still reach it', () => {
-    const { covers, sent } = pages();
-    covers.sendLive(MARKS, 'marks');
+  it('leaves a covered page out of the marks only, to all or to it alone: drags and everything else still reach it', () => {
+    const { covers, sendLive, sent } = pages();
+    sendLive(MARKS, 'marks');
     expect(covers.receive(ANA, COVER)).toBe(true);
-    covers.sendLive(MARKS, 'marks');
-    covers.sendLive(DRAG, 's');
-    covers.sendLive(MARKS, 'marks', ANA);
-    expect(sent).toEqual([{ body: MARKS, to: '*' }, { body: MARKS, to: BEN }, { body: DRAG, to: '*' }, { body: MARKS, to: ANA }]);
+    sendLive(MARKS, 'marks');
+    sendLive(DRAG, 's');
+    sendLive(MARKS, 'marks', ANA);
+    sendLive(MARKS, 'marks', BEN);
+    sendLive(DRAG, 's', ANA);
+    expect(sent).toEqual([{ body: MARKS, to: '*' }, { body: MARKS, to: BEN }, { body: DRAG, to: '*' }, { body: MARKS, to: BEN }, { body: DRAG, to: ANA }]);
   });
 
   it('catches an uncovered page up once a second at most, however often it flicks between screens', () => {
@@ -100,9 +114,9 @@ describe('pages whose book covers their map', () => {
   });
 
   it('keeps no covers where the relay takes no batches: every page gets every marks message, and none needs catching up', () => {
-    const { covers, sent, caughtUp } = pages(false);
+    const { covers, sendLive, sent, caughtUp } = pages(false);
     expect(covers.receive(ANA, COVER)).toBe(true);
-    covers.sendLive(MARKS, 'marks');
+    sendLive(MARKS, 'marks');
     expect(covers.receive(ANA, UNCOVER)).toBe(true);
     expect(sent).toEqual([{ body: MARKS, to: '*' }]);
     expect(caughtUp).toEqual([]);
@@ -112,16 +126,16 @@ describe('pages whose book covers their map', () => {
     const reset = pages();
     reset.covers.receive(ANA, COVER);
     reset.covers.reset();
-    reset.covers.sendLive(MARKS, 'marks');
+    reset.sendLive(MARKS, 'marks');
     expect(reset.sent).toEqual([{ body: MARKS, to: '*' }]);
     const left = pages();
     left.covers.receive(ANA, COVER);
     left.covers.playerLeft(ANA);
-    left.covers.sendLive(MARKS, 'marks');
+    left.sendLive(MARKS, 'marks');
     expect(left.sent).toEqual([{ body: MARKS, to: '*' }]);
     const unbatched = pages(false);
     unbatched.covers.receive(ANA, COVER);
-    unbatched.covers.sendLive(MARKS, 'marks');
+    unbatched.sendLive(MARKS, 'marks');
     expect(unbatched.sent).toEqual([{ body: MARKS, to: '*' }]);
   });
 });

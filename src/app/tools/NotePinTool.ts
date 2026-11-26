@@ -282,7 +282,7 @@ export class NotePinTool {
       // The click that opened the dropdown must not close it. Closing cancels the wait, or the
       // listener would be added after the dropdown is gone and never removed.
       this.outsideClickTimer = window.setTimeout(() => {
-        document.addEventListener('pointerdown', handleOutsideClick, true);
+        dropdown.doc.addEventListener('pointerdown', handleOutsideClick, true);
         this.outsideClickTimer = null;
       }, 100);
 
@@ -314,7 +314,7 @@ export class NotePinTool {
         this.outsideClickTimer = null;
       }
       if (this.outsideClickHandler) {
-        document.removeEventListener('pointerdown', this.outsideClickHandler, true);
+        this.pinDropdown.doc.removeEventListener('pointerdown', this.outsideClickHandler, true);
         this.outsideClickHandler = null;
       }
 
@@ -436,7 +436,7 @@ export class NotePinTool {
     // Re-picking what the pin already shows is not an edit, and must not add an undo step
     if (result.notePath === pin.notePath && result.icon === pin.icon) return;
 
-    this.store.getState().updateNotePin(pin.id, {
+    this.store.getState().patchObject('pins', pin.id, {
       notePath: result.notePath,
       ...(result.icon !== undefined && { icon: result.icon }),
     });

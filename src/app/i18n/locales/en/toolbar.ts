@@ -26,7 +26,7 @@ export const toolbar = {
   'toolbar.notePin': 'Note Pin Tool',
   'toolbar.pinOptions': 'Pin options',
   'toolbar.stairs': 'Stairs',
-  'toolbar.stairsNeedLevels': 'Stairs join the levels of a scene. Add a level in the command palette\'s Scene levels page first.',
+  'toolbar.stairsNeedLevels': 'Stairs need a second level. Add one in Scene levels',
   'toolbar.rollDice': 'Dice tray',
   'toolbar.optionsOf': '{label} Options',
   'toolbar.moveSelect': 'Move/Select',

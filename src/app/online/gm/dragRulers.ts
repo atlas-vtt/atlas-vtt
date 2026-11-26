@@ -68,9 +68,9 @@ export function rulersToDraw(state: RulerState, paths: RulerPaths): RemoteDrag[]
 
 const isPoint = (value: unknown): value is Point => typeof value === 'object' && value !== null && 'x' in value && 'y' in value && typeof value.x === 'number' && typeof value.y === 'number';
 
-/** What the drag ruler of an Atlas tab's renderer measures now (`TokenRenderer.dragRulerPath`), or null. */
-export function dragRulerOf(renderer: unknown): GmRuler | null {
-  const path = call(call(renderer, 'getTokenRenderer'), 'dragRulerPath');
+/** What the drag ruler of an Atlas tab's token renderer (`getTokenRenderer()`) measures now (`TokenRenderer.dragRulerPath`), or null. */
+export function dragRulerOf(tokens: unknown): GmRuler | null {
+  const path = call(tokens, 'dragRulerPath');
   if (typeof path !== 'object' || path === null || !('tokenId' in path) || !('points' in path)) return null;
   const { tokenId, points } = path;
   return typeof tokenId === 'string' && Array.isArray(points) && points.every(isPoint) ? { tokenId, points } : null;

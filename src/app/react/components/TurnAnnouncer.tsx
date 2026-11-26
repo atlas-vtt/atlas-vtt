@@ -2,11 +2,12 @@ import React, { useEffect, useRef } from 'react';
 import { TurnWatch } from '../../initiative/banner/turnBanner';
 import { FightWatch, fightBanner } from '../../initiative/banner/fightWatch';
 import { TurnBannerDisplay } from '../../initiative/banner/turnBannerElement';
-import { defeatedOnMap } from '../../initiative/defeatedOnMap';
 import { followTurn } from '../../initiative/followTurn';
 import { hasLevels, onLevel, viewedLevelId } from '../../levels/sceneLevels';
 import { showLevelOfToken } from '../../pixi/utils/tokenHighlight';
 import { DEFAULT_TURN_OPTIONS } from '../../initiative/turnOptions';
+import { mapResources } from '../../resources/collectionResources';
+import { rulesLookup } from '../../services/mapRules';
 import { SettingsService } from '../../services/SettingsService';
 import type { ViewAtlasState } from '../../storeFactory';
 import { portraitSrc } from '../../utils/portraitSrc';
@@ -55,7 +56,7 @@ export function TurnAnnouncer(): React.ReactElement {
       if (options.banner && change !== 'started') display.show(banner);
       // The GM's view always follows the turn
       const shows = (tokenId: string): boolean => (view?.renderer?.canvasShowsToken(tokenId) ?? false) || onAnotherFloor(state, tokenId);
-      followTurn(view?.renderer?.getViewportInstance(), state, shows, defeatedOnMap(app, state), (tokenId) => showLevelOfToken(state, tokenId));
+      followTurn(view?.renderer?.getViewportInstance(), state, shows, mapResources(rulesLookup(app), state.mapPath), (tokenId) => showLevelOfToken(state, tokenId));
     };
     look(store.getState());
     const stop = store.subscribe(look);

@@ -4,9 +4,10 @@ import { giveLoot } from '../../../../src/app/loot/lootRecipients';
 import type { LootDraw } from '../../../../src/app/loot/lootRoller';
 import { BookShelf } from '../../../../src/app/online/gm/book/BookShelf.ts';
 import { applyBookMessage, EMPTY_BOOK, withItem } from '../../../../src/app/online/gm/book/bookStore.ts';
-import { FakeSocket, workspace } from './fakeTable.ts';
-import { ANA, BEN, CAL, delivered, keptBooks, ofType, openTable, traffic } from './bookTableHarness.ts';
+import { workspace } from './fakeTable.ts';
+import { ANA, BEN, CAL, keptBooks, openTable, traffic } from './bookTableHarness.ts';
 import { advanceSettled as advance } from './settled.ts';
+import type { PageMessage } from './playerPages.ts';
 
 vi.mock('obsidian', () => ({ Notice: class {}, normalizePath: (path: string) => path, requestUrl: () => Promise.resolve({ status: 201, json: null }), PluginSettingTab: class {}, Setting: class {}, Platform: { isDesktopApp: true, isMobile: false, isPhone: false } }));
 vi.mock('../../../../src/app/online/gm/gmMarks.ts', () => ({
@@ -47,10 +48,10 @@ const LIBRARY_HEROES = { brannoch: { assetId: 'lib-brannoch' }, mira: { assetId:
 const BLADE: LootDraw = { id: 'draw-1', notePath: 'Items/Moon Blade.md', name: 'Moon Blade', source: ['Weapons'], rarity: 'Rare', type: 'Weapon', price: '500 thorns', description: 'Glows.', properties: [] };
 const ROPE: LootDraw = { ...BLADE, id: 'draw-2', notePath: 'Items/Rope.md', name: 'Rope', rarity: 'Common', type: 'Gear', price: '1 thorn', description: 'Fifty feet.' };
 
-/** The whole books a player was sent among these messages, as the page reads them. */
-function books(messages: ReturnType<typeof delivered>, player: string): PlayerBook[] {
-  return ofType(messages, 'book').filter(({ to }) => to === player).flatMap(({ body }) => {
-    const read = parseGmMessage(JSON.parse(JSON.stringify(body)));
+/** The whole books among a page's messages, as the page reads them. */
+function books(messages: readonly PageMessage[]): PlayerBook[] {
+  return messages.flatMap((body) => {
+    const read = parseGmMessage(body);
     return read?.t === 'book' ? [read.book] : [];
   });
 }
@@ -59,8 +60,6 @@ describe('items taken out at a running table', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'performance', 'Date'] });
     vi.stubGlobal('window', globalThis);
-    vi.stubGlobal('WebSocket', FakeSocket);
-    FakeSocket.all = [];
     workspace.leaves = [];
     workspace.presented = null;
   });
@@ -75,7 +74,7 @@ describe('items taken out at a running table', () => {
     const source = keptBooks();
     const shelf = new BookShelf(source);
     const players = [{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }, { id: CAL, name: 'Cal' }];
-    const { online, socket, from } = await openTable(shelf, players, undefined, undefined, LIBRARY_HEROES);
+    const { online, pages, from } = await openTable(shelf, players, undefined, undefined, LIBRARY_HEROES);
     expect(giveLoot(ANA, BLADE)).toBe(1);
     expect(giveLoot(ANA, ROPE)).toBe(1);
     expect(giveLoot(BEN, BLADE)).toBe(1);
@@ -85,15 +84,15 @@ describe('items taken out at a running table', () => {
     await advance(100);
 
     // Ana takes her blade out: gone from her book and its slot, kept so in the campaign's file, and not echoed.
-    let since = delivered(socket).length;
+    let since = pages.mark();
     from(ANA, { t: 'book-item-delete', id: blade });
     await advance(3_000);
     expect(shelf.of('lib-brannoch')).toMatchObject({ items: [{ id: rope, name: 'Rope' }], equipped: [] });
     expect(source.read('lib-brannoch')?.items.map((kept) => kept.id)).toEqual([rope]);
-    expect(ofType(delivered(socket).slice(since), 'book', 'book-item')).toEqual([]);
+    expect(pages.since(since, 'book', 'book-item')).toEqual({});
 
     // Another player's item, an item no longer there, an item never given, and messages that name no item: all refused, nothing changes.
-    since = delivered(socket).length;
+    since = pages.mark();
     for (const body of [{ t: 'book-item-delete', id: bens }, { t: 'book-item-delete', id: blade }, { t: 'book-item-delete', id: id(77) }, { t: 'book-item-delete', id: '../x' }, { t: 'book-item-delete' }, { t: 'book-item-delete', id: bens.toUpperCase() }]) {
       from(ANA, body);
       await advance(100);
@@ -101,11 +100,11 @@ describe('items taken out at a running table', () => {
     await advance(6_000);
     expect(shelf.of('lib-mira').items.map((kept) => kept.id)).toEqual([bens]);
     expect(shelf.of('lib-brannoch').items.map((kept) => kept.id)).toEqual([rope]);
-    const answers = ofType(delivered(socket).slice(since), 'book');
-    expect(answers.length).toBeGreaterThan(0);
-    expect(answers.every(({ to }) => to === ANA)).toBe(true);
-    expect(books(delivered(socket).slice(since), ANA).at(-1)?.items.map(({ name }) => name)).toEqual(['Rope']);
-    expect(traffic(delivered(socket).filter(({ to }) => to === ANA))).not.toContain(bens);
+    const answers = pages.since(since, 'book');
+    expect(Object.keys(answers)).toEqual([ANA]);
+    expect(answers[ANA]?.length).toBeGreaterThan(0);
+    expect(books(pages.of(ANA).since(since)).at(-1)?.items.map(({ name }) => name)).toEqual(['Rope']);
+    expect(traffic(pages.of(ANA).inbox)).not.toContain(bens);
 
     // A player without a character has no book to take anything out of.
     from(CAL, { t: 'book-item-delete', id: bens });

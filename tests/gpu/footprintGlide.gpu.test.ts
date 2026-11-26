@@ -7,7 +7,7 @@ import { ShownPlaces } from '../../src/app/lighting/shownPlaces';
 import { followShownPlaces } from '../../src/app/lighting/shownTokens';
 import { LightingRenderer } from '../../src/app/pixi/lighting/LightingRenderer';
 import { createTestRenderer } from '../../src/app/pixi/lighting/engine/__tests__/gpuTestUtils';
-import { TokenGlide } from '../../src/app/pixi/token-renderer/TokenGlide';
+import { TokenPlaces } from '../../src/app/pixi/token-renderer/TokenPlaces';
 import { createViewAtlasStore, type ViewAtlasState } from '../../src/app/storeFactory';
 import type { WallSegment } from '../../src/app/types/wallTypes';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
@@ -66,9 +66,10 @@ describe('a footprint that follows its gliding token', () => {
     lighting.modeLayer.visible = true;
     const steps = new Set<Step>();
     const position = { x, y, set(px: number, py: number): void { this.x = px; this.y = py; } };
-    const glide = new TokenGlide({
+    const places = new TokenPlaces({
       getTicker: () => ({ add: (step: Step) => steps.add(step), remove: (step: Step) => steps.delete(step) }) as unknown as Ticker,
       getSprite: () => ({ position }) as unknown as Container,
+      ui: { moveWithToken: () => undefined },
       onMove: () => undefined,
       reducedMotion: () => false,
       shown,
@@ -76,7 +77,7 @@ describe('a footprint that follows its gliding token', () => {
     });
     const target = RenderTexture.create(BOUNDS);
     cleanups.push(() => {
-      glide.destroy();
+      places.destroy();
       lighting.destroy();
       target.destroy(true);
       app.ticker.destroy();
@@ -90,7 +91,7 @@ describe('a footprint that follows its gliding token', () => {
       /** The store moves the token, and the token renderer glides its sprite there. */
       move: (tx: number, ty: number): void => {
         store.getState().moveToken('party', tx, ty);
-        glide.to('party', tx, ty);
+        places.glide('party', tx, ty);
       },
       frame: (): Uint8ClampedArray => {
         for (const step of [...steps]) step({ deltaMS: 16 });

@@ -12,6 +12,8 @@ import type { NotePatch } from '../statblocks/notes/patchTypes';
 import { withMovedTableNotes } from '../randomTables/tableSettings';
 import { workSlices } from '../utils/workSlices';
 import { mayNameMoves } from './movedPathNeedles';
+import { followMapMemories } from '../campaigns/exploredFolders';
+import { isScenePath } from '../utils/sceneFiles';
 
 /**
  * Propagates file path changes (renames/moves) across all storage layers:
@@ -19,7 +21,7 @@ import { mayNameMoves } from './movedPathNeedles';
  * - Map files (.atlasmap token instances and pin targets) and scene snapshots
  * - Statblock frontmatter (the image fields)
  * - Collection loot bases and random table notes
- * - The thumbnail of a renamed map
+ * - The thumbnail of a renamed map, and what players explored of it in every campaign
  *
  * The open map is updated separately by its view, from the same vault event.
  */
@@ -43,10 +45,13 @@ export class FileReferenceService {
     const fileMoves = moves.filter(({ from, to }) => normalizeImagePath(from) !== normalizeImagePath(to));
     if (fileMoves.length === 0) return;
     const moved = movedPathOf(fileMoves);
+    // Taken before anything waits, so a running table writes what its players explored where the map went.
+    const memories = followMapMemories(this.app, fileMoves.filter(({ from }) => isScenePath(from)));
 
     await this.updateAssetMetadata(moved);
     await this.updateScenes(moved);
     for (const { from, to } of fileMoves) await moveSceneThumbnail(this.app, from, to);
+    await memories;
     await this.updateMapFiles(moved, fileMoves);
     await this.updateStatblockFrontmatter(moved);
     await this.updateRandomTableSources(moved);

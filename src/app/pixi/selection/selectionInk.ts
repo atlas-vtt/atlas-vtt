@@ -1,4 +1,4 @@
-import type { Graphics } from 'pixi.js';
+import type { Graphics, GraphicsContext } from 'pixi.js';
 import { CANVAS_INK, INK_SHADE } from '../utils/canvasInk';
 import { HIGHLIGHT_EDGE, SELECTION_LOOK, grownPath, openRuns, outlinePoints, type HighlightPath, type Notch, type RoundedBox } from './selectionGeometry';
 import { uiCorner } from '../utils/squareCorners';
@@ -6,7 +6,7 @@ import { uiCorner } from '../utils/squareCorners';
 /** The group frame's accent opacity: present, never louder than a highlight. */
 const GROUP_ALPHA = 0.55;
 
-function trace(graphics: Graphics, path: HighlightPath): Graphics {
+function trace(graphics: GraphicsContext, path: HighlightPath): GraphicsContext {
   if (path.kind === 'circle') return graphics.circle(0, 0, path.radius);
   return graphics.poly(outlinePoints(path).flatMap(({ x, y }) => [x, y]), true);
 }
@@ -15,7 +15,7 @@ function trace(graphics: Graphics, path: HighlightPath): Graphics {
  * Strokes `path`, leaving out what lies under `handles` with `SELECTION_LOOK.handleClearance` around
  * each: a line of `width` ends that far from a handle's edge, so every band's gap is even.
  */
-function strokeBand(graphics: Graphics, path: HighlightPath, handles: readonly Notch[], width: number, color: number, alpha: number): void {
+function strokeBand(graphics: GraphicsContext, path: HighlightPath, handles: readonly Notch[], width: number, color: number, alpha: number): void {
   const reach = SELECTION_LOOK.handleClearance + width / 2;
   const runs = handles.length > 0 ? openRuns(outlinePoints(path), handles.map((handle) => ({ ...handle, radius: handle.radius + reach }))) : null;
   if (runs === null) {
@@ -34,7 +34,7 @@ function strokeBand(graphics: Graphics, path: HighlightPath, handles: readonly N
  * the accent line on it. Every band lies beside the next, so no translucent line covers another.
  * It passes behind `handles`, the controls that stand on it.
  */
-export function drawHighlight(graphics: Graphics, path: HighlightPath, handles: readonly Notch[], accent: number): void {
+export function drawHighlight(graphics: GraphicsContext, path: HighlightPath, handles: readonly Notch[], accent: number): void {
   let edge = HIGHLIGHT_EDGE;
   for (const band of INK_SHADE) {
     strokeBand(graphics, grownPath(path, edge + band.width / 2), handles, band.width, 0x000000, band.alpha);

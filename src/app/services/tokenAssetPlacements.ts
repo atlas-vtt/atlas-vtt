@@ -57,7 +57,7 @@ export async function removeTokenPlacements(app: App, mapFiles: readonly TFile[]
         const ids = Object.values(store.getState().objects.tokens)
           .filter((token) => placesImage(images, token.imagePath))
           .map((token) => token.id);
-        runHistoryTransaction(store, () => store.getState().deleteTokens(ids));
+        runHistoryTransaction(store, () => store.getState().removeObjects(ids));
         await view.saveMap();
       } else {
         await app.vault.process(mapFile, (content) => stripTokensFromMapJson(content, images));

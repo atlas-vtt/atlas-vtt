@@ -81,10 +81,10 @@ describe('map features in the store', () => {
   it('are added, changed and removed, each one undo step, a field given as undefined removed', () => {
     const store = sceneStore();
     const [id] = store.getState().addMapFeatures([{ name: 'Rubble', polygon: square(0, 0, 70), terrain: { difficult: true } }]);
-    store.getState().updateMapFeature(id!, { name: 'Loose rubble' });
-    store.getState().updateMapFeature(id!, { terrain: undefined });
+    store.getState().patchObject('mapFeatures', id!, { name: 'Loose rubble' });
+    store.getState().patchObject('mapFeatures', id!, { terrain: undefined });
     expect(store.getState().objects.mapFeatures![id!]).toEqual({ id, kind: 'map-feature', name: 'Loose rubble', polygon: square(0, 0, 70) });
-    store.getState().deleteMapFeature(id!);
+    store.getState().removeObjects([id!]);
     expect(store.getState().objects.mapFeatures).toEqual({});
     const history = getHistoryStore(store)!.getState();
     expect(history.pastStates).toHaveLength(4);

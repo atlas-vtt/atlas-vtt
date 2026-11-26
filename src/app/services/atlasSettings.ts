@@ -66,7 +66,7 @@ export interface AtlasSettings {
   fogEdge: FogEdge;
   /** When a dragged token shows how far it has moved: always, only while a fight runs, or never. Read with `getDragDistance`. */
   dragDistance: DragDistance;
-  /** Colour of the dice: card stock, dark or the accent colour. Read with `getDiceLook`. */
+  /** Colour of the dice: card stock, dark, the accent colour or a colour of the Appearance page. Read with `getDiceLook`. */
   diceColour: DiceColour;
   /** Face of the dice numerals and roll totals. Read with `getDiceLook`. */
   diceFont: DiceFont;
@@ -116,6 +116,8 @@ export interface AtlasSettings {
     playersDraw: boolean;
     /** Online play: players at a closed door may ask the GM to open it. */
     playersOpenDoors: boolean;
+    /** Online play: every player sees through every player character's vision; off, each through their own characters' alone. */
+    sharedVision: boolean;
   };
   /** The player view on a TV lying on the table (TrueScale). Read with `getTableTvSettings`. */
   tableTv: TableTvSettings;
@@ -164,6 +166,7 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
     initiativeMaxCards: 0,
     playersDraw: false,
     playersOpenDoors: false,
+    sharedVision: false,
   },
   tableTv: DEFAULT_TABLE_TV_SETTINGS,
 };

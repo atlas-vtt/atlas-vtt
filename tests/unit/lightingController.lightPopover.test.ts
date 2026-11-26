@@ -47,7 +47,7 @@ describe('opening a light', () => {
     const { store, light, click } = setup();
     store.getState().setActiveTool('wall');
     store.getState().setLightingTool({ mode: 'draw' });
-    store.getState().addWall({ type: 'solid', p1: { x: 402, y: 300 }, p2: { x: 402, y: 500 }, closed: true });
+    store.getState().addObject('walls', { type: 'solid', p1: { x: 402, y: 300 }, p2: { x: 402, y: 500 }, closed: true });
     expect(click(400, 300)).toBe(false);
     expect(light.cursorAt(400, 300)).toBeNull();
     expect(click(600, 300, { shift: true })).toBe(false);
@@ -102,13 +102,13 @@ describe('closing the light popover', () => {
   it('closes when its light is deleted', () => {
     const { store, torch } = setup();
     store.getState().openLightPopover(torch);
-    store.getState().deleteLight(torch);
+    store.getState().removeObjects([torch]);
     expect(store.getState().lightPopover).toBeNull();
   });
 
   it('closes when undo takes its light away', () => {
     const { store, click } = setup();
-    const placed = store.getState().addLight({ x: 100, y: 100, emission: genericLight('candle') });
+    const placed = store.getState().addObject('lights', { x: 100, y: 100, emission: genericLight('candle') });
     click(100, 100);
     expect(store.getState().lightPopover).toBe(placed);
     getHistoryStore(store)!.getState().undo();

@@ -83,7 +83,7 @@ export function DrawModeTool({ id, access, locked: viewLocked, selectionOnly = f
   const ungroupAnnotations = useAtlasStore((state) => state.ungroupAnnotations)
   const orderAnnotations = useAtlasStore((state) => state.orderAnnotations)
   const clearAnnotations = useAtlasStore((state) => state.clearAnnotations)
-  const deleteAnnotations = useAtlasStore((state) => state.deleteAnnotations)
+  const removeObjects = useAtlasStore((state) => state.removeObjects)
   const levelled = useAtlasStore((state) => hasLevels(state.levels))
   const ids = (): string[] => selected.map((annotation) => annotation.id)
   const noneSelected = locked ?? (selected.length === 0 ? t('draw.selectFirst') : null)
@@ -123,7 +123,7 @@ export function DrawModeTool({ id, access, locked: viewLocked, selectionOnly = f
       return <Switch icon={Shapes} label={t('draw.eraseWhole')} tip={t('draw.eraseWholeTip')} on={eraseWhole} onChange={(on) => setDrawTool({ eraseWhole: on })} locked={locked} />
     case 'front': return <Action icon={BringToFront} label={t('draw.toFront')} locked={noneSelected} onClick={() => orderAnnotations(ids(), 'front')} />
     case 'back': return <Action icon={SendToBack} label={t('draw.toBack')} locked={noneSelected} onClick={() => orderAnnotations(ids(), 'back')} />
-    case 'delete': return <Action icon={Trash2} label={t('common.delete')} locked={noneSelected} destructive onClick={() => deleteAnnotations(ids())} />
+    case 'delete': return <Action icon={Trash2} label={t('common.delete')} locked={noneSelected} destructive onClick={() => removeObjects(ids())} />
     case 'lock': {
       const on = shownLock(selected) === true
       return <Switch icon={on ? Lock : LockOpen} label={t('draw.lock')} on={on} onChange={(lock) => updateAnnotations(ids(), { locked: lock ? true : undefined })} locked={viewLocked ?? (selected.length === 0 ? t('draw.selectFirst') : null)} />

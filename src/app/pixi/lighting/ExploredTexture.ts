@@ -44,14 +44,18 @@ export class ExploredTexture {
   readonly texture: RenderTexture;
   private readonly scale: number;
   private readonly scratch: StampScratch;
+  /** Whether the scratch is this memory's own, which it destroys with itself. */
+  private readonly ownsScratch: boolean;
   private readonly merge = new Container();
   private readonly mergeSprite = new Sprite();
 
-  constructor(private readonly renderer: Renderer, bounds: MapBounds) {
+  /** `scratch`: one shared with other memories on the same renderer, which the caller destroys; unset, one of its own. */
+  constructor(private readonly renderer: Renderer, bounds: MapBounds, scratch?: StampScratch) {
     const grid = exploredGrid(bounds);
     this.scale = grid.scale;
     this.texture = RenderTexture.create({ width: grid.columns, height: grid.rows });
-    this.scratch = new StampScratch(renderer);
+    this.scratch = scratch ?? new StampScratch(renderer);
+    this.ownsScratch = scratch === undefined;
     this.mergeSprite.blendMode = 'max';
     this.merge.addChild(this.mergeSprite);
     this.clear();
@@ -162,7 +166,7 @@ export class ExploredTexture {
   }
 
   destroy(): void {
-    this.scratch.destroy();
+    if (this.ownsScratch) this.scratch.destroy();
     destroyTree(this.merge);
     this.texture.destroy(true);
   }

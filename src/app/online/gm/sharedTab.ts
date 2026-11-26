@@ -1,5 +1,5 @@
 import type { WorkspaceLeaf } from 'obsidian';
-import { rendererOf, sceneStoreOf, type SceneStore } from './atlasView.ts';
+import { rendererOf, sceneStoreOf, type ObservedStore } from './atlasView.ts';
 import { findPresentedTab, showsPresented, type Presented, type PresentedTab } from './presentedScene.ts';
 
 /**
@@ -10,7 +10,7 @@ import { findPresentedTab, showsPresented, type Presented, type PresentedTab } f
 export interface AtlasTab {
   readonly leaf: WorkspaceLeaf;
   readonly view: object;
-  readonly store: SceneStore;
+  readonly store: ObservedStore;
   readonly renderer: object;
 }
 

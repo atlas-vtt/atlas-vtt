@@ -9,7 +9,7 @@ export const playerBar: Translation = {
   'playerBar.curtainDown': 'Ocultar o mapa',
   'playerBar.curtainUp': 'Revelar o mapa',
   'playerBar.toggleCurtain': 'Ocultar ou revelar o mapa na janela dos jogadores',
-  'playerBar.playersSee': 'O que os jogadores veem',
+  'playerBar.playersSee': 'Configurações da mesa',
   'playerBar.close': 'Fechar janela dos jogadores',
   'playerBar.freeze': 'Pausar a visão dos jogadores',
   'playerBar.unfreeze': 'Retomar: a visão dos jogadores volta a seguir você',

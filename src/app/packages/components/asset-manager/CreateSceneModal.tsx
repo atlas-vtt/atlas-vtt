@@ -75,9 +75,10 @@ export default function CreateSceneModal({
     };
 
     if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
+      const doc = inputRef.current?.doc ?? activeDocument;
+      doc.addEventListener('keydown', handleEscape);
       return () => {
-        document.removeEventListener('keydown', handleEscape);
+        doc.removeEventListener('keydown', handleEscape);
       };
     }
   }, [isOpen, onClose]);

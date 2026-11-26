@@ -253,7 +253,7 @@ export class SoundDirector {
         this.shelf.recheckOutside();
         this.desk.requestWaiting();
       }),
-      this.output.watchVisibility(),
+      deps.onVisibilityChange(() => void this.output.check()),
     ];
     this.publish({ lastMix: loadLastMix(deps.storage), output: this.choice.apply() });
     void this.refreshShelf();

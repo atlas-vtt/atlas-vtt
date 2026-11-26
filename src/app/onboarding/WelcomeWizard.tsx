@@ -8,23 +8,20 @@ import { WelcomeCarousel } from './welcome/WelcomeCarousel';
 interface WelcomeWizardProps {
   app: App;
   settings: SettingsService;
-  /** The document of the view Atlas first shows in, a popout's included. */
-  doc?: Document | undefined;
+  /** Opens Atlas' start page: where Open Atlas and Skip lead. */
+  onOpenAtlas: () => void;
 }
 
-/**
- * A new GM is welcomed wherever Atlas first shows, the start page or a map. GMs who took the start page's or the
- * map's tour before the wizard existed are not welcomed again.
- */
+/** Every GM is welcomed once: a new one, and one updating from an Atlas that had no wizard yet. */
 export function shouldWelcome(settings: SettingsService): boolean {
-  return settings.shouldShowTutorial('welcome') && settings.shouldShowTutorial('dashboard') && settings.shouldShowTutorial('map');
+  return !settings.hasBeenWelcomed();
 }
 
 /**
- * The first thing a new GM sees: what Atlas is, where help is, Atlas Sidebar and the look. The tours follow. Render it
- * whether or not the GM is welcomed (it shows only for `shouldWelcome`), so it stays mounted to close with its motion.
+ * The first thing a new GM sees: what Atlas is, where help is, the look, and the community around it. Render it whether
+ * or not the GM is welcomed (it shows only for `shouldWelcome`), so it stays mounted to close with its motion.
  */
-export function WelcomeWizard({ app, settings, doc }: WelcomeWizardProps): React.JSX.Element {
+export function WelcomeWizard({ app, settings, onOpenAtlas }: WelcomeWizardProps): React.JSX.Element {
   return (
     <WelcomeDialog
       app={app}
@@ -32,7 +29,7 @@ export function WelcomeWizard({ app, settings, doc }: WelcomeWizardProps): React
       looks={LookService.forApp(app, settings)}
       carousel={<WelcomeCarousel />}
       open={shouldWelcome(settings)}
-      {...(doc && { doc })}
+      onOpenAtlas={onOpenAtlas}
     />
   );
 }

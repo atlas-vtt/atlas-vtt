@@ -367,7 +367,7 @@ describe('the measurement popover on the map', () => {
   it('follows its measurement when that is moved, and travels to another one that is opened', () => {
     const { store, ruler, circle, frame, position } = setup();
     act(() => { store.getState().openMeasurePopover(ruler); });
-    act(() => { store.getState().updateMeasure(ruler, { points: [{ x: 370, y: 470 }, { x: 580, y: 470 }] }); });
+    act(() => { store.getState().patchObject('measures', ruler, { points: [{ x: 370, y: 470 }, { x: 580, y: 470 }] }); });
     frame();
     expect(position()).toEqual({ x: 392, y: 390 });
     act(() => { store.getState().openMeasurePopover(circle); });
@@ -422,7 +422,7 @@ describe('a measurement that follows a token', () => {
   it('lets an aura go as a circle again where its token stands', () => {
     const { store, circle, measure, undo } = setup();
     act(() => { store.setState({ objects: { ...store.getState().objects, tokens: { hero } } }); });
-    act(() => { store.getState().updateMeasure(circle, { follows: 'hero', aura: 10, points: [{ x: 875, y: 385 }, { x: 875 + 35 + 140, y: 385 }] }); });
+    act(() => { store.getState().patchObject('measures', circle, { follows: 'hero', aura: 10, points: [{ x: 875, y: 385 }, { x: 875 + 35 + 140, y: 385 }] }); });
     getHistoryStore(store)!.getState().clear();
     act(() => { store.getState().openMeasurePopover(circle); });
     expect(follows().getAttribute('aria-checked')).toBe('true');
@@ -441,7 +441,7 @@ describe('a measurement that follows a token', () => {
   it('stands beside its badge on the rim of its token, wherever the token is', () => {
     const { store, circle, frame, position } = setup();
     act(() => { store.setState({ objects: { ...store.getState().objects, tokens: { hero } } }); });
-    act(() => { store.getState().updateMeasure(circle, { follows: 'hero', aura: 10 }); });
+    act(() => { store.getState().patchObject('measures', circle, { follows: 'hero', aura: 10 }); });
     act(() => { store.getState().openMeasurePopover(circle); });
     frame();
     const before = position();

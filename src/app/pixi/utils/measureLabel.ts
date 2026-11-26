@@ -5,7 +5,7 @@ import { canvasBadgeColors, isDarkTheme } from './canvasBadgeColors';
 import { INK_SHADE } from './canvasInk';
 import { destroyTree } from './destroyTree';
 import { LABEL_LOOK, labelCenter, labelScale, labelTextResolution, pillSize, type LabelTarget, type Size } from './measureLabelLayout';
-import { squareCorners, uiCorner } from './squareCorners';
+import { uiCorner } from './squareCorners';
 
 /** The label's colours: the nameplate's, its rim mixed opaque from the nameplate's translucent border. */
 export function labelColors(): { readonly text: number; readonly background: number; readonly border: number } {
@@ -38,6 +38,11 @@ export class MeasureLabel {
   private gridSize = 70;
   /** The pill as it was last drawn, in UI units. */
   private size: Size = { width: 0, height: 0 };
+  /**
+   * What the pill was last drawn from: a pill drawn again the same is left alone, since any
+   * redrawn Graphics makes PIXI rebuild the whole render group it lies in (the viewport's).
+   */
+  private drawn = '';
 
   constructor(private readonly relative = 1) {
     this.text.scale.set(NAMEPLATE_TEXT.textScale);
@@ -66,7 +71,11 @@ export class MeasureLabel {
     const bounds = this.text.getLocalBounds();
     const size = pillSize({ width: bounds.width * NAMEPLATE_TEXT.textScale, height: bounds.height * NAMEPLATE_TEXT.textScale });
     this.size = size;
-    drawLabelPill(this.pill, size, colors, onScreen);
+    const drawn = `${size.width}|${size.height}|${uiCorner(size.radius)}|${colors.border}|${colors.background}|${onScreen}`;
+    if (drawn !== this.drawn) {
+      this.drawn = drawn;
+      drawLabelPill(this.pill, size, colors, onScreen);
+    }
     const screenSize = { width: size.width * onScreen, height: size.height * onScreen };
     const center = this.target && labelCenter(this.target, screenSize, viewZoom, LABEL_LOOK.gap * onScreen);
     if (!center) return;
@@ -102,18 +111,4 @@ export function drawLabelPill(g: Graphics, { width, height, radius: rounded }: S
   const inset = LABEL_LOOK.border;
   g.roundRect(-width / 2, -height / 2, width, height, radius).fill(colors.border);
   g.roundRect(-width / 2 + inset, -height / 2 + inset, width - 2 * inset, height - 2 * inset, Math.max(0, radius - inset)).fill(colors.background);
-}
-
-/** Calls `redraw` whenever Obsidian switches between its light and dark theme, or corners turn square or round; returns what stops it. */
-export function watchMeasureLabelTheme(redraw: () => void): () => void {
-  let dark = isDarkTheme();
-  let square = squareCorners();
-  const observer = new MutationObserver(() => {
-    if (isDarkTheme() === dark && squareCorners() === square) return;
-    dark = isDarkTheme();
-    square = squareCorners();
-    redraw();
-  });
-  observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
-  return () => observer.disconnect();
 }

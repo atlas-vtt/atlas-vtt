@@ -29,8 +29,8 @@ afterEach(() => {
 describe('a renamed file that the map uses', () => {
   it('keeps the new path of a token\'s art when another token\'s move is undone and redone', () => {
     const { store, history } = openStore();
-    const a = store.getState().addToken({ x: 0, y: 0, imagePath: 'art/a.png' });
-    const b = store.getState().addToken({ x: 0, y: 0, imagePath: 'art/b.png' });
+    const a = store.getState().addTokens([{ x: 0, y: 0, imagePath: 'art/a.png' }])[0]!;
+    const b = store.getState().addTokens([{ x: 0, y: 0, imagePath: 'art/b.png' }])[0]!;
     store.getState().moveToken(a, 70, 0);
     const steps = history().pastStates.length;
     rename(store, 'art/b.png', 'art/b2.png');
@@ -46,7 +46,7 @@ describe('a renamed file that the map uses', () => {
   it('keeps the new path of the map image when an edit of the map\'s objects is undone', () => {
     const { store, history } = openStore();
     store.getState().setBackground('maps/vault.webp');
-    const a = store.getState().addToken({ x: 0, y: 0, imagePath: 'art/a.png' });
+    const a = store.getState().addTokens([{ x: 0, y: 0, imagePath: 'art/a.png' }])[0]!;
     store.getState().moveToken(a, 70, 0);
     rename(store, 'maps/vault.webp', 'maps/old-vault.webp');
     history().undo();
@@ -57,7 +57,7 @@ describe('a renamed file that the map uses', () => {
   it('keeps a pin on the renamed note when a token\'s move is undone', () => {
     const { store, history } = openStore();
     const pin = store.getState().addNotePin(10, 10, 'notes/Vault.md');
-    const a = store.getState().addToken({ x: 0, y: 0, imagePath: 'art/a.png' });
+    const a = store.getState().addTokens([{ x: 0, y: 0, imagePath: 'art/a.png' }])[0]!;
     store.getState().moveToken(a, 70, 0);
     rename(store, 'notes/Vault.md', 'notes/The Vault.md');
     history().undo();
@@ -74,8 +74,8 @@ describe('resources Atlas starts by itself', () => {
     let definitions: readonly ResourceDefinition[] = [HP];
     const sync = new StatblockTokenSync(fixture.app, store, fixture.links, () => definitions);
     const history = getHistoryStore(store)!;
-    store.getState().addToken(character({ resources: { hp: { current: 2, max: 7 } } }));
-    const a = store.getState().addToken({ x: 0, y: 0, imagePath: 'art/a.png' });
+    store.getState().addTokens([character({ resources: { hp: { current: 2, max: 7 } } })]);
+    const a = store.getState().addTokens([{ x: 0, y: 0, imagePath: 'art/a.png' }])[0]!;
     store.getState().moveToken(a, 70, 0);
     definitions = [HP, STRESS];
     sync.fillMissingResources();
@@ -145,7 +145,7 @@ describe('widgets kept in step by Atlas', () => {
     const b = open('b');
     await Promise.resolve();
     a.getState().addWidget(torches);
-    const piece = b.getState().addToken({ x: 0, y: 0, imagePath: 'art/a.png' });
+    const piece = b.getState().addTokens([{ x: 0, y: 0, imagePath: 'art/a.png' }])[0]!;
     b.getState().moveToken(piece, 70, 0);
     a.getState().setWidgetValue('torches', 3);
     expect(b.getState().widgetValues.torches).toBe(3);
@@ -161,7 +161,7 @@ describe('widgets kept in step by Atlas', () => {
     await waitFor(() => expect(store.getState().widgetValues.fear).toBe(2));
     const view = Object.assign(Object.create(AtlasView.prototype) as object, { getStore: () => store, saveMap: async (): Promise<void> => undefined });
     app.workspace = { getLeavesOfType: () => [{ view }] } as never;
-    const piece = store.getState().addToken({ x: 0, y: 0, imagePath: 'art/a.png' });
+    const piece = store.getState().addTokens([{ x: 0, y: 0, imagePath: 'art/a.png' }])[0]!;
     store.getState().moveToken(piece, 70, 0);
     store.setState({ mapLoaded: true });
     await deleteCollectionWidget(app as never, 'campaign', 'fear');

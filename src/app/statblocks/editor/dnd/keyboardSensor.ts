@@ -42,7 +42,7 @@ export class ViewKeyboardSensor implements SensorInstance {
 
   constructor(private readonly props: SensorProps<ViewKeyboardOptions>) {
     const target = props.event.target as Node | null;
-    this.doc = target?.ownerDocument ?? document;
+    this.doc = target?.ownerDocument ?? activeDocument;
     this.win = this.doc.defaultView ?? window;
     const rect = props.activeNode.node.current?.getBoundingClientRect();
     this.origin = { x: rect?.left ?? 0, y: rect?.top ?? 0 };

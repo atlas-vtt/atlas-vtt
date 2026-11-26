@@ -25,6 +25,7 @@ function share(initiative: InitiativeState, tokens: Record<string, TokenEntity>)
     shown: true,
     showNames: true,
     rules: {} as RulesLookup,
+    presets: [],
     art: () => null,
   });
 }

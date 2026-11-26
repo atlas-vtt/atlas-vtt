@@ -1,3 +1,4 @@
+import { getDomHost } from '../../host/dom';
 import { PANEL_ENTER_MS, PANEL_EXIT_MS, prefersReducedMotion } from '../../utils/motion';
 import { lerp } from '../../utils/math';
 import { ValueTransition } from '../utils/ValueTransition';
@@ -73,7 +74,7 @@ export class MeasurePresence {
 
   private to(target: Presence, ms: number, done?: () => void): void {
     this.stop();
-    const still = prefersReducedMotion(document.body);
+    const still = prefersReducedMotion(getDomHost().activeDocument().body);
     const goal: Presence = still ? { alpha: target.alpha, grow: 1 } : target;
     if (still && this.now.grow !== 1) this.set({ alpha: this.now.alpha, grow: 1 });
     const start = this.now;

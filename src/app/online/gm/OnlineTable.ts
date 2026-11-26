@@ -21,7 +21,8 @@ import { presentedScene, presentedSceneSource } from './presentedScene.ts';
 import { bindScene, type SceneBinding } from './sceneBinding.ts';
 import { TabWatch } from './sharedTab.ts';
 import { CoveredPages } from './coveredPages.ts';
-import { TableConnection, type TableStatus } from './TableConnection.ts';
+import type { TableStatus } from './TableConnection.ts';
+import type { OpenOutbox, TableOutbox } from './tableOutbox.ts';
 import { TableRoster } from './tableRoster.ts';
 import { closingText, tableEndOf, tableEndText, type TableEnd } from './tableEnd.ts';
 import { readVaultImage } from './vaultImage.ts';
@@ -35,6 +36,10 @@ import { TableModeShare } from './tableModeShare.ts';
 
 export type { OnlineTableEvents };
 import { FoundShare } from './pins/FoundShare.ts';
+import { CANVAS_MEMORY_IMAGES } from './memory/canvasMemoryImages.ts';
+import { VaultMemoryStore } from './memory/VaultMemoryStore.ts';
+import { keptMemoriesOf } from './memory/vaultMemoryFiles.ts';
+import { runInBackground } from '../../utils/backgroundTask';
 
 /** How often the presented tab is looked for, and the shared one checked. */
 const WATCH_MS = 1_000;
@@ -48,7 +53,7 @@ const WATCH_MS = 1_000;
  */
 export class OnlineTable {
   private readonly app: App;
-  private readonly connection: TableConnection;
+  private readonly connection: TableOutbox;
   private readonly watch: TabWatch<SceneBinding>;
   private stopWatchTimer: () => void = () => undefined;
   private stopFollowingPresented: () => void = () => undefined;
@@ -87,7 +92,7 @@ export class OnlineTable {
   readonly link: string;
   private readonly stopOwnership: () => void;
 
-  constructor(app: App, origin: string, table: CreatedTable, mapPath: string | null, ownership: Ownership, seats: TableSeats, gate: GateSettings, events: OnlineTableEvents, shelf: BookShelf, savedLog?: unknown, assets?: TableAssets) {
+  constructor(app: App, origin: string, table: CreatedTable, outbox: OpenOutbox, mapPath: string | null, ownership: Ownership, seats: TableSeats, gate: GateSettings, events: OnlineTableEvents, shelf: BookShelf, savedLog?: unknown, assets?: TableAssets) {
     this.app = app;
     this.ownership = ownership;
     this.events = events;
@@ -123,6 +128,7 @@ export class OnlineTable {
     });
     this.openScenes = this.assets === null ? null : new OpenScenes(app, this.assets.storing);
     const stored = this.assets?.storing;
+    const memories = new VaultMemoryStore(app, seats.campaignId, (player) => seats.codeOf(player) !== null);
     this.log = new TableLog({
       send: (body, to) => this.connection.send(body, to),
       clock: () => Date.now(),
@@ -131,7 +137,7 @@ export class OnlineTable {
       nameOf: (player) => ownership.nameOf(player),
       setTimer: (run, ms) => timers.setTimer(run, ms),
       clearTimer: (timer) => timers.clearTimer(timer),
-      changed: () => events.log(),
+      changed: () => void (events.log(), this.bound()?.share.layers.update()),
       speaker: (who, key) => this.bound()?.share.dice.speaker(who, key) ?? Promise.resolve(null),
       rollInline: (formula) => this.bound()?.share.dice.quietRoll(formula) ?? null,
     }, savedLog);
@@ -165,7 +171,6 @@ export class OnlineTable {
       now: () => timers.now(),
       setTimer: (run, ms) => timers.setTimer(run, ms),
       clearTimer: (timer) => timers.clearTimer(timer),
-      sendLive: (body, key, to) => this.connection.sendLive(body, key, to),
       batches: () => this.connection.batches,
       connected: () => this.connection.connected,
       uncovered: (player) => this.bound()?.share.catchUpMarks(player),
@@ -182,9 +187,11 @@ export class OnlineTable {
         app,
         seats: ownership,
         send: (body, to) => this.connection.send(body, to),
-        sendLive: (body, key, to) => this.covers.sendLive(body, key, to),
+        sendLive: (body, key, to) => this.connection.sendLive(body, key, to),
+        covers: this.covers,
         readImage: (path) => readVaultImage(app, path),
         stored,
+        memory: { store: memories, images: CANVAS_MEMORY_IMAGES, live: keptMemoriesOf(app) },
         isLive: (binding) => this.watch.isLive(binding),
         randomId: () => randomHex(12),
         logRoll: (roll) => this.log.rolled(roll),
@@ -201,7 +208,7 @@ export class OnlineTable {
       mapPath: (path) => events.mapPath(path),
       curtained: () => this.mode.curtained,
     }, mapPath);
-    this.connection = new TableConnection(origin, table.code, table.secret, {
+    this.connection = outbox(table, {
       status: (status) => this.setStatus(status),
       // The scene and tokens first: the players' mine messages follow from the ownership change.
       welcome: (connected) => {
@@ -238,7 +245,7 @@ export class OnlineTable {
     }, this.gate);
     // Each player hears only how far the assets they were sent references of have come.
     this.connection.onSent = (text, to) => this.assets?.sent(text, to);
-    this.roster = new TableRoster(seats, this.connection, { kick: (player) => this.kick(player), turnAway: (player) => this.connection.kick(player), joinCode: () => this.gate.settings.code });
+    this.roster = new TableRoster(seats, this.connection, { kick: (player) => this.kick(player), turnAway: (player) => this.connection.kick(player), joinCode: () => this.gate.settings.code, removed: (player) => runInBackground(memories.forget(player), 'Removing what a player explored') });
     this.stopOwnership = ownership.onChange(() => this.bound()?.share.ownersChanged());
   }
 

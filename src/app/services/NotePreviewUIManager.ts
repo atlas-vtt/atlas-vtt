@@ -21,6 +21,7 @@ import { readPinnedNotePreviews } from '../stores/pinnedNotePreviewSlice';
 import { isModHeld } from '../keyboard/modKey';
 import { OPEN_PREVIEW_EVENT, watchPressOutside } from './previewByHand';
 import { NOTE_PREVIEW_LAYER_CLASS } from './uiLayers';
+import { followEveryDocument } from '../platform/atlasDocuments';
 import { portalHost } from '../host/portalHost';
 import type { ViewAtlasStore } from '../storeFactory';
 import type { TokenRollContext } from '../types/diceRollOrigin';
@@ -97,6 +98,7 @@ export class NotePreviewUIManager {
   private boundHandleFocus!: () => void;
   /** The map view's container, once `setViewElement` was called. */
   private viewEl: HTMLElement | null = null;
+  private stopFollowingKeys: (() => void) | null = null;
   private activeLeafChangeRef: EventRef | null = null;
   private layoutChangeRef: EventRef | null = null;
   /** The pin or token whose preview a menu's row opened, while it waits for a press outside it. */
@@ -170,9 +172,15 @@ export class NotePreviewUIManager {
     this.boundHandleFocus = () => {
       this.isModifierKeyDown = false;
     };
-    
-    document.addEventListener('keydown', this.boundHandleKeyDown);
-    document.addEventListener('keyup', this.boundHandleKeyUp);
+    // Mod is followed in every window: a note in a popout opens previews too, and so does a map in one.
+    this.stopFollowingKeys = followEveryDocument(this.app.workspace, (doc) => {
+      doc.addEventListener('keydown', this.boundHandleKeyDown);
+      doc.addEventListener('keyup', this.boundHandleKeyUp);
+      return () => {
+        doc.removeEventListener('keydown', this.boundHandleKeyDown);
+        doc.removeEventListener('keyup', this.boundHandleKeyUp);
+      };
+    });
     window.addEventListener('blur', this.boundHideAllUnpinnedPreviewsOnBlur);
     // Reset modifier key state when window gains focus to avoid stuck state
     window.addEventListener('focus', this.boundHandleFocus);
@@ -553,7 +561,7 @@ export class NotePreviewUIManager {
 
   /** The document a preview opens in: that of the leaf it was hovered in (a note in a popout has its own), else the map view's. */
   private previewDocument(sourceLeaf: WorkspaceLeaf | null | undefined): Document {
-    return (sourceLeaf?.view.containerEl ?? this.viewEl)?.doc ?? document;
+    return (sourceLeaf?.view.containerEl ?? this.viewEl)?.doc ?? activeDocument;
   }
 
   /**
@@ -568,8 +576,8 @@ export class NotePreviewUIManager {
   public destroy(): void {
     this.stopWatchingOutside?.();
     this.stopWatchingOutside = null;
-    document.removeEventListener('keydown', this.boundHandleKeyDown);
-    document.removeEventListener('keyup', this.boundHandleKeyUp);
+    this.stopFollowingKeys?.();
+    this.stopFollowingKeys = null;
     window.removeEventListener('blur', this.boundHideAllUnpinnedPreviewsOnBlur);
     window.removeEventListener('focus', this.boundHandleFocus);
     if (this.activeLeafChangeRef) {

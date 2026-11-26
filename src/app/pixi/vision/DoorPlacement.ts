@@ -1,6 +1,5 @@
 import type { StoreApi } from 'zustand';
 import type { ViewAtlasState } from '../../storeFactory';
-import { runHistoryTransaction } from '../../stores/history';
 import type { Point } from '../../types/visionTypes';
 import type { WallSegment } from '../../types/wallTypes';
 import { placeDoor } from '../lighting/wallEdits';
@@ -53,11 +52,7 @@ export class DoorPlacement {
       this.cancel();
       return;
     }
-    const state = this.store.getState();
-    runHistoryTransaction(this.store, () => {
-      state.deleteWall(wall.id);
-      for (const piece of placeDoor(wall, placing.at, this.width(), placing.doorType)) state.addWall(piece);
-    });
+    this.store.getState().editWalls([wall.id], placeDoor(wall, placing.at, this.width(), placing.doorType));
     this.cancel();
     this.walls.clearSelection();
   }

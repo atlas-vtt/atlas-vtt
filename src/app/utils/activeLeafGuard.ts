@@ -72,13 +72,13 @@ export function claimWorkspaceLeafFocus(
   }
 
   const targetLeafEl = container.closest('.workspace-leaf');
-  const activeElement = document.activeElement;
-  const activeLeafEl = activeElement instanceof HTMLElement
+  const activeElement = container.doc.activeElement;
+  const activeLeafEl = activeElement?.instanceOf(HTMLElement)
     ? activeElement.closest('.workspace-leaf')
     : null;
 
   const shouldFocusContainer =
-    activeElement === document.body ||
+    activeElement === container.doc.body ||
     activeElement === null ||
     (targetLeafEl !== null && activeLeafEl !== null && activeLeafEl !== targetLeafEl);
 

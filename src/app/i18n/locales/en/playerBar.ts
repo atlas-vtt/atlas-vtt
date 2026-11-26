@@ -10,7 +10,7 @@ export const playerBar = {
   'playerBar.curtainDown': 'Hide the map',
   'playerBar.curtainUp': 'Reveal the map',
   'playerBar.toggleCurtain': 'Hide or reveal the map on the player window',
-  'playerBar.playersSee': 'What players see',
+  'playerBar.playersSee': 'Table settings',
   'playerBar.close': 'Close player window',
   'playerBar.freeze': 'Pause the player view',
   'playerBar.unfreeze': 'Play: the player view follows you again',

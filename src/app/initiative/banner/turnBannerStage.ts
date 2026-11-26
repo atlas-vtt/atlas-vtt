@@ -3,7 +3,7 @@ import type { TurnBanner } from './turnBanner';
 import { prefersReducedMotion } from '../../utils/motion';
 import { bannerAnchor, listBox, type BannerAnchor, type Box } from '../../services/turnBannerAnchors';
 import type { PlayersListEdge } from '../initiativeLayout';
-import { FIGHT_INTRO_HOLD_MS } from '../../services/playerInitiativeList';
+import { FIGHT_INTRO_HOLD_MS } from '../../services/playerInitiativeView';
 import { LIST_ENTER_EASING, LIST_ENTER_MS, LIST_EXIT_EASING, LIST_EXIT_MS } from '../motion/listPresence';
 
 /**

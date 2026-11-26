@@ -1,3 +1,4 @@
+import { getDomHost } from '../../host/dom';
 import { Container, Graphics, Sprite, type Texture } from 'pixi.js';
 import type { Point } from '../../types/visionTypes';
 import { NAMEPLATE_TEXT } from '../token-renderer/tokenSizing';
@@ -71,14 +72,14 @@ export class MeasurePin {
   setHovered(hovered: boolean): void {
     const target = hovered ? 1 : 0;
     if (this.lift.targetValue === target) return;
-    if (prefersReducedMotion(document.body)) this.lift.jumpTo(target);
+    if (prefersReducedMotion(getDomHost().activeDocument().body)) this.lift.jumpTo(target);
     else this.lift.animateTo(target);
   }
 
   /** Pops in where it was placed: it fades in as it grows to its size. */
   popIn(): void {
     this.lift.jumpTo(0);
-    if (prefersReducedMotion(document.body)) {
+    if (prefersReducedMotion(getDomHost().activeDocument().body)) {
       this.appear.jumpTo(1);
       return;
     }

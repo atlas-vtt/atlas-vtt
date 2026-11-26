@@ -1,7 +1,7 @@
 import { createStore, type StoreApi } from 'zustand';
 import { createAttribution } from './historyActor';
 import { restore } from './towards';
-import { HISTORY_LIMIT, sameTrackedSlice, type HistorySnapshot, type HistoryStep } from './trackedSlice';
+import { HISTORY_LIMIT, sameTrackedSlice, type HistorySnapshot, type HistoryStep, type UndoDepths } from './trackedSlice';
 
 /**
  * Undo/redo API exposed on `store.temporal`.
@@ -50,6 +50,8 @@ export interface HistoryState {
 
 /** The store a history belongs to, as the history sees it. */
 export interface TrackedStore {
+  /** The branches undo tracks, and how deep. */
+  depths: UndoDepths;
   read: () => HistorySnapshot;
   /** Writes below every other middleware: never recorded, never saved by itself. */
   write: (slice: HistorySnapshot) => void;
@@ -117,8 +119,8 @@ export function createHistory(tracked: TrackedStore): History {
     const last = pastStates[pastStates.length - 1];
     const next = futureStates[futureStates.length - 1];
     return {
-      pastStates: last ? [...pastStates.slice(0, -1), { before: last.before, after: restore(last.after, from, target) }] : pastStates,
-      futureStates: next ? [...futureStates.slice(0, -1), { before: restore(next.before, from, target), after: next.after }] : futureStates,
+      pastStates: last ? [...pastStates.slice(0, -1), { before: last.before, after: restore(last.after, from, target, tracked.depths) }] : pastStates,
+      futureStates: next ? [...futureStates.slice(0, -1), { before: restore(next.before, from, target, tracked.depths), after: next.after }] : futureStates,
     };
   }
 
@@ -184,7 +186,7 @@ export function createHistory(tracked: TrackedStore): History {
     const stacks = folded(current);
     const step = stacks[source][stacks[source].length - 1]!;
     store.setState({ ...stacks, [source]: stacks[source].slice(0, -1) });
-    const slice = direction === 'undo' ? restore(current, step.after, step.before) : restore(current, step.before, step.after);
+    const slice = direction === 'undo' ? restore(current, step.after, step.before, tracked.depths) : restore(current, step.before, step.after, tracked.depths);
     const wasTravelling = travelling;
     travelling = true;
     try {

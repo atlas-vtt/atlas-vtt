@@ -40,7 +40,8 @@ export interface Setup {
 
 export function setup(doc: Document = document): Setup {
   const restoreGraphics = stubJsdomGraphics();
-  window.matchMedia = (() => ({ matches: true })) as never;
+  // Reduced motion is asked of the canvas's own window, which may be a popout.
+  for (const win of new Set([window, doc.defaultView ?? window])) win.matchMedia = (() => ({ matches: true })) as never;
   const canvas = doc.body.appendChild(doc.createElement('canvas'));
   const events = { domElement: canvas } as unknown as EventSystem;
   const viewport = new Viewport({ screenWidth: 800, screenHeight: 600, events });
@@ -49,7 +50,7 @@ export function setup(doc: Document = document): Setup {
   store.getState().setPersistenceEnabled(false);
   store.getState().setMapPath('maps/lights.atlasmap');
   store.getState().setSceneLighting({ enabled: true });
-  const torch = store.getState().addLight({ x: 400, y: 300, emission: { ...genericLight('torch'), kind: 'torch' } });
+  const torch = store.getState().addObject('lights', { x: 400, y: 300, emission: { ...genericLight('torch'), kind: 'torch' } });
   const markers = new LightMarkers(viewport, store);
   const rings = new LightRangeRings(viewport, store, () => FEET);
   /** `active`: the lighting tool; `moves`: the select or move tool. */

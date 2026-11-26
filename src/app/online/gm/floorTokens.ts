@@ -1,13 +1,11 @@
-import type { RollSceneLookup, ShownRollToken } from '../../services/playerRollSource';
+import type { ShownRollToken } from '../../services/playerRollSource';
 import { hasLevels, resolveLevel } from '../../levels/sceneLevels';
 import type { SceneStore } from './atlasView.ts';
 import type { FloorShare } from './FloorShare.ts';
-import type { Floor } from './playerFloors.ts';
+import { floorKey } from './playerFloors.ts';
+import type { NamedToken } from './RollShare.ts';
 import type { SceneDiceParts } from './SceneDice.ts';
 import type { SceneSharePorts } from './sceneSharePorts.ts';
-
-/** The key of a floor's share: its level id, '' for a scene of one floor. */
-export const floorKey = (floor: Floor): string => floor ?? '';
 
 export interface FloorTokensDeps {
   readonly store: SceneStore;
@@ -16,8 +14,6 @@ export interface FloorTokensDeps {
   readonly floors: ReadonlyMap<string, FloorShare>;
   /** The share of the floor a player stands on. */
   shareOf(player: string): FloorShare | undefined;
-  /** Whether every player of the scene stands on one floor. */
-  together(): boolean;
 }
 
 /**
@@ -52,7 +48,7 @@ export class FloorTokens {
       listedScene: (player) => this.deps.shareOf(player)?.tokens.listedScene ?? null,
       listedToken: (player, alias) => this.deps.shareOf(player)?.tokens.listedToken(alias),
       listedAlias: (tokenId) => [...this.deps.floors.values()].map((share) => share.tokens.listedAlias(tokenId)).find((alias) => alias !== undefined),
-      shownToken: (mapPath, tokenId) => this.shownToken(mapPath, tokenId),
+      namedToken: (mapPath, tokenId) => this.namedToken(mapPath, tokenId),
     };
   }
 
@@ -67,16 +63,21 @@ export class FloorTokens {
   }
 
   /**
-   * A token as the players' frame shows it, for a roll that names it. Every player hears a roll, so
-   * while players stand on several floors only a player's own token is named (the party knows its own).
+   * A token as the players' frame shows it, for a roll that names it, and who it is named to: every
+   * player hears a roll, and a player's own character is named to all (the party knows its own), any
+   * other token only to the players of its floor whose picture shows it.
    */
-  private shownToken(mapPath: string, tokenId: string): ReturnType<RollSceneLookup['shownToken']> {
+  private namedToken(mapPath: string, tokenId: string): NamedToken | null {
     const token = this.deps.store.getState().objects.tokens[tokenId];
     const key = this.floorKeyOf(tokenId);
-    if (token === undefined || key === null || (!this.deps.together() && this.deps.ports.seats?.ownerOf(tokenId, token) === undefined)) return null;
+    if (token === undefined || key === null) return null;
     const share = this.deps.floors.get(key);
     // Only a token of a list players were sent
-    return share?.tokens.listedScene === null ? null : share?.shown(mapPath, [tokenId]).get(tokenId) ?? null;
+    if (share === undefined || share.tokens.listedScene === null) return null;
+    const shown = share.shown(mapPath, [tokenId]).get(tokenId);
+    if (shown === undefined) return null;
+    const owned = this.deps.ports.seats?.ownerOf(tokenId, token) !== undefined;
+    return { shown, to: owned ? null : share.seers(mapPath, tokenId) };
   }
 
   /** The key of the floor a token stands on, or null for a token the scene does not have. */
