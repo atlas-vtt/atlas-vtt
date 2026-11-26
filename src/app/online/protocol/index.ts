@@ -20,6 +20,8 @@ export * from './fog.ts';
 export * from './game.ts';
 export * from './gmScreen.ts';
 export * from './gmScreenKeys.ts';
+export * from './gmScreenLayout.ts';
+export * from './gmScreenLayoutEdits.ts';
 export * from './gmScreenLink.ts';
 export * from './gmScreenStatblocks.ts';
 export * from './gmScreenWire.ts';

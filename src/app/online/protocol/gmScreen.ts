@@ -1,4 +1,5 @@
 import { parseKeysMessage, parsePress, type KeysMessage, type PressMessage } from './gmScreenKeys.ts';
+import { parseLayoutDeviceMessage, parseLayoutMessage, type LayoutDeviceMessage, type LayoutMessage } from './gmScreenLayoutEdits.ts';
 import { parseStatblocksAsk, parseStatblocksMessage, type StatblocksAsk, type StatblocksMessage } from './gmScreenStatblocks.ts';
 import { parseYourCode, type YourCodeMessage } from './seat.ts';
 import { isRecord } from './shape.ts';
@@ -9,22 +10,22 @@ import { isRecord } from './shape.ts';
  * null and is ignored.
  */
 
-/** From Atlas to a device: its own code (by which it comes back next session), the Keys and Sound screens' state, the Statblocks screen's. */
-export type GmScreenMessage = YourCodeMessage | KeysMessage | StatblocksMessage;
+/** From Atlas to a device: its own code (by which it comes back next session), the Keys and Sound screens' state, the Keys screen's grid, the Statblocks screen's. */
+export type GmScreenMessage = YourCodeMessage | KeysMessage | LayoutMessage | StatblocksMessage;
 
-/** From a device to Atlas: a key pressed, the statblock it shows, a portrait it lacks. */
-export type DeviceMessage = PressMessage | StatblocksAsk;
+/** From a device to Atlas: a key pressed, its kind and a change to its grid, the statblock it shows, a portrait it lacks. */
+export type DeviceMessage = PressMessage | LayoutDeviceMessage | StatblocksAsk;
 
 /** A message of Atlas as a device reads it from an opened seal, or null for anything malformed or unknown. */
 export function parseGmScreenMessage(value: unknown): GmScreenMessage | null {
   if (!isRecord(value)) return null;
   if (value.t === 'your-code') return parseYourCode(value);
-  return parseKeysMessage(value) ?? parseStatblocksMessage(value);
+  return parseKeysMessage(value) ?? parseLayoutMessage(value) ?? parseStatblocksMessage(value);
 }
 
 /** A message of a device as Atlas reads it from an opened seal, or null for anything malformed or unknown. */
 export function parseDeviceMessage(value: unknown): DeviceMessage | null {
   if (!isRecord(value)) return null;
   if (value.t === 'press') return parsePress(value);
-  return parseStatblocksAsk(value);
+  return parseLayoutDeviceMessage(value) ?? parseStatblocksAsk(value);
 }
