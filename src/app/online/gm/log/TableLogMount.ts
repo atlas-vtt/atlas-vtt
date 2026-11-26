@@ -1,7 +1,7 @@
 import { GM_AUTHOR, type RollEntry } from '../../protocol/index.ts';
 import { mountLogSurface, type LogActions, type LogState, type LogSurfaceMount, type Portrait, type RollFace, type SpeakerOption } from '../../tableLog/index.ts';
 import type { FoundEntry, ImageEntry, LogSpeaker } from '../../protocol/index.ts';
-import type { SceneStore } from '../atlasView.ts';
+import type { ObservedStore } from '../atlasView.ts';
 import { detached } from '../dock/dockDom.ts';
 import { openThroughAtlas, takeOverDiceLog } from './diceLogTakeover.ts';
 import { t } from '../../../i18n';
@@ -19,7 +19,7 @@ export interface TableLogMountDeps {
   canSend(): boolean;
   rollFace(entry: RollEntry): RollFace | null;
   /** Whom the GM may speak as, by the scene's state. */
-  speakers(state: ReturnType<SceneStore['getState']>): readonly SpeakerOption[];
+  speakers(state: ReturnType<ObservedStore['getState']>): readonly SpeakerOption[];
   speakerPortrait(speaker: LogSpeaker): Portrait | null;
   /** An image the GM showed, from the vault. */
   imageSrc(entry: ImageEntry): string | null;
@@ -37,7 +37,7 @@ export interface TableLogMountDeps {
  */
 export class TableLogMount {
   private readonly container: HTMLElement;
-  private readonly store: SceneStore;
+  private readonly store: ObservedStore;
   private readonly deps: TableLogMountDeps;
   private readonly host: HTMLElement;
   private readonly tabHost: HTMLElement;
@@ -46,7 +46,7 @@ export class TableLogMount {
   private readonly stopSpeakers: () => void;
   private open = false;
 
-  constructor(container: HTMLElement, store: SceneStore, deps: TableLogMountDeps) {
+  constructor(container: HTMLElement, store: ObservedStore, deps: TableLogMountDeps) {
     this.container = container;
     this.store = store;
     this.deps = deps;

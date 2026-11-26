@@ -190,7 +190,7 @@ describe('the handles of an aura', () => {
 });
 
 describe('who is shown an aura', () => {
-  const view: MeasurePlayersView = { footprints: () => [], seenAtStart: () => () => true, seenOnCanvas: () => null };
+  const view: MeasurePlayersView = { footprints: () => [], seenAtStart: () => () => true, seenOnCanvas: () => null, onChange: () => () => undefined };
   const shown = (s: MeasureScene, seen: (id: string) => boolean): { bodies: number; labels: string[] } => {
     let result = { bodies: 0, labels: [] as string[] };
     captureWithLayerVisibility(s.measure.getPlayerViewLayers(seen), () => undefined, () => {

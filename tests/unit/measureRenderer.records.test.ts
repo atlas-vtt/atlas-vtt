@@ -177,6 +177,7 @@ describe('MeasureRenderer records', () => {
       footprints: () => [{ id: 'goblin', x: 100, y: 100, radius: 30 }],
       seenAtStart: () => () => false,
       seenOnCanvas: () => null,
+      onChange: () => () => undefined,
     };
     s.pointer('pointerdown', 100, 100);
     s.pointer('pointermove', 300, 100);

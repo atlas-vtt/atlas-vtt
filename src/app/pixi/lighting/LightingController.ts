@@ -16,12 +16,12 @@ import { mapSenseRulesSource } from '../../services/mapSenseRules';
 import { rulesLookup } from '../../services/mapRules';
 import type { ViewAtlasState, ViewAtlasStore } from '../../storeFactory';
 import { perceptionOptions } from '../../vision/perception';
-import type { SightRules } from '../../vision/sightRules';
 import type { MapBounds } from '../../vision/visibility';
 import type { Point } from '../../types/visionTypes';
 import type { HideableLayer, LayerVisibility } from '../playerSafeFrame';
 import { requestRender } from '../RenderScheduler';
 import type { TokenRenderer } from '../TokenRenderer';
+import type { CanvasAudience } from '../audience/CanvasAudience';
 import { createSceneLighting } from './createSceneLighting';
 import { GmSightAids } from './GmSightAids';
 import { DoorIcons } from './DoorIcons';
@@ -58,6 +58,7 @@ export interface LightingControllerDeps {
   eventBus: EventEmitter;
   obsApp: App;
   viewId: string;
+  audience: Pick<CanvasAudience, 'refresh' | 'sightChanged'>;
   bounds: () => MapBounds | null;
   /** The map image, for the colours light bounces off. */
   albedo: () => Texture | null;
@@ -132,7 +133,7 @@ export class LightingController {
     });
     this.renderer = createSceneLighting({
       viewport, app, store, obsApp, measurement, bounds: deps.bounds, albedo: deps.albedo, ...(deps.grid && { grid: deps.grid }),
-      rules: () => this.sightRules(),
+      rules: () => this.rules.current(),
       onSightChange: () => this.onSightChange(),
       exploredWatcher: this.modes.memory,
       ...(deps.quality && { quality: deps.quality }),
@@ -142,7 +143,7 @@ export class LightingController {
     });
     this.sightAids = new GmSightAids({
       viewport, store: scene, measurement, bounds: deps.bounds,
-      rules: () => this.sightRules(),
+      rules: () => this.rules.current(),
       perception: () => this.playerSight(),
       frames: () => this.frames(),
     });
@@ -183,12 +184,15 @@ export class LightingController {
   /** The tokens follow the players' sight, glide along the ways it leaves clear and fall to the levels it lays out. */
   wire(tokens: TokenRenderer): void {
     this.tokens = tokens;
-    tokens.setPlayerSightProvider(() => (this.session.active ? this.playerSight() : undefined), () => this.session.active, () => this.renderer.sightIsCurrent());
+    tokens.setPlayerSightProvider(() => (this.session.active ? this.playerSight() : undefined), () => this.renderer.sightIsCurrent());
     tokens.setGlideWay((from, to) => glideWayIsClear(this.deps.store.getState(), this.deps.bounds(), from, to));
     tokens.setArtFloors(() => this.renderer.artFloors?.());
     // The token renderer brings the outlines of sensed tokens, which the view now shows or hides.
     this.session.sync();
   }
+
+  /** Whether the peek key holds the players' lighting on the canvas now. */
+  readonly peeking = (): boolean => this.session.peeking;
 
   /** Lights and door badges take the map's pointer with any tool, walls with the lighting tool. */
   pointerLayers(): LightingLayers {
@@ -236,12 +240,7 @@ export class LightingController {
   /** How the players perceive each token, for their frame and for session view; sight hides nothing in an unlit scene. */
   playerSight(): TokenPerception | undefined {
     const state = this.deps.store.getState();
-    return playerTokenSight(this.renderer, mapTokens(levelObjects(state)), perceptionOptions(this.sightRules(), heldForSight(state)), this.perceptions);
-  }
-
-  /** The senses and conditions of the map's collection, and how each token perceives. */
-  private sightRules(): SightRules {
-    return this.rules.current();
+    return playerTokenSight(this.renderer, mapTokens(levelObjects(state)), perceptionOptions(this.rules.current(), heldForSight(state)), this.perceptions);
   }
 
   /** The window the canvas is in: a popout has its own frames. */
@@ -304,16 +303,17 @@ export class LightingController {
     if (players) this.lights.cancel();
     this.editor.afterVisibilityChange();
     this.modes.afterVisibilityChange();
-    this.tokens?.refreshPlayerSight();
+    this.deps.audience.refresh();
     requestRender(this.deps.app);
   }
 
-  /** In the players' view, tokens show and hide as the sight they are checked against changes; in the GM's, the sight aids follow. The players' door badges follow in both. */
+  /** In the players' view, tokens show and hide as the sight they are checked against changes; in the GM's, the sight aids follow. The players' door badges follow in both, and the audience hears of every change. */
   private onSightChange(): void {
     if (!this.constructed) return;
     this.doors.refreshPlayers();
-    if (this.tokens && this.session.active) this.tokens.refreshPlayerSight();
-    else this.sightAids.schedule();
+    const shown = this.tokens !== null && this.session.active;
+    if (!shown) this.sightAids.schedule();
+    this.deps.audience.sightChanged({ kind: 'lighting', shown });
   }
 
   private listen(): void {

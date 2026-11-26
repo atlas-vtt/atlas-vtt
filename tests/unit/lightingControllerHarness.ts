@@ -13,6 +13,7 @@ import { getHistoryStore } from '../../src/app/stores/history';
 import { SEES_ALL } from '../../src/app/vision/sight';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { stubJsdomGraphics } from '../mocks/jsdomGraphics';
+import { viewAudience } from '../helpers/viewAudience';
 
 vi.mock('../../src/app/pixi/lighting/createSceneLighting', () => ({
   createSceneLighting: (deps: SceneLightingDeps): SceneLightingView => {
@@ -85,13 +86,13 @@ export function setup(): Setup {
   store.getState().setSceneLighting({ enabled: true });
   const eventBus = new EventEmitter();
   const controller = new LightingController({
-    viewport, app: { canvas } as unknown as Application, store, eventBus, obsApp, viewId: 'popover-view',
+    viewport, app: { canvas } as unknown as Application, store, eventBus, obsApp, viewId: 'popover-view', audience: viewAudience(store, eventBus).audience,
     bounds: () => ({ width: 1000, height: 1000 }), albedo: () => null,
   });
   const ignore = (): void => undefined;
   const sensedOutlines = { visible: false };
   controller.wire({
-    setPlayerSightProvider: ignore, setGlideWay: ignore, setArtFloors: ignore, refreshPlayerSight: ignore,
+    setPlayerSightProvider: ignore, setGlideWay: ignore, setArtFloors: ignore,
     getSensedOutlineLayer: () => sensedOutlines,
   } as unknown as TokenRenderer);
   const { lights, walls } = controller.pointerLayers();

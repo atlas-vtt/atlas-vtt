@@ -14,6 +14,7 @@ import { createViewAtlasStore } from '../../../src/app/storeFactory';
 import type { GridSystem } from '../../../src/app/grid/GridSystem';
 import { createInMemoryApp } from '../../mocks/inMemoryVault';
 import { stubJsdomGraphics } from '../../mocks/jsdomGraphics';
+import { viewAudience } from '../../helpers/viewAudience';
 
 vi.mock('../../../src/app/react/root/ContextMenuContext', () => ({
   openContextMenuGlobal: vi.fn(),
@@ -78,9 +79,10 @@ describe('Presses with the note pin tool', () => {
     stopPointer = listenToViewport(pointer, viewport, document.createElement('canvas'));
     pins = new PinRenderer(viewport, eventBus, store);
     pointer.attach('pins', pins.pointerLayer(() => undefined));
-    fog = new FogOfWarRenderer(viewport, { canvas: createEl('canvas') } as unknown as Application, eventBus as never, store, () => null);
-    drawing = new AnnotationsRenderer({ viewport, store, grid: () => null });
-    tokens = new TokenRenderer(app, viewport, gridSystem, vi.fn(), store, eventBus, 'pin-press-view');
+    const { audience } = viewAudience(store, eventBus);
+    fog = new FogOfWarRenderer(viewport, { canvas: createEl('canvas') } as unknown as Application, eventBus as never, store, () => null, audience);
+    drawing = new AnnotationsRenderer({ viewport, store, grid: () => null, audience });
+    tokens = new TokenRenderer(app, viewport, gridSystem, vi.fn(), store, eventBus, audience, 'pin-press-view');
     tokens.setPixiApp({
       ticker: { add: vi.fn(), remove: vi.fn(), lastTime: 0 },
       canvas: document.createElement('canvas'),
@@ -139,7 +141,7 @@ describe('Presses with the note pin tool', () => {
     store.getState().setDrawTool({ mode: 'pen' });
     store.getState().setActiveTool('draw');
     // Built with the tool in hand, it listens at once: still after the map's pointer.
-    drawing = new AnnotationsRenderer({ viewport, store, grid: () => null });
+    drawing = new AnnotationsRenderer({ viewport, store, grid: () => null, audience: viewAudience(store).audience });
     press(500, 400);
     press(100, 100);
     expect(Object.keys(store.getState().objects.drawings)).toHaveLength(1);

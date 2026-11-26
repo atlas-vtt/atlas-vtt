@@ -2,7 +2,7 @@ import type { GmMessage, PlayerDrag, PlayerMove } from '../../../../src/app/onli
 import { describe, expect, it } from 'vitest';
 import { parseMoveRefused } from '../../../../src/app/online/protocol/moves.ts';
 import { parseTokens } from '../../../../src/app/online/protocol/tokens.ts';
-import { TOKEN_INTERVAL_MS, TOKEN_POLL_MS } from '../../../../src/app/online/gm/TokenShare.ts';
+import { TOKEN_INTERVAL_MS } from '../../../../src/app/online/gm/TokenShare.ts';
 import type { SceneState } from '../../../../src/app/online/gm/atlasView.ts';
 import { holdTokens } from '../../../../src/app/lighting/sightOnDrop';
 import { createDefaultInitiativeState, type InitiativeEntry, type InitiativeState } from '../../../../src/app/types/initiativeTypes';
@@ -65,7 +65,7 @@ describe('tokens that wait for their turn', () => {
   it('follow the switch, the turn and the fight live, without a new table', async () => {
     const { share } = await table({ movesOnTurn: false });
     const heldNow = async (): Promise<number[]> => {
-      await share.advance(TOKEN_POLL_MS);
+      await share.advance(1000);
       return (tokenLists(share.sent).at(-1)?.tokens ?? []).filter((shared) => shared.held).map((shared) => shared.x);
     };
     const state = share.state();

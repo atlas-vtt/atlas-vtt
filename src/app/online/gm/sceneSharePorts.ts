@@ -1,6 +1,6 @@
 import type { GmMessage, RollRequestAnswer } from '../protocol/index.ts';
 import type { DiceSource } from './atlasDice.ts';
-import type { AtlasPlayerSettings, LightingSource } from './atlasLighting.ts';
+import type { LightingSource } from './atlasLighting.ts';
 import type { MaskDecoder } from './exploredMaskAlpha.ts';
 import type { MapLayerSource } from './atlasMapLayers.ts';
 import type { GmRuler } from './dragRulers.ts';
@@ -13,13 +13,19 @@ import type { TokenSharePorts } from './TokenShare.ts';
 import type { NotePin } from '../../types';
 import type { DoorAskShown } from './doors/PlayerDoorAsks.ts';
 import type { PictureBasis } from './eyesSight.ts';
+import type { AtlasInputs } from './sceneSignal.ts';
 import type { MemoryPorts } from './memory/memoryPorts.ts';
+import type { PageCovers } from './coveredPages.ts';
 
 /** What the shared scene of an Atlas tab reads of the tab and the table, and how it reaches players. */
-export interface SceneSharePorts extends TokenSharePorts, RulesSharePorts, Pick<MarkSharePorts, 'gmMarks' | 'showPlayerMarks' | 'showPlayerCursors' | 'showPlayerStrokes' | 'nameOf'> {
+export interface SceneSharePorts extends TokenSharePorts, Omit<RulesSharePorts, 'accent'>, Pick<MarkSharePorts, 'gmMarks' | 'showPlayerMarks' | 'showPlayerCursors' | 'showPlayerStrokes' | 'nameOf'> {
   notice(text: string): void;
+  /** Atlas as of its last change (`SceneSignal`): its settings for the players' view, pause, Shared vision, the accent. */
+  atlas(): AtlasInputs;
   /** Sends a live message (where dragged tokens are now) ahead of other frames, the latest of a key winning; without it drags reach players through the token list only. */
   sendLive?(body: GmMessage, key: string, to?: string): void;
+  /** The pages live marks leave out (their book covers the map); without it, none. */
+  readonly covers?: PageCovers | undefined;
   /** What the GM's own drag ruler measures now, or null while it shows none; without it players see none of the GM's. */
   gmDragRuler?(): GmRuler | null;
   /** Draws the rulers of the players' drags for the GM. */
@@ -30,8 +36,6 @@ export interface SceneSharePorts extends TokenSharePorts, RulesSharePorts, Pick<
   seats?: SeatSource | undefined;
   /** Where the GM's lighting reads its rules and measurement, or null while it cannot be read. */
   lightingSource(): LightingSource | null;
-  /** The Atlas settings that decide what players get. */
-  atlasSettings(): AtlasPlayerSettings;
   /** The shared tab's dice; without them players cannot roll and see no rolls. */
   dice?(): DiceSource | null;
   /** The shared tab's grid, doors, sensed tokens and collection; without it players get none of the map's layers. */

@@ -10,6 +10,7 @@ import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFa
 import type { FogOperation } from '../../src/app/types/fogTypes';
 import { MOTION_NORMAL_MS } from '../../src/app/utils/motion';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { viewAudience } from '../helpers/viewAudience';
 
 // The mesh that mixes two pictures needs WebGL; what it draws is measured in tests/gpu/fogFade.gpu.test.ts.
 vi.mock('../../src/app/pixi/fog/fogEdgeMesh', () => ({
@@ -76,7 +77,7 @@ describe('what a shape will reveal, before it is committed', () => {
     const same = (point: { x: number; y: number }): { x: number; y: number } => ({ x: point.x, y: point.y });
     const viewport = Object.assign(new Container(), { options: {}, scale: { x: 1, y: 1 }, toWorld: same, toScreen: (x: number, y: number) => same({ x, y }) });
     const app = { canvas: createEl('canvas'), renderer: { name: 'webgl' } };
-    const fog = new FogOfWarRenderer(viewport as never, app as never, new EventEmitter() as never, store, () => MAP);
+    const fog = new FogOfWarRenderer(viewport as never, app as never, new EventEmitter() as never, store, () => MAP, viewAudience(store).audience);
     views.push(fog);
     store.getState().setFogTool({ shape });
     store.getState().setActiveTool(tool);

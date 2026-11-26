@@ -7,7 +7,7 @@ import { CursorShare, type CursorSharePorts } from './CursorShare.ts';
 import type { TokenSeen } from '../../vision/measureOrigin';
 import { GmMeasureAudiences, hasNone, measureEntry, type MarkAudience } from './gmMeasureAudiences.ts';
 import type { KeptBy, PlayersView, TokenAlias } from './gmMeasures.ts';
-import { MarksOut, type MarksFor } from './marksOut.ts';
+import { MarksOut, type MarksFor, type MarksOutPorts } from './marksOut.ts';
 import { GmStrokes } from './gmStrokes.ts';
 import { checkLaser, checkMeasure, markRate } from './markCheck.ts';
 import type { MapSize, MoveRate } from './moveCheck.ts';
@@ -34,7 +34,7 @@ export interface GmMarkSource extends PlayersView {
 /** Players' marks, for the GM to see over the map. */
 export type PlayerMarks = Pick<MarksMessage, 'lasers' | 'measures'>;
 
-export interface MarkSharePorts extends PacerClock, Partial<Pick<CursorSharePorts, 'nameOf' | 'showPlayerCursors'>> {
+export interface MarkSharePorts extends PacerClock, Partial<Pick<CursorSharePorts, 'nameOf' | 'showPlayerCursors'>>, Pick<MarksOutPorts, 'playersOf'> {
   send(body: GmMessage, to?: string): void;
   /**
    * Sends to all through the live lane, where there is one: before any game message that waits, and
@@ -142,6 +142,8 @@ export class MarkShare {
   private source: GmMarkSource | null = null;
   private stopSource: (() => void) | null = null;
   private readonly out: MarksOut;
+  /** Looks again when the first mark ends by time alone (`rearm`). */
+  private wake: number | undefined;
 
   /** `map` is the shared map's size, which marks must stay near; null when it is unknown. */
   constructor(ports: MarkSharePorts, map: () => MapSize | null) {
@@ -249,6 +251,12 @@ export class MarkShare {
     if (this.playerStrokes.any && this.playerStrokes.drop((player) => scene !== null && this.ports.strokesTaken?.(player, scene) != null)) this.pacer.request();
     this.cursors.update();
     if (this.scene !== null) this.pacer.request();
+    this.rearm();
+  }
+
+  /** What the players see of the tokens changed: the GM's measurements are told again by it. */
+  seenChanged(): void {
+    if (this.scene !== null) this.pacer.request();
   }
 
   /** The last marks again, to one player or to all. */
@@ -264,6 +272,8 @@ export class MarkShare {
   stop(): void {
     this.follow(null);
     this.pacer.cancel();
+    if (this.wake !== undefined) this.ports.clearTimer(this.wake);
+    this.wake = undefined;
   }
 
   private follow(source: GmMarkSource | null): void {
@@ -322,11 +332,26 @@ export class MarkShare {
     const strokes = [...(stroke === undefined ? [] : [{ who: GM_MARKS, ...stroke }]), ...playerStrokes];
     const scene = this.scene;
     const lasers = [...this.gmLaser(), ...playerLasers.filter((laser) => laser.at !== null || laser.on || laser.pts.length > 0)];
-    const marks = this.gmMeasures(now).map(({ players, entries }): MarksFor => ({
-      ...(players !== undefined && { players }),
+    const marks = this.gmMeasures(now).map(({ key, entries }): MarksFor => ({
+      key,
       body: { t: 'marks', scene, lasers, measures: [...entries, ...playerMeasures], ...(cursors !== undefined && { cursors }), ...(strokes.length > 0 && { strokes }) },
     }));
     this.out.tell(marks, now);
+    this.rearm();
+  }
+
+  /**
+   * Looks again when the first mark ends by time alone: a player's laser falls silent, a cursor comes to
+   * rest, a drawing's maker falls silent or its moment as kept passes, or the cursors are due to go out again.
+   */
+  private rearm(): void {
+    if (this.wake !== undefined) this.ports.clearTimer(this.wake);
+    this.wake = undefined;
+    const now = this.ports.now();
+    const lasers = [...this.lasers.values()].map(({ at }) => at + LASER_SILENCE_MS + 1);
+    const ends = [...lasers, this.cursors.restsAt(this.source?.cursor ?? null, now), this.out.keepAliveAt(), this.playerStrokes.endsAt(), this.strokes.endsAt(now)];
+    const next = Math.min(...ends.filter((at): at is number => at !== undefined && at > now));
+    if (this.scene !== null && Number.isFinite(next)) this.wake = this.ports.setTimer(() => this.update(), next - now);
   }
 
   /** Shows the GM the players' drawings under way; nothing where none are shown and none were. */
@@ -358,7 +383,7 @@ export class MarkShare {
   /** The GM's measurements as each audience is told them; one audience told none without the GM's marks. */
   private gmMeasures(now: number): ReturnType<GmMeasureAudiences['told']> {
     const source = this.source;
-    if (source === null) return [{ entries: [] }];
+    if (source === null) return [{ key: '', entries: [] }];
     return this.gm.told(this.audiences(source), this.accent(), now, this.ports.tokenAlias, this.ports.keptBy);
   }
 

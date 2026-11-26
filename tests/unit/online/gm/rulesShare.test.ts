@@ -1,7 +1,6 @@
 import { parseGmMessage, type GmMessage } from '../../../../src/app/online/protocol/index.ts';
 import { describe, expect, it } from 'vitest';
 import type { MeasurementSettings } from '../../../../src/app/grid/measurementFormat';
-import { TOKEN_POLL_MS } from '../../../../src/app/online/gm/TokenShare.ts';
 import { RulesShare, sharedRules } from '../../../../src/app/online/gm/RulesShare.ts';
 import type { SceneState, SceneStore } from '../../../../src/app/online/gm/atlasView.ts';
 import { sceneState as state, shareHarness } from './shareHarness.ts';
@@ -104,7 +103,7 @@ describe('the rules players measure by', () => {
     table.share.resend('ben');
     expect(rulesOf(table.sent).at(-1)?.to).toBe('ben');
     await table.set(state({ grid: { ...GRID, size: 100 } }));
-    await table.advance(TOKEN_POLL_MS);
+    await table.advance(1000);
     expect(rulesOf(table.sent).at(-1)?.body).toMatchObject({ grid: { size: 100 } });
     table.share.stop();
   });

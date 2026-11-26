@@ -117,6 +117,8 @@ export class MeasureRenderer {
   private drawnZoom = 1;
   private readonly stops: (() => void)[] = [];
   private view: MeasurePlayersView | null = null;
+  /** Ends the watch on the view the players' picture is drawn for. */
+  private stopFollowingPlayers: () => void = () => undefined;
 
   /** The measurements as data, for whoever passes them on: the live one and the kept ones players may see. */
   public readonly measurements = new MeasurementsSource();
@@ -205,9 +207,11 @@ export class MeasureRenderer {
     return this.view;
   }
 
-  /** Measurements drawn before it was known (kept ones of a scene already loaded) show by it at once. */
+  /** Measurements drawn before it was known (kept ones of a scene already loaded) show by it at once, and follow it from then on. */
   public set playersView(view: MeasurePlayersView | null) {
+    this.stopFollowingPlayers();
     this.view = view;
+    this.stopFollowingPlayers = view?.onChange(() => this.refreshVisibility()) ?? ((): void => undefined);
     this.refreshVisibility();
   }
 
@@ -260,6 +264,7 @@ export class MeasureRenderer {
   }
 
   public destroy(): void {
+    this.stopFollowingPlayers();
     for (const stop of this.stops) stop();
     this.stops.length = 0;
     this.live.destroy();

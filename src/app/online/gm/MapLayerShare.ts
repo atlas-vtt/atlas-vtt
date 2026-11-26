@@ -5,7 +5,6 @@ import type { FogCoverage } from '../../fog/fogCoverage';
 import type { ViewState } from '../../types/viewState';
 import { ArtRefs } from './artRefs.ts';
 import type { AssetStoring } from './assets/assetUses.ts';
-import type { AtlasPlayerSettings } from './atlasLighting.ts';
 import type { MapLayerSource } from './atlasMapLayers.ts';
 import type { SceneState, SceneStore } from './atlasView.ts';
 import { AnnotationTelling } from './annotationTelling.ts';
@@ -20,13 +19,15 @@ import { WidgetShare } from './WidgetShare.ts';
 import { levelObjects } from '../../levels/levelObjects';
 import { levelMapKey } from '../../levels/sceneLevels';
 import { mapTokens } from '../../tokens/offMap';
+import type { AtlasInputs } from './sceneSignal.ts';
 import type { NotePin } from '../../types';
 
 export interface MapLayerSharePorts extends PacerClock {
   send(body: GmMessage, to?: string): void;
   /** What the shared tab's renderer tells of grid, doors, sensed tokens and collection, or null while it has none. */
   mapLayers(): MapLayerSource | null;
-  atlasSettings(): AtlasPlayerSettings;
+  /** Atlas as of its last change: its settings say what players are shown of the initiative list and the widgets. */
+  atlas(): Pick<AtlasInputs, 'settings'>;
   readImage(path: string): Promise<VaultImage | null>;
   /** How players are handed assets the store keeps for them. */
   stored?: AssetStoring | undefined;
@@ -116,7 +117,7 @@ export class MapLayerShare {
     this.art = new ArtRefs((path) => ports.readImage(path), () => this.update(), ports.stored);
     this.pins = new ReadablePins(() => ports.randomId());
     this.liquids = new SharedLiquids(() => ports.randomId());
-    this.widgets = new WidgetShare(store, { ...ports, showWidgets: () => ports.atlasSettings().showWidgets });
+    this.widgets = new WidgetShare(store, { ...ports, showWidgets: () => ports.atlas().settings.showWidgets });
   }
 
   /** The shared scene the layers belong to; null sends none. */
@@ -176,7 +177,7 @@ export class MapLayerShare {
     const state: LayerState = this.store.getState();
     const source = this.ports.mapLayers();
     if (scene === null || source === null || !state.mapLoaded || state.isMapLoading) return;
-    const settings = this.ports.atlasSettings();
+    const { settings } = this.ports.atlas();
     this.publish({ t: 'grid', scene: scene.id, grid: sharedGrid(source.grid()) });
     this.publishLiquids(scene.id, levelObjects(state).liquids);
     const fog = this.fog.get(levelObjects(state).fog, levelMapKey(state.mapPath, state));

@@ -14,6 +14,7 @@ import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFa
 import type { DrawingStroke } from '../../src/app/types';
 import { openLitView } from '../helpers/litView';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { viewAudience } from '../helpers/viewAudience';
 
 vi.mock('events', async () => import('eventemitter3'));
 
@@ -62,7 +63,7 @@ async function open(width = WIDTH, height = HEIGHT): Promise<Scene> {
   const store = createViewAtlasStore(createInMemoryApp().app, `annotations-${Math.random()}`);
   store.getState().setPersistenceEnabled(false);
   store.getState().setMapPath('maps/drawn.atlasmap');
-  const annotations = new AnnotationsRenderer({ viewport, store, grid: () => null });
+  const annotations = new AnnotationsRenderer({ viewport, store, audience: viewAudience(store).audience, grid: () => null });
   const boundary = new EventBoundary(viewport);
   cleanup.push(() => {
     annotations.destroy();
@@ -336,7 +337,7 @@ describe('the drawings on the map, under the lighting', () => {
     second.tint = 0x3050d0;
     second.setSize(24, 24);
     second.position.set(60, 168);
-    const annotations = new AnnotationsRenderer({ viewport, store, grid: () => null });
+    const annotations = new AnnotationsRenderer({ viewport, store, audience: viewAudience(store).audience, grid: () => null });
     cleanup.push(() => { annotations.destroy(); view.dispose(); });
     const state = store.getState();
     // Two rooms parted by a wall down the middle, a lamp in the left one, no light of the scene's own.
@@ -656,7 +657,7 @@ describe('what the drawings cost', () => {
     }
     // The drawings follow the camera in the view's own tick, as in a map view: the helper's viewport has another ticker.
     viewport.options.ticker = app.ticker;
-    annotations = new AnnotationsRenderer({ viewport, store, grid: () => null });
+    annotations = new AnnotationsRenderer({ viewport, store, audience: viewAudience(store).audience, grid: () => null });
     store.setState({ objects: { ...store.getState().objects, drawings } });
     displayFrames(60);
     // The first pass draws what comes into view; the second finds everything drawn.

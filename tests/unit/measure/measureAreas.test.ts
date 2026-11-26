@@ -91,7 +91,7 @@ describe('the tokens in an area', () => {
 
   it('show the players only the tokens they see: a ring on each, and their number in the label\'s place', () => {
     const s = scene(PARTY);
-    const view: MeasurePlayersView = { footprints: () => [], seenAtStart: () => () => true, seenOnCanvas: () => null };
+    const view: MeasurePlayersView = { footprints: () => [], seenAtStart: () => () => true, seenOnCanvas: () => null, onChange: () => () => undefined };
     s.measure.playersView = view;
     s.store.getState().setMeasureTool({ mode: 'circle' });
     s.pointer('pointerdown', 245, 245);
@@ -129,7 +129,7 @@ describe('the tokens in an area', () => {
 
   it('are the GM\'s own look on a kept area: the players\' picture has no ring and counts none while the GM points at it', () => {
     const s = scene(PARTY);
-    s.measure.playersView = { footprints: () => [], seenAtStart: () => () => true, seenOnCanvas: () => null };
+    s.measure.playersView = { footprints: () => [], seenAtStart: () => () => true, seenOnCanvas: () => null, onChange: () => () => undefined };
     s.store.getState().setMeasureTool({ mode: 'circle', keep: true });
     measureFrom(s, 245, 245, 245, 385);
     s.store.getState().setActiveTool('select');
@@ -184,7 +184,7 @@ describe('an area and the walls', () => {
     const s = scene([token('goblin', 4, 2), token('ghost', 4, 3)]);
     const door = s.store.getState().addObject('walls', { ...wall, type: 'door', closed: false });
     // The canvas shows what the players see: the goblin, and not the ghost.
-    s.measure.playersView = { footprints: () => [], seenAtStart: () => () => true, seenOnCanvas: () => (id) => id === 'goblin' };
+    s.measure.playersView = { footprints: () => [], seenAtStart: () => () => true, seenOnCanvas: () => (id) => id === 'goblin', onChange: () => () => undefined };
     s.store.getState().setMeasureTool({ mode: 'circle' });
     s.pointer('pointerdown', 245, 245);
     s.pointer('pointermove', 245, 455);

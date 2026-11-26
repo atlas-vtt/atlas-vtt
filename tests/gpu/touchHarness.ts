@@ -27,6 +27,8 @@ import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import type { TapPlacing } from '../../src/app/types/tapPlacing';
 import type { FingerUse } from '../../src/app/services/deviceSettings';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { viewAudience } from '../helpers/viewAudience';
+import type { CanvasAudience } from '../../src/app/pixi/audience/CanvasAudience';
 import { mapImageViewOf } from './../helpers/fakeMapImageView';
 
 export const VIEW = { width: 800, height: 500 };
@@ -40,6 +42,8 @@ export interface TouchMap {
   store: ViewAtlasStore;
   viewport: Viewport;
   tokens: TokenRenderer;
+  /** Whom the canvas is drawn for: the lighting a test builds tells it of the players' sight. */
+  audience: CanvasAudience;
   /** The map's pointer, where a test attaches the layers it presses. */
   pointer: MapPointer;
   selection: SelectionManager;
@@ -118,12 +122,13 @@ export function touchMaps(): { map: (view?: { width: number; height: number }) =
     store.getState().setPersistenceEnabled(false);
     store.setState((state) => ({ mapPath: 'maps/touch.atlasmap', isMapLoading: false, isGMView: true, activeTool: 'move', grid: { ...state.grid, size: GRID, snapToGrid: false } }));
     const events = new EventEmitter();
+    const { audience } = viewAudience(store, events);
     const grid = new GridSystem(app, viewport, mapImageViewOf(floor), { size: GRID, enabled: false, color: 0xffffff });
     const selection: { manager?: SelectionManager } = {};
     // As the view builds it: the map's pointer listens before every other listener of the viewport
-    const pointer = new MapPointer({ store, gmView: () => tokens.showsGmView(), placing: () => false });
+    const pointer = new MapPointer({ store, gmView: () => !audience.showsPlayers(), placing: () => false });
     const stopPointer = listenToViewport(pointer, viewport, manager.getCanvasElement());
-    const tokens = new TokenRenderer(obsidian, viewport, grid, () => selection.manager?.updateSelectionOverlay(), store, events, 'touch-test');
+    const tokens = new TokenRenderer(obsidian, viewport, grid, () => selection.manager?.updateSelectionOverlay(), store, events, audience, 'touch-test');
     tokens.setPixiApp(app);
     pointer.attach('tokens', tokens.pointer);
     selection.manager = new SelectionManager(viewport, () => tokens.getTokenSprites(), store, events);
@@ -163,7 +168,7 @@ export function touchMaps(): { map: (view?: { width: number; height: number }) =
     });
 
     return {
-      store, viewport, tokens, pointer, fingers, taps, app, obsidian,
+      store, viewport, tokens, audience, pointer, fingers, taps, app, obsidian,
       selection: selection.manager,
       canvas: manager.getCanvasElement(),
       tokenAt: () => {

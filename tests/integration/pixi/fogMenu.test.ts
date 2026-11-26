@@ -20,6 +20,7 @@ import type { FogOperation } from '../../../src/app/types/fogTypes';
 import type { SceneLevel } from '../../../src/app/types/sceneLevelTypes';
 import { createInMemoryApp } from '../../mocks/inMemoryVault';
 import { stubJsdomGraphics } from '../../mocks/jsdomGraphics';
+import { viewAudience, type ViewAudience } from '../../helpers/viewAudience';
 
 const openContextMenuGlobal = vi.hoisted(() => vi.fn(() => true));
 vi.mock('../../../src/app/react/root/ContextMenuContext', () => ({ openContextMenuGlobal, closeContextMenuGlobal: vi.fn() }));
@@ -54,6 +55,8 @@ describe('the fog\'s menu on the map', () => {
   let store: ViewStore;
   let tokens: TokenRenderer;
   let fog: FogOfWarRenderer;
+  /** Whom the canvas is drawn for, with the peek key in the test's hand. */
+  let view: ViewAudience;
   let pointer: MapPointer;
   let stopPointer: () => void;
   let restoreGraphics: () => void;
@@ -101,21 +104,20 @@ describe('the fog\'s menu on the map', () => {
     store.getState().setPersistenceEnabled(false);
     store.getState().setMapPath('maps/test.atlasmap');
     const eventBus = new EventEmitter();
+    view = viewAudience(store, eventBus);
     const snap = (x: number, y: number): Place => ({ x: Math.floor(x / 70) * 70 + 35, y: Math.floor(y / 70) * 70 + 35 });
     const grid = { getOptions: () => ({ type: 'square', size: 70, offsetX: 0, offsetY: 0 }), snapToCellCenter: snap, snapTokenCenter: snap } as unknown as GridSystem;
     const canvas = document.createElement('canvas');
-    pointer = new MapPointer({ store, gmView: () => tokens.showsGmView(), placing: () => false });
+    pointer = new MapPointer({ store, gmView: () => !view.audience.showsPlayers(), placing: () => false });
     stopPointer = listenToViewport(pointer, viewport, canvas);
-    tokens = new TokenRenderer(app, viewport, grid, vi.fn(), store, eventBus, 'fog-menu-view');
+    tokens = new TokenRenderer(app, viewport, grid, vi.fn(), store, eventBus, view.audience, 'fog-menu-view');
     pointer.attach('tokens', tokens.pointer);
     tokens.setPixiApp({ ticker: { add: vi.fn(), remove: vi.fn(), lastTime: 0 }, canvas, renderer: { generateTexture: vi.fn(() => new Texture()) } } as unknown as Application);
 
-    fog = new FogOfWarRenderer(viewport, { canvas } as unknown as Application, eventBus as never, store, () => null);
+    fog = new FogOfWarRenderer(viewport, { canvas } as unknown as Application, eventBus as never, store, () => null, view.audience);
     viewport.addChild(fog.getContainer());
     // As the view wires them (`PixiRendererOrchestrator`).
     pointer.attach('fog', fog.menuPointer());
-    fog.showsPlayers = () => tokens.playersSeeOnCanvas() !== null;
-    tokens.onPlayersViewChange(() => fog.refreshVisibility());
 
     store.getState().addFogOperation(HALL);
     store.getState().addFogOperation(VAULT);
@@ -297,13 +299,11 @@ describe('the fog\'s menu on the map', () => {
     store.getState().setGMView(false);
     rightClick(IN_HALL);
     store.getState().setGMView(true);
-    let peeking = true;
-    tokens.setPlayerSightProvider(() => undefined, () => peeking);
-    tokens.refreshPlayerSight();
+    tokens.setPlayerSightProvider(() => undefined);
+    view.peek(true);
     rightClick(IN_HALL);
     expect(fog.menuPointer().menuAt(IN_HALL.x, IN_HALL.y)).toBe(false);
-    peeking = false;
-    tokens.refreshPlayerSight();
+    view.peek(false);
     store.setState({ isMapLoading: true });
     rightClick(IN_HALL);
     expect(openContextMenuGlobal).not.toHaveBeenCalled();
@@ -390,8 +390,8 @@ describe('the fog\'s menu on the map', () => {
     expect(layer().visible).toBe(false);
     rightClick(IN_HALL);
     expect(layer().visible).toBe(true);
-    tokens.setPlayerSightProvider(() => undefined, () => true);
-    tokens.refreshPlayerSight();
+    tokens.setPlayerSightProvider(() => undefined);
+    view.peek(true);
     expect(layer().visible).toBe(false);
   });
 
@@ -400,14 +400,12 @@ describe('the fog\'s menu on the map', () => {
     store.getState().setSceneLighting({ enabled: false });
     const chosen = picture.alpha;
     expect(chosen).toBeLessThan(1);
-    let peeking = true;
-    tokens.setPlayerSightProvider(() => undefined, () => peeking);
-    tokens.refreshPlayerSight();
+    tokens.setPlayerSightProvider(() => undefined);
+    view.peek(true);
     expect(picture.alpha).toBe(1);
     // A picture of the scene stays the GM's
     expect(fog.getGmViewLayers()).toContainEqual({ layer: picture, visible: picture.visible, alpha: chosen });
-    peeking = false;
-    tokens.refreshPlayerSight();
+    view.peek(false);
     expect(picture.alpha).toBe(chosen);
   });
 
@@ -422,14 +420,12 @@ describe('the fog\'s menu on the map', () => {
     expect(ring.visible).toBe(true);
     expect(shown()).toEqual([true, true, true]);
 
-    let peeking = true;
-    tokens.setPlayerSightProvider(() => undefined, () => peeking);
-    tokens.refreshPlayerSight();
+    tokens.setPlayerSightProvider(() => undefined);
+    view.peek(true);
     expect(shown()).toEqual([false, false, false]);
     // The ring keeps its place, and is back when the key is let go.
     expect(ring.visible).toBe(true);
-    peeking = false;
-    tokens.refreshPlayerSight();
+    view.peek(false);
     expect(shown()).toEqual([true, true, true]);
 
     store.getState().setGMView(false);

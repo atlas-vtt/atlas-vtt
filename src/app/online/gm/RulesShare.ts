@@ -87,15 +87,17 @@ export function sharedRules(grid: SceneState['grid'], measurement: MeasurementSe
 
 /**
  * The shared scene's rules (`sharedRules`), sent to all when the scene is shared, to a player who
- * joins, and again whenever they changed when `update` looks (once a second, with the scene's poll):
- * so a GM who lets players draw, or no longer, or changes the dice row, is followed by a running table
- * within that second.
+ * joins, and again whenever they changed: `update` looks at each change of Atlas (a GM who lets players
+ * draw, or no longer, changes the dice row or the measurement), `storeChanged` at each change of the grid
+ * or the map.
  */
 export class RulesShare {
   private readonly store: SceneStore;
   private readonly ports: RulesSharePorts;
   private scene: string | null = null;
   private last: { readonly body: GmMessage; readonly text: string } | null = null;
+  /** The grid and the map the rules were last worked out with. */
+  private read: Pick<SceneState, 'grid' | 'mapPath'> | null = null;
 
   constructor(store: SceneStore, ports: RulesSharePorts) {
     this.store = store;
@@ -109,10 +111,16 @@ export class RulesShare {
     this.update();
   }
 
+  /** The store changed: the rules are worked out again where its grid or its map is another. */
+  storeChanged(state: Pick<SceneState, 'grid' | 'mapPath'>): void {
+    if (state.grid !== this.read?.grid || state.mapPath !== this.read.mapPath) this.update();
+  }
+
   /** Sends the rules when they changed since they were last sent. */
   update(): void {
     if (this.scene === null) return;
     const state = this.store.getState();
+    this.read = { grid: state.grid, mapPath: state.mapPath };
     const rules = sharedRules(state.grid, this.ports.measurement?.() ?? null, this.ports.accent?.() ?? null, this.ports.cursorsShown?.() === true, this.ports.rollDice?.() ?? null, this.ports.draw?.() ?? null, sharedMoveSteps(this.ports.tokenMoves?.()?.rules()), this.ports.diceRow?.() ?? null, this.ports.doors?.() === true);
     if (rules === null) return;
     const body: GmMessage = { t: 'rules', scene: this.scene, ...rules };

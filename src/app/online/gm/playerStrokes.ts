@@ -94,6 +94,12 @@ export class PlayerStrokes {
     held.under = { serial: n, drawings: [], pen: false, made: true };
   }
 
+  /** When the first drawing goes by itself (its maker fell silent, or its moment as kept passed). */
+  endsAt(): number | undefined {
+    const ends = [...this.held.values()].map(({ madeAt, heardAt }) => (madeAt === null ? heardAt + STROKE_SILENCE_MS + 1 : madeAt + STROKE_KEPT_MS));
+    return ends.length === 0 ? undefined : Math.min(...ends);
+  }
+
   /** What the `marks` message sent at `now` tells of the players' drawings under way. */
   take(fog: FogCoverage | null, now: number): SharedStroke[] {
     const strokes: SharedStroke[] = [];

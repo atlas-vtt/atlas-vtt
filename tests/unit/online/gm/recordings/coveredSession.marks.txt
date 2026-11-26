@@ -1,0 +1,40 @@
+# Ben points
+ana * {"t":"marks","scene":"#0","lasers":[{"who":"benbenbenbenbenbenbe","color":"#66ffa9","size":16,"at":[100,100],"pts":[100,100,110,100],"on":true}],"measures":[]}
+ben * {"t":"marks","scene":"#0","lasers":[{"who":"benbenbenbenbenbenbe","color":"#66ffa9","size":16,"at":[100,100],"pts":[100,100,110,100],"on":true}],"measures":[]}
+# Ana's book covers her map, Ben points
+# Ana's map shows again
+ana > {"t":"marks","scene":"#0","lasers":[{"who":"benbenbenbenbenbenbe","color":"#66ffa9","size":16,"at":[100,100],"pts":[100,100,110,100],"on":true}],"measures":[]}
+# Ben's book covers his map, Ana points
+ana > {"t":"marks","scene":"#0","lasers":[{"who":"benbenbenbenbenbenbe","color":"#66ffa9","size":16,"at":[100,100],"pts":[],"on":true},{"who":"anaanaanaanaanaanaan","color":"#66ffa9","size":16,"at":[100,100],"pts":[100,100,110,100],"on":true}],"measures":[]}
+# Cal joins and points
+ana > {"t":"marks","scene":"#0","lasers":[{"who":"anaanaanaanaanaanaan","color":"#66ffa9","size":16,"at":[100,100],"pts":[],"on":true}],"measures":[]}
+ana > {"t":"marks","scene":"#0","lasers":[],"measures":[]}
+ana > {"t":"marks","scene":"#0","lasers":[{"who":"calcalcalcalcalcalca","color":"#66ffa9","size":16,"at":[100,100],"pts":[100,100,110,100],"on":true}],"measures":[]}
+cal > {"t":"marks","scene":"#0","lasers":[{"who":"benbenbenbenbenbenbe","color":"#66ffa9","size":16,"at":[100,100],"pts":[],"on":true},{"who":"anaanaanaanaanaanaan","color":"#66ffa9","size":16,"at":[100,100],"pts":[100,100,110,100],"on":true}],"measures":[]}
+cal > {"t":"marks","scene":"#0","lasers":[{"who":"anaanaanaanaanaanaan","color":"#66ffa9","size":16,"at":[100,100],"pts":[],"on":true}],"measures":[]}
+cal > {"t":"marks","scene":"#0","lasers":[],"measures":[]}
+cal > {"t":"marks","scene":"#0","lasers":[{"who":"calcalcalcalcalcalca","color":"#66ffa9","size":16,"at":[100,100],"pts":[100,100,110,100],"on":true}],"measures":[]}
+# Ben leaves, Ana points
+ana * {"t":"marks","scene":"#0","lasers":[{"who":"calcalcalcalcalcalca","color":"#66ffa9","size":16,"at":[100,100],"pts":[],"on":true},{"who":"anaanaanaanaanaanaan","color":"#66ffa9","size":16,"at":[100,100],"pts":[100,100,110,100],"on":true}],"measures":[]}
+cal * {"t":"marks","scene":"#0","lasers":[{"who":"calcalcalcalcalcalca","color":"#66ffa9","size":16,"at":[100,100],"pts":[],"on":true},{"who":"anaanaanaanaanaanaan","color":"#66ffa9","size":16,"at":[100,100],"pts":[100,100,110,100],"on":true}],"measures":[]}
+# Ben comes back, Ana points
+ana * {"t":"marks","scene":"#0","lasers":[{"who":"anaanaanaanaanaanaan","color":"#66ffa9","size":16,"at":[100,100],"pts":[],"on":true}],"measures":[]}
+ana * {"t":"marks","scene":"#0","lasers":[],"measures":[]}
+ana * {"t":"marks","scene":"#0","lasers":[{"who":"anaanaanaanaanaanaan","color":"#66ffa9","size":16,"at":[100,100],"pts":[100,100,110,100],"on":true}],"measures":[]}
+ben > {"t":"marks","scene":"#0","lasers":[{"who":"calcalcalcalcalcalca","color":"#66ffa9","size":16,"at":[100,100],"pts":[],"on":true},{"who":"anaanaanaanaanaanaan","color":"#66ffa9","size":16,"at":[100,100],"pts":[100,100,110,100],"on":true}],"measures":[]}
+ben * {"t":"marks","scene":"#0","lasers":[{"who":"anaanaanaanaanaanaan","color":"#66ffa9","size":16,"at":[100,100],"pts":[],"on":true}],"measures":[]}
+ben * {"t":"marks","scene":"#0","lasers":[],"measures":[]}
+ben * {"t":"marks","scene":"#0","lasers":[{"who":"anaanaanaanaanaanaan","color":"#66ffa9","size":16,"at":[100,100],"pts":[100,100,110,100],"on":true}],"measures":[]}
+cal * {"t":"marks","scene":"#0","lasers":[{"who":"anaanaanaanaanaanaan","color":"#66ffa9","size":16,"at":[100,100],"pts":[],"on":true}],"measures":[]}
+cal * {"t":"marks","scene":"#0","lasers":[],"measures":[]}
+cal * {"t":"marks","scene":"#0","lasers":[{"who":"anaanaanaanaanaanaan","color":"#66ffa9","size":16,"at":[100,100],"pts":[100,100,110,100],"on":true}],"measures":[]}
+# the GM reaches the relay anew, Ben points
+ana * {"t":"marks","scene":"#0","lasers":[{"who":"anaanaanaanaanaanaan","color":"#66ffa9","size":16,"at":[100,100],"pts":[100,100,110,100],"on":true}],"measures":[]}
+ana * {"t":"marks","scene":"#0","lasers":[],"measures":[]}
+ana * {"t":"marks","scene":"#0","lasers":[{"who":"benbenbenbenbenbenbe","color":"#66ffa9","size":16,"at":[100,100],"pts":[100,100,110,100],"on":true}],"measures":[]}
+ben * {"t":"marks","scene":"#0","lasers":[{"who":"anaanaanaanaanaanaan","color":"#66ffa9","size":16,"at":[100,100],"pts":[100,100,110,100],"on":true}],"measures":[]}
+ben * {"t":"marks","scene":"#0","lasers":[],"measures":[]}
+ben * {"t":"marks","scene":"#0","lasers":[{"who":"benbenbenbenbenbenbe","color":"#66ffa9","size":16,"at":[100,100],"pts":[100,100,110,100],"on":true}],"measures":[]}
+cal * {"t":"marks","scene":"#0","lasers":[{"who":"anaanaanaanaanaanaan","color":"#66ffa9","size":16,"at":[100,100],"pts":[100,100,110,100],"on":true}],"measures":[]}
+cal * {"t":"marks","scene":"#0","lasers":[],"measures":[]}
+cal * {"t":"marks","scene":"#0","lasers":[{"who":"benbenbenbenbenbenbe","color":"#66ffa9","size":16,"at":[100,100],"pts":[100,100,110,100],"on":true}],"measures":[]}

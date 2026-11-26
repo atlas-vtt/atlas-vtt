@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { checkLaser, checkMeasure, MARKS_PER_SECOND, nearMap, swatchColour } from '../../../../src/app/online/gm/markCheck.ts';
 import { LASER_SILENCE_MS } from '../../../../src/app/online/gm/MarkShare.ts';
 import { lastMarks, markHarness } from './markHarness.ts';
+import { toAll } from './playerPages.ts';
 
 const ANA = 'a'.repeat(20);
 const BEN = 'b'.repeat(20);
@@ -56,7 +57,7 @@ describe('MarkShare', () => {
     await harness.measure({ live: { shape: 'circle', points: [{ x: 1, y: 1 }, { x: 3, y: 4 }], pressed: { x: 1, y: 1 } }, kept: [] });
     harness.advance(MARKS_INTERVAL_MS);
     const marks = lastMarks(harness);
-    expect(harness.sent.every(({ to }) => to === undefined)).toBe(true);
+    expect(toAll(harness.sent)).toEqual(harness.sent);
     expect(marks?.lasers.map((entry) => entry.who)).toEqual(['gm', ANA]);
     expect(marks?.lasers[0]).toMatchObject({ who: 'gm', color: '#ff0059', at: [5, 5], on: false });
     expect(marks?.measures).toEqual([
@@ -316,13 +317,13 @@ describe('MarkShare', () => {
     expect(harness.shown).toEqual({ lasers: [], measures: [] });
   });
 
-  it('takes a laser that went silent off the GM\'s map without waiting for the next marks', () => {
+  it('takes a laser that went silent off the GM\'s map by itself, without waiting for the next marks', () => {
     const harness = markHarness();
     harness.share.setScene('s1');
     harness.share.receive(ANA, laser());
-    harness.advance(LASER_SILENCE_MS + 10);
+    harness.advance(LASER_SILENCE_MS - 10);
     expect(harness.shown?.lasers.map((entry) => entry.who)).toEqual([ANA]);
-    harness.share.update();
+    harness.advance(20);
     expect(harness.shown?.lasers).toEqual([]);
   });
 

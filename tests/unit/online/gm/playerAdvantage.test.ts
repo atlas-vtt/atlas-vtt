@@ -3,7 +3,7 @@ import type { DiceSet, RollingDice } from '../../../../src/app/types/diceSetType
 import type { TokenEntity } from '../../../../src/app/types';
 import { describe, expect, it } from 'vitest';
 import { boundOwnership } from './fakeSeats.ts';
-import { TOKEN_INTERVAL_MS, TOKEN_POLL_MS } from '../../../../src/app/online/gm/TokenShare.ts';
+import { TOKEN_INTERVAL_MS } from '../../../../src/app/online/gm/TokenShare.ts';
 import { DICE_TOOL, realDice, type DiceToolClass, type RealDice } from './realDice.ts';
 import { sceneState, shareHarness, token, tokenLists, type ShareHarness } from './shareHarness.ts';
 
@@ -98,7 +98,9 @@ describe('the dice pages offer advantage by', () => {
     expect(last(gm.sent, 'mine')).toEqual({ t: 'mine', scene: gm.scene, tokens: [gm.hero] });
     expect(last(gm.sent, 'rules')?.dice).toEqual({ dice: [{ count: 1, sides: 20 }], sides: [] });
     Object.assign(gm.dice, { setFor: () => HOPE });
-    await gm.advance(TOKEN_POLL_MS);
+    // The character's template changed: Atlas's statblocks tell of it.
+    gm.atlasChanged();
+    await gm.settle();
     const mine = last(gm.sent, 'mine');
     expect(mine?.dice).toEqual({ [gm.hero]: { dice: [{ count: 1, sides: 12 }, { count: 1, sides: 12 }], sides: ['advantage', 'disadvantage'] } });
     expect(parseGmMessage(JSON.parse(JSON.stringify(mine)))).toEqual(mine);

@@ -355,7 +355,7 @@ describe('the handles and the players', () => {
   it('go while the canvas shows the players\' view, with the popover and a drag under way, and come back with the GM\'s', async () => {
     const { s, id, ruler, press, move, up, steps } = scene();
     const canvasShows = { players: false };
-    s.measure.playersView = { footprints: () => [], seenAtStart: () => () => true, seenOnCanvas: () => (canvasShows.players ? () => true : null) };
+    s.measure.playersView = { footprints: () => [], seenAtStart: () => () => true, seenOnCanvas: () => (canvasShows.players ? () => true : null), onChange: () => () => undefined };
     s.store.getState().openMeasurePopover(id);
     press(105, 105);
     move(258, 183);

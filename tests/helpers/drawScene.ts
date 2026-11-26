@@ -9,6 +9,7 @@ import type { FullOf } from '../../src/app/pixi/annotations/DrawToolHost';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import type { DrawingStroke, TextElement } from '../../src/app/types';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { viewAudience } from './viewAudience';
 import { stubJsdomGraphics } from '../mocks/jsdomGraphics';
 
 /** The keys and the button a pointer event comes with. */
@@ -43,8 +44,8 @@ export interface DrawScene {
   fieldKey(key: string, init?: KeyboardEventInit): KeyboardEvent;
   /** Told when a press on an annotation starts the drag of the tokens selected with it. */
   dragTokens: Mock<() => void>;
-  /** Whether the canvas shows the players' picture, as a peek would make it: null leaves it to the store. */
-  players: { shown: boolean | null };
+  /** Holds or lets go of the peek key: the canvas shows the players' picture meanwhile. */
+  peek(held: boolean): void;
   /** Takes the Draw tool into hand in `mode`, with other choices where given. */
   tool(choices: Partial<DrawToolChoices>): void;
   pointer(type: 'pointerdown' | 'pointermove' | 'pointerup' | 'pointertap' | 'pointercancel', x: number, y: number, keys?: PointerKeys): void;
@@ -108,10 +109,10 @@ export function drawScene(options: DrawSceneOptions = {}): DrawScene {
   });
   const full = vi.fn<(of: FullOf) => void>();
   const dragTokens = vi.fn<() => void>();
-  const players: DrawScene['players'] = { shown: null };
+  const view = viewAudience(store);
   const grid = options.grid === undefined ? SQUARE_GRID : options.grid;
   const renderer = new AnnotationsRenderer({
-    viewport, store, grid: () => grid, full, showsPlayers: () => players.shown, accent: () => 0x8a5cf5, now: () => clock, dragTokens,
+    viewport, store, grid: () => grid, full, audience: view.audience, accent: () => 0x8a5cf5, now: () => clock, dragTokens,
     ...(options.keysBelongToMap && { keysBelongToMap: options.keysBelongToMap }),
     ...(options.overMap && { overMap: options.overMap }),
   });
@@ -128,7 +129,7 @@ export function drawScene(options: DrawSceneOptions = {}): DrawScene {
     return event;
   };
   const scene: DrawScene = {
-    renderer, viewport, store, full, dragTokens, players, host,
+    renderer, viewport, store, full, dragTokens, peek: view.peek, host,
     field: () => host.querySelector('textarea'),
     type(words): void {
       const field = host.querySelector('textarea');
