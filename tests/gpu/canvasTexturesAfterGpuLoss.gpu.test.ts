@@ -1,5 +1,6 @@
 import '../setup/obsidianDom';
-import { Container, RenderTexture, Sprite, Texture, type WebGLRenderer } from 'pixi.js';
+import { Container, RenderTexture, Sprite, Texture, type Application, type WebGLRenderer } from 'pixi.js';
+import type { App } from 'obsidian';
 import { createStore } from 'zustand/vanilla';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { FogCoverageCache } from '../../src/app/fog/FogCoverageCache';
@@ -16,6 +17,7 @@ import { getConditionGlyphTexture } from '../../src/app/pixi/token-renderer/cond
 import { createDownedEmblemTexture } from '../../src/app/pixi/token-renderer/downedEmblemTexture';
 import { EYE_OFF_SVG } from '../../src/app/pixi/token-renderer/HiddenTokenIcon';
 import { SpriteFactory } from '../../src/app/pixi/token-renderer/SpriteFactory';
+import { TextureCache } from '../../src/app/pixi/token-renderer/TextureCache';
 import { createLucideIconTexture } from '../../src/app/pixi/utils/lucideIconTexture';
 import { createGlyphTexture, createLineGlyphTexture, createPinIconTexture } from '../../src/app/pixi/utils/pinIconTexture';
 import { PIN_ICON_PATHS, type PinIconId } from '../../src/app/types/pinIcons';
@@ -78,6 +80,11 @@ describe('a texture drawn once on a canvas', () => {
     ['a token glass dome', () => new SpriteFactory({} as unknown as GridSystem).createGlassOverlay(new Container(), SIZE).texture],
     ['token art from an SVG', async () => new Texture({ source: decodedSource(await decodeImage(SVG_TOKEN, 'image/svg+xml', 64), {}) })],
     ['the grid scan\'s edges', () => hitsTexture(new Float32Array([0, 0, 100, 100, 0, 100, 100, 0]), { x: 0, y: 0, width: 100, height: 100 })],
+    ['the disc of a token without art', () => {
+      const cache = new TextureCache({} as App);
+      cache.setPixiApp({ renderer } as unknown as Application);
+      return cache.acquire('');
+    }],
   ];
 
   it.each(makers)('%s shows again after the GPU process died', async (_name, make) => {
