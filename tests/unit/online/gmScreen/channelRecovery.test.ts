@@ -109,6 +109,24 @@ describe('a GM screen channel whose opening exchange loses a frame', () => {
     expect(pair.deviceHeard).toEqual([code('111111')]);
   });
 
+  it('sends a lost opening again within seconds however often the device came back before: an answered exchange is no trouble', async () => {
+    const pair = await openPair();
+    for (let back = 0; back < 10; back += 1) {
+      await pass(pair, 45_000);
+      await pair.gm.open();
+      await pair.deliver();
+      expect(pair.gm.isOpen).toBe(true);
+    }
+    await pass(pair, 45_000);
+    await pair.gm.open();
+    pair.toDevice.splice(0);
+    const sent = openings(pair).length;
+    await pass(pair, 1000);
+    expect(openings(pair)).toHaveLength(sent + 1);
+    await pair.deliver();
+    expect(pair.gm.isOpen).toBe(true);
+  });
+
   it('brings no earlier keys back for handshake frames the room replays during the recovery', async () => {
     const pair = await channelPair(KEY);
     await pair.gm.open();
@@ -133,6 +151,47 @@ describe('a GM screen channel whose opening exchange loses a frame', () => {
     await pair.device.send(press(5));
     await pair.deliver();
     expect([pair.gmHeard.at(-1), pair.deviceHeard.at(-1)]).toEqual([press(5), code('555555')]);
+  });
+});
+
+describe('a GM screen channel the room replays frames into', () => {
+  it('opens nothing sealed under an earlier exchange at either end once a later one finished, and finds its way back', async () => {
+    const pair = await openPair();
+    const [firstOpening, firstAnswer] = pair.wire.map((text) => JSON.parse(text) as unknown);
+    await pair.gm.send(code('111111'));
+    await pair.device.send(press(1));
+    const [oldDown, oldUp] = [pair.toDevice.at(-1), pair.toGm.at(-1)];
+    await pair.deliver();
+    await pair.gm.open();
+    await pair.deliver();
+    expect([pair.gm.isOpen, pair.device.isOpen]).toEqual([true, true]);
+    const heard = [pair.gmHeard.length, pair.deviceHeard.length];
+    for (let again = 0; again < 3; again += 1) {
+      await pair.gm.receive(firstAnswer);
+      await pair.gm.receive(oldUp);
+      await pair.device.receive(oldDown);
+      await pair.device.receive(firstOpening);
+      await pair.device.receive(oldDown);
+    }
+    expect([pair.gmHeard.length, pair.deviceHeard.length]).toEqual(heard);
+    for (let step = 0; step < 40; step += 1) await pair.elapse(5000);
+    expect(await pair.gm.send(code('222222'))).toBe(true);
+    expect(await pair.device.send(press(2))).toBe(true);
+    await pair.deliver();
+    expect([pair.gmHeard.at(-1), pair.deviceHeard.at(-1)]).toEqual([press(2), code('222222')]);
+  });
+
+  it('answers the same opening replayed to a device with the same answer each time, never with new keys', async () => {
+    const pair = await openPair();
+    const [opening] = pair.wire.map((text) => JSON.parse(text) as unknown);
+    const before = pair.toGm.length;
+    for (let again = 0; again < 50; again += 1) await pair.device.receive(opening);
+    const answers = pair.toGm.splice(before);
+    expect(answers).toHaveLength(50);
+    expect(new Set(answers.map((answer) => JSON.stringify(answer))).size).toBe(1);
+    expect(await pair.gm.send(code('333333'))).toBe(true);
+    await pair.deliver();
+    expect(pair.deviceHeard.at(-1)).toEqual(code('333333'));
   });
 });
 
@@ -173,6 +232,21 @@ describe('what a channel sends to an end that never answers', () => {
     expect(pair.gmHeard).toHaveLength(HOUR / 5000);
     expect(openings(pair).length).toBeLessThanOrEqual(70);
     expect(openings(pair).length - firstHalf).toBeLessThanOrEqual(31);
+  });
+
+  it('sends a device that answers every opening at once but keeps asking and sealing what does not open no more than about an opening a minute', { timeout: 60_000 }, async () => {
+    const pair = await openPair();
+    const start = openings(pair).length;
+    const garbage = { t: 'sealed', n: 5, d: 'A'.repeat(40) } as const;
+    for (let at = 0; at < HOUR; at += 1000) {
+      for (let call = 0; call < 2; call += 1) {
+        await pair.gm.receive(ASK);
+        await pair.gm.receive(garbage);
+      }
+      await pair.deliver();
+      await pass(pair, 1000);
+    }
+    expect(openings(pair).length - start).toBeLessThanOrEqual(70);
   });
 
   it('asks Atlas a few times however many of its frames do not open: at the first, the fourth, the sixteenth', async () => {

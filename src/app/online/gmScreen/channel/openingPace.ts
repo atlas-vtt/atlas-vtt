@@ -33,7 +33,7 @@ export class OpeningPace {
     return Math.max(now, this.last + Math.min(STEP_MS * 2 ** (run - FREE_OPENINGS), MOST_MS));
   }
 
-  /** An opening went at `now`. */
+  /** An opening the channel sent of its own accord went at `now`: one sent again because no answer came, or one the device's frames called for. */
   sent(now: number): void {
     if (now - this.last >= RUN_ENDS_MS) this.run = 0;
     this.run += 1;

@@ -95,7 +95,6 @@ export class GmChannel {
   private sendOpening(pending: Pending): void {
     const now = this.timers.now();
     pending.sends += 1;
-    this.pace.sent(now);
     this.transport({ t: 'seal-open', v: GM_SCREEN_VERSION, r: pending.text });
     this.rest();
     if (pending.sends < OPENING_SENDS) this.wake(Math.max(now + RESEND_MS * 2 ** (pending.sends - 1), this.pace.next(now)));
@@ -111,8 +110,9 @@ export class GmChannel {
     this.wake(this.pace.next(this.timers.now()));
   }
 
-  /** What is due at the timer: the opening once more while it may go, otherwise a new exchange. */
+  /** What is due at the timer: the opening once more while it may go, otherwise a new exchange. Either is paced; an opening `open` asks for is not. */
   private due(): void {
+    this.pace.sent(this.timers.now());
     if (this.pending !== null && this.pending.sends < OPENING_SENDS) this.sendOpening(this.pending);
     else this.begin();
   }
