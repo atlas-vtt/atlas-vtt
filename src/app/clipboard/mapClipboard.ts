@@ -18,12 +18,13 @@ export function holdsMapClipboard(): boolean {
   return entry !== null;
 }
 
-/** Readable summary of the objects, one line per token, text or pin. */
+/** Readable summary of the objects, one line per token, text, pin or light. */
 export function describeMapObjects(content: MapObjectContent): string {
   const lines = [
     ...content.tokens.map((token) => (token.kind === 'character' && (token.name || token.statblockName)) || t('initiative.token')),
     ...content.texts.map((text) => text.text),
     ...content.pins.map((pin) => pin.notePath),
+    ...(content.lights ?? []).map(() => t('light.popover')),
   ];
   const drawings = content.drawings.length;
   if (drawings > 0) lines.push(drawings === 1 ? '1 drawing' : `${drawings} drawings`);

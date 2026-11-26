@@ -8,13 +8,13 @@ import { beginHistoryTransaction, endHistoryTransaction, getHistoryStore } from 
 afterEach(teardown);
 
 describe('a press on a light marker', () => {
-  it('opens the light\'s popover on a click with any tool, without an undo step', () => {
+  it('selects the light for clipboard shortcuts and opens its popover with any tool', () => {
     const { store, torch, press, up, steps, select } = setup();
     expect(press(404, 298)).toBe(true);
     up();
     expect(store.getState().lightPopover).toBe(torch);
     expect(steps()).toBe(0);
-    expect(select).not.toHaveBeenCalled();
+    expect(select).toHaveBeenCalledWith(torch, false);
   });
 
   it('still counts as a click when the pointer wobbles less than the threshold', () => {
@@ -26,14 +26,14 @@ describe('a press on a light marker', () => {
     expect(store.getState().objects.lights[torch]).toMatchObject({ x: 400, y: 300 });
   });
 
-  it('moves the light with the select or move tool too, as one undo step, without selecting it for the lighting tool', () => {
+  it('selects and moves the light with the select or move tool too, as one undo step', () => {
     const { store, torch, tool, select, press, move, up, steps, undo } = setup();
     tool.moves = true;
     press(400, 300);
     move(460, 340);
     up();
     expect(store.getState().objects.lights[torch]).toMatchObject({ x: 460, y: 340 });
-    expect(select).not.toHaveBeenCalled();
+    expect(select).toHaveBeenCalledWith(torch, false);
     expect(store.getState().lightPopover).toBeNull();
     expect(steps()).toBe(1);
     undo();
