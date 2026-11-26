@@ -7,6 +7,7 @@ import { imageMimeType } from './assetServe.ts';
 import { floorMaps } from './floorMaps.ts';
 import { floorPorts, noticeOnce } from './floorPorts.ts';
 import { FloorShare } from './FloorShare.ts';
+import { clearPlayerMarks } from './floorSource.ts';
 import { FloorStore } from './floorStore.ts';
 import { FloorTokens } from './floorTokens.ts';
 import type { ListedPin } from './pins/ReadablePins.ts';
@@ -30,8 +31,9 @@ const CATCH_UP_MS = 1000;
  * they last moved or acted with where they have several), players without one the floor Atlas
  * presents (the eye), and a floor is shared only while a player stands on it, besides the presented
  * one. Who hears which message is decided in one place (`SceneRoutes`): a floor's messages reach its
- * players alone, and a scene of one floor goes to all as it always did. The floor the GM's view shows
- * reads the players' picture from the GM's renderer, any other works it out on the CPU (`FloorSight`). A token that takes stairs takes its player along.
+ * players alone, and a scene of one floor goes to all as it always did. Each floor is read from the source
+ * the GM's tab names for it (`GmTab.sourceOf`): the GM's renderer for the floor its view shows, the CPU for
+ * any other, nothing while the scene is held. A token that takes stairs takes its player along.
  * Every change of what players see reaches it as one signal (`SceneSignal`), which it hands to each floor.
  */
 export class SceneShare {
@@ -266,10 +268,7 @@ export class SceneShare {
     const first = this.viewed === undefined;
     this.viewed = viewed;
     if (first) return;
-    this.ports.showPlayerMarks?.({ lasers: [], measures: [] });
-    this.ports.showPlayerDrags?.([]);
-    this.ports.showPlayerCursors?.([]);
-    this.ports.showPlayerStrokes?.([]);
+    clearPlayerMarks(this.ports.tab());
     for (const share of this.floors.values()) share.viewChanged();
   }
 
@@ -277,10 +276,9 @@ export class SceneShare {
     const store = new FloorStore(this.store, floor);
     let share: FloorShare | null = null;
     share = new FloorShare(store, floorPorts(this.ports, {
-      // The GM's renderer is this floor's picture while the GM looks at it and it has drawn it
-      viewed: () => !this.split() || (viewedLevelId(this.store.getState()) === floor && this.ports.rendererCurrent?.() !== false),
+      floor,
       state: () => store.getState(), map: () => share?.mapBounds ?? null,
-      cell: () => this.ports.tokenSource()?.getGridOptions()?.size ?? this.store.getState().grid?.size ?? DEFAULT_CELL,
+      cell: () => this.ports.tab().tokenSource()?.getGridOptions()?.size ?? this.store.getState().grid?.size ?? DEFAULT_CELL,
       aliases: this.tokens.aliases,
       routes: this.routes.open(floor, () => store.getState()),
       notice: this.notice,

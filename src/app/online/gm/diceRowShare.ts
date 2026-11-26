@@ -5,7 +5,7 @@ import type { DicePreset } from '../../types/dicePresetTypes';
 import type { RollingDice } from '../../types/diceSetTypes';
 import type { SharedRowPlace, SharedRowRoll } from '../protocol/index.ts';
 import type { SceneStore } from './atlasView.ts';
-import type { SceneSharePorts } from './sceneSharePorts.ts';
+import type { MapLayerSource } from './atlasMapLayers.ts';
 
 /** A saved roll whose dice are designed in the Dice Lab. */
 export type DesignedRoll = DicePreset & { look: RollingDice };
@@ -17,9 +17,9 @@ export function mapDiceShelf(lookup: CollectionLookup | null, mapPath: string | 
   return collectionId === null ? null : readDiceShelf(lookup.getCollectionSettings(collectionId));
 }
 
-/** The dice shelf of the shared tab's map, as its own tray reads it. */
-export function sceneDiceShelf(ports: Pick<SceneSharePorts, 'mapLayers'>, store: SceneStore): DiceShelf | null {
-  return mapDiceShelf(ports.mapLayers?.()?.rules() ?? null, store.getState().mapPath);
+/** The dice shelf of the shared tab's map, as its own tray reads it: by the rules its map layers (`layers`) look up. */
+export function sceneDiceShelf(layers: MapLayerSource | null, store: SceneStore): DiceShelf | null {
+  return mapDiceShelf(layers?.rules() ?? null, store.getState().mapPath);
 }
 
 function sharedRoll(preset: DicePreset): SharedRowRoll {

@@ -20,6 +20,7 @@ import { settled } from './settled.ts';
 import { isVideoMapPath } from '../../../../src/app/pixi/mosaicCanvas/video/videoMapFiles';
 import type { AssetStoring } from '../../../../src/app/online/gm/assets/assetUses.ts';
 import type { PictureBasis } from '../../../../src/app/online/gm/eyesSight.ts';
+import { rendererShows, type GmTab } from '../../../../src/app/online/gm/floorSource.ts';
 import type { MemoryPorts } from '../../../../src/app/online/gm/memory/memoryPorts.ts';
 import { fakeStoring } from './fakeStoring.ts';
 import { PlayerPages } from './playerPages.ts';
@@ -137,6 +138,26 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
   };
   let settings: AtlasPlayerSettings = { ...PLAYER_SETTINGS, sharedVision: seats === undefined };
   let presented: string | undefined;
+  // The GM's tab, read from what the test gives it; the floor its view shows is read from it once it has drawn that floor.
+  const tab: GmTab = {
+    tokenSource: () => (harness.rendered ? source : null),
+    mapLayers: () => harness.layers,
+    basis: () => harness.basis,
+    followsSight: true,
+    gmMarks: () => harness.marks,
+    gmDragRuler: () => harness.gmRuler,
+    drawnPlaces: () => new Map(),
+    showPlayerMarks: () => undefined,
+    showPlayerDrags: (drags) => void harness.playerDrags.push(drags),
+    showPlayerCursors: () => undefined,
+    showPlayerStrokes: () => undefined,
+    lightingSource: () => harness.lighting,
+    tokenRules: () => harness.rules,
+    tokenMoves: () => null,
+    dice: () => harness.dice,
+    bumpToken: () => undefined,
+    sourceOf: (floor, cpu) => (rendererShows(store.getState(), floor, () => harness.drawn) ? tab : cpu),
+  };
   const signal = new SceneSignal({ store, sight: followed(sight), settings: { read: () => settings, follow: followed(settingsFollowers) }, accent: () => null, atlas: [followed(atlas)] });
   const sent = (body: GmMessage, to: string | undefined): void => {
     harness.sent.push({ body, to });
@@ -186,17 +207,8 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
       rollRequest: (from, answer) => harness.requests(from, answer),
       foundPin: (mapPath, pinId) => harness.foundPin(mapPath, pinId),
       pinsChanged: (mapPath, pins) => harness.pinsChanged(mapPath, pins),
-      mapLayers: () => harness.layers,
-      pictureBasis: () => harness.basis,
-      rendererCurrent: () => harness.drawn,
-      lightingSource: () => harness.lighting,
+      tab: () => tab,
       atlas: () => signal.inputs.atlas,
-      dice: () => harness.dice,
-      tokenRules: () => harness.rules,
-      tokenSource: () => (harness.rendered ? source : null),
-      gmDragRuler: () => harness.gmRuler,
-      gmMarks: () => harness.marks,
-      showPlayerDrags: (drags) => harness.playerDrags.push(drags),
       readImage: (path) => {
         const bytes = images.get(path);
         // An animated map is read as its poster, as `readVaultImage` takes it
