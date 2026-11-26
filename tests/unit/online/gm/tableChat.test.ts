@@ -5,6 +5,7 @@ import { TableLog, type SpokenAs } from '../../../../src/app/online/gm/log/Table
 import { rollAudience } from '../../../../src/app/online/gm/PlayerRolls.ts';
 import { TableChat } from '../../../../src/app/online/gm/tableChat.ts';
 import type { OnlineTable } from '../../../../src/app/online/gm/OnlineTable.ts';
+import { PlayerPages, toAll, type PageMessage } from './playerPages.ts';
 
 const MIRA = 'a'.repeat(20);
 const TOM = 'b'.repeat(20);
@@ -22,11 +23,15 @@ interface Sent {
 }
 
 /** A log at a table of Mira, Tom and Ana, whose speakers and inline rolls are fakes. */
-function table(options: { speaker?: (who: string, key: string) => Promise<SpokenAs | null>; rollInline?: (formula: string) => SharedRoll | null } = {}): { log: TableLog; sent: Sent[]; to: (player: string) => GmMessage[] } {
+function table(options: { speaker?: (who: string, key: string) => Promise<SpokenAs | null>; rollInline?: (formula: string) => SharedRoll | null } = {}): { log: TableLog; sent: Sent[]; to: (player: string) => readonly PageMessage[] } {
   const sent: Sent[] = [];
+  const pages = new PlayerPages();
   let id = 0;
   const log = new TableLog({
-    send: (body, to) => void sent.push({ body, to }),
+    send: (body, to) => {
+      sent.push({ body, to });
+      pages.deliver(body, to);
+    },
     clock: () => 1_700_000_000_000,
     now: () => 0,
     randomId: () => (id++).toString(16).padStart(24, '0'),
@@ -39,11 +44,12 @@ function table(options: { speaker?: (who: string, key: string) => Promise<Spoken
   });
   log.welcome([{ id: MIRA, name: 'Mira' }, { id: TOM, name: 'Tom' }, { id: ANA, name: 'Ana' }]);
   sent.length = 0;
-  const to = (player: string): GmMessage[] => sent.filter((item) => item.to === player || item.to === undefined).map((item) => item.body);
-  return { log, sent, to };
+  // Their pages hear what comes after the welcome.
+  pages.join(MIRA, TOM, ANA);
+  return { log, sent, to: (player) => pages.of(player).inbox };
 }
 
-const entriesTo = (messages: readonly GmMessage[]): LogEntry[] => messages.flatMap((body) => (body.t === 'log-entry' ? [body.entry] : []));
+const entriesTo = (messages: readonly PageMessage[]): LogEntry[] => messages.flatMap((body) => (body.t === 'log-entry' ? [body.entry] : []));
 const last = (log: TableLog): GmLogEntry => log.entries()[log.entries().length - 1]!;
 const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -61,7 +67,7 @@ describe('whispers', () => {
     expect(last(log)).toBe(entry);
     expect(entriesTo(to(TOM))).toEqual([entry]);
     expect(entriesTo(to(ANA))).toEqual([]);
-    expect(sent.every((item) => item.to !== undefined)).toBe(true);
+    expect(toAll(sent)).toEqual([]);
     for (const item of sent) expect(parseGmMessage(item.body)).toEqual(item.body);
   });
 

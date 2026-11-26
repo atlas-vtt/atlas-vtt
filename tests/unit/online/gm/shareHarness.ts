@@ -21,6 +21,7 @@ import type { AssetStoring } from '../../../../src/app/online/gm/assets/assetUse
 import type { PictureBasis } from '../../../../src/app/online/gm/eyesSight.ts';
 import type { MemoryPorts } from '../../../../src/app/online/gm/memory/memoryPorts.ts';
 import { fakeStoring } from './fakeStoring.ts';
+import { PlayerPages } from './playerPages.ts';
 
 export const GRID_SIZE = 70;
 
@@ -47,6 +48,8 @@ export interface Sent {
 export interface ShareHarness {
   readonly share: SceneShare;
   readonly sent: Sent[];
+  /** The pages of the players a test joins (none by default), each with what reached it. */
+  readonly pages: PlayerPages;
   readonly notices: string[];
   /** The players' frame's perception of each token (the lighting with fog); unset sees all that are not hidden. */
   perception: TokenPerception | undefined;
@@ -116,8 +119,14 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
   let ids = 0;
   const settle = settled;
   const source = fakeTokenSource(() => store.getState(), () => harness.perception, () => GRID_SIZE);
+  const pages = new PlayerPages();
+  const sent = (body: GmMessage, to: string | undefined): void => {
+    harness.sent.push({ body, to });
+    pages.deliver(body, to);
+  };
   const harness: ShareHarness = {
     sent: [],
+    pages,
     notices: [],
     perception: undefined,
     rendered: true,
@@ -160,8 +169,8 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
         const mime = isVideoMapPath(path) ? 'image/png' : imageMimeType(path);
         return Promise.resolve(bytes === undefined || mime === null ? null : { bytes, mime });
       },
-      send: (body, to) => harness.sent.push({ body, to }),
-      sendLive: (body, _key, to) => harness.sent.push({ body, to }),
+      send: (body, to) => sent(body, to),
+      sendLive: (body, _key, to) => sent(body, to),
       notice: (text) => harness.notices.push(text),
       randomId: () => counterId((ids += 1)),
       now: () => now,
@@ -209,12 +218,14 @@ export const scenes = (sent: readonly Sent[]): unknown[] => sent.flatMap(({ body
 
 /**
  * The messages of a sequenced kind players hold after each one sent of it, in order: a whole one as
- * sent, a delta as the whole message it makes (as a player's browser reads them).
+ * sent, a delta as the whole message it makes (as a player's browser reads them). Only for messages
+ * that went to every page: what went to single players is read from their pages (`pages.of`).
  */
 export function sequenced<K extends DeltaOf>(sent: readonly Sent[], of: K): Extract<GmMessage, { t: K }>[] {
   const reader = new DeltaReader();
-  return sent.flatMap(({ body }) => {
+  return sent.flatMap(({ body, to }) => {
     if (body.t !== of && !(body.t === 'delta' && body.of === of)) return [];
+    if (to !== undefined) throw new Error(`a ${of} message went to ${to} alone: read it from their page (pages.of)`);
     const read = reader.read(parseGmMessage(JSON.parse(JSON.stringify(body))) ?? body);
     if (read === null || read === 'gap' || read.t !== of) throw new Error(`a ${of} message that does not follow on`);
     return [read as Extract<GmMessage, { t: K }>];

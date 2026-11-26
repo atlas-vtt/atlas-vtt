@@ -130,9 +130,9 @@ describe("the map's layers players are sent", () => {
     const shared = await table(fight(TOKENS));
     expect(last(shared.sent, 'doors')).toBeUndefined();
     expect(last(shared.sent, 'sensed')).toBeUndefined();
-    const before = shared.sent.length;
+    shared.pages.join('ben');
     shared.share.resend('ben');
-    const resent = shared.sent.slice(before).filter(({ to }) => to === 'ben').map(({ body }) => body.t);
+    const resent = shared.pages.of('ben').inbox.map(({ t }) => t);
     expect(resent).toEqual(expect.arrayContaining(['grid', 'annotations', 'initiative']));
   });
 });

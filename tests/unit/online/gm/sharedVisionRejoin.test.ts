@@ -5,7 +5,8 @@ import type { SceneState } from '../../../../src/app/online/gm/atlasView.ts';
 import type { MapLayerSource } from '../../../../src/app/online/gm/atlasMapLayers.ts';
 import { describe, expect, it } from 'vitest';
 import { GENERIC_SOURCE, gmPerception, PLAYER_SETTINGS } from './gmLighting.ts';
-import { sceneState, sequenced, shareHarness, token, tokenLists, type Sent, type ShareHarness } from './shareHarness.ts';
+import type { PlayerPage } from './playerPages.ts';
+import { sceneState, shareHarness, token, type ShareHarness } from './shareHarness.ts';
 
 /**
  * The relay's welcome when the GM's Atlas comes back to a running table: the players are still connected,
@@ -47,6 +48,8 @@ async function rejoined(sharedVision: boolean): Promise<{ readonly table: ShareH
   const seats: SeatSource = { onlinePlayers: () => online, ownerOf: (id) => OWNERS[id], claimOf: (_map, id) => (OWNERS[id] === undefined ? null : 'taken') };
   const state = rooms();
   const table = shareHarness(state, IMAGES, seats);
+  // Their pages are connected all along: the relay hands them what goes to all.
+  table.pages.join(ANA, BEN);
   table.settings = { ...PLAYER_SETTINGS, sharedVision };
   table.layers = partyLayers;
   table.perception = gmPerception(state, GENERIC_SOURCE, MAP);
@@ -62,33 +65,33 @@ async function rejoined(sharedVision: boolean): Promise<{ readonly table: ShareH
   return { table, place };
 }
 
-const toAll = (sent: readonly Sent[]): Sent[] => sent.filter(({ to }) => to === undefined);
-const toPlayer = (sent: readonly Sent[], player: string): Sent[] => sent.filter(({ to }) => to === player || to === undefined);
-const names = (sent: readonly Sent[]): string[] => (tokenLists(sent).at(-1)?.tokens ?? []).map((entry) => entry.name ?? '?').sort();
-const seers = (sent: readonly Sent[]): number[] => sequenced(sent, 'sight').flatMap((message) => message.tokens.map(({ x }) => x));
-const doors = (sent: readonly Sent[]): number => sent.flatMap(({ body }) => (body.t === 'doors' ? [body.doors.length] : [])).at(-1) ?? 0;
+const names = (page: PlayerPage): string[] => page.tokens.map((entry) => entry.name ?? '?').sort();
+const seers = (page: PlayerPage): number[] => page.all('sight').flatMap((message) => message.tokens.map(({ x }) => x));
+const doors = (page: PlayerPage): number => page.last('doors')?.doors.length ?? 0;
 
 describe('a table the GM comes back to', () => {
   it('sends nobody anything of a view without Shared vision before it has placed its players', async () => {
     const { table } = await rejoined(false);
-    const all = toAll(table.sent);
-    expect(names(all)).toEqual([]);
-    expect(seers(all)).toEqual([]);
-    expect(doors(all)).toBe(0);
-    expect(JSON.stringify(all.map(({ body }) => body))).not.toContain('Notes/Den.md');
+    for (const page of [table.pages.of(ANA), table.pages.of(BEN)]) {
+      expect(names(page)).toEqual([]);
+      expect(seers(page)).toEqual([]);
+      expect(doors(page)).toBe(0);
+      expect(JSON.stringify(page.inbox)).not.toContain('Notes/Den.md');
+    }
   });
 
   it('then sends each player their own view once they are placed', async () => {
     const { table, place } = await rejoined(false);
     await place();
-    expect(names(toPlayer(table.sent, ANA))).toEqual(['Ana', 'Rat']);
-    expect(names(toPlayer(table.sent, BEN))).toEqual(['Ben', 'Goblin']);
-    expect(doors(toPlayer(table.sent, ANA))).toBe(0);
-    expect(doors(toPlayer(table.sent, BEN))).toBe(1);
+    expect(names(table.pages.of(ANA))).toEqual(['Ana', 'Rat']);
+    expect(names(table.pages.of(BEN))).toEqual(['Ben', 'Goblin']);
+    expect(doors(table.pages.of(ANA))).toBe(0);
+    expect(doors(table.pages.of(BEN))).toBe(1);
   });
 
   it('under Shared vision sends the party\'s view to every page at once, a page not placed yet too', async () => {
     const { table } = await rejoined(true);
-    expect(names(toAll(table.sent))).toEqual(['Ana', 'Ben', 'Goblin', 'Rat']);
+    expect(names(table.pages.of(ANA))).toEqual(['Ana', 'Ben', 'Goblin', 'Rat']);
+    expect(names(table.pages.of(BEN))).toEqual(['Ana', 'Ben', 'Goblin', 'Rat']);
   });
 });

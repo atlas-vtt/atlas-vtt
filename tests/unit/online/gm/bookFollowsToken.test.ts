@@ -4,8 +4,8 @@ import { PartySync } from '../../../../src/app/campaigns/partyValues/PartySync';
 import { BOOK_POLL_MS } from '../../../../src/app/online/gm/book/BookShare.ts';
 import { BookShelf } from '../../../../src/app/online/gm/book/BookShelf.ts';
 import { setStatblockGate } from '../../../../src/app/online/gm/book/statblockGate.ts';
-import { app, FakeSocket, workspace } from './fakeTable.ts';
-import { ANA, BEN, BRANNOCH, cave, delivered, MIRA, ofType, openTable, type OpenTable } from './bookTableHarness.ts';
+import { app, workspace } from './fakeTable.ts';
+import { ANA, BEN, BRANNOCH, cave, MIRA, openTable, traffic, type OpenTable } from './bookTableHarness.ts';
 import { advanceSettled as advance } from './settled.ts';
 import { StatblockNotes, templateOf } from './statblockNotes.ts';
 
@@ -31,9 +31,8 @@ const statblockNote = (name: string, speed: string): string => ['---', 'statbloc
 /** The statblock a player's page holds now: the last one sent since their last book, null for none. */
 function statblockOf(table: OpenTable, player: string): BookStatblock | null {
   let held: BookStatblock | null = null;
-  for (const { to, body } of ofType(delivered(table.socket), 'book', 'book-statblock')) {
-    if (to !== player) continue;
-    const read = parseGmMessage(JSON.parse(JSON.stringify(body)));
+  for (const body of table.pages.of(player).all('book', 'book-statblock')) {
+    const read = parseGmMessage(body);
     held = read?.t === 'book-statblock' ? read.statblock : null;
   }
   return held;
@@ -42,9 +41,8 @@ function statblockOf(table: OpenTable, player: string): BookStatblock | null {
 /** The book a player's page holds after everything sent so far: the last whole book, with the sheets that followed. */
 function bookOf(table: OpenTable, player: string): PlayerBook | undefined {
   let book: PlayerBook | undefined;
-  for (const { to, body } of delivered(table.socket)) {
-    if (to !== player) continue;
-    const read = parseGmMessage(JSON.parse(JSON.stringify(body)));
+  for (const body of table.pages.of(player).read) {
+    const read = parseGmMessage(body);
     if (read?.t === 'book') book = read.book;
     else if (read?.t === 'book-sheet' && book !== undefined) book = { ...book, character: read.character };
   }
@@ -53,9 +51,10 @@ function bookOf(table: OpenTable, player: string): PlayerBook | undefined {
 
 /** The shared scene's id and the id players know a token by, read from what the players were sent. */
 function listed(table: OpenTable, tokenId: string): { readonly scene: string; readonly token: string } {
-  const scene = delivered(table.socket).flatMap(({ body }) => (body.t === 'scene' ? [(body.scene as { id: string }).id] : [])).at(-1);
+  const sent = table.relay.sent().map(({ body }) => body);
+  const scene = sent.flatMap((body) => (body.t === 'scene' && body.scene !== null ? [body.scene.id] : [])).at(-1);
   const name = table.tab.store.getState().objects.tokens[tokenId]?.name;
-  const token = delivered(table.socket).flatMap(({ body }) => (body.t === 'tokens' && Array.isArray(body.tokens) ? (body.tokens as { id: string; name?: string }[]) : [])).find((entry) => entry.name === name)?.id;
+  const token = sent.flatMap((body) => (body.t === 'tokens' ? body.tokens : [])).find((entry) => entry.name === name)?.id;
   if (scene === undefined || token === undefined) throw new Error(`${tokenId} is not listed`);
   return { scene, token };
 }
@@ -64,8 +63,6 @@ describe('a player\'s book follows the token they act with', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'performance', 'Date'] });
     vi.stubGlobal('window', globalThis);
-    vi.stubGlobal('WebSocket', FakeSocket);
-    FakeSocket.all = [];
     workspace.leaves = [];
     workspace.presented = null;
   });
@@ -138,8 +135,9 @@ describe('a player\'s book follows the token they act with', () => {
     await advance(2_000);
     expect(bookOf(table, ANA)?.character?.name).toBe('Brannoch');
     expect(bookOf(table, BEN)?.character?.name).toBe('Mira');
-    const toAna = delivered(table.socket).filter(({ to }) => to === ANA).map(({ body }) => JSON.stringify(body)).join('\n');
-    expect(toAna).not.toContain('"name":"Mira"');
+    // Mira's token is on everyone's list by its name; her character's sheet reaches no book of Ana's.
+    const anasBook = traffic(table.pages.of(ANA).all('book', 'book-sheet', 'book-statblock', 'book-item'));
+    expect(anasBook).not.toContain('"name":"Mira"');
     table.online.stop();
   });
 });
