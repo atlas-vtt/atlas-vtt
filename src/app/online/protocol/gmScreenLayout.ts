@@ -118,8 +118,11 @@ export const isGlyphName = (value: unknown): value is string => typeof value ===
 /** Reads in reading order, a folder's slots right after the folder, and counts the keys so a grid stops at `MAX_LAYOUT_KEYS`. */
 class LayoutReader {
   private keys = 0;
+  private readonly device: GmScreenDevice;
 
-  constructor(private readonly device: GmScreenDevice) {}
+  constructor(device: GmScreenDevice) {
+    this.device = device;
+  }
 
   slots(value: unknown, depth: number): LayoutSlot[] {
     const size = slotsAt(this.device, depth);
