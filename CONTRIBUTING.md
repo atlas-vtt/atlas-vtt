@@ -9,7 +9,7 @@ Every open issue is on the [issue board](https://github.com/orgs/atlas-vtt/proje
 - Open a draft pull request early and write `Fixes #<number>` in its description. The board then shows the issue as in review and closes it when the pull request is merged.
 - Issues labelled `good first issue` are a good start. For anything not on the board yet, open an issue first, so nobody else starts the same work.
 
-After your first merged pull request you are invited to the `contributors` team. Its members also label, assign and close issues, move them on the board and review pull requests.
+After your second merged pull request you are invited to the `contributors` team with the next release. Its members also label, assign and close issues, move them on the board and review pull requests.
 
 ## Making a change
 
