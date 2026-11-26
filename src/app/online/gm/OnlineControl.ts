@@ -18,6 +18,7 @@ import { RELAY_ORIGIN } from './servers.ts';
 import type { TableCampaigns } from './tableCampaigns.ts';
 import { createCampaignTable, NO_ACCOUNT, refused, startBlock, type HostAccount } from './tableStart.ts';
 import type { TableStatus } from './TableConnection.ts';
+import { relayOutbox, type OpenOutbox } from './tableOutbox.ts';
 import type { LostTable } from './tableEnd.ts';
 import { t } from '../../i18n';
 import type { TableAssets } from './assets/tableAssets.ts';
@@ -51,7 +52,7 @@ export class OnlineControl {
   /** The running table's log, kept with it and told to its panels. */
   readonly logs: LogKeeper;
 
-  constructor(app: App, ownership: Ownership, private readonly campaigns: TableCampaigns, save: (table: SavedTable | null) => void = () => undefined, account: HostAccount = NO_ACCOUNT, logStore?: LogStore, private readonly shelf = new BookShelf()) {
+  constructor(app: App, ownership: Ownership, private readonly campaigns: TableCampaigns, save: (table: SavedTable | null) => void = () => undefined, account: HostAccount = NO_ACCOUNT, logStore?: LogStore, private readonly shelf = new BookShelf(), private readonly outbox: OpenOutbox = relayOutbox) {
     this.app = app;
     this.ownership = ownership;
     this.save = save;
@@ -310,7 +311,7 @@ export class OnlineControl {
     this.keep(saved);
     this.ownership.bind(seats);
     this.campaigns.bound(saved.campaignId);
-    const table = new OnlineTable(this.app, RELAY_ORIGIN, saved, saved.mapPath, this.ownership, seats, saved.gate, {
+    const table = new OnlineTable(this.app, RELAY_ORIGIN, saved, this.outbox, saved.mapPath, this.ownership, seats, saved.gate, {
       status: () => {
         // A welcome says what the relay needs now; an older relay names nothing and needs nothing.
         if (table.status === 'online') rememberMinLevel(this.app, table.minLevel ?? 0);
