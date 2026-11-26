@@ -21,6 +21,7 @@ const RECORD: GmScreenRecord = {
   link: { code: 'g'.repeat(26), key: `${'K'.repeat(42)}A` },
   secret: 'room-secret-0123456789abcdef',
   devices: [{ id: PHONE, name: 'Phone', code: '123456', lastSeen: 5 }],
+  ending: [{ code: 'h'.repeat(26), secret: 'old-room-secret-0123456789abcdef' }],
 };
 const TABLE = { code: 't'.repeat(26), secret: 'table-secret-0123456789abcdef', campaignId: 'c'.repeat(24), maxPlayers: 4, mapPath: null, gate: { code: '654321', requireCode: true, askToJoin: true } };
 
@@ -37,6 +38,8 @@ describe('where the GM screen is kept', () => {
     expect(readGmScreenRecord(JSON.parse(JSON.stringify(RECORD)))).toEqual(RECORD);
     expect(readGmScreenRecord({ ...RECORD, link: { code: RECORD.link.code, key: 'short' } })).toBeNull();
     expect(readGmScreenRecord({ ...RECORD, secret: 'x' })).toEqual({ ...RECORD, secret: null });
+    expect(readGmScreenRecord({ ...RECORD, ending: [...RECORD.ending, { code: 'h'.repeat(26), secret: 'x' }, { code: 'bad', secret: RECORD.secret }, null] })).toEqual(RECORD);
+    expect(readGmScreenRecord({ ...RECORD, ending: undefined })).toEqual({ ...RECORD, ending: [] });
     expect(readGmScreenRecord({ ...RECORD, devices: [...RECORD.devices, { id: 'bad', name: 'x', code: '1' }, { ...RECORD.devices[0], name: 'Twin' }] })?.devices).toEqual(RECORD.devices);
   });
 

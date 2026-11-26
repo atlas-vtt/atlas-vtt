@@ -1,14 +1,15 @@
 import { MAX_PLAYERS, type DeviceMessage, type GmScreenMessage, type PlayerInfo } from '../protocol/index.ts';
 import type { CreatedTable } from '../gm/createdTable.ts';
-import type { GateEvents, TableEvents, TableStatus } from '../gm/TableConnection.ts';
+import type { TableEvents, TableStatus } from '../gm/TableConnection.ts';
 import type { TableOutbox } from '../gm/tableOutbox.ts';
 import { endStrayTable } from '../gm/strayTable.ts';
 import { t } from '../../i18n';
 import { checkNumber, linkKey } from './channel/index.ts';
 import { DeviceChannels } from './deviceChannels.ts';
 import { gmScreenEndText } from './gmScreenEnd.ts';
+import { RoomEnds } from './gmScreenEnds.ts';
 import { GmScreenKnocks } from './gmScreenKnocks.ts';
-import { newGmScreenRecord, seatsOf, seenAt, withDevice, withoutDevice, type GmScreenRecord } from './gmScreenRecord.ts';
+import { newGmScreenRecord, seatsOf, seenAt, withDevice, withoutDevice, withoutEnding, withRoomEnding, type GmScreenRecord } from './gmScreenRecord.ts';
 import type { GmScreenPorts } from './gmScreenPorts.ts';
 import { ScreenRouter, type GmScreen, type GmScreenOutlet } from './screens.ts';
 import { gmScreenView, type GmScreenView } from './gmScreenView.ts';
@@ -35,6 +36,8 @@ export class GmScreenSession implements GmScreenOutlet {
   /** Devices allowed in this session that have not been told their code yet. */
   private readonly fresh = new Set<string>();
   private readonly knocks: GmScreenKnocks;
+  /** Rooms stopped while the relay could not be reached, ended once it can be. */
+  private readonly ends: RoomEnds;
   private readonly router = new ScreenRouter();
   private problem: string | null = null;
   /** Counts starts, stops and closes, so an answer that comes after one of them changes nothing. */
@@ -45,6 +48,7 @@ export class GmScreenSession implements GmScreenOutlet {
   constructor(private readonly ports: GmScreenPorts, saved: GmScreenRecord | null) {
     this.record = saved;
     this.knocks = new GmScreenKnocks(ports.timers, (id) => (this.key === null ? Promise.resolve('') : checkNumber(ports.crypto, this.key, id)), () => this.changed());
+    this.ends = new RoomEnds(ports.open, (ended) => this.record !== null && this.keep(withoutEnding(this.record, (room) => room.secret === ended.secret)));
     this.shown = this.makeView();
   }
 
@@ -92,28 +96,37 @@ export class GmScreenSession implements GmScreenOutlet {
       return;
     }
     if ('refused' in answer) return this.halt(answer.refused);
-    this.keep({ ...record, secret: answer.room.secret });
+    // Making the room ended any room still running at its code.
+    this.ends.forget(record.link.code);
+    this.keep({ ...withoutEnding(this.record ?? record, (room) => room.code === record.link.code), secret: answer.room.secret });
     await this.connect(run);
   }
 
-  /** Comes back to the room that ran before Obsidian or Atlas was reloaded, with the same link and devices. */
+  /** Comes back to the room that ran before Obsidian or Atlas was reloaded, with the same link and devices, and ends the rooms stopped offline. */
   resume(): Promise<void> {
+    this.ends.end(this.record?.ending ?? []);
     if (this.phase !== 'stopped' || !this.wasRunning) return Promise.resolve();
     this.phase = 'starting';
     this.changed();
     return this.connect((this.run += 1));
   }
 
-  /** Ends the room on the relay, and with it every device's connection; the link and the devices are kept for the next start. */
+  /**
+   * Ends the room on the relay, and with it every device's connection, at once where the relay can be
+   * reached and otherwise as soon as it can be; the link and the devices are kept for the next start.
+   */
   stop(): void {
     if (this.phase === 'stopped') return;
-    this.connection?.end();
+    if (this.phase === 'running' && this.connectionStatus === 'online') this.connection?.end();
+    else if (this.record !== null) this.keep(withRoomEnding(this.record));
     this.halt(null);
+    this.ends.end(this.record?.ending ?? []);
   }
 
-  /** Lets go of the connection, leaving the room on the relay for `resume` (Atlas unloads). */
+  /** Lets go of the connections, leaving the room on the relay for `resume` (Atlas unloads). */
   close(): void {
     this.letGo();
+    this.ends.close();
   }
 
   /** A new link: a new room code and key, no devices; every device of the old link is ended. */
@@ -121,7 +134,7 @@ export class GmScreenSession implements GmScreenOutlet {
     const running = this.phase !== 'stopped';
     this.stop();
     this.fresh.clear();
-    this.keep(newGmScreenRecord(this.ports.crypto));
+    this.keep(newGmScreenRecord(this.ports.crypto, this.record?.ending));
     if (running) void this.start();
     else this.changed();
   }
@@ -174,7 +187,8 @@ export class GmScreenSession implements GmScreenOutlet {
     this.phase = 'running';
     this.connectionStatus = 'connecting';
     const room: CreatedTable = { code: record.link.code, secret: record.secret, maxPlayers: MAX_PLAYERS };
-    const connection = this.ports.open(room, this.tableEvents(() => run === this.run), this.gateEvents(() => run === this.run));
+    const live = (): boolean => run === this.run;
+    const connection = this.ports.open(room, this.tableEvents(live), this.knocks.gate(live, (id) => this.full(id)));
     this.connection = connection;
     connection.setPlayers(seatsOf(record));
     connection.start();
@@ -203,21 +217,11 @@ export class GmScreenSession implements GmScreenOutlet {
     };
   }
 
-  private gateEvents(live: () => boolean): GateEvents {
-    return {
-      frame: () => ({ code: null, ask: true }),
-      welcomed: (waiting) => live() && this.knocks.reset(waiting),
-      knocked: (player) => live() && this.knocks.add(player),
-      gone: (id, full) => {
-        if (!live()) return;
-        this.knocks.remove(id);
-        if (!full || !this.fresh.has(id)) return;
-        // Let in while every seat was taken: it must ask again once one is free.
-        this.remove(id);
-        this.ports.notice(t('gmScreen.full', { name: NAME }));
-      },
-      paused: () => undefined,
-    };
+  /** A device let in while every seat was taken: it must ask again once one is free. */
+  private full(id: string): void {
+    if (!this.fresh.has(id)) return;
+    this.remove(id);
+    this.ports.notice(t('gmScreen.full', { name: NAME }));
   }
 
   private statusChanged(status: TableStatus): void {

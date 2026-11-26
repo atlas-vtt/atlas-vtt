@@ -1,6 +1,7 @@
 import type { PlayerInfo } from '../protocol/index.ts';
 import { ARM_MS } from '../gm/armedCards.ts';
 import type { Timers } from '../gm/companionTimers.ts';
+import type { GateEvents } from '../gm/TableConnection.ts';
 
 /** A device that waits to be let in, as the GM is asked about it. */
 export interface Knock {
@@ -25,6 +26,24 @@ export class GmScreenKnocks {
   private run = 0;
 
   constructor(private readonly timers: Timers, private readonly check: (id: string) => Promise<string>, private readonly changed: () => void) {}
+
+  /**
+   * The room's gate as its connection tells it, heard while it is `live`: everyone is asked about;
+   * `full` hears of a device let in while every seat was taken.
+   */
+  gate(live: () => boolean, full: (id: string) => void): GateEvents {
+    return {
+      frame: () => ({ code: null, ask: true }),
+      welcomed: (waiting) => live() && this.reset(waiting),
+      knocked: (player) => live() && this.add(player),
+      gone: (id, isFull) => {
+        if (!live()) return;
+        this.remove(id);
+        if (isFull) full(id);
+      },
+      paused: () => undefined,
+    };
+  }
 
   /** The knock the GM is asked about now. */
   get first(): Knock | null {
