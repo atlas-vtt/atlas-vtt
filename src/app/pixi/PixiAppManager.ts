@@ -5,6 +5,7 @@ import { RenderScheduler } from "./RenderScheduler";
 import { destroyTree } from "./utils/destroyTree";
 import { addRendererSystemsByEntry } from "./utils/rendererSystems";
 import { forgetUniformUploadsWithContext } from "./utils/uniformUploads";
+import { forgetTextureBindingsWithContext } from "./utils/textureBindings";
 import { showNoGraphicsNotice } from './noGraphicsNotice';
 import { refitZoomRange } from './fitMapRect';
 import { MAX_ZOOM, MIN_ZOOM } from "./zoomRange";
@@ -31,6 +32,7 @@ export class PixiAppManager {
     this.canvasEl = createEl('canvas');
     addRendererSystemsByEntry();
     forgetUniformUploadsWithContext();
+    forgetTextureBindingsWithContext();
     this.app = new Application();
   }
 

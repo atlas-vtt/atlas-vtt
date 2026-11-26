@@ -61,6 +61,9 @@ export class MosaicCanvas {
   /** An animated map's video, above the tesserae inside `turned`, so it is stretched and turned like them. */
   private readonly video: MapVideoSlot;
   private readonly stopRestarts: () => void;
+  // The tessera worker composes the overview the albedo is made of on a canvas the GPU process holds:
+  // a restored context finds that bitmap blank, so the albedo is made anew from a new overview.
+  private readonly contextListener = { contextChange: (): void => this.albedo.reset() };
 
   constructor(private readonly deps: MosaicCanvasDeps) {
     this.layer = new Container({ label: 'map-image', eventMode: 'none', interactiveChildren: false });
@@ -83,6 +86,7 @@ export class MosaicCanvas {
     };
     this.albedo = new MapAlbedo(() => this.emit('albedo'));
     this.stopRestarts = deps.service.onRestart(() => this.reopen());
+    deps.renderer?.runners.contextChange.add(this.contextListener);
   }
 
   /** The image in world units, as it is drawn; null before the first load and after `clear`. */
@@ -217,6 +221,7 @@ export class MosaicCanvas {
     if (this.destroyed) return;
     this.destroyed = true;
     this.stopRestarts();
+    this.deps.renderer?.runners.contextChange.remove(this.contextListener);
     this.generation++;
     const previous = this.shown;
     this.shown = null;
