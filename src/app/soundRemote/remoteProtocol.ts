@@ -1,24 +1,5 @@
 import { isFiniteNumber, isRecord } from '../utils/guards';
 
-/**
- * The sound remote's wire: what a controller on this computer (the Atlas Stream Deck plugin) sends and
- * hears. JSON over HTTP on 127.0.0.1, the state pushed as server-sent events. Version 1; a controller reads
- * `api` from `/v1/hello` and a change that breaks it takes a new path prefix.
- */
-export const REMOTE_API_VERSION = 1;
-
-/** Fixed, so a controller finds Atlas without being told. */
-export const REMOTE_PORT = 47823;
-
-/** Every request carries it: a browser cannot send a header of its own to another origin without a preflight, which is refused. */
-export const REMOTE_HEADER = 'x-atlas-remote';
-
-/** Longest body a command or a pairing request may have. */
-export const MAX_REMOTE_BODY = 4096;
-
-/** Longest name a controller may give itself in the pairing prompt. */
-export const MAX_CLIENT_NAME = 64;
-
 export const REMOTE_CHANNELS = ['master', 'music', 'ambience', 'musicStrip'] as const;
 /**
  * `master` is this device's level; `music` is the Sound page's Music fader and `ambience` moves every layer's fader alike
@@ -28,6 +9,10 @@ export type RemoteChannel = (typeof REMOTE_CHANNELS)[number];
 
 export type RemoteRepeat = 'all' | 'one' | 'off';
 
+/**
+ * What a controller sends, whatever carries it (`http/` for one on this computer); `RemoteState` is what it hears.
+ * `RemoteControl` runs them.
+ */
 export type RemoteCommand =
   | { type: 'mood'; id: string }
   | { type: 'nextMood' }
@@ -152,9 +137,12 @@ export interface RemoteState {
   rollsShown: boolean;
 }
 
-export interface RemoteHello {
-  app: 'atlas-vtt';
-  api: number;
+/** Commands that read this computer's pointer, which only a controller on this computer has. */
+const POINTER_COMMANDS: ReadonlySet<RemoteCommand['type']> = new Set(['showHoveredImage']);
+
+/** Whether a command acts on what the GM's pointer rests on here, so a controller elsewhere cannot mean it. */
+export function needsThisPointer(command: RemoteCommand): boolean {
+  return POINTER_COMMANDS.has(command.type);
 }
 
 const SIMPLE = new Set(['nextMood', 'stopAll', 'pause', 'nextTrack', 'previousTrack', 'shuffle', 'repeat', 'muteMusic', 'combat', 'rollInitiative', 'present', 'freeze', 'curtain', 'takeBackHandout', 'showHoveredImage', 'shareRolls']);
@@ -181,12 +169,4 @@ export function parseRemoteCommand(value: unknown): RemoteCommand | null {
   if (type === 'mood' || type === 'roll') return typeof value.id === 'string' && value.id.length > 0 && value.id.length <= MAX_ID ? { type, id: value.id } : null;
   if (type === 'level') return parseLevel(value);
   return SIMPLE.has(type) ? ({ type } as RemoteCommand) : null;
-}
-
-/** The name a controller gave itself, cut to what the prompt shows; anything else reads as no name. */
-export function parseClientName(value: unknown): string | null {
-  if (!isRecord(value) || typeof value.client !== 'string') return null;
-  // Control characters could rearrange the prompt's text.
-  const name = value.client.replace(/\p{Cc}/gu, '').trim().slice(0, MAX_CLIENT_NAME);
-  return name.length > 0 ? name : null;
 }

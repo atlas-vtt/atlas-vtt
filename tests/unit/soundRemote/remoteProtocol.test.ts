@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { bearerToken, newRemoteToken, remoteTokenHash, requestRefusal, sameHash } from '@/app/soundRemote/remoteAccess';
-import { parseClientName, parseRemoteCommand, REMOTE_HEADER } from '@/app/soundRemote/remoteProtocol';
+import { bearerToken, newRemoteToken, remoteTokenHash, requestRefusal, sameHash } from '@/app/soundRemote/http/remoteAccess';
+import { parseClientName, REMOTE_HEADER } from '@/app/soundRemote/http/remoteHttp';
+import { parseRemoteCommand } from '@/app/soundRemote/remoteProtocol';
 
 const PORT = 47823;
 const fine = { host: `127.0.0.1:${PORT}`, [REMOTE_HEADER]: '1' };

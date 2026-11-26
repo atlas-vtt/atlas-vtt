@@ -2,9 +2,10 @@
 import http from 'node:http';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { Mood } from '@/app/sound/soundTypes';
-import type { NodeHttpModule } from '@/app/soundRemote/nodeHttp';
-import { REMOTE_HEADER } from '@/app/soundRemote/remoteProtocol';
-import { SoundRemoteServer } from '@/app/soundRemote/SoundRemoteServer';
+import type { NodeHttpModule } from '@/app/soundRemote/http/nodeHttp';
+import { REMOTE_HEADER } from '@/app/soundRemote/http/remoteHttp';
+import { SoundRemoteServer } from '@/app/soundRemote/http/SoundRemoteServer';
+import { RemoteControl } from '@/app/soundRemote/remoteControl';
 import { fakeRemoteDirector, fakeTable, memoryRemoteSettings, remoteMood, withMusic } from '../../helpers/soundRemoteRig';
 
 /**
@@ -17,12 +18,15 @@ let PORT = 0;
 const SHOWN_HEADERS = ['cache-control', 'connection', 'content-type', 'x-content-type-options'];
 
 let server: SoundRemoteServer | null = null;
+let control: RemoteControl | null = null;
 const streams: Stream[] = [];
 
 afterEach(() => {
   for (const stream of streams.splice(0)) stream.close();
   server?.stop();
   server = null;
+  control?.dispose();
+  control = null;
 });
 
 function headersOf(response: http.IncomingMessage): string {
@@ -119,12 +123,11 @@ function rig() {
   const settings = memoryRemoteSettings();
   settings.setEnabled(true);
   const table = fakeTable();
+  control = new RemoteControl({ director, moods: moodSource, table: table.table });
   server = new SoundRemoteServer({
     http: http as unknown as NodeHttpModule,
     port: PORT,
-    director,
-    moods: moodSource,
-    table: table.table,
+    control,
     settings,
     askToPair: () => ({ answer: Promise.resolve(true), cancel: () => undefined }),
     onListenError: (error) => { throw error; },

@@ -4,7 +4,7 @@ import { addLayer, startMusic } from '@/app/soundDirector/liveEdits';
 import { EMPTY_MIX, type SoundMix } from '@/app/soundDirector/soundMix';
 import type { SoundSnapshot } from '@/app/soundDirector/soundSnapshot';
 import { EMPTY_TABLE_SOUND } from '@/app/soundDirector/tableSound';
-import { RemoteSettingsStore } from '@/app/soundRemote/remoteSettings';
+import { RemoteSettingsStore } from '@/app/soundRemote/http/remoteSettings';
 import type { TableSource } from '@/app/soundRemote/remoteTable';
 import { DEFAULT_INITIATIVE_RULES } from '@/app/gameSystems/initiativeRules';
 import type { ViewAtlasState } from '@/app/storeFactory';
