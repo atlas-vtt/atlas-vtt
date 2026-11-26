@@ -149,9 +149,9 @@ const median = (values: readonly number[]): number => [...values].sort((a, b) =>
  * works its model out outside the timed part, as Atlas draws it with or without a table; the timed part is
  * the share's reaction to the store's change, to the renderer's sight that follows it, and the paced
  * messages that fall due before the next step. Measured on 2026-11-26 beside the one-second polls this
- * replaced, both in one process: 1.05 against 1.13 ms a step with Shared vision, 1.47 against 1.63 ms with
- * the players' own pictures, at the token list's and the sight inputs' pace either way (95 and 47 messages a
- * second). Run alone (`npx vitest run --project perf <file>`).
+ * replaced: 0.7 to 1.3 ms a step either way, which side is cheaper changing with how the runs were arranged,
+ * at the token list's and the sight inputs' pace either way (95 and 47 messages a second), with no costly
+ * step run more often than beside the polls. Run alone (`npx vitest run --project perf <file>`).
  */
 describe('a GM dragging a character on a lit three-floor dungeon with four players', () => {
   it('costs the GM under 4 ms of processor time a step, at no more than 120 messages a second', async () => {
