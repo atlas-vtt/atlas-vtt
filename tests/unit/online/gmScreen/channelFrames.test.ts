@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { messageParts } from '../../../../src/app/online/gm/assetServe.ts';
 import {
-  MAX_DEVICE_MESSAGE, MAX_GM_FRAME, MAX_GM_SCREEN_MESSAGE, MAX_PARTS, MAX_PLAYER_FRAME, MAX_SEAL_COUNTER, PROTOCOL_VERSION, parseDeviceWire, parseGmMessage, parseGmScreenWire,
-  type DeviceMessage, type GmMessage, type GmScreenMessage,
+  MAX_DEVICE_MESSAGE, MAX_GM_FRAME, MAX_GM_SCREEN_MESSAGE, MAX_PARTS, MAX_PLAYER_FRAME, MAX_SEAL_COUNTER, PROTOCOL_VERSION, parseDeviceMessage, parseDeviceWire, parseGmMessage, parseGmScreenMessage,
+  parseGmScreenWire, readGmScreenLink, type DeviceMessage, type GmMessage, type GmScreenMessage,
 } from '../../../../src/app/online/protocol/index.ts';
+import { readGmScreenRecord } from '../../../../src/app/online/gmScreen/index.ts';
 import { fromBase64 } from '../../../../src/app/utils/base64';
 import { channelPair, nodeCrypto } from './channelPair';
 import { newLinkKey } from '../../../../src/app/online/gmScreen/channel/index.ts';
@@ -121,5 +122,16 @@ describe('the GM screen\'s wire parsers', () => {
     expect([parseGmScreenWire(tooLong), parseDeviceWire(tooLong)]).toEqual([tooLong, null]);
     expect(parseGmScreenWire({ t: 'seal-ask', v: 1 })).toBeNull();
     expect(parseDeviceWire({ t: 'seal-open', v: 1, r: opening })).toBeNull();
+  });
+
+  it('throw on no hostile value, and neither do the readers of messages, links and the kept record', () => {
+    const hostile: unknown[] = [
+      null, undefined, 0, '', [], {}, { t: 'sealed' }, { t: 'sealed', n: 1e400, d: 'A'.repeat(24) }, { t: 'sealed', n: 1, d: '='.repeat(24) }, { t: 'sealed', n: 1, d: `${'A'.repeat(22)}==` },
+      { t: 'seal-answer', v: 1, to: {}, r: [] }, { t: 'seal-open', v: 1.5, r: 'x' }, JSON.parse('{"__proto__":{"t":"sealed"},"t":"seal-ask","v":1}'), { t: 'press' }, { t: 'your-code', code: {} },
+      'x'.repeat(5000), '#.', '#a.b', `#${'a'.repeat(26)}.`, { link: { code: 'a'.repeat(26), key: 'k' }, ending: [{ code: {}, secret: [] }] },
+    ];
+    for (const value of hostile) {
+      expect(() => [parseDeviceWire(value), parseGmScreenWire(value), parseDeviceMessage(value), parseGmScreenMessage(value), readGmScreenLink(value), readGmScreenRecord(value)]).not.toThrow();
+    }
   });
 });

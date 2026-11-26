@@ -40,6 +40,8 @@ export class GmScreenSession implements GmScreenOutlet {
   private readonly ends: RoomEnds;
   private readonly router = new ScreenRouter();
   private problem: string | null = null;
+  /** The room came back with Atlas (`resume`) and the relay has not welcomed it yet. */
+  private comingBack = false;
   /** Counts starts, stops and closes, so an answer that comes after one of them changes nothing. */
   private run = 0;
   private readonly listeners = new Set<() => void>();
@@ -96,7 +98,6 @@ export class GmScreenSession implements GmScreenOutlet {
       return;
     }
     if ('refused' in answer) return this.halt(answer.refused);
-    // Making the room ended any room still running at its code.
     this.ends.forget(record.link.code);
     this.keep({ ...withoutEnding(this.record ?? record, (room) => room.code === record.link.code), secret: answer.room.secret });
     await this.connect(run);
@@ -107,6 +108,7 @@ export class GmScreenSession implements GmScreenOutlet {
     this.ends.end(this.record?.ending ?? []);
     if (this.phase !== 'stopped' || !this.wasRunning) return Promise.resolve();
     this.phase = 'starting';
+    this.comingBack = true;
     this.changed();
     return this.connect((this.run += 1));
   }
@@ -226,7 +228,8 @@ export class GmScreenSession implements GmScreenOutlet {
 
   private statusChanged(status: TableStatus): void {
     this.connectionStatus = status;
-    if (status === 'refused') return this.halt(gmScreenEndText(this.connection?.closeCode ?? null), true);
+    if (status === 'refused') return this.halt(gmScreenEndText(this.connection?.closeCode ?? null, this.comingBack), true);
+    if (status === 'online') this.comingBack = false;
     // Until the next welcome no device is known to be there; that welcome opens every channel anew.
     if (status === 'connecting') for (const id of [...this.connected]) this.left(id);
     this.changed();
@@ -271,6 +274,7 @@ export class GmScreenSession implements GmScreenOutlet {
     this.connection = null;
     connection?.stop();
     this.phase = 'stopped';
+    this.comingBack = false;
     for (const id of [...this.connected]) this.left(id);
     this.channels?.clear();
     this.channels = null;

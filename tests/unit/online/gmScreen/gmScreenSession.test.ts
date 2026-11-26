@@ -220,6 +220,85 @@ describe('the GM screen\'s session at a room of its own', () => {
     expect(RelaySocket.all).toHaveLength(1);
   });
 
+  it('comes back without a word to a room the relay ended while Atlas was closed: the session is simply stopped', async () => {
+    for (const code of [CLOSE.badSecret, CLOSE.ended]) {
+      RelaySocket.all = [];
+      const first = await started();
+      const kept = first.saved.at(-1) ?? null;
+      first.session.close();
+      RelaySocket.all = [];
+      const rig = sessionRig(kept);
+      await rig.session.resume();
+      rig.socket().readyState = RelaySocket.OPEN;
+      rig.socket().dispatchEvent(new Event('open'));
+      rig.socket().drop(code);
+      expect(rig.notices).toEqual([]);
+      expect(rig.session.view()).toMatchObject({ status: 'stopped', problem: null });
+      expect(rig.saved.at(-1)?.secret).toBeNull();
+      rig.timers.advance(10 * 60_000);
+      expect(RelaySocket.all).toHaveLength(1);
+    }
+  });
+
+  it('says so when a room the GM started is refused', async () => {
+    const rig = sessionRig();
+    await rig.session.start();
+    rig.socket().readyState = RelaySocket.OPEN;
+    rig.socket().dispatchEvent(new Event('open'));
+    rig.socket().drop(CLOSE.badSecret);
+    expect(rig.notices).toHaveLength(1);
+    expect(rig.session.view().status).toBe('stopped');
+  });
+
+  it('reads nobody the GM never allowed, and opens no channel to them, whatever they send', async () => {
+    const rig = await started();
+    const heard: [string, DeviceMessage][] = [];
+    rig.session.plug({ takes: ['press'], opened: () => undefined, message: (from, message) => void heard.push([from, message]) });
+    const thief = await rig.device(TABLET);
+    rig.socket().receive({ t: 'knock', id: TABLET, name: 'Phone' });
+    await rig.settle();
+    rig.socket().receive({ t: 'game', from: TABLET, body: { t: 'seal-ask', v: 1 } });
+    rig.timers.advance(10 * 60_000);
+    await rig.settle();
+    expect(thief.channel.isOpen).toBe(false);
+    expect(JSON.stringify(rig.socket().frames())).not.toContain('seal-open');
+    expect(heard).toEqual([]);
+  });
+
+  it('kicks a removed device the relay seats again, and opens no channel to it, then or later', async () => {
+    const rig = await started();
+    const device = await allowed(rig, PHONE);
+    rig.session.remove(PHONE);
+    await rig.settle();
+    const socket = rig.socket();
+    const before = socket.frames().length;
+    socket.receive({ t: 'player-joined', id: PHONE, name: 'Phone' });
+    await rig.settle();
+    await device.say({ t: 'press', id: 1, command: { type: 'stopAll' } });
+    await rig.settle();
+    const after = socket.frames().slice(before);
+    expect(after.filter((frame) => frame.t === 'kick')).toHaveLength(1);
+    expect(JSON.stringify(after)).not.toContain('seal-open');
+    expect(rig.session.view().devices).toEqual([]);
+  });
+
+  it('sends no more openings to a device that left before it answered', async () => {
+    const rig = await started();
+    rig.socket().receive({ t: 'knock', id: PHONE, name: 'Phone' });
+    await rig.settle();
+    rig.timers.advance(ARM_MS);
+    rig.session.allow(PHONE);
+    // The device's page never answers: it is gone again at once.
+    rig.socket().receive({ t: 'player-joined', id: PHONE, name: 'Phone' });
+    await rig.settle();
+    rig.socket().receive({ t: 'player-left', id: PHONE });
+    for (let second = 0; second < 30; second += 1) {
+      rig.timers.advance(1000);
+      await rig.settle();
+    }
+    expect(JSON.stringify(rig.socket().frames()).match(/seal-open/g)).toHaveLength(1);
+  });
+
   it('kicks a stranger the relay seated without the GM\'s word', async () => {
     const rig = await started();
     rig.socket().receive({ t: 'player-joined', id: TABLET, name: 'Tablet' });
