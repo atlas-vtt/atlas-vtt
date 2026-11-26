@@ -29,6 +29,7 @@ export const gmScreen: Translation = {
   'gmScreen.relayTooOld': 'O servidor ainda não pode executar o {name}. Tente mais tarde.',
   'gmScreen.tooMany': 'O {name} guarda no máximo 16 dispositivos. Remova um primeiro.',
   'gmScreen.full': 'Todas as vagas do {name} estavam ocupadas quando você permitiu o último dispositivo. Ele pode pedir de novo quando outro sair.',
+  'gmScreen.knockNotice': '{device} pede para entrar no {name}. Abra o escudo do Mestre para permitir.',
   'gmScreen.end.elsewhere': 'O {name} foi iniciado em outro cofre ou em outro computador, por isso parou aqui.',
   'gmScreen.end.noAccess': 'O {name} parou. {reason}',
   'gmScreen.end.refused': 'O servidor encerrou o {name}.',

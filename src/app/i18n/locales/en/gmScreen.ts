@@ -30,6 +30,7 @@ export const gmScreen = {
   'gmScreen.relayTooOld': 'The server cannot run {name} yet. Try again later.',
   'gmScreen.tooMany': '{name} keeps at most 16 devices. Remove one first.',
   'gmScreen.full': 'Every seat of {name} was taken when you allowed the last device. It can ask again once another device leaves.',
+  'gmScreen.knockNotice': '{device} asks to join {name}. Open the DM screen to allow it.',
   'gmScreen.end.elsewhere': '{name} was started in another vault or on another computer, so it stopped here.',
   'gmScreen.end.noAccess': '{name} stopped. {reason}',
   'gmScreen.end.refused': 'The server ended {name}.',

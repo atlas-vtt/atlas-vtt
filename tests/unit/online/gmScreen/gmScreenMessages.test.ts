@@ -15,7 +15,7 @@ const remote: RemoteState = {
   rolls: [{ id: 'r1', name: 'Attack', formula: '1d20+5', look: { sides: 20, count: 1, rule: '', rest: '+5', colour: '#aa3322' } }],
   rollsShown: true,
 };
-const keys: KeysState = remote;
+const keys: KeysState = { ...remote, player: { ...remote.player, online: false } };
 const hash = 'a'.repeat(64);
 const mood = { id: 'tavern', name: 'Tavern', tone: { light: '#b3261e', dark: '#e5534b' }, crest: 'beer-stein' };
 const entry = { id: 'goblin', name: 'Goblin', portrait: hash, count: 3, turn: true, fight: true, player: false };
@@ -44,6 +44,14 @@ describe('the GM screen\'s messages', () => {
   it('read every message each way as it was sent', () => {
     for (const message of fromAtlas) expect(parseGmScreenMessage(JSON.parse(JSON.stringify(message))), message.t).toEqual(message);
     for (const message of fromDevice) expect(parseDeviceMessage(JSON.parse(JSON.stringify(message))), message.t).toEqual(message);
+  });
+
+  it('read a state without the online table\'s flag, as an older Atlas sends it, and leave out a flag that is no switch', () => {
+    const older = remote.player;
+    const read = (player: unknown): unknown => (parseGmScreenMessage({ t: 'keys', state: { ...keys, player } }) as Extract<GmScreenMessage, { t: 'keys' }> | null)?.state.player;
+    expect(read(older)).toEqual(older);
+    expect(read({ ...older, online: 'yes' })).toEqual(older);
+    expect(read({ ...older, online: true })).toEqual({ ...older, online: true });
   });
 
   it('read a message only from the end that sends it', () => {

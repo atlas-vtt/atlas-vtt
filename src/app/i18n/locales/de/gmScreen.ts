@@ -29,6 +29,7 @@ export const gmScreen: Translation = {
   'gmScreen.relayTooOld': 'Der Server kann {name} noch nicht ausführen. Versuch es später noch einmal.',
   'gmScreen.tooMany': '{name} behält höchstens 16 Geräte. Entferne zuerst eines.',
   'gmScreen.full': 'Als du das letzte Gerät zugelassen hast, waren alle Plätze von {name} belegt. Es kann erneut fragen, sobald ein anderes Gerät geht.',
+  'gmScreen.knockNotice': '{device} möchte {name} beitreten. Öffne den SL-Schirm, um es zuzulassen.',
   'gmScreen.end.elsewhere': '{name} wurde in einem anderen Vault oder auf einem anderen Computer gestartet und hat hier deshalb aufgehört.',
   'gmScreen.end.noAccess': '{name} wurde beendet. {reason}',
   'gmScreen.end.refused': 'Der Server hat {name} beendet.',

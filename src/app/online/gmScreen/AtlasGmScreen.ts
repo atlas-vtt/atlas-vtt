@@ -8,7 +8,9 @@ import { channelCryptoOf } from './channel/index.ts';
 import type { GmScreenRecord } from './gmScreenRecord.ts';
 import { relayRooms, type RoomAccount } from './gmScreenRoom.ts';
 import { GmScreenSession } from './GmScreenSession.ts';
-import { setGmScreenSession } from './gmScreenSlot.ts';
+import { gmScreenControlShown, setGmScreenSession } from './gmScreenSlot.ts';
+import { plugKeysScreen } from './keys/atlasKeys.ts';
+import { noticeKnocks } from './knockNotice.ts';
 import { plugAtlasStatblocks } from './statblocks/atlasStatblocks.ts';
 
 /**
@@ -20,7 +22,8 @@ export class AtlasGmScreen {
   readonly session: GmScreenSession;
   /** The record as last kept, for online play's data file. */
   saved: GmScreenRecord | null;
-  private readonly unplugStatblocks: () => void;
+  /** The plugged screens and the knock notice, stopped once the room is let go of. */
+  private readonly stops: Array<() => void>;
 
   /** `save` writes online play's data file, which holds `saved`. */
   constructor(app: App, saved: GmScreenRecord | null, account: RoomAccount, save: () => void) {
@@ -38,7 +41,11 @@ export class AtlasGmScreen {
       notice: (text) => showNotice(text),
       now: () => Date.now(),
     }, saved);
-    this.unplugStatblocks = plugAtlasStatblocks(app, this.session);
+    this.stops = [
+      plugKeysScreen(app, this.session, companionTimers()),
+      plugAtlasStatblocks(app, this.session),
+      noticeKnocks(this.session, gmScreenControlShown, showNotice),
+    ];
     setGmScreenSession(this.session);
     void this.session.resume();
   }
@@ -46,7 +53,7 @@ export class AtlasGmScreen {
   /** Lets go of the room's connection; the room stays on the relay for the next load. */
   dispose(): void {
     setGmScreenSession(null);
-    this.unplugStatblocks();
     this.session.close();
+    for (const stop of this.stops.splice(0)) stop();
   }
 }
