@@ -637,11 +637,6 @@ export class PixiRendererOrchestrator { // Renamed class
         if (this.pinRenderer) {
             currentViewport.addChild(this.pinRenderer.getPinContainer());
         }
-    } else if (this.tokenRenderer && this.gridSystem) {
-        // If TokenRenderer exists, ensure it has the latest gridSystem if it was re-created (though not typical)
-        // And ensure the callback is correctly wired if SelectionManager was created after TokenRenderer
-        // For simplicity, we assume gridSystem isn't re-created, just updated.
-        // And TokenRenderer is given the callback at its creation.
     }
     
     // Initialize or update MeasureRenderer if it doesn't exist yet
@@ -1372,9 +1367,6 @@ export class PixiRendererOrchestrator { // Renamed class
     if (this.audioRenderer && this.audioTool) {
       this.tokenRenderer.setAudioPointerDownHandler((worldX, worldY, _e) => {
         return this.handleAudioPointerDown(worldX, worldY);
-      });
-      this.tokenRenderer.setAudioPointerMoveHandler((_worldX, _worldY, _e) => {
-        // Future: hover feedback for audio sources
       });
     }
   }

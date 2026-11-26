@@ -231,7 +231,6 @@ export class TokenRenderer {
 
   // Audio provider pattern — wired by PixiRendererOrchestrator
   private audioPointerDownHandler?: (worldX: number, worldY: number, e: FederatedPointerEvent) => boolean;
-  private audioPointerMoveHandler?: (worldX: number, worldY: number, e: FederatedPointerEvent) => void;
 
   constructor(
     obsApp: ObsidianApp,
@@ -1753,10 +1752,6 @@ export class TokenRenderer {
     this.audioPointerDownHandler = fn;
   }
 
-  public setAudioPointerMoveHandler(fn: (worldX: number, worldY: number, e: FederatedPointerEvent) => void): void {
-    this.audioPointerMoveHandler = fn;
-  }
-
   // ─── Viewport-level event dispatch ──────────────────────────────────
 
   /** Circle-collision hit test against all visible token sprites; in a pile the token drawn on top wins. */
@@ -2197,9 +2192,8 @@ export class TokenRenderer {
       return;
     }
 
-    // Audio tool: pointer move for cursor updates
-    if (activeTool === 'audio' && this.audioPointerMoveHandler) {
-      this.audioPointerMoveHandler(worldPos.x, worldPos.y, e);
+    // Audio tool: a crosshair where a press places or picks a sound
+    if (activeTool === 'audio' && this.audioPointerDownHandler) {
       this.applyCursor('crosshair');
       return;
     }

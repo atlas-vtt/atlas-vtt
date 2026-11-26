@@ -1056,7 +1056,7 @@ describe('TokenRenderer Integration Tests', () => {
       // Each tool takes the move with a cursor of its own, as it does on the map
       tokenRenderer.setWallPointerMoveHandler(() => undefined);
       tokenRenderer.setWallCursorProvider(() => 'crosshair');
-      tokenRenderer.setAudioPointerMoveHandler(() => undefined);
+      tokenRenderer.setAudioPointerDownHandler(() => false);
       tokenRenderer.setStairsTool({ pointerDown: () => true, pointerMove: () => undefined, pointerUp: () => undefined, doubleClick: () => undefined, cursorAt: () => 'crosshair' });
       tokenRenderer.setAnnotationHandlers({ gripDown: () => false, pointerDown: () => false, menuAt: () => false, openMenu: () => false, dragAlong: () => undefined, cursorAt: () => (tool === 'draw' ? 'crosshair' : null), leave: () => undefined });
       // The fog tool's own brush, ring and guide listen to the same moves
