@@ -87,7 +87,7 @@ export class FloorPicture {
 
   /** The floor's scene from now on, or none; null also forgets what was sent of the scene before. */
   setScene(scene: SharedScene | null): void {
-    this.tokens.setScene(scene?.id ?? null);
+    this.tokens.feed.setScene(scene);
     this.live?.setScene(scene);
     this.inputs.feed.setScene(scene);
     this.explored.feed.setScene(scene);
@@ -96,7 +96,7 @@ export class FloorPicture {
 
   /** The scene is being read again: nothing goes out until it is set. */
   clear(): void {
-    this.tokens.setScene(null);
+    this.tokens.feed.setScene(null);
     this.inputs.feed.setScene(null);
     this.explored.feed.setScene(null);
     this.layers.feed.setScene(null);
@@ -127,7 +127,7 @@ export class FloorPicture {
 
   /** The tokens, inputs, layers and owned tokens again, whole, to one player or to all of the picture's. */
   resend(to?: string): void {
-    this.tokens.resend(to);
+    this.tokens.feed.resend(to);
     this.inputs.feed.resend(to);
     this.explored.feed.resend(to);
     this.layers.feed.resend(to);
@@ -135,7 +135,7 @@ export class FloorPicture {
   }
 
   resync(from: string, message: PlayerResync): void {
-    if (message.of === 'tokens') this.tokens.resync(from, message.scene);
+    if (message.of === 'tokens') this.tokens.feed.resync(from, message);
     else this.inputs.feed.resync(from, message);
   }
 
@@ -158,7 +158,7 @@ export class FloorPicture {
   }
 
   stop(): void {
-    this.tokens.stop();
+    this.tokens.feed.stop();
     this.live?.stop();
     this.inputs.feed.stop();
     this.explored.feed.stop();
