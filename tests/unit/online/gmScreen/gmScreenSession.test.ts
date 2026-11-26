@@ -161,7 +161,7 @@ describe('the GM screen\'s session at a room of its own', () => {
     expect(readGmScreenLink(rig.session.view().link)).toEqual(fresh?.link);
   });
 
-  it('stops: the room is ended, the secret forgotten, and nothing is contacted afterwards', async () => {
+  it('stops: the room is ended, the secret forgotten, and nothing is contacted once the room is seen ended', async () => {
     const rig = await started();
     await allowed(rig, PHONE);
     const socket = rig.socket();
@@ -171,10 +171,33 @@ describe('the GM screen\'s session at a room of its own', () => {
     expect(rig.saved.at(-1)?.secret).toBeNull();
     // The link and the devices stay for the next start.
     expect(rig.saved.at(-1)?.devices.map((device) => device.id)).toEqual([PHONE]);
+    // A connection of its own sees the room ended: the relay knows it no more.
+    rig.socket().drop(CLOSE.ended);
+    await rig.settle();
+    expect(rig.saved.at(-1)?.ending).toEqual([]);
     rig.timers.advance(10 * 60_000);
     await rig.settle();
-    expect(RelaySocket.all).toHaveLength(1);
+    expect(RelaySocket.all).toHaveLength(2);
     expect(rig.created).toHaveLength(1);
+  });
+
+  it('stops for certain when its connection died unnoticed: the end it sent went nowhere, and a connection of its own ends the room', async () => {
+    const rig = await started();
+    await allowed(rig, PHONE);
+    const { secret } = rig.saved.at(-1) ?? {};
+    const dead = rig.socket();
+    rig.session.stop();
+    expect(dead.framesOf('end')).toHaveLength(1);
+    expect(rig.saved.at(-1)?.ending).toEqual([{ code: rig.saved.at(-1)?.link.code, secret }]);
+    // The room is still there: the relay never got that end.
+    const again = rig.socket();
+    expect(again).not.toBe(dead);
+    again.welcome();
+    await rig.settle();
+    expect(again.framesOf('hello')).toEqual([expect.objectContaining({ secret }) as unknown]);
+    expect(again.framesOf('end')).toHaveLength(1);
+    expect(rig.saved.at(-1)?.ending).toEqual([]);
+    expect(rig.session.view().status).toBe('stopped');
   });
 
   it('comes back after the connection dropped, with its devices and their channels', async () => {

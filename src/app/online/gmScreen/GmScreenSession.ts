@@ -22,7 +22,7 @@ const NAME = t('gmScreen.name');
  * The GM screen's session on Atlas's side: its room at the relay (a second connection beside a table's,
  * sharing nothing with it), the devices the GM lets in and removes, and an encrypted channel to each
  * connected device, which the plugged screens send through. Nothing is contacted before `start` or a
- * `resume` of a room that ran, nor after `stop`.
+ * `resume` of a room that ran, nor after `stop` once its room is seen ended.
  */
 export class GmScreenSession implements GmScreenOutlet {
   private record: GmScreenRecord | null;
@@ -36,7 +36,7 @@ export class GmScreenSession implements GmScreenOutlet {
   /** Devices allowed in this session that have not been told their code yet. */
   private readonly fresh = new Set<string>();
   private readonly knocks: GmScreenKnocks;
-  /** Rooms stopped while the relay could not be reached, ended once it can be. */
+  /** Rooms stopped and not yet seen ended: each is ended, or found ended, once the relay can be reached. */
   private readonly ends: RoomEnds;
   private readonly router = new ScreenRouter();
   private problem: string | null = null;
@@ -114,13 +114,13 @@ export class GmScreenSession implements GmScreenOutlet {
   }
 
   /**
-   * Ends the room on the relay, and with it every device's connection, at once where the relay can be
-   * reached and otherwise as soon as it can be; the link and the devices are kept for the next start.
+   * Ends the room and every device's connection: at once where the connection is up, and by a connection of its own
+   * that sees it ended (`RoomEnds`), since a socket that died unnoticed takes it nowhere. Link and devices stay.
    */
   stop(): void {
     if (this.phase === 'stopped') return;
     if (this.phase === 'running' && this.connectionStatus === 'online') this.connection?.end();
-    else if (this.record !== null) this.keep(withRoomEnding(this.record));
+    if (this.record !== null) this.keep(withRoomEnding(this.record));
     this.halt(null);
     this.ends.end(this.record?.ending ?? []);
   }

@@ -112,8 +112,9 @@ describe('the DM screen\'s control for the GM screen', () => {
   it('stops: the room ends and the panel offers Start again', async () => {
     const rig = shown();
     await startedFromPanel(rig);
+    const socket = rig.socket();
     fireEvent.click(screen.getByRole('button', { name: 'Stop Sidekick' }));
-    expect(rig.socket().framesOf('end')).toHaveLength(1);
+    expect(socket.framesOf('end')).toHaveLength(1);
     expect(within(panel()).getByRole('button', { name: 'Start Sidekick' })).toBeTruthy();
   });
 });
