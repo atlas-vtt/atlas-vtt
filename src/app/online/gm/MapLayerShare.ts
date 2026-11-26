@@ -182,7 +182,7 @@ export class MapLayerShare {
     const fog = this.fog.get(levelObjects(state).fog, levelMapKey(state.mapPath, state));
     this.publishAnnotations(scene.id, state, fog, source);
     const list = sharedInitiative({
-      state, shown: settings.showInitiative, showNames: settings.showNames, fromTurn: settings.initiativeFromTurn === true, rules: source.rules(),
+      state, shown: settings.showInitiative, showNames: settings.showNames, fromTurn: settings.initiativeFromTurn === true, rules: source.rules(), presets: source.presets(),
       bannerOff: settings.turnBanner === false, movesOnTurn: settings.movesOnTurn === true, dock: settings.initiativeDock ?? 'right',
       badge: (tokenId) => this.ports.badgeOf?.(tokenId) ?? null,
       tokenAlias: (tokenId) => this.ports.tokenAlias?.(tokenId),

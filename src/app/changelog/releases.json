@@ -2,6 +2,11 @@
   "version": "0.20.1-beta.0",
   "releases": [
     {
+      "version": "0.20.1-beta.0",
+      "title": "Coming in 0.20.1",
+      "markdown": "## Fixed\n\n- Atlas Online: on a map that plays by a game system preset you made, players see initiative grouped by that preset's sides, as on your tracker and the player window\n- Initiative: taking the combatant whose turn it is out of the initiative, or deleting its token, now passes the turn by defeated combatants, as Next turn does"
+    },
+    {
       "version": "0.20.0",
       "date": "2026-11-25",
       "title": "Remote Control and Appearance Settings",
