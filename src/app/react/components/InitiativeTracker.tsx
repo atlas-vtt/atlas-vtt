@@ -244,7 +244,7 @@ export const InitiativeTracker: React.FC = () => {
   );
 
   // Not drawn once closed and gone
-  if (!drawn) return <><InitiativeTokenSync />{null}</>;
+  if (!drawn) return <><InitiativeTokenSync defeated={defeated} />{null}</>;
 
   const card = (entry: InitiativeEntry, group: string, inTurn = false): React.ReactElement => (
     <InitiativeCard
@@ -278,7 +278,7 @@ export const InitiativeTracker: React.FC = () => {
 
   return (
     <>
-    <InitiativeTokenSync />
+    <InitiativeTokenSync defeated={defeated} />
     <div ref={setRoot} className={trackerClasses}>
       {/* Its surface is a layer of its own, so the theme's ivy can lie behind it; near it, its bars show */}
       <div className="atlas-initiative-panel__surface" aria-hidden="true" />

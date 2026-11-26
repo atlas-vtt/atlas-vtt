@@ -92,7 +92,7 @@ describe('the combatants of the initiative tracker', () => {
 
     render(<InitiativeTracker />);
 
-    expect(state.removeFromInitiative.mock.calls).toEqual([['entry-rat']]);
+    expect(state.removeFromInitiative.mock.calls).toEqual([['entry-rat', new Set()]]);
   });
 
   it('marks the combatants the players do not see: those whose token is hidden', () => {
