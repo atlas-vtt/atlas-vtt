@@ -1,6 +1,7 @@
 /**
  * What adding, changing and removing scene objects writes into a draft of a store, with all that
- * follows from it as `OBJECT_KINDS` says. The view store's actions write through here.
+ * follows from it as `OBJECT_KINDS` says. The view store's actions write through here, and so do
+ * writes that are not the view's own (what online players draw, measure or ask for).
  */
 
 import { isLocked } from '../annotations/annotationLock';
@@ -16,7 +17,8 @@ import {
 
 /**
  * A draft of a store's scene, as far as object writes reach it. A draft without a selection,
- * popovers or audio flag (an action's narrower one) has nothing of them to change.
+ * popovers or audio flag (an action's narrower one, a store online players write through) has
+ * nothing of them to change.
  */
 export type ObjectsDraft = LevelView & { [Popover in ObjectPopover]?: string | null } & {
   objects: SceneObjectRecords;
