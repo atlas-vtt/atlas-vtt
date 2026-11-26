@@ -29,9 +29,9 @@ export function showLightMenu(context: LightingMenuContext, lightId: string, scr
       type: 'item',
       label: light.hidden ? t('light.turnOn') : t('light.turnOff'),
       icon: light.hidden ? 'lightbulb' : 'lightbulb-off',
-      onClick: () => context.store.getState().updateLight(lightId, { hidden: !light.hidden }),
+      onClick: () => context.store.getState().patchObject('lights', lightId, { hidden: !light.hidden }),
     },
-    { type: 'item', label: t('light.delete'), icon: 'trash-2', onClick: () => context.store.getState().deleteLight(lightId) },
+    { type: 'item', label: t('light.delete'), icon: 'trash-2', onClick: () => context.store.getState().removeObjects([lightId]) },
   ];
   openContextMenuGlobal(entries, { x: screenX, y: screenY });
 }

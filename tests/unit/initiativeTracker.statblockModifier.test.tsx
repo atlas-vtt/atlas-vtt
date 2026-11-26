@@ -58,7 +58,7 @@ function setup(): { app: App; store: ViewAtlasStore } {
 }
 
 function add(store: ViewAtlasStore, name: string, statblockPath?: string, ownModifier = 0): string {
-  const token = store.getState().addToken({ kind: 'character', name, x: 0, y: 0, imagePath: `tokens/${name}.webp`, ...(statblockPath && { statblockPath }) });
+  const token = store.getState().addTokens([{ kind: 'character', name, x: 0, y: 0, imagePath: `tokens/${name}.webp`, ...(statblockPath && { statblockPath }) }])[0]!;
   const tokenId = typeof token === 'string' ? token : Object.values(store.getState().objects.tokens).find((t) => t.kind === 'character' && t.name === name)!.id;
   return store.getState().addToInitiative({ ...initiativeEntryForToken(store.getState().objects.tokens[tokenId]!), initiativeModifier: ownModifier });
 }

@@ -3,8 +3,8 @@
  * and so one undo step. A gesture that makes several wraps them in a history transaction.
  *
  * A locked drawing or text takes none of these changes but its unlocking (`annotationLock.ts`):
- * the actions leave it as it is and change the others they are handed. Only `clearAnnotations`
- * removes it.
+ * the actions leave it as it is and change the others they are handed. They are removed as every
+ * scene object (`removeObjects`), which leaves a locked one too; only `clearAnnotations` removes it.
  */
 
 import { newGroupId } from '../annotations/annotationCopies';
@@ -17,7 +17,8 @@ import {
 } from '../annotations/annotationTypes';
 import { placedOnViewedLevel } from '../levels/sceneLevels';
 import type { DrawingStroke, TextElement } from '../types';
-import { changeDrawing, changeText, newAnnotationId, newDrawing, removeAnnotations, shiftDrawing, type AnnotationsDraft } from './annotationWrites';
+import { changeDrawing, changeText, newAnnotationId, newDrawing, shiftDrawing, type AnnotationsDraft } from './annotationWrites';
+import { removeObjectsIn } from './sceneObjectWrites';
 
 export interface AnnotationsSlice {
   /** Adds a text on the level shown, above every annotation there unless its data names an `order`, and returns its id. */
@@ -43,8 +44,6 @@ export interface AnnotationsSlice {
   moveAnnotations: (ids: readonly string[], dx: number, dy: number) => void;
   /** Gives each listed annotation the place named for it (a group turned or scaled as one), in one write; a field given as undefined is removed. A locked one keeps its place. */
   placeAnnotations: (places: Readonly<Record<string, AnnotationPlace>>) => void;
-  /** Removes drawings and texts in one write; other ids stay selected, and so does a locked one, which stays. */
-  deleteAnnotations: (ids: readonly string[]) => void;
   /**
    * Puts annotations of the level shown above (`front`) or below (`back`) every other one there,
    * keeping the order they have among themselves; nothing where they already lie so. A locked one
@@ -166,8 +165,6 @@ export function createAnnotationsActions(set: ImmerSet, get: () => AnnotationsDr
       }
     }),
 
-    deleteAnnotations: (ids) => set((draft) => removeAnnotations(draft, unlockedIds(ids, draft.objects))),
-
     orderAnnotations: (ids, to) => {
       const moves = reordered(annotationStack(get()), unlockedIds(ids, get().objects), to);
       // Already there, in their order: no write, and so no undo step that does nothing
@@ -206,7 +203,7 @@ export function createAnnotationsActions(set: ImmerSet, get: () => AnnotationsDr
       if (removedIds.some((id) => isLocked(get().objects.drawings[id]))) return ids;
       set((draft) => {
         const { drawings } = draft.objects;
-        removeAnnotations(draft, removedIds.filter((id) => drawings[id]));
+        removeObjectsIn(draft, removedIds.filter((id) => drawings[id]), 'stay');
         for (const one of added) {
           const drawing = newDrawing(draft, one, undefined);
           drawings[drawing.id] = drawing;
@@ -218,7 +215,7 @@ export function createAnnotationsActions(set: ImmerSet, get: () => AnnotationsDr
 
     clearAnnotations: (scope) => {
       const gone = annotationStack(get()).filter(({ entry }) => CLEARED[scope](entry)).map(({ id }) => id);
-      if (gone.length > 0) set((draft) => removeAnnotations(draft, gone));
+      if (gone.length > 0) set((draft) => removeObjectsIn(draft, gone, 'go'));
     },
   };
 }

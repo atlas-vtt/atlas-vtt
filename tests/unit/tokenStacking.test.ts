@@ -107,7 +107,7 @@ describe('placeTokens', () => {
 describe('tokens put on the map', () => {
   it('places a new token above the tokens that lie there', () => {
     const store = createStore(token('old', SQUARE, 5), token('other', ELSEWHERE, 2));
-    const id = store.getState().addToken({ imagePath: 'new.png', ...SQUARE });
+    const id = store.getState().addTokens([{ imagePath: 'new.png', ...SQUARE }])[0]!;
     expect(stack(store.getState().objects.tokens).at(-1)).toBe(id);
   });
 

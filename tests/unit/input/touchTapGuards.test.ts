@@ -140,7 +140,7 @@ describe('undo and redo by a tap', () => {
       fingers: { use: 'tool', notePen: () => undefined },
     });
     const token: Character = { id: 'token', x: 0, y: 0, size: 1, imagePath: '', kind: 'character', name: 'Token' };
-    store.getState().addToken(token);
+    store.getState().addTokens([token]);
     getHistoryStore(store)?.getState().clear();
     return { store, undo: host.undo, redo: host.redo, x: () => store.getState().objects.tokens['token']!.x };
   }

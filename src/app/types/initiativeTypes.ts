@@ -52,8 +52,9 @@ export interface InitiativeEntry {
   hiddenFromPlayers?: true | undefined;
 
   /**
-   * Whether this entry has the current turn. A fight by sides gives the turn to a side
-   * (`InitiativeState.sides`): there the turn is never this entry's, though one may still carry the mark.
+   * The turn is at this entry: in a running fight in turn order or by cards exactly one carries it, and it
+   * holds the turn unless it delayed (`currentTurn`). A fight by sides gives the turn to a side
+   * (`InitiativeState.sides`) and no entry carries it. Files keep its place as `currentIndex` too (`initiativeFile.ts`).
    */
   isActive: boolean;
 
@@ -132,9 +133,6 @@ export interface InitiativeState {
   /** All entries in the initiative order */
   entries: InitiativeEntry[];
 
-  /** Index of the currently active entry */
-  currentIndex: number;
-
   /** Current combat round number */
   round: number;
 
@@ -168,7 +166,6 @@ export interface InitiativeState {
  */
 export const createDefaultInitiativeState = (): InitiativeState => ({
   entries: [],
-  currentIndex: -1,
   round: 0,
   isActive: false,
 });

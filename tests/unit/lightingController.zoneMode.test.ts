@@ -46,7 +46,7 @@ describe('the lighting tool\'s zone mode', () => {
     const { controller, store, eventBus } = setup();
     store.getState().setActiveTool('wall');
     eventBus.emit('wall-submode-changed', 'light-zone');
-    const id = store.getState().addLightZone({ polygon: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }], ambient: 0 });
+    const id = store.getState().addObject('lightZones', { polygon: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }], ambient: 0 });
     store.getState().openLightZonePopover(id);
     expect(controller.handleEscape()).toBe(true);
     expect(store.getState().lightZonePopover).toBeNull();
@@ -63,7 +63,7 @@ describe('closing the zone popover', () => {
     made.store.getState().setActiveTool('wall');
     made.eventBus.emit('wall-submode-changed', 'light-zone');
     getHistoryStore(made.store)!.getState().clear();
-    const zone = made.store.getState().addLightZone({ polygon: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }], ambient: 0 });
+    const zone = made.store.getState().addObject('lightZones', { polygon: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }], ambient: 0 });
     made.store.getState().openLightZonePopover(zone);
     return { ...made, zone };
   }

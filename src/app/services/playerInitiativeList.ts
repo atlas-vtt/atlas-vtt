@@ -15,6 +15,7 @@ import { firstCards, listSegments, type ListSegment } from '../initiative/listSe
 import { combatantConditions, type ActiveCondition } from '../utils/activeConditions';
 import { entryConditions } from '../initiative/combatantConditions';
 import { entryToken } from '../initiative/party';
+import { currentTurn } from '../initiative/turnHolders';
 import { isOffMap } from '../tokens/offMap';
 
 /** What the players' list reads from a combatant's token. */
@@ -142,7 +143,7 @@ export function playerInitiativeList(scene: PlayersInitiativeScene & { readonly 
     })
     .sort((a, b) => a.entry.order - b.entry.order);
   const bySides = listedBySides(initiative, initiativeRules);
-  const turn = initiative.isActive && !bySides ? initiative.entries.find((entry) => entry.isActive && !entry.delayed) : undefined;
+  const turn = currentTurn(initiative);
   return {
     combatants,
     isActive: initiative.isActive,
@@ -152,7 +153,7 @@ export function playerInitiativeList(scene: PlayersInitiativeScene & { readonly 
     sides,
     firstSide: initiative.sides?.first ?? firstBuiltInSide(sides),
     activeSide: initiative.sides?.active ?? null,
-    turnOrder: turn ? turn.order : null,
+    turnOrder: turn?.kind === 'combatant' ? turn.entry.order : null,
   };
 }
 

@@ -42,10 +42,10 @@ describe('a locked drawing or text in the store', () => {
     state.updateText(s.label, { text: 'Other' });
     state.moveAnnotations([s.pen, s.label], 10, 10);
     state.placeAnnotations({ [s.pen]: { rotation: 90 }, [s.label]: { x: 0, y: 0, rotation: 90, scale: 2 } });
-    state.deleteAnnotations([s.pen, s.label]);
+    state.removeObjects([s.pen, s.label]);
     state.orderAnnotations([s.pen, s.label], 'front');
     state.replaceDrawings([s.pen], [PEN]);
-    state.removeMapObjects([s.pen, s.label]);
+    state.removeObjects([s.pen, s.label]);
     expectUntouched(s);
     expect(s.steps()).toBe(before);
   });
@@ -92,7 +92,7 @@ describe('a locked drawing or text in the store', () => {
 
   it('is not deleted, by the menu or by Delete, Backspace and cut, and stays selected', () => {
     const s = locked();
-    s.store.getState().deleteAnnotations([s.pen, s.label, s.free]);
+    s.store.getState().removeObjects([s.pen, s.label, s.free]);
     expectUntouched(s);
     expect(s.drawings()[s.free]).toBeUndefined();
     expect(s.store.getState().selectedIds).toEqual([s.pen, s.label, s.note]);
@@ -101,7 +101,7 @@ describe('a locked drawing or text in the store', () => {
     expectUntouched(s);
     expect(s.texts()[s.note]).toBeUndefined();
     expect(s.store.getState().selectedIds).toEqual([s.pen, s.label]);
-    s.store.getState().removeMapObjects([s.pen, s.label]);
+    s.store.getState().removeObjects([s.pen, s.label]);
     expectUntouched(s);
   });
 

@@ -438,7 +438,7 @@ export class PinRenderer {
           const worldPos = this.viewport.toWorld(moveEvent.global);
           const worldDx = worldPos.x - worldStartPos.x;
           const worldDy = worldPos.y - worldStartPos.y;
-          this.store.getState().updateNotePin(pinId, {
+          this.store.getState().patchObject('pins', pinId, {
             x: initialPinPos.x + worldDx,
             y: initialPinPos.y + worldDy,
           });
@@ -456,7 +456,7 @@ export class PinRenderer {
       const onPointerCancel = (): void => {
         stopListening();
         if (!isDragging) return;
-        this.store.getState().updateNotePin(pinId, initialPinPos);
+        this.store.getState().patchObject('pins', pinId, initialPinPos);
         this.store.getState().setPersistenceEnabled(true);
         abandonHistoryTransaction(this.store);
         this.viewport.plugins.resume('drag');
@@ -469,7 +469,7 @@ export class PinRenderer {
           this.store.getState().setPersistenceEnabled(true);
           const currentPin = levelObjects(this.store.getState()).pins[pinId];
           if (currentPin) {
-            this.store.getState().updateNotePin(pinId, { x: currentPin.x, y: currentPin.y });
+            this.store.getState().patchObject('pins', pinId, { x: currentPin.x, y: currentPin.y });
           }
           endHistoryTransaction(this.store);
           this.viewport.plugins.resume('drag');

@@ -77,8 +77,8 @@ describe('whom the map view\'s canvas is drawn for', () => {
     }));
     const token = (id: string, more: Partial<TokenEntity>): TokenEntity =>
       ({ id, kind: 'token', imagePath: '', size: 1, x: 0, y: 0, ...more } as TokenEntity);
-    store.getState().addToken(token('ghost', { ...GHOST, isHidden: true }));
-    store.getState().addToken(token('hero', { x: 180, y: 60, vision: { enabled: true } } as Partial<TokenEntity>));
+    store.getState().addTokens([token('ghost', { ...GHOST, isHidden: true })]);
+    store.getState().addTokens([token('hero', { x: 180, y: 60, vision: { enabled: true } } as Partial<TokenEntity>)]);
     await expect.poll(() => ['ghost', 'hero'].every((id) => view.getTokenRenderer()?.getTokenSprites()[id] instanceof Container)).toBe(true);
     const target = RenderTexture.create({ width: SIZE, height: SIZE });
     cleanup.push(() => {

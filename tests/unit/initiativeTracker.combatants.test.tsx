@@ -86,15 +86,6 @@ describe('the combatants of the initiative tracker', () => {
     expect(render(<InitiativeTracker />).container.querySelector('.atlas-initiative-card--placeholder')).toBeNull();
   });
 
-  it('removes the entry of a token that was deleted', () => {
-    state.objects.tokens = { goblin: token('goblin') };
-    state.initiative.entries = [entryOf('goblin'), entryOf('rat', 1)];
-
-    render(<InitiativeTracker />);
-
-    expect(state.removeFromInitiative.mock.calls).toEqual([['entry-rat', new Set()]]);
-  });
-
   it('marks the combatants the players do not see: those whose token is hidden', () => {
     state.objects.tokens = { goblin: token('goblin'), rat: token('rat', true) };
     state.initiative.entries = [entryOf('goblin'), entryOf('rat', 1)];

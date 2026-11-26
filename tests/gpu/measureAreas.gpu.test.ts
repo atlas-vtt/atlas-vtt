@@ -99,7 +99,7 @@ describe('a measured area in the players\' picture', () => {
   it('is left out with its body when the GM keeps it to themselves', async () => {
     const s = await kept([]);
     const empty = await scene();
-    s.store.getState().updateMeasure(s.id, { hidden: true });
+    s.store.getState().patchObject('measures', s.id, { hidden: true });
     expect(samePixels(s.frame(), empty.frame())).toBe(true);
     expect(differingPixels(s.canvas(), empty.canvas())).toBeGreaterThan(8000);
   });
@@ -117,15 +117,15 @@ describe('an area that stops at a wall', () => {
     const empty = await scene();
     const none = empty.frame();
     expect(pastWall(open, none)).toBeGreaterThan(1500);
-    s.store.getState().addWall(WALL);
-    empty.store.getState().addWall(WALL);
+    s.store.getState().addObject('walls', WALL);
+    empty.store.getState().addObject('walls', WALL);
     const cut = s.frame();
     expect(pastWall(cut, empty.frame())).toBe(0);
     // Left of the wall it is the area it was, up to where its outline turns to run along the wall. The cut
     // outline's corners lie on eighths of a pixel, which moves its edge by less than a tenth of one: only
     // pixels on the very edge of the disc may fall to the other side of it.
     expect(offEdge(cut, open, 150)).toBe(0);
-    s.store.getState().updateMeasure(s.id, { walls: false });
+    s.store.getState().patchObject('measures', s.id, { walls: false });
     expect(samePixels(s.frame(), open)).toBe(true);
   });
 
@@ -137,8 +137,8 @@ describe('an area that stops at a wall', () => {
     const empty = await scene();
     // Without the wall the cells' tint reaches to their far edge.
     expect(differingIn(s.frame(), empty.frame(), 182, 100, 198, 140)).toBeGreaterThan(400);
-    s.store.getState().addWall(through);
-    empty.store.getState().addWall(through);
+    s.store.getState().addObject('walls', through);
+    empty.store.getState().addObject('walls', through);
     const cut = s.frame();
     const bare = empty.frame();
     expect(beyond(cut, bare)).toBe(0);
@@ -152,8 +152,8 @@ describe('an area that stops at a wall', () => {
   it('is cut while it is made, too', async () => {
     const s = await scene();
     const empty = await scene();
-    s.store.getState().addWall(WALL);
-    empty.store.getState().addWall(WALL);
+    s.store.getState().addObject('walls', WALL);
+    empty.store.getState().addObject('walls', WALL);
     s.store.getState().setMeasureTool({ mode: 'circle' });
     s.measureFrom(CENTRE.x, CENTRE.y, END.x, END.y, true);
     await measureMotionDone();

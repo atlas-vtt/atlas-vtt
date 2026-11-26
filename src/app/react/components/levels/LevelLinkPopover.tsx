@@ -64,7 +64,7 @@ function LevelLinkPopover({ linkId }: { linkId: string }): React.ReactElement | 
   const toggle = (level: SceneLevel): void => {
     const next = joined.includes(level.id) ? joined.filter((id) => id !== level.id) : [...joined, level.id];
     // Kept bottom first, as the scene lists its levels.
-    store.getState().updateLevelLink(link.id, { levels: levels.map((entry) => entry.id).filter((id) => id === here || next.includes(id)) });
+    store.getState().patchObject('levelLinks', link.id, { levels: levels.map((entry) => entry.id).filter((id) => id === here || next.includes(id)) });
   };
 
   return (
@@ -100,14 +100,14 @@ function LevelLinkPopover({ linkId }: { linkId: string }): React.ReactElement | 
           value={linkDirection(link)}
           options={DIRECTIONS}
           ariaLabel={t('levels.stairsWay')}
-          onChange={(direction) => store.getState().updateLevelLink(link.id, { direction: direction === 'both' ? undefined : direction })}
+          onChange={(direction) => store.getState().patchObject('levelLinks', link.id, { direction: direction === 'both' ? undefined : direction })}
         />
         {linkTargets(link, here, levels).length === 0 && <p className="atlas-light-popover__hint">{t('levels.stairsNowhere')}</p>}
         <FlightRow link={link} walkable={mayHoldFlight(link.polygon) && joined.length === 2} />
       </div>
       <div className="atlas-light-popover__section atlas-light-popover__actions">
         <span />
-        <Button variant="ghost" size="sm" className="atlas-light-popover__delete" onClick={() => store.getState().deleteLevelLink(link.id)}>
+        <Button variant="ghost" size="sm" className="atlas-light-popover__delete" onClick={() => store.getState().removeObjects([link.id])}>
           <Trash2 />
           <span>{t('common.delete')}</span>
         </Button>
@@ -144,7 +144,7 @@ function FlightRow({ link, walkable }: { link: LevelLink; walkable: boolean }): 
   const id = useId();
   const walked = walkable && link.flight !== undefined;
   const setFoot = (foot: number | null): void => {
-    store.getState().updateLevelLink(link.id, { flight: foot === null ? undefined : { foot, rows: flightRows(link.polygon, foot, cell) } });
+    store.getState().patchObject('levelLinks', link.id, { flight: foot === null ? undefined : { foot, rows: flightRows(link.polygon, foot, cell) } });
   };
   return (
     <div className="atlas-light-popover__flicker">

@@ -75,15 +75,15 @@ export class LevelLinkEditor extends PolygonAreaEditor<LevelLink> {
           const from = viewedLevelId(state);
           const to = from === null ? null : firstLinkTarget(from, state.levels);
           if (from === null || to === null) return;
-          state.openLevelLinkPopover(state.addLevelLink({ polygon, levels: [from, to] }));
+          state.openLevelLinkPopover(state.addObject('levelLinks', { polygon, levels: [from, to] }));
         },
         reshape: (id, polygon) => {
           // Walked stairs keep their foot, and as many rows as they are cells long.
           const state = store.getState();
           const flight = levelLinkList(everyLevelObjects(state).levelLinks).find((link) => link.id === id)?.flight;
-          state.updateLevelLink(id, { polygon, ...(flight && { flight: { ...flight, rows: flightRows(polygon, flight.foot, state.grid?.size ?? 0) } }) });
+          state.patchObject('levelLinks', id, { polygon, ...(flight && { flight: { ...flight, rows: flightRows(polygon, flight.foot, state.grid?.size ?? 0) } }) });
         },
-        remove: (id) => store.getState().deleteLevelLink(id),
+        remove: (id) => store.getState().removeObjects([id]),
         mayBegin: () => {
           // The map's limit counts the stairs of every level.
           if (levelLinkList(everyLevelObjects(store.getState()).levelLinks).length < MAX_LEVEL_LINKS) return true;

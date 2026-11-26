@@ -233,7 +233,7 @@ describe('the bar above a selection, under a finger', () => {
   it('with Select more on, taps gather tokens, Delete removes them all in one undo step, and Done ends it', async () => {
     const m = await scene();
     const other: Character = { id: 'other', x: OTHER.x, y: OTHER.y, size: 1, imagePath: '', kind: 'character', name: 'Other' };
-    act(() => m.store.getState().addToken(other));
+    act(() => m.store.getState().addTokens([other])[0]!);
     await expect.poll(() => Object.keys(m.tokens.getTokenSprites()).length).toBe(2);
     getHistoryStore(m.store)?.getState().clear();
     await tap(TOKEN);

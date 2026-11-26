@@ -33,7 +33,7 @@ const WALLS: WallInput[] = [
 /** The scene's walls and a 16 px grid, as part of its setup: no undo step. */
 function withWalls(store: ViewAtlasStore): void {
   store.setState((state) => ({ grid: { ...state.grid, type: 'square', size: 16, offsetX: 0, offsetY: 0 } }));
-  for (const wall of WALLS) store.getState().addWall(wall);
+  for (const wall of WALLS) store.getState().addObject('walls', wall);
   store.temporal.getState().clear();
 }
 
@@ -111,7 +111,7 @@ describe('the fog tool\'s Room shape on the map', () => {
     const s = await scene();
     s.showMapImage(MAP);
     s.store.setState((state) => ({ grid: { ...state.grid, type: 'square', size: 16, offsetX: 0, offsetY: 0 } }));
-    for (const wall of RING_WALLS) s.store.getState().addWall(wall);
+    for (const wall of RING_WALLS) s.store.getState().addObject('walls', wall);
     s.store.temporal.getState().clear();
     s.store.getState().setFogTool({ shape: 'room' });
     s.store.getState().setActiveTool('fog');
@@ -140,7 +140,7 @@ describe('the fog tool\'s Room shape on the map', () => {
     const s = await scene();
     s.showMapImage(MAP);
     s.store.setState((state) => ({ grid: { ...state.grid, type: 'square', size: 16, offsetX: 0, offsetY: 0 } }));
-    for (const wall of RING_WALLS) s.store.getState().addWall(wall);
+    for (const wall of RING_WALLS) s.store.getState().addObject('walls', wall);
     s.store.getState().setFogTool({ shape: 'room' });
     s.store.getState().setActiveTool('fog');
     s.pointer('pointermove', 28, 64);

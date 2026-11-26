@@ -11,7 +11,7 @@ describe('history clear', () => {
     const history = getHistoryStore(store)!;
     beginHistoryTransaction(store);
     history.getState().clear();
-    store.getState().addWall({ type: 'solid', p1: { x: 0, y: 0 }, p2: { x: 1, y: 0 } });
+    store.getState().addObject('walls', { type: 'solid', p1: { x: 0, y: 0 }, p2: { x: 1, y: 0 } });
     expect(history.getState().pastStates).toHaveLength(1);
   });
 });

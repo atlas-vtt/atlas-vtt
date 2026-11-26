@@ -5,6 +5,7 @@ import { computeTokenPixelSize } from '../../../pixi/token-renderer/tokenSizing'
 import type { TokenEntity } from '../../../types';
 import type { WallSegment } from '../../../types/wallTypes';
 import { mapTokens } from '../../../tokens/offMap';
+import { patchObjectIn } from '../../../stores/sceneObjectWrites';
 import type { SceneState, SceneStore } from '../atlasView.ts';
 import { tokenLabel } from '../atlasView.ts';
 import { MoveRate } from '../moveCheck.ts';
@@ -155,11 +156,7 @@ export class PlayerDoorAsks {
     }
     // The GM chose to open it: a lock gives way too. Every ask for the door is answered as the store tells (`check`).
     this.store.setState((draft) => {
-      const wall = draft.objects.walls[wallId];
-      if (wall?.type !== 'door') return;
-      wall.closed = false;
-      delete wall.locked;
-      draft._audioDirty = true;
+      if (draft.objects.walls[wallId]?.type === 'door') patchObjectIn(draft, 'walls', wallId, { closed: false, locked: undefined });
     });
     // A store that took no write (players held on the presented scene) leaves the ask standing.
     this.check(this.store.getState());

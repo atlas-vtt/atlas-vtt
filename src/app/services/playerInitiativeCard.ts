@@ -1,5 +1,6 @@
 import { TURN_KEY_ATTRIBUTE } from '../initiative/motion/turnMotion';
 import { turnColor } from '../initiative/turnColor';
+import { holdsTurn } from '../initiative/turnHolders';
 import { nameShownToPlayers } from '../pixi/token-renderer/nameplateVisibility';
 import { woundShare } from '../initiative/woundShare';
 import { formatList, t } from '../i18n';
@@ -26,7 +27,7 @@ export function playerCardKey(entry: Pick<PlayerInitiativeEntry, 'tokenId' | 'na
 export function renderPlayerCard(parent: HTMLElement, { entry, token }: Combatant, look: PlayerInitiativeLook, combatActive: boolean): void {
   // Marked by its combatant, so it glides to its new place as the turn passes (`turnMotion.ts`)
   const card = parent.createDiv({ cls: 'atlas-initiative-card atlas-initiative-card--tile', attr: { role: 'listitem', [TURN_KEY_ATTRIBUTE]: playerCardKey(entry) } });
-  if (combatActive && entry.isActive) {
+  if (combatActive && holdsTurn(entry)) {
     card.addClass('atlas-initiative-card--active');
     card.setAttribute('aria-current', 'true');
   }

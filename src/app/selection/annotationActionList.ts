@@ -8,7 +8,7 @@ import type { ViewAtlasState } from '../storeFactory';
 import { actionOf, PRIMARY_ORDER, WHOLE_SELECTION, type SelectionAction } from './selectionActions';
 
 /** What the actions do to the scene. */
-export type AnnotationActionStore = Pick<ViewAtlasState, 'updateAnnotations' | 'orderAnnotations' | 'groupAnnotations' | 'ungroupAnnotations' | 'duplicateMapObjects' | 'deleteAnnotations'>;
+export type AnnotationActionStore = Pick<ViewAtlasState, 'updateAnnotations' | 'orderAnnotations' | 'groupAnnotations' | 'ungroupAnnotations' | 'duplicateMapObjects' | 'removeObjects'>;
 
 /** What the actions do beyond the drawings and texts themselves. */
 export interface AnnotationActionExtras {
@@ -111,7 +111,7 @@ export function annotationActions(
   actions.push({
     kind: 'run', id: WHOLE_SELECTION.delete, enabled: !locked || whole !== undefined, destructive: true, label: t('common.delete'), icon: 'trash',
     primary: { order: PRIMARY_ORDER.delete, label: t('common.delete') },
-    run: () => (whole ? whole.remove() : store.deleteAnnotations(ids)),
+    run: () => (whole ? whole.remove() : store.removeObjects(ids)),
   });
   return actions;
 }

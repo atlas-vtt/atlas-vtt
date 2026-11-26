@@ -32,7 +32,7 @@ function setup(walls: readonly WallInput[], offset: P = { x: 0, y: 0 }): { store
   store.getState().setPersistenceEnabled(false);
   store.getState().setActiveTool('wall');
   store.getState().setGrid({ ...store.getState().grid, type: 'square', size: CELL, offsetX: offset.x, offsetY: offset.y });
-  for (const wall of walls) store.getState().addWall(wall);
+  for (const wall of walls) store.getState().addObject('walls', wall);
   const bus = new EventEmitter();
   const editor = new RoomEditor({ viewport, store, eventBus: bus, bounds: () => ({ width: 2000, height: 2000 }), onActiveChange: () => undefined, canvas });
   bus.emit('wall-submode-changed', 'rooms');

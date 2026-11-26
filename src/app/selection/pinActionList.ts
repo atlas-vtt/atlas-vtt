@@ -33,7 +33,7 @@ export function pinActions(store: ViewAtlasStore, pin: NotePin, at?: { x: number
     {
       kind: 'run', id: WHOLE_SELECTION.delete, enabled: true, destructive: true, label: t('common.delete'), icon: 'trash',
       primary: { order: PRIMARY_ORDER.delete, label: t('common.delete') },
-      run: () => store.getState().deleteMapObject('pin', pin.id),
+      run: () => store.getState().removeObjects([pin.id]),
     },
   ];
 }

@@ -152,7 +152,7 @@ export function touchMaps(): { map: (view?: { width: number; height: number }) =
     const stopWatchingInput = watchInput(document);
 
     const token: Character = { id: 'token', x: TOKEN.x, y: TOKEN.y, size: 1, imagePath: '', kind: 'character', name: 'Token' };
-    store.getState().addToken(token);
+    store.getState().addTokens([token]);
     await expect.poll(() => Object.values(tokens.getTokenSprites()).filter((sprite) => sprite instanceof Container).length).toBe(1);
     getHistoryStore(store)?.getState().clear();
     await frame();

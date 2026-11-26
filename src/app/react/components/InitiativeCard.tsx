@@ -23,6 +23,7 @@ import { t } from '../../i18n';
 import { DealtCard } from './DealtCard';
 import { entryToken } from '../../initiative/party';
 import { turnColor } from '../../initiative/turnColor';
+import { holdsTurn } from '../../initiative/turnHolders';
 import { sideOf } from '../../initiative/sides';
 import { CardConditions } from './CardConditions';
 import { useMapConditions } from '../hooks/useMapConditions';
@@ -181,7 +182,7 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
     'atlas-initiative-card',
     !compact && 'atlas-initiative-card--tile',
     playerSide && 'atlas-initiative-card--ally',
-    entry.isActive && !bySides && 'atlas-initiative-card--active',
+    holdsTurn(entry) && !bySides && 'atlas-initiative-card--active',
     defeated && 'atlas-initiative-card--defeated',
     hiddenFromPlayers && 'atlas-initiative-card--hidden',
     offMap && 'atlas-initiative-card--off-map',

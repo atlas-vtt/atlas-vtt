@@ -46,11 +46,11 @@ describe('the cost of a drag that sight and light follow', () => {
       for (let link = 0; link < 8; link++) {
         const [angle, length] = [rand() * Math.PI * 2, 40 + rand() * 120];
         const [nx, ny] = [x + Math.cos(angle) * length, y + Math.sin(angle) * length];
-        store.getState().addWall({ type: 'solid', p1: { x, y }, p2: { x: nx, y: ny }, closed: true });
+        store.getState().addObject('walls', { type: 'solid', p1: { x, y }, p2: { x: nx, y: ny }, closed: true });
         [x, y] = [nx, ny];
       }
     }
-    for (let lamp = 0; lamp < 12; lamp++) store.getState().addLight({ x: rand() * MAP, y: rand() * MAP, emission: TORCH });
+    for (let lamp = 0; lamp < 12; lamp++) store.getState().addObject('lights', { x: rand() * MAP, y: rand() * MAP, emission: TORCH });
     store.setState((state) => ({ objects: { ...state.objects, tokens: { hero: HERO } } }));
     store.getState().setSceneLighting({ enabled: true, ambient: 0.1, ...(sightOnDrop !== undefined && { sightOnDrop }) });
 

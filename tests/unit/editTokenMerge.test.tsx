@@ -140,7 +140,7 @@ describe('Edit token writes senses, light and resources together', () => {
     document.body.replaceChildren();
 
     const gone = open({ resources: { hp: { current: 5, max: 8 } } });
-    act(() => { gone.store.getState().deleteToken('t'); });
+    act(() => { gone.store.getState().removeObjects(['t']); });
     fireEvent.change(gone.input('Max HP'), { target: { value: '9' } });
     save();
     expect(gone.store.getState().objects.tokens.t).toBeUndefined();

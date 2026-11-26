@@ -41,18 +41,18 @@ export function addOffMapCombatants(store: CombatStore, inputs: readonly TokenIn
 }
 
 /** Takes a combatant out of the tracker; one kept beside the map goes with its token (an undo step), since nothing else shows it. */
-export function removeCombatant(store: CombatStore, entry: Pick<InitiativeEntry, 'id' | 'tokenId'>, defeated: ReadonlySet<string>): void {
-  const { objects, removeFromInitiative, removeMapObjects } = store.getState();
-  removeFromInitiative(entry.id, defeated);
-  if (entry.tokenId !== undefined && isOffMap(sceneTokens(objects)[entry.tokenId])) removeMapObjects([entry.tokenId]);
+export function removeCombatant(store: CombatStore, entry: Pick<InitiativeEntry, 'id' | 'tokenId'>): void {
+  const { objects, removeFromInitiative, removeObjects } = store.getState();
+  removeFromInitiative(entry.id);
+  if (entry.tokenId !== undefined && isOffMap(sceneTokens(objects)[entry.tokenId])) removeObjects([entry.tokenId]);
 }
 
 /** Empties the tracker and ends the fight; the combatants kept beside the map go with it, in one undo step. */
 export function clearCombatants(store: CombatStore): void {
-  const { objects, resetInitiative, removeMapObjects } = store.getState();
+  const { objects, resetInitiative, removeObjects } = store.getState();
   const beside = Object.values(sceneTokens(objects)).filter(isOffMap).map((token) => token.id);
   resetInitiative();
-  if (beside.length > 0) removeMapObjects(beside);
+  if (beside.length > 0) removeObjects(beside);
 }
 
 /** The combatants kept beside the map that have no entry: brought back by an undo, or left by an older version. */
