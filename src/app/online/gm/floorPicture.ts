@@ -91,7 +91,7 @@ export class FloorPicture {
     this.live?.setScene(scene);
     this.inputs.setScene(scene);
     this.explored.feed.setScene(scene);
-    this.layers.setScene(scene);
+    this.layers.feed.setScene(scene);
   }
 
   /** The scene is being read again: nothing goes out until it is set. */
@@ -99,7 +99,7 @@ export class FloorPicture {
     this.tokens.setScene(null);
     this.inputs.setScene(null);
     this.explored.feed.setScene(null);
-    this.layers.setScene(null);
+    this.layers.feed.setScene(null);
   }
 
   /**
@@ -130,7 +130,7 @@ export class FloorPicture {
     this.tokens.resend(to);
     this.inputs.resend(to);
     this.explored.feed.resend(to);
-    this.layers.resend(to);
+    this.layers.feed.resend(to);
     this.mine?.resend(to);
   }
 
@@ -162,6 +162,6 @@ export class FloorPicture {
     this.live?.stop();
     this.inputs.stop();
     this.explored.feed.stop();
-    this.layers.stop();
+    this.layers.feed.stop();
   }
 }
