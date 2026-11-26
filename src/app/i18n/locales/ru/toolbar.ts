@@ -9,6 +9,7 @@ export const toolbar: Translation = {
   'toolbar.cone': 'Конус',
   'toolbar.fogEraser': 'Ластик тумана',
   'toolbar.fogTool': 'Туман',
+  'toolbar.lighting': 'Освещение',
   'toolbar.laser': 'Лазерная указка',
   'toolbar.lassoSelection': 'Выделение лассо',
   'toolbar.lootRoller': 'Случайные таблицы',
@@ -37,7 +38,7 @@ export const toolbar: Translation = {
   'toolbar.moreTools': 'Другие инструменты',
   'toolbar.pinOptions': 'Настройки пинов',
   'toolbar.stairs': 'Лестницы',
-  'toolbar.stairsNeedLevels': 'Лестницы соединяют уровни сцены. Сначала добавьте уровень на странице «Уровни сцены» в палитре команд.',
+  'toolbar.stairsNeedLevels': 'Лестнице нужен второй уровень. Добавьте его в «Уровнях сцены»',
   'toolbar.peek': 'Удерживайте, чтобы увидеть то, что видят игроки',
   'toolbar.snap': 'Привязка',
   'toolbar.openShape': 'Фигура в работе',
@@ -66,5 +67,4 @@ export const toolbar: Translation = {
   'toolbar.ranges': 'Дистанции',
   'toolbar.rangesTip': 'Щёлкните токен или место, чтобы увидеть его дистанции',
   'toolbar.rangesNoRules': 'В этой игровой системе нет дистанций и шагов перемещения',
-  'toolbar.rangesNeedGmView': 'Переключитесь в вид мастера ({key}), чтобы видеть дистанции',
 };

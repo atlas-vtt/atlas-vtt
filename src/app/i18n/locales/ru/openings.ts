@@ -2,7 +2,7 @@ import type { Translation } from '../../types';
 
 export const openings: Translation = {
   'openings.mode': 'Проёмы',
-  'openings.needsLevels': 'Сквозь проём виден уровень ниже: сначала добавьте сцене уровень',
+  'openings.needsLevels': 'Сначала добавьте сцене уровень',
   'openings.title': 'Проём',
   'openings.kind': 'Что это за область',
   'openings.open': 'Открыто вниз',

@@ -4,9 +4,8 @@
  */
 
 import type { LevelScene } from '../levels/levelEdits';
-import { firstLevelId, isLevelOf, movesWithLevel, viewedLevelId } from '../levels/sceneLevels';
-import type { LevelAlignment, LevelLinkChanges, LevelLinkInput, SceneLevel } from '../types/sceneLevelTypes';
-import { isRecord } from '../utils/guards';
+import { exploredMaskOf, firstLevelId, isLevelOf, movesWithLevel, otherLevelsExplored, viewedLevelId } from '../levels/sceneLevels';
+import type { LevelAlignment, SceneLevel } from '../types/sceneLevelTypes';
 import type { MapMove } from '../grid/mapStretch';
 import { objectsMovedWithMap } from '../grid/mapStretchObjects';
 import { aurasToTokenLevels } from '../measure/auraUpkeep';
@@ -26,14 +25,17 @@ export interface SceneLevelsSlice {
    * on that level alone along (`objectsMovedWithMap`): one write, one undo step.
    */
   alignLevel: (levelId: string, alignment: LevelAlignment, move?: MapMove) => void;
-  /** Adds stairs (a level link) in one undo step and returns its id. */
-  addLevelLink: (data: LevelLinkInput) => string;
-  /** Changes stairs; a field given as undefined is removed. */
-  updateLevelLink: (id: string, changes: LevelLinkChanges) => void;
-  deleteLevelLink: (id: string) => void;
+  /**
+   * Forgets the saved explored memory of every level but the one the view shows, whose memory the
+   * view's lighting forgets as an edit, and counts it (`exploredForgotten`). Returns the memories
+   * it took, by level id, for undo to put back.
+   */
+  forgetOtherLevelsExplored: () => Record<string, string>;
+  /** Puts back memories `forgetOtherLevelsExplored` took, by level id, where nothing was saved of the level since. */
+  restoreLevelsExplored: (masks: Readonly<Record<string, string>>) => void;
 }
 
-type LevelsDraft = Pick<ViewState, 'levels' | 'viewedLevel' | 'objects' | 'background' | 'exploredMask' | 'exploredMasks' | 'levelAlignments' | 'selectedIds' | 'lightPopover' | 'lightZonePopover' | 'levelLinkPopover' | 'measurePopover'>;
+type LevelsDraft = Pick<ViewState, 'levels' | 'viewedLevel' | 'objects' | 'background' | 'exploredMask' | 'exploredMasks' | 'exploredForgotten' | 'levelAlignments' | 'selectedIds' | 'lightPopover' | 'lightZonePopover' | 'levelLinkPopover' | 'measurePopover'>;
 
 type ImmerSet = (fn: (draft: LevelsDraft) => void) => void;
 
@@ -88,28 +90,19 @@ export function createSceneLevelsActions(set: ImmerSet, get: () => LevelsDraft):
       });
     },
 
-    addLevelLink: (data) => {
-      const id = `levellink_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+    forgetOtherLevelsExplored: () => {
+      const taken = otherLevelsExplored(get());
       set((draft) => {
-        // Whatever is in their place that is no record (a store filled by something else than a load) gives way.
-        if (!isRecord(draft.objects.levelLinks)) draft.objects.levelLinks = {};
-        draft.objects.levelLinks[id] = { id, kind: 'level-link', ...data };
+        for (const id of Object.keys(taken)) writeExploredMask(draft, null, id);
+        draft.exploredForgotten = (draft.exploredForgotten ?? 0) + 1;
       });
-      return id;
+      return taken;
     },
 
-    updateLevelLink: (id, changes) => set((draft) => {
-      const link = draft.objects.levelLinks?.[id];
-      if (!link) return;
-      Object.assign(link, changes);
-      for (const field of Object.keys(changes) as (keyof LevelLinkChanges)[]) {
-        if (changes[field] === undefined) delete link[field];
+    restoreLevelsExplored: (masks) => set((draft) => {
+      for (const [id, mask] of Object.entries(masks)) {
+        if (exploredMaskOf(draft, id) === null) writeExploredMask(draft, mask, id);
       }
-    }),
-
-    deleteLevelLink: (id) => set((draft) => {
-      delete draft.objects.levelLinks?.[id];
-      if (draft.levelLinkPopover === id) draft.levelLinkPopover = null;
     }),
 
     moveTokensToLevel: (ids, levelId) => set((draft) => {

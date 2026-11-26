@@ -2,10 +2,11 @@ import type { DiceRules } from '../../types/diceRulesTypes';
 import type { AdvantageSide, DiceSet, RollingDice } from '../../types/diceSetTypes';
 import { completeFormula } from '../../tools/completeFormula';
 import { withoutConstantLabels } from '../../tools/namedModifiers';
-import type { RollOptions } from '../../tools/DiceTool';
+import { diceRollProblem, type RollOptions } from '../../tools/DiceTool';
 import type { GmMessage, PlayerRoll, RollMode, RollRefusal, RollRequestAnswer, SharedRoll } from '../protocol/index.ts';
 import { parseFormula } from '../../tools/parseFormula';
 import { isRollFormula } from '../../tools/textRolls';
+import { changedBeforeSide, writtenSide } from '../../tools/writtenAdvantage';
 import type { TokenEntity } from '../../types';
 import type { DiceRollResult } from '../../types/diceTypes';
 import type { DiceSource } from './atlasDice.ts';
@@ -61,13 +62,14 @@ interface PrivateRoll {
 export type RollVerdict = { readonly ok: true; readonly tokenId: string | null } | { readonly ok: false; readonly reason: RollRefusal };
 
 /**
- * Whether Atlas's dice tool rolls a formula as it stands: it parses, and holds at least one die.
+ * Whether Atlas's dice tool rolls a formula as it stands: it parses, and holds at least one die. A side
+ * written last (`1d20+5 adv`) is the dice tool's to read and is no part of what is parsed here.
  * Atlas completes a formula without dice with the map's default roll, which a player causes only
  * with a bonus from their sheet (`playerFormula`), and tells a formula it cannot parse with a notice
  * on the GM's screen, which is never for a player to cause.
  */
 export function rollableFormula(formula: string): boolean {
-  const parsed = parseFormula(formula);
+  const parsed = parseFormula(writtenSide(formula).formula);
   return parsed.ok && parsed.terms.some((term) => term.kind === 'dice' && term.count > 0);
 }
 
@@ -75,22 +77,27 @@ export function rollableFormula(formula: string): boolean {
  * Whether a player's formula is rolled: one with dice (`rollableFormula`), or a bonus from their sheet
  * as a page sends it, signed and without spaces but in a label (`+2`, `+4+1`, `+4+3[Str mod]`, a roll
  * by `isRollFormula`), which the map's dice complete as they complete a bonus clicked on a statblock
- * (`1d20+2`, `2d12+5`).
+ * (`1d20+2`, `2d12+5`). Either may end with a side written after one space (`+4 adv`).
  */
 export function playerFormula(formula: string): boolean {
-  return rollableFormula(formula) || (!/\s(?![^[]*\])/.test(formula) && isRollFormula(formula));
+  if (rollableFormula(formula)) return true;
+  const bonus = writtenSide(formula).formula;
+  return !/\s(?![^[]*\])/.test(bonus) && isRollFormula(bonus);
 }
 
 /**
  * A player's formula as it is rolled by `rules`: as sent (a labelled bonus, `+4[Agility]`, completed
  * with the map's dice as a plain one is: `completeFormula`), or without the labels of its constants
  * where only those keep the dice tool from rolling it (a completed formula past its length), so a
- * roll that names its numbers is never refused where the plain one rolls.
+ * roll that names its numbers is never refused where the plain one rolls. A side written last stays last.
  */
 export function rolledFormula(formula: string, rules: DiceRules | RollingDice | undefined): string {
-  if (rules === undefined || completeFormula(formula, rules).ok) return formula;
-  const plain = withoutConstantLabels(formula);
-  return plain !== formula && completeFormula(plain, rules).ok ? plain : formula;
+  if (rules === undefined) return formula;
+  return changedBeforeSide(formula, (written) => {
+    if (completeFormula(written, rules).ok) return written;
+    const plain = withoutConstantLabels(written);
+    return plain !== written && completeFormula(plain, rules).ok ? plain : written;
+  });
 }
 
 /**
@@ -179,6 +186,8 @@ export class PlayerRolls {
     const rules = set ?? dice?.rules();
     const formula = rolledFormula(message.formula, rules);
     const advantage = rules === undefined ? undefined : playerSide(formula, rules, message.advantage);
+    // Refused here, not by the dice tool, which would tell the GM with a notice (a written side the dice cannot take)
+    if (rules !== undefined && diceRollProblem(formula, rules, advantage) !== null) return this.refuse('formula', from);
     if (mode !== 'public') return this.rollPrivately(from, formula, mode, tokenId, source, context, notes, { whisper: request?.to, set, setAppearance, advantage });
     if (dice === null || context.mapPath === null) return this.refuse('unavailable', from);
     const options: RollOptions = { ...(set && { set }), ...(setAppearance && { setAppearance }), ...(advantage && { advantage }) };

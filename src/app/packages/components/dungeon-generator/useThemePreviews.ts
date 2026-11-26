@@ -5,10 +5,10 @@ import { dungeonStyle, type DungeonStyleId } from '../../../dungeons/styleCatalo
 import { THEME_IDS, type ThemeId } from '../../../dungeons/themes/themeTypes';
 import type { DungeonJob } from '../../../dungeons/worker/dungeonJob';
 import { ThumbnailCache } from './thumbnailCache';
-import type { ThumbnailRenderer, ThumbnailSize } from './useStyleThumbnails';
+import type { CardPictures, ThumbnailRenderer, ThumbnailSize } from './useStyleThumbnails';
 
 const GROUP = 'themes';
-const NONE: ReadonlyMap<ThemeId, ImageBitmap> = new Map();
+const NONE: CardPictures<ThemeId> = { pictures: new Map(), failed: false };
 
 export interface ThemePreviewInput {
   /** What the wizard asks for; each card draws it in its own theme. */
@@ -17,6 +17,8 @@ export interface ThemePreviewInput {
   view: DungeonView;
   /** A card's art in device pixels; null while the Theme step is not shown, which draws nothing. */
   size: ThumbnailSize | null;
+  /** Raised to ask again for the pictures that could not be drawn. */
+  attempt: number;
 }
 
 /**
@@ -24,13 +26,14 @@ export interface ThemePreviewInput {
  * seed, tags and floors, generated in that theme and drawn in the chosen style by the dungeon
  * worker and its helpers while nothing else waits, and shown together once all are drawn.
  * Another request, style, view or card size drops the pictures still asked for; those drawn are
- * kept for the last two, so going back to one draws nothing.
+ * kept for the last two, so going back to one draws nothing. A picture that could not be drawn
+ * is asked for again with the next of these changes or a higher `attempt`.
  */
-export function useThemePreviews(renderer: ThumbnailRenderer, input: ThemePreviewInput): ReadonlyMap<ThemeId, ImageBitmap> {
+export function useThemePreviews(renderer: ThumbnailRenderer, input: ThemePreviewInput): CardPictures<ThemeId> {
   const cache = useRef<ThumbnailCache<ThemeId> | null>(null);
   cache.current ??= new ThumbnailCache<ThemeId>(THEME_IDS);
   const [, redraw] = useState(0);
-  const { request, style, view, size } = input;
+  const { request, style, view, size, attempt } = input;
   // The theme picked is the one thing a card changes, so it is left out of the picture.
   const picture = useMemo(() => {
     if (!size) return null;
@@ -46,6 +49,7 @@ export function useThemePreviews(renderer: ThumbnailRenderer, input: ThemePrevie
     if (!picture || !now.size) return undefined;
     const { width, height } = now.size;
     const kept = cache.current!.of(picture);
+    cache.current!.retry(picture);
     // The chosen theme first: its card is the one looked at
     const missing = THEME_IDS.filter((theme) => !kept.has(theme))
       .sort((a, b) => Number(b === now.request.theme) - Number(a === now.request.theme));
@@ -69,9 +73,9 @@ export function useThemePreviews(renderer: ThumbnailRenderer, input: ThemePrevie
       live = false;
       renderer.dropThumbnails(GROUP);
     };
-  }, [renderer, picture]);
+  }, [renderer, picture, attempt]);
 
   useEffect(() => () => cache.current?.clear(), []);
 
-  return picture ? cache.current.shown(picture) : NONE;
+  return picture ? { pictures: cache.current.shown(picture), failed: cache.current.hasFailed(picture) } : NONE;
 }

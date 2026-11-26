@@ -10,6 +10,8 @@ const NOTES_REST_MS = 150;
 interface Noted {
   from: string;
   size: number;
+  /** How many frames at 48 kHz it plays; unknown where whoever read it did not say. */
+  frames?: number;
 }
 
 /** The file a root lists at a path now; null where it lists none. */
@@ -45,14 +47,17 @@ export class KnownCopies {
     return this.notedRevision;
   }
 
-  /** A copy at `path` was read: made from `from`, `size` bytes. */
-  note(kind: SoundKind, path: string, from: string, size: number): void {
+  /** A copy at `path` was read: made from `from`, `size` bytes, `frames` long. */
+  note(kind: SoundKind, path: string, from: string, size: number, frames?: number): void {
     const at = keyOf(kind, path);
     const before = this.copies.get(at);
-    if (before?.from === from && before.size === size) return;
+    if (before?.from === from && before.size === size) {
+      if (frames !== undefined) before.frames = frames;
+      return;
+    }
     const formerSource = before ? sourceOf(path, before.from) : null;
     if (formerSource !== null) this.bySource.get(keyOf(kind, formerSource))?.delete(path);
-    this.copies.set(at, { from, size });
+    this.copies.set(at, frames === undefined ? { from, size } : { from, size, frames });
     const source = sourceOf(path, from);
     if (source === null || source === path) return;
     const holders = this.bySource.get(keyOf(kind, source)) ?? new Set<string>();
@@ -66,10 +71,18 @@ export class KnownCopies {
    * read at. The one named after the source comes first, then the lowest path, so every device decides alike.
    */
   copyOf(kind: SoundKind, source: string): string | null {
+    // Asked for every file of a root on every listing: nothing to look up where no copy lies beside its source.
+    if (this.bySource.size === 0) return null;
     const holders = this.bySource.get(keyOf(kind, source));
     if (!holders || holders.size === 0) return null;
     const ordered = [...holders].sort(keptFirst(stemCopyOf(source)));
     return ordered.find((path) => this.listed(kind, path)?.size === this.copies.get(keyOf(kind, path))?.size) ?? null;
+  }
+
+  /** How many frames the copy at `path` plays, as its header said when it was read at this size; null where that is not known. */
+  framesOf(kind: SoundKind, path: string, size: number): number | null {
+    const noted = this.copies.get(keyOf(kind, path));
+    return noted?.size === size && noted.frames !== undefined ? noted.frames : null;
   }
 
   dispose(): void {

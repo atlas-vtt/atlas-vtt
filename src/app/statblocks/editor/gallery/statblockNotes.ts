@@ -12,6 +12,7 @@ import { autoTemplate } from '../../model/autoTemplate';
 import type { StatblockTemplate } from '../../model/templateTypes';
 import { frontmatterBounds } from '../../notes/frontmatterBounds';
 import { cachedFrontmatter, frontmatterSource, type FrontmatterRecord } from '../../notes/statblockSource';
+import { getLocale } from '../../../i18n';
 
 export interface StatblockNoteChoice {
   path: string;
@@ -19,7 +20,7 @@ export interface StatblockNoteChoice {
   name: string;
 }
 
-const BY_NAME = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+const BY_NAME = new Intl.Collator(getLocale(), { numeric: true, sensitivity: 'base' });
 
 /** Every statblock note of the vault, by name. */
 export function statblockNoteChoices(app: App): StatblockNoteChoice[] {

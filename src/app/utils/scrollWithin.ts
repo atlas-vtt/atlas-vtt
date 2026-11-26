@@ -51,3 +51,58 @@ export function scrollWithin(container: HTMLElement, element: Element, block: 's
   // Keep the active element visible even when the following siblings do not all fit.
   else if (pastEnd > 0) container[scroll] += Math.min(pastEnd, fromStart);
 }
+
+const SCROLLS = /^(auto|scroll)$/;
+
+function scrollsAlong(container: HTMLElement, axis: 'x' | 'y'): boolean {
+  const style = container.ownerDocument?.defaultView?.getComputedStyle(container);
+  if (axis === 'y') return SCROLLS.test(style?.overflowY ?? '') && container.scrollHeight > container.clientHeight;
+  return SCROLLS.test(style?.overflowX ?? '') && container.scrollWidth > container.clientWidth;
+}
+
+/**
+ * Brings `element` into view in the list it lies in, the nearest ancestor that scrolls, no farther than it takes
+ * and along the axes that list scrolls. Nothing around the list moves; an element in no such list stays where it is.
+ */
+export function revealInList(element: Element): void {
+  for (let list = element.parentElement; list; list = list.parentElement) {
+    const along = (['y', 'x'] as const).filter((axis) => scrollsAlong(list, axis));
+    if (along.length === 0) continue;
+    const edgesOf = unscaledEdges(list);
+    for (const axis of along) {
+      if (!revealLonger(list, element, axis, edgesOf)) scrollWithin(list, element, 'nearest', 0, axis, edgesOf);
+    }
+    return;
+  }
+}
+
+/**
+ * Screen edges in the list's own pixels: a panel still growing into place is drawn scaled, and distances measured
+ * on the screen would then fall short of what the list must scroll.
+ */
+function unscaledEdges(list: HTMLElement): EdgesOf {
+  const box = list.getBoundingClientRect();
+  const x = list.offsetWidth > 0 && box.width > 0 ? box.width / list.offsetWidth : 1;
+  const y = list.offsetHeight > 0 && box.height > 0 ? box.height / list.offsetHeight : 1;
+  return (element) => {
+    const rect = element.getBoundingClientRect();
+    return { top: rect.top / y, bottom: rect.bottom / y, left: rect.left / x, right: rect.right / x };
+  };
+}
+
+/**
+ * An element longer than its list, as `scrollIntoView` takes it: one that fills the list stays where it is, and
+ * otherwise the edge that lies inside the list goes to the list's far edge, so as much of it shows as fits.
+ */
+function revealLonger(list: HTMLElement, element: Element, axis: 'x' | 'y', edgesOf: EdgesOf): boolean {
+  const [start, end] = axis === 'y' ? (['top', 'bottom'] as const) : (['left', 'right'] as const);
+  const box = edgesOf(list);
+  const rect = edgesOf(element);
+  if (rect[end] - rect[start] <= box[end] - box[start]) return false;
+  const before = rect[start] - box[start];
+  const after = rect[end] - box[end];
+  const scroll = axis === 'y' ? 'scrollTop' : 'scrollLeft';
+  if (before < 0 && after <= 0) list[scroll] += after;
+  else if (after > 0 && before >= 0) list[scroll] += before;
+  return true;
+}

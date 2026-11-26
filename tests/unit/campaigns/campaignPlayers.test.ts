@@ -79,4 +79,28 @@ describe('CampaignPlayers', () => {
     expect(JSON.parse(vault.files.get(`${moved}/players.json`)!).link).toBe('b'.repeat(26));
     expect(vault.files.has(`${FOLDER}/players.json`)).toBe(false);
   });
+
+  it('never forgets a player it holds while earlier changes are still being written, as several admitted at once', async () => {
+    const { vault, players } = await device();
+    players.change('c1', (stored) => withPlayer(stored, MIRA, 1));
+    await players.flush();
+    const write = vault.app.vault.process.bind(vault.app.vault);
+    // Obsidian tells of every write it made.
+    vault.app.vault.process = async (file, edit) => {
+      const written = await write(file, edit);
+      vault.emit('modify', file);
+      return written;
+    };
+    const held: number[] = [];
+    players.onChange(() => held.push(players.of('c1').players.length));
+    for (const name of ['Robin', 'Sam', 'Cara']) {
+      const player = { id: name.toLowerCase().padEnd(20, 'x'), name, code: `${name.length}00000`, characters: [] };
+      players.change('c1', (stored) => withPlayer(stored, player, 2));
+    }
+    await players.flush();
+    await settle();
+    expect(held.at(-1)).toBe(4);
+    expect(held.filter((count, index) => index > 0 && count < held[index - 1]!)).toEqual([]);
+    expect(Object.keys(JSON.parse(vault.files.get(`${FOLDER}/players.json`)!).players)).toHaveLength(4);
+  });
 });

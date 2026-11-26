@@ -1,5 +1,5 @@
 import { isPlayersToken, type PlayerTokenRef } from '../characters/playerTokens';
-import { BUILT_IN_SIDES, defaultSides, sidesOfRules } from '../gameSystems/initiativeSideRules';
+import { BUILT_IN_SIDES, defaultSides, inSideOrder, sidesOfRules } from '../gameSystems/initiativeSideRules';
 import { t } from '../i18n';
 import type { TokenEntity } from '../types';
 import type { InitiativeRules, SideId, SideRef } from '../types/initiativeRulesTypes';
@@ -53,11 +53,11 @@ export interface ListedSide {
 
 /**
  * The sides as the lists draw them, in the order they act this round: a running fight's (rolled
- * order and the side or sides with the turn), else the rules'.
+ * order and the side or sides with the turn), else the rules' in the order the GM dragged them into.
  */
-export function listedSides(initiative: Pick<InitiativeState, 'isActive' | 'round' | 'sides'>, rules: InitiativeRules): ListedSide[] {
+export function listedSides(initiative: Pick<InitiativeState, 'isActive' | 'round' | 'sides' | 'sideOrder'>, rules: InitiativeRules): ListedSide[] {
   const fight = initiative.isActive ? initiative.sides : undefined;
-  if (!fight) return sidesOfRules(rules).map((side) => ({ id: side.id, name: sideName(side), roll: null, active: false }));
+  if (!fight) return inSideOrder(sidesOfRules(rules), initiative.sideOrder).map((side) => ({ id: side.id, name: sideName(side), roll: null, active: false }));
   const refs = new Map(fightSides(fight).map((side) => [side.id, side]));
   const rolls = fight.rolls?.[initiative.round];
   const active = activeSides(fight, initiative.round);

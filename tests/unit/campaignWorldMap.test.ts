@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { App } from 'obsidian';
 import { CampaignPlay } from '../../src/app/campaigns/campaignPlay';
 import type { StoredCampaign } from '../../src/app/campaigns/campaignTypes';
-import type { WorldMapTree } from '../../src/app/online/gm/book/worldMapGate';
+import type { WorldMapAnswer } from '../../src/app/online/gm/book/worldMapGate';
 import { campaignWorldMapGate } from '../../src/app/plugin/campaignWorldMapGate';
 import { AssetService, type Asset } from '../../src/app/services/AssetService';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
@@ -35,7 +35,7 @@ interface Setup {
   readonly play: CampaignPlay;
   readonly campaigns: ReturnType<typeof memoryCampaigns>;
   readonly worldMap: () => Promise<string | null>;
-  readonly tree: () => Promise<WorldMapTree | null>;
+  readonly tree: () => Promise<WorldMapAnswer>;
 }
 
 function setup(initial: readonly StoredCampaign[]): Setup {
@@ -53,7 +53,11 @@ function setup(initial: readonly StoredCampaign[]): Setup {
   const campaigns = memoryCampaigns(initial);
   const play = CampaignPlay.forApp(app);
   const gate = campaignWorldMapGate(app, () => play, () => campaigns);
-  return { app, play, campaigns, worldMap: async () => (await gate.worldMap())?.levels[0]?.image ?? null, tree: () => gate.worldMap() };
+  const worldMap = async (): Promise<string | null> => {
+    const answer = await gate.worldMap();
+    return answer === null || answer === 'no-image' ? null : answer.levels[0]?.image ?? null;
+  };
+  return { app, play, campaigns, worldMap, tree: () => gate.worldMap() };
 }
 
 afterEach(() => { vi.restoreAllMocks(); });
@@ -78,11 +82,11 @@ describe('the world map players may be shown', () => {
     expect(await worldMap()).toBeNull();
   });
 
-  it('is none for an asset that is missing, no map or scene, or a scene without artwork of its own', async () => {
-    const { play, worldMap } = setup(['gone', 'knight', 'bare', 'constructor', '__proto__'].map((id) => campaign(`plays-${id}`, id)));
+  it('is no image, which the GM is told, for an asset that is missing, no map or scene, or a scene without artwork of its own', async () => {
+    const { play, tree } = setup(['gone', 'knight', 'bare', 'constructor', '__proto__'].map((id) => campaign(`plays-${id}`, id)));
     for (const id of ['gone', 'knight', 'bare', 'constructor', '__proto__']) {
       play.play(`plays-${id}`);
-      expect(await worldMap()).toBeNull();
+      expect(await tree()).toBe('no-image');
     }
   });
 

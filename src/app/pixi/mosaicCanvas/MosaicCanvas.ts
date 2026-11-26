@@ -73,6 +73,7 @@ export class MosaicCanvas {
       renderer: deps.renderer,
       requestRender: deps.requestRender,
       ...(deps.textureBudget !== undefined && { budgetBytes: deps.textureBudget }),
+      ...(deps.uploadAtOnce && { uploadAtOnce: deps.uploadAtOnce }),
     });
     this.resident = new ResidentOverviews(this.cache);
     const camera = viewportCamera(deps.viewport, deps.renderer ?? { resolution: 1 });
@@ -93,6 +94,11 @@ export class MosaicCanvas {
   /** The image's own size in pixels, whatever its stretch; null before the first load and after `clear`. */
   get imageSize(): { width: number; height: number } | null {
     return this.shown ? { width: this.shown.width, height: this.shown.height } : null;
+  }
+
+  /** Which picture is shown: its pyramid's key, the same for the same picture shown again (a scene switched back to); null without one. */
+  get imageKey(): string | null {
+    return this.shown?.tesserae?.source.key ?? null;
   }
 
   /** The corners of an image that lies turned, or placed in from the origin, in its world rect, which then holds more than the image; null for one that fills it. */

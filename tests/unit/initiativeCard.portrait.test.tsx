@@ -36,8 +36,8 @@ const entry: InitiativeEntry = {
 function renderCard(token: Record<string, unknown>, shown: InitiativeEntry = entry): HTMLElement {
   state.objects.tokens = { t1: { id: 't1', kind: 'character', name: 'Troll', imagePath: 'tokens/troll.webp', x: 0, y: 0, ...token } };
   return render(
-    <InitiativeCard entry={shown} index={0} isHoveredForPreview={false}
-      onDragStart={vi.fn()} onDragOver={vi.fn()} onDragEnd={vi.fn()} onContextMenu={vi.fn()} onHover={vi.fn()} />,
+    <InitiativeCard entry={shown} isHoveredForPreview={false}
+      onContextMenu={vi.fn()} onHover={vi.fn()} />,
   ).container;
 }
 
@@ -84,8 +84,8 @@ describe('InitiativeCard portrait', () => {
     const twin = (level: string): Record<string, unknown> => ({ t2: { id: 't2', kind: 'character', name: 'Troll', imagePath: 'tokens/troll.webp', x: 0, y: 0, instanceNumber: 2, level } });
     const badge = (): string | null | undefined => {
       const card = render(
-        <InitiativeCard entry={entry} index={0} isHoveredForPreview={false}
-          onDragStart={vi.fn()} onDragOver={vi.fn()} onDragEnd={vi.fn()} onContextMenu={vi.fn()} onHover={vi.fn()} />,
+        <InitiativeCard entry={entry} isHoveredForPreview={false}
+          onContextMenu={vi.fn()} onHover={vi.fn()} />,
       ).container;
       return card.querySelector('.atlas-initiative-card__instance-badge')?.textContent;
     };

@@ -16,6 +16,8 @@ import { createTestRenderer } from '../../src/app/pixi/lighting/engine/__tests__
 import { watchGl } from '../../src/app/pixi/lighting/engine/__tests__/strictGl';
 import { destroyTree } from '../../src/app/pixi/utils/destroyTree';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { viewAudience } from './viewAudience';
+import type { CanvasAudience } from '../../src/app/pixi/audience/CanvasAudience';
 import type { TokenPerception } from '../../src/app/vision/tokenPerception';
 import type { Character } from '../../src/app/types';
 import type { FogOperation } from '../../src/app/types/fogTypes';
@@ -26,6 +28,8 @@ export function fogTokenScenes(): { scene: typeof createScene } {
 
   async function createScene(): Promise<{
     tokens: TokenRenderer;
+    /** Whom the canvas is drawn for, as the view's renderer makes it. */
+    audience: CanvasAudience;
     fog: FogOfWarRenderer;
     store: ReturnType<typeof createViewAtlasStore>;
     setFog(operations: Record<string, FogOperation>): void;
@@ -47,16 +51,17 @@ export function fogTokenScenes(): { scene: typeof createScene } {
     store.getState().setPersistenceEnabled(false);
     store.setState({ mapPath: 'maps/a.atlasmap', isMapLoading: false, isGMView: true });
     const events = new EventEmitter();
+    const { audience } = viewAudience(store, events);
     const grid = new GridSystem(app, viewport, mapImageViewOf(floor), { size: 40, enabled: false, color: 0xffffff });
-    const tokens = new TokenRenderer(obsidian, viewport, grid, () => {}, store, events, 'fog-token-test');
+    const tokens = new TokenRenderer(obsidian, viewport, grid, () => {}, store, events, audience, 'fog-token-test');
     tokens.setPixiApp(app);
-    const fog = new FogOfWarRenderer(viewport, app, events, store, () => null);
+    const fog = new FogOfWarRenderer(viewport, app, events, store, () => null, audience);
     viewport.addChild(fog.getContainer());
     tokens.setFogCoverageProvider(() => fog.getCommittedCoverage());
     const covered: Character = { id: 'covered', x: 64, y: 64, size: 1, imagePath: '', kind: 'character', name: 'Covered token name outside fog', showNameplate: true };
     const clear: Character = { id: 'clear', x: 192, y: 64, size: 1, imagePath: '', kind: 'character', name: 'Clear', showNameplate: true };
-    store.getState().addToken(covered);
-    store.getState().addToken(clear);
+    store.getState().addTokens([covered]);
+    store.getState().addTokens([clear]);
     await expect.poll(() => Object.values(tokens.getTokenSprites()).filter((sprite) => sprite instanceof Container).length).toBe(2);
     const target = RenderTexture.create({ width: 256, height: 256 });
     cleanups.push(() => {
@@ -72,7 +77,7 @@ export function fogTokenScenes(): { scene: typeof createScene } {
       renderer.destroy();
     });
     return {
-      tokens, fog, store,
+      tokens, audience, fog, store,
       setFog(operations): void { store.setState((state) => ({ objects: { ...state.objects, fog: operations } })); },
       pixels(player = false, drawFog = true, perception?: TokenPerception): Uint8ClampedArray {
         let result: Uint8ClampedArray = new Uint8ClampedArray();

@@ -60,15 +60,20 @@ export interface WorldMapTree {
   readonly levels: readonly WorldMapLevel[];
 }
 
+/**
+ * The world map players may be shown now with the maps it leads into; null while none is chosen, and
+ * `no-image` for one chosen that cannot be shown: its map or scene is gone or shows no image.
+ */
+export type WorldMapAnswer = WorldMapTree | 'no-image' | null;
+
 /** Answers which maps players may be shown as the world map, and says when that may have changed. */
 export interface WorldMapGate {
-  /** The world map players may be shown now with the maps it leads into, or null for none. */
-  worldMap(): Promise<WorldMapTree | null>;
+  worldMap(): Promise<WorldMapAnswer>;
   /** Calls `listener` whenever the world map may be another; returns what stops it. */
   onChange(listener: () => void): () => void;
 }
 
-const slot = gateSlot<WorldMapTree | null>(null);
+const slot = gateSlot<WorldMapAnswer>(null);
 
 /**
  * Names who decides which images are the world map and the maps it leads into. Campaign files and
@@ -80,8 +85,8 @@ export function setWorldMapGate(next: WorldMapGate | null): void {
   slot.set(next === null ? null : { read: () => next.worldMap(), onChange: (listener) => next.onChange(listener) });
 }
 
-/** The world map players may be shown now with the maps it leads into, or null for none. */
-export const gatedWorldMap = (): Promise<WorldMapTree | null> => slot.read();
+/** The world map players may be shown now with the maps it leads into (`WorldMapAnswer`). */
+export const gatedWorldMap = (): Promise<WorldMapAnswer> => slot.read();
 
 /** Calls `listener` whenever the world map may be another, also when the gate itself changes. */
 export const onWorldMapChange = (listener: () => void): (() => void) => slot.onChange(listener);

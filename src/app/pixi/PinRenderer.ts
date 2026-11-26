@@ -12,7 +12,9 @@ import { pinGroupScale, pinScreenDiameter, type MapSize } from './pinSizing';
 import { pinSize } from '../styles/designTokens';
 import type { PinIconId } from '../types/pinIcons';
 import { destroyTree } from "./utils/destroyTree";
-import { hearPressesLast, isHandled } from "./utils/handledEvents";
+import { viewportDocument } from './utils/viewportDocument';
+import { isHandled } from "./utils/handledEvents";
+import type { PinPointer } from "./pointer/mapLayers";
 import { isPrimaryPress, isSecondaryPress } from "./utils/pointerButtons";
 import type { ViewAtlasState, ViewAtlasStore } from '../storeFactory';
 import { abandonHistoryTransaction, beginHistoryTransaction, endHistoryTransaction } from '../stores/history';
@@ -22,9 +24,10 @@ import { hexLayoutOfGrid, isShownAsHex, pinDisplayPoint } from '../grid/hexLinks
 import { MAP_LAYER_Z } from './mapLayerOrder';
 import { pinMenuEntries } from './pinMenu';
 import { openPinMenu, type PinnedSceneLevels } from './pinSceneLevelMenu';
-import { levelObjects } from '../levels/levelObjects';
+import { everyLevelObjects, levelObjects } from '../levels/levelObjects';
 import { pinNameBoxes } from './pinNameLayout';
 import { dragThreshold, pointerReach, ReachPick } from './utils/pointerReach';
+import { watchDarkTheme } from './utils/canvasBadgeColors';
 
 /** True when anything other than the position changed, which means the pin's graphics must be rebuilt. */
 function differsBeyondPosition(pin: NotePin, prev: NotePin | undefined): boolean {
@@ -89,7 +92,7 @@ export class PinRenderer {
   private pinnedSceneLevels: PinnedSceneLevels | null = null;
   private store: ViewAtlasStore;
   private iconTextureCache: Map<PinIconId, Texture | null> = new Map();
-  private themeObserver: MutationObserver | null = null;
+  private stopThemeWatch: (() => void) | null = null;
   private _viewportZoomHandler?: () => void;
   private previewPin: Container | null = null;
   private previewIcon: string = 'pin';
@@ -189,21 +192,9 @@ export class PinRenderer {
     return this.iconTextureCache.get(icon) ?? null;
   }
 
+  /** A pin's face takes the light or dark theme's colours (`drawPinFace`). */
   private setupThemeObserver(): void {
-    this.themeObserver = new MutationObserver((mutations) => {
-      for (const mutation of mutations) {
-        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-          // Theme changed, redraw all pins
-          this.redrawAllPins();
-        }
-      }
-    });
-    
-    // Start observing
-    this.themeObserver.observe(document.body, {
-      attributes: true,
-      attributeFilter: ['class']
-    });
+    this.stopThemeWatch = watchDarkTheme(viewportDocument(this.viewport).body, () => this.redrawAllPins());
   }
   
   private setupViewportListeners(): void {
@@ -323,9 +314,24 @@ export class PinRenderer {
     return this.pinContainer;
   }
 
-  /** The note pin tool hears presses after the dispatch that claims them; called once that dispatch listens. */
-  public reorderViewportListeners(): void {
-    if (this._notePinToolViewportListener) hearPressesLast(this.viewport, this._notePinToolViewportListener);
+  /** The pins as the map's pointer asks them (`MapPointer`); `hover` hears when the pointer comes onto a pin and when it leaves it. */
+  public pointerLayer(hover: (type: 'over' | 'out', pin: NotePin, e?: FederatedPointerEvent) => void): PinPointer {
+    let hovered: string | null = null;
+    const tell = (type: 'over' | 'out', pinId: string, e?: FederatedPointerEvent): void => {
+      // Of every level: a pin hovered on the level shown before is still left
+      const pin = everyLevelObjects(this.store.getState()).pins[pinId];
+      if (pin) hover(type, pin, e);
+    };
+    return {
+      hitTest: (x, y) => this.hitTestPins(x, y),
+      press: (pinId, e) => this.handleViewportPinPointerDown(pinId, e),
+      hover: (pinId, e) => {
+        if (pinId === hovered) return;
+        if (hovered) tell('out', hovered, e);
+        if (pinId) tell('over', pinId, e);
+        hovered = pinId;
+      },
+    };
   }
 
   /** How large the map is in world pixels, which pins and names are sized by; set by the view. */
@@ -432,7 +438,7 @@ export class PinRenderer {
           const worldPos = this.viewport.toWorld(moveEvent.global);
           const worldDx = worldPos.x - worldStartPos.x;
           const worldDy = worldPos.y - worldStartPos.y;
-          this.store.getState().updateNotePin(pinId, {
+          this.store.getState().patchObject('pins', pinId, {
             x: initialPinPos.x + worldDx,
             y: initialPinPos.y + worldDy,
           });
@@ -450,7 +456,7 @@ export class PinRenderer {
       const onPointerCancel = (): void => {
         stopListening();
         if (!isDragging) return;
-        this.store.getState().updateNotePin(pinId, initialPinPos);
+        this.store.getState().patchObject('pins', pinId, initialPinPos);
         this.store.getState().setPersistenceEnabled(true);
         abandonHistoryTransaction(this.store);
         this.viewport.plugins.resume('drag');
@@ -463,7 +469,7 @@ export class PinRenderer {
           this.store.getState().setPersistenceEnabled(true);
           const currentPin = levelObjects(this.store.getState()).pins[pinId];
           if (currentPin) {
-            this.store.getState().updateNotePin(pinId, { x: currentPin.x, y: currentPin.y });
+            this.store.getState().patchObject('pins', pinId, { x: currentPin.x, y: currentPin.y });
           }
           endHistoryTransaction(this.store);
           this.viewport.plugins.resume('drag');
@@ -517,7 +523,7 @@ export class PinRenderer {
   private syncPins = (
     pinsRecord: Record<string, NotePin>,
     prevPinsRecord: Record<string, NotePin> | undefined
-  ) => {
+  ): void => {
     if (!this.pinContainer) {
         console.error('[PinRenderer] syncPins called but pinContainer is null!');
         return;
@@ -655,10 +661,8 @@ export class PinRenderer {
     }
     
     // Clean up theme observer
-    if (this.themeObserver) {
-      this.themeObserver.disconnect();
-      this.themeObserver = null;
-    }
+    this.stopThemeWatch?.();
+    this.stopThemeWatch = null;
     
     // Clean up viewport listeners
     if (this._viewportZoomHandler && this.viewport) {

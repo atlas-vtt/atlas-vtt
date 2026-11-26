@@ -2,7 +2,7 @@ import type { Translation } from '../../types';
 
 export const openings: Translation = {
   'openings.mode': '开口',
-  'openings.needsLevels': '开口能俯视下方楼层：请先给场景添加一个楼层',
+  'openings.needsLevels': '请先给场景添加一个楼层',
   'openings.title': '开口',
   'openings.kind': '这片区域是什么',
   'openings.open': '向下镂空',

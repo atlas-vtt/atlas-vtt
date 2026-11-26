@@ -1,10 +1,11 @@
-/** Map features (`MapFeature`) in the view store: map geometry, each change one undo step. */
+/** Map features (`MapFeature`) added to the view store: map geometry, each change one undo step (changed and removed as every scene object, `sceneObjectsSlice.ts`). */
 
 import { firstLevelId, hasLevels, onLevel, placedOnViewedLevel } from '../levels/sceneLevels';
 import { MAX_MAP_FEATURES } from '../mapFeatures/mapFeatures';
-import type { MapFeature, MapFeatureChanges, MapFeatureInput } from '../types/mapFeatureTypes';
+import type { MapFeature, MapFeatureInput } from '../types/mapFeatureTypes';
 import type { ViewState } from '../types/viewState';
 import { isRecord } from '../utils/guards';
+import { newId } from '../utils/ids';
 
 export interface MapFeaturesSlice {
   /**
@@ -12,18 +13,11 @@ export interface MapFeaturesSlice {
    * the level shown. A level that holds `MAX_MAP_FEATURES` takes no more (no id for those).
    */
   addMapFeatures: (data: readonly MapFeatureInput[]) => string[];
-  /** Changes a feature; a field given as undefined is removed. */
-  updateMapFeature: (id: string, changes: MapFeatureChanges) => void;
-  deleteMapFeature: (id: string) => void;
 }
 
 type FeaturesDraft = Pick<ViewState, 'levels' | 'viewedLevel' | 'objects'>;
 
 type ImmerSet = (fn: (draft: FeaturesDraft) => void) => void;
-
-function newFeatureId(): string {
-  return `feature_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
-}
 
 /** The level a feature counts on for the limit: the one it stands on ('' in a scene without levels). */
 function levelKey(feature: MapFeature, draft: FeaturesDraft): string {
@@ -50,7 +44,7 @@ export function createMapFeaturesActions(set: ImmerSet): MapFeaturesSlice {
         }
         const placed = placedOnViewedLevel(draft);
         for (const input of data) {
-          const feature: MapFeature = { id: newFeatureId(), kind: 'map-feature', ...placed, ...input };
+          const feature: MapFeature = { id: newId('feature'), kind: 'map-feature', ...placed, ...input };
           const level = levelKey(feature, draft);
           const count = counts.get(level) ?? 0;
           if (count >= MAX_MAP_FEATURES) continue;
@@ -61,18 +55,5 @@ export function createMapFeaturesActions(set: ImmerSet): MapFeaturesSlice {
       });
       return ids;
     },
-
-    updateMapFeature: (id, changes) => set((draft) => {
-      const feature = draft.objects.mapFeatures?.[id];
-      if (!feature) return;
-      Object.assign(feature, changes);
-      for (const field of Object.keys(changes) as (keyof MapFeatureChanges)[]) {
-        if (changes[field] === undefined) delete feature[field];
-      }
-    }),
-
-    deleteMapFeature: (id) => set((draft) => {
-      delete draft.objects.mapFeatures?.[id];
-    }),
   };
 }

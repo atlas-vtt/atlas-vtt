@@ -15,6 +15,7 @@ import { runInBackground } from './utils/backgroundTask';
 import { focusLinkedPin, restoreLinkedSnapshot } from './links/openAtlasLink';
 import { pinIdOfSubpath } from './links/atlasLinkTargets';
 import type { ViewCamera } from './pixi/viewCamera';
+import type { PixiRendererOrchestrator } from './PixiRendererOrchestrator';
 import { showNotice } from './ui/notice';
 import { observeResize } from './utils/observeResize';
 import { inMainWindow } from './plugin/atlasMainWindow';
@@ -25,6 +26,7 @@ import { ATLAS_VIEW_TYPE } from './atlasViewType';
 import { followPresentedScene } from './services/PlayerWindowPresenter';
 import type { TableMode } from './tableMode/TableMode';
 import { viewTableMode } from './tableMode/viewTableMode';
+import { isRecord } from './utils/guards';
 
 export { ATLAS_VIEW_TYPE };
 
@@ -33,10 +35,6 @@ interface AtlasViewState {
   tabs?: SceneTab[];
   activeTabId?: string | null;
   [key: string]: unknown;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 /** Tabs of other files (older versions opened map images as scenes) are dropped on restore. */
@@ -833,7 +831,7 @@ export class AtlasView extends FileView {
   /**
    * Expose the PixiRenderer for React UI components
    */
-  public get renderer() {
+  public get renderer(): PixiRendererOrchestrator | null {
     return this._serviceManager.getRendererService().getRenderer();
   }
 

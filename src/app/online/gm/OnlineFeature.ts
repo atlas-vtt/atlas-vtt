@@ -44,6 +44,8 @@ import { AssetSalt } from './assets/assetSalt.ts';
 import { AssetStoreClient } from './assets/storeClient.ts';
 import { RELAY_ORIGIN } from './servers.ts';
 import type { HostAccount } from './tableStart.ts';
+import { tableControlsStore } from '../../stores/tableControlsStore';
+import { followPlayerWindowWithPlayMode, restorePlayMode } from '../../services/tableControls';
 
 /** How long a change of the table's log waits before the data file is written. */
 const LOG_SAVE_MS = 10_000;
@@ -168,6 +170,14 @@ export class OnlineFeature extends Component {
     const ownership = new Ownership(playedSeats(campaigns));
     this.legacyAssignments = readLegacyAssignments(record.ownership);
     this.savedTable = readSavedTable(record.table);
+    // The GM's play mode is kept with the settings, so the phones stay remotes across a reload
+    if (this.savedTable !== null) restorePlayMode(this.settings.playMode);
+    this.register(followPlayerWindowWithPlayMode());
+    this.register(tableControlsStore.subscribe(({ playMode }) => {
+      if (playMode === this.settings.playMode) return;
+      this.settings.playMode = playMode;
+      void this.saveSettings();
+    }));
     this.savedLog = this.savedTable === null ? undefined : record.tableLog;
     this.legacyBooks = readBooks(record.books);
     // A campaign is played only while its table runs: the saved table's comes back with it.

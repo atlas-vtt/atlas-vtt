@@ -31,6 +31,8 @@ export interface MapPreviewInput {
   floor: number;
   /** Device pixels the map is fitted into; null until the preview's frame was measured. */
   size: { width: number; height: number } | null;
+  /** Raised to draw again a preview that could not be drawn. */
+  attempt: number;
 }
 
 export interface MapPreview {
@@ -68,7 +70,7 @@ export function useMapPreview(renderer: PreviewRenderer, input: MapPreviewInput,
   const drawn = useRef<Drawn | null>(null);
   const onGeneratedRef = useRef(onGenerated);
   onGeneratedRef.current = onGenerated;
-  const { request, generated, model, style, view, floor, size } = input;
+  const { request, generated, model, style, view, floor, size, attempt } = input;
 
   useEffect(() => {
     if (!size) return;
@@ -100,7 +102,7 @@ export function useMapPreview(renderer: PreviewRenderer, input: MapPreviewInput,
       setFailed(true);
       setDrawing(false);
     });
-  }, [renderer, request, generated, model, style, view, floor, size]);
+  }, [renderer, request, generated, model, style, view, floor, size, attempt]);
 
   // The last picture's pixels go with the panel.
   const pictureRef = useRef(picture);

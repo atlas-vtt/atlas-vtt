@@ -35,8 +35,8 @@ const goblin = (extra: Partial<TokenEntity> = {}): TokenEntity => ({ id: 't1', k
 function renderCard(token: TokenEntity): HTMLElement {
   state.objects.tokens = { t1: token };
   return render(
-    <InitiativeCard entry={entry} index={0} isHoveredForPreview={false}
-      onDragStart={vi.fn()} onDragOver={vi.fn()} onDragEnd={vi.fn()} onContextMenu={vi.fn()} onHover={vi.fn()} />,
+    <InitiativeCard entry={entry} isHoveredForPreview={false}
+      onContextMenu={vi.fn()} onHover={vi.fn()} />,
   ).container;
 }
 
@@ -46,9 +46,13 @@ const MODE = { bySides: false, sides: [], cards: false, fightRuns: false, swapTa
 const actions = { swapCard: noop, roll: noop, moveToFront: noop, moveToBack: noop, edit: noop, updateToken: noop, setSitsOut: noop, delay: noop, actNow: noop, remove: noop };
 
 describe('a combatant kept beside the map, in the tracker', () => {
-  it('carries a "not on the map" marker that a token on the map does not', () => {
-    expect(renderCard(goblin({ offMap: true })).querySelector('.atlas-initiative-card__off-map-badge')).not.toBeNull();
-    expect(renderCard(goblin()).querySelector('.atlas-initiative-card__off-map-badge')).toBeNull();
+  it('is drawn with a grey stroke and described as not on the map, which a token on the map is not', () => {
+    const beside = renderCard(goblin({ offMap: true })).querySelector('.atlas-initiative-card')!;
+    expect(beside.classList.contains('atlas-initiative-card--off-map')).toBe(true);
+    expect(beside.getAttribute('aria-description')).toBe('Not on the map');
+    const onMap = renderCard(goblin()).querySelector('.atlas-initiative-card')!;
+    expect(onMap.classList.contains('atlas-initiative-card--off-map')).toBe(false);
+    expect(onMap.hasAttribute('aria-description')).toBe(false);
   });
 
   it('is placed on the map from its card\'s menu, which a token on the map does not offer', () => {

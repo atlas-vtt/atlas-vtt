@@ -3,6 +3,7 @@ import { FileText, Search, SearchX, type LucideIcon } from 'lucide-react';
 import { App, TFile } from 'obsidian';
 import { formatRelativeTime } from '../../utils/relativeTime';
 import { t } from '../../i18n';
+import { revealInList } from '../../utils/scrollWithin';
 
 const MAX_NOTE_SIZE_BYTES = 1_000_000;
 const RECENT_LIMIT = 20;
@@ -55,7 +56,8 @@ export default function LinkedNotePicker({ app, onSelect, files, noun = 'notes',
   }, [query]);
 
   useEffect(() => {
-    listRef.current?.children[activeIndex]?.scrollIntoView({ block: 'nearest' });
+    const row = listRef.current?.children[activeIndex];
+    if (row) revealInList(row);
   }, [activeIndex]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {

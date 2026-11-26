@@ -11,9 +11,13 @@ import type { MapBounds } from '../../vision/visibility';
 import { requestRender } from '../RenderScheduler';
 import { CanvasLightingFallback } from './CanvasLightingFallback';
 import { StoredLightingAttempt } from './lightingAttempts';
+import { ForgottenFloors } from './ForgottenFloors';
+import { memoryFloorOf, PlayerMemoryEdits } from '../../online/gm/memory/PlayerMemoryEdits';
+import { keptMemoriesOf } from '../../online/gm/memory/vaultMemoryFiles';
 import { LightingRenderer } from './LightingRenderer';
 import { showLightingUnavailableNotice } from './lightingNotices';
 import { LightingViewHost } from './LightingViewHost';
+import { ScenePrebuildClient } from './prebuild/ScenePrebuildClient';
 import type { ExploredMemoryWatcher } from './sceneLightingView';
 import type { BelowLevelsHost } from './levels/LevelsBelow';
 
@@ -50,11 +54,14 @@ export interface SceneLightingDeps {
  */
 export function createSceneLighting({ viewport, app, store, obsApp, measurement, bounds, albedo, grid, rules, onSightChange, exploredWatcher, quality, scene = store, below, roofFadeMs }: SceneLightingDeps): LightingViewHost {
   const attempt = new StoredLightingAttempt(obsApp, () => store.getState().mapPath);
+  const prebuild = ScenePrebuildClient.forApp(obsApp);
   const sight = onSightChange ? { onSightChange } : {};
   const view = { ...sight, ...(rules && { rules }) };
+  // Each player's own memory, kept by Atlas Online in the campaigns, follows the GM's edits by hand and their undo.
+  const floors = (): ForgottenFloors => new ForgottenFloors(store, new PlayerMemoryEdits(keptMemoriesOf(obsApp), () => memoryFloorOf(store.getState())));
   return new LightingViewHost({
     store,
-    createEngineView: (onUnavailable) => new LightingRenderer({ viewport, app, store: scene, measurement, bounds, albedo, attempt, onUnavailable, ...view, ...(grid && { grid }), ...(exploredWatcher && { exploredWatcher }), ...(quality && { quality }), ...(below && { below }), ...(roofFadeMs !== undefined && { roofFadeMs }) }),
+    createEngineView: (onUnavailable) => new LightingRenderer({ viewport, app, store: scene, measurement, bounds, albedo, attempt, onUnavailable, prebuild: (request) => prebuild.compute(request), ...view, ...(grid && { grid }), ...(exploredWatcher && { exploredWatcher }), ...(quality && { quality }), ...(below && { below }), ...(roofFadeMs !== undefined && { roofFadeMs }), floors: floors() }),
     createFallback: () => new CanvasLightingFallback({ viewport, store: scene, measurement, bounds, requestRender: () => requestRender(app), ...view }),
     forgetAttempt: () => attempt.forget(),
     notify: showLightingUnavailableNotice,

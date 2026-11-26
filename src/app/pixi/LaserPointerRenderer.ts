@@ -40,7 +40,7 @@ export class LaserPointerRenderer {
   private beam: LaserBeamView;
 
   private trailPoints: TrailPoint[] = [];
-  /** Where the pointer is on the map, or null while it is off the canvas. */
+  /** Where the pointer is on the map, or null while it is off the canvas (a finger: while it is not down). */
   private pointer: WorldPoint | null = null;
   private isToolActive: boolean = false;
   private isPointing: boolean = false;
@@ -107,7 +107,8 @@ export class LaserPointerRenderer {
       this.pointer = null;
       this.redraw();
     };
-    this.canvasEl.addEventListener('mouseleave', this.onCanvasLeave);
+    // A pointer leaves the canvas when it moves off it, and a finger whenever it lifts: no dot stays where it was.
+    this.canvasEl.addEventListener('pointerleave', this.onCanvasLeave);
   }
 
   private setActiveTool(tool: ViewState['activeTool']): void {
@@ -194,30 +195,26 @@ export class LaserPointerRenderer {
   }
 
   private handlePointerUp(e: FederatedPointerEvent): void {
-    const button: number = e.button;
-
-    if (button === 1 && this.isQuickMode) {
-      this.endQuickMode();
-      e.stopPropagation();
-      return;
-    }
-
-    if (button === 0 && this.isToolActive && this.isPointing) {
-      this.isPointing = false;
-      this.redraw();
-      e.stopPropagation();
-    }
+    if (this.endPress()) e.stopPropagation();
   }
 
   private handlePointerUpOutside(): void {
+    this.endPress();
+  }
+
+  /**
+   * Ends the beam a press began, whichever button the release names: a release comes only once the
+   * last button is up, with that button. Returns whether a press was under way.
+   */
+  private endPress(): boolean {
     if (this.isQuickMode) {
       this.endQuickMode();
-      return;
+      return true;
     }
-    if (this.isPointing) {
-      this.isPointing = false;
-      this.redraw();
-    }
+    if (!this.isPointing) return false;
+    this.isPointing = false;
+    this.redraw();
+    return true;
   }
 
   private endQuickMode(): void {
@@ -310,7 +307,7 @@ export class LaserPointerRenderer {
     this.viewport.off('pointerupoutside', this.onPointerUpOutside);
     this.viewport.off('pointercancel', this.onPointerUpOutside);
     this.viewport.off('moved', this.onViewportMoved);
-    this.canvasEl.removeEventListener('mouseleave', this.onCanvasLeave);
+    this.canvasEl.removeEventListener('pointerleave', this.onCanvasLeave);
 
     this.trailPoints = [];
     destroyTree(this.container);

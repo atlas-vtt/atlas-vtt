@@ -11,7 +11,7 @@ const bitmap = (width?: number, height?: number): ImageBitmap => new Bitmap(widt
 const frame = { x: 1, y: 1, width: 510, height: 510 };
 const TESSERA_BYTES = 512 * 512 * 4;
 
-function harness(options: { budgetBytes?: number; renderer?: TesseraUploader | null } = {}): {
+function harness(options: { budgetBytes?: number; renderer?: TesseraUploader | null; uploadAtOnce?: () => boolean } = {}): {
   cache: TesseraTextureCache;
   tick: () => void;
   uploaded: TextureSource[];
@@ -24,7 +24,7 @@ function harness(options: { budgetBytes?: number; renderer?: TesseraUploader | n
     ? { texture: { initSource: (source: TextureSource): void => { uploaded.push(source); } } }
     : options.renderer;
   const requestRender = vi.fn();
-  const cache = new TesseraTextureCache({ ticker, renderer, requestRender, budgetBytes: options.budgetBytes });
+  const cache = new TesseraTextureCache({ ticker, renderer, requestRender, budgetBytes: options.budgetBytes, ...(options.uploadAtOnce && { uploadAtOnce: options.uploadAtOnce }) });
   return { cache, tick: () => ticker.update((time += 16)), uploaded, requestRender };
 }
 
@@ -58,6 +58,18 @@ describe('TesseraTextureCache', () => {
     expect(cache.isReady('h/0/5/0')).toBe(true);
     tick();
     expect(requestRender).toHaveBeenCalledTimes(2);
+  });
+
+  it('uploads every texture in one frame while nothing is drawn', () => {
+    let held = true;
+    const { cache, tick, uploaded } = harness({ uploadAtOnce: () => held });
+    Array.from({ length: 6 }, (_, i) => cache.add(`h/0/${i}/0`, bitmap(), frame));
+    tick();
+    expect(uploaded).toHaveLength(6);
+    held = false;
+    Array.from({ length: 6 }, (_, i) => cache.add(`h/1/${i}/0`, bitmap(), frame));
+    tick();
+    expect(uploaded).toHaveLength(10);
   });
 
   it('makes tesserae ready without an upload where the renderer cannot upload ahead', () => {

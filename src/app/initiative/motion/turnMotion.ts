@@ -22,7 +22,8 @@ export const TURN_GHOST_CLASS = 'atlas-initiative-ghost';
 /** How long a card takes to glide one place: a motion watched across the table, longer than a control's. */
 export const TURN_MOVE_MS = 460;
 /** A soft start and a long settle (`--ease-drawer`), so the cards come to rest rather than stop. */
-const MOVE_EASING = 'cubic-bezier(0.32, 0.72, 0, 1)';
+export const MOVE_EASING_POINTS = [0.32, 0.72, 0, 1] as const;
+const MOVE_EASING = `cubic-bezier(${MOVE_EASING_POINTS.join(', ')})`;
 /** Each card starts this much after the one ahead of it in the way they move, at most `WAVE_STEPS` steps. */
 const WAVE_MS = 22;
 const WAVE_STEPS = 6;
@@ -57,14 +58,23 @@ export interface MotionOptions {
   wrap?: boolean;
 }
 
-/** The offset of `element` from `list`'s padding box, adding up the positioned ancestors between them; null outside it. */
+/**
+ * The offset of `element` from `list`'s padding box, adding up the positioned ancestors between them and the
+ * `translate` they are drawn with (a side being dragged carries its cards); null outside it.
+ */
 function offsetIn(list: HTMLElement, element: HTMLElement): { x: number; y: number } | null {
   let x = 0;
   let y = 0;
   let node: HTMLElement | null = element;
+  const view = list.ownerDocument.defaultView;
   while (node && node !== list) {
     x += node.offsetLeft;
     y += node.offsetTop;
+    if (node !== element && view) {
+      const moved = translationOf(view.getComputedStyle(node));
+      x += moved.x;
+      y += moved.y;
+    }
     node = node.offsetParent as HTMLElement | null;
   }
   return node === list ? { x, y } : null;

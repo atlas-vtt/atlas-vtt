@@ -218,7 +218,7 @@ export const ContextMenuProvider: React.FC<ContextMenuProviderProps> = ({ childr
   useEffect(() => {
     const menu = menuElement.current;
     const active = menu?.ownerDocument.activeElement;
-    if (isOpen || !menu?.isConnected || !(active instanceof HTMLElement) || !menu.contains(active)) return;
+    if (isOpen || !menu?.isConnected || !active?.instanceOf(HTMLElement) || !menu.contains(active)) return;
     active.blur();
     if (returnFocus.current?.isConnected) returnFocus.current.focus({ preventScroll: true });
   }, [isOpen]);
@@ -336,7 +336,7 @@ export function RingColorGrid({ tokenId, closeMenu }: { tokenId: string; closeMe
 
   const resolveHex = (cssVar: string | undefined, fallback: string): string => {
     if (!cssVar) return fallback;
-    const value = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
+    const value = getComputedStyle(activeDocument.documentElement).getPropertyValue(cssVar).trim();
     return /^#[0-9a-f]{6}$/i.test(value) ? value : fallback;
   };
 

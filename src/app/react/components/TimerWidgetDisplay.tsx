@@ -189,7 +189,7 @@ export function TimerWidgetDisplay({
           {/* GM-only controls: play/pause */}
           {!isPlayerView && (
             <LabelTooltip label={isRunning ? t('timer.pause') : t('timer.start')}>
-              <button
+              <button type="button"
                 onClick={handlePlayPause}
                 className="atlas-timer-btn"
               >
@@ -224,7 +224,7 @@ export function TimerWidgetDisplay({
           {/* GM-only controls: reset */}
           {!isPlayerView && (
             <LabelTooltip label={t('common.reset')}>
-              <button
+              <button type="button"
                 onClick={handleReset}
                 className="atlas-timer-btn"
               >

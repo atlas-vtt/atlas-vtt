@@ -17,6 +17,7 @@ export const widgets = {
   'widgets.name': 'Widget name',
   'widgets.new': 'New widget',
   'widgets.onlyWhereOn': 'Show only where switched on',
+  'widgets.reorder': 'Drag to reorder',
   'widgets.segments': 'Segments',
   'widgets.showAll': 'Show all widgets',
   'widgets.showCount': 'Show count',

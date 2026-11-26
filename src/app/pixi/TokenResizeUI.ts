@@ -7,6 +7,7 @@ import { computeTokenPixelSize, computeTokenStrokeWidth, RESIZE_HANDLE_SIZE, res
 import { toError } from '../utils/errors';
 import type { TokenHandleContainer } from './token-renderer/types';
 import { findTokenGroup } from './token-renderer/findTokenGroup';
+import { isDarkTheme } from './utils/canvasBadgeColors';
 import { destroyTree } from './utils/destroyTree';
 import { HandleHitArea } from './utils/handleHitArea';
 import { resizedTokenCenter } from '../grid/gridPlacement';
@@ -71,9 +72,6 @@ export class TokenResizeUI {
     return this.temporarySizes[tokenId];
   }
   
-  /**
-   * Check if currently resizing
-   */
   public get isCurrentlyResizing(): boolean {
     return this.isResizing;
   }
@@ -240,7 +238,7 @@ export class TokenResizeUI {
    */
   private createResizeHandle(direction: 'left' | 'right'): TokenHandleContainer {
     // Get theme colors - matching status badges
-    const isDarkMode = document.body.classList.contains('theme-dark');
+    const isDarkMode = isDarkTheme();
     const bg = new Graphics();
     const handle: TokenHandleContainer = Object.assign(new Container({ label: TOKEN_HANDLE_LABEL }), { bg, isDarkMode });
     handle.eventMode = 'static';
@@ -417,9 +415,6 @@ export class TokenResizeUI {
     }));
   };
   
-  /**
-   * End resize
-   */
   private onResizeEnd = (e: FederatedPointerEvent): void => {
     if (!this.isResizing) return;
     
@@ -473,7 +468,7 @@ export class TokenResizeUI {
       
       // Reset handle appearance
       const resetHandle = ({ bg, isDarkMode: wasDarkMode }: TokenHandleContainer): void => {
-        const isDarkMode = wasDarkMode || document.body.classList.contains('theme-dark');
+        const isDarkMode = wasDarkMode || isDarkTheme();
         const bgColor = isDarkMode ? 0x2a2a2a : 0xe3e3e3;
         const strokeColor = isDarkMode ? 0xffffff : 0x000000;
         const strokeAlpha = isDarkMode ? 0.4 : 0.3;

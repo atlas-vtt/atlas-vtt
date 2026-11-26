@@ -34,17 +34,12 @@ import { parseSenseDefinitions } from './senseValidation';
 import { parseVisionDefaults } from './visionDefaults';
 import { isHexColor } from '../utils/hexColor';
 import { parseStatblockRoles } from '../statblocks/roles/roleValidation';
+import { isRecord } from '../utils/guards';
 
 const UNIT_TYPES: readonly GridUnitType[] = ['feet', 'yards', 'meters', 'units', 'custom'];
 const MEASUREMENT_MODES: readonly MeasurementMode[] = ['metric', 'abstract'];
 const DIAGONAL_RULES: readonly DiagonalRule[] = ['equidistant', 'alternating', 'euclidean', 'manhattan'];
 const DIFFICULT_TERRAIN_RULES: readonly DifficultTerrainRule[] = ['double', 'none'];
-
-type UnknownRecord = Record<string, unknown>;
-
-function isRecord(value: unknown): value is UnknownRecord {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function isOneOf<T extends string>(options: readonly T[], value: unknown): value is T {
   return typeof value === 'string' && (options as readonly string[]).includes(value);

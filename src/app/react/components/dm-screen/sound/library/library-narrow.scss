@@ -13,6 +13,14 @@
   }
 
   // The name keeps every pixel: the action, a glyph here, stands in the length's place while it shows.
+  .atlas-sound-lib__colheads {
+    grid-template-columns: 32px minmax(0, 1fr) auto minmax(44px, auto) 28px;
+
+    @media (pointer: coarse) {
+      grid-template-columns: 44px minmax(0, 1fr) auto minmax(44px, auto) 44px;
+    }
+  }
+
   .atlas-sound-lib__row {
     grid-template-columns: 32px minmax(0, 1fr) auto minmax(44px, auto) 28px;
 

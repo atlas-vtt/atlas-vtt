@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { DESKTOP_BUDGETS, MOBILE_BUDGETS, budgetsFor, imageWorkerCount } from '../../../src/app/platform/deviceBudgets';
+import { DESKTOP_BUDGETS, MOBILE_BUDGETS, budgetsFor, gridDetectionCount, imageWorkerCount, tesseraEncoderCount } from '../../../src/app/platform/deviceBudgets';
 import { COARSE_POINTER_SCALE, createDeviceProfile, mediaPointerSource, pointerKindOf, type PointerSource } from '../../../src/app/platform/deviceProfile';
 import { WARM_STAGES } from '../../../src/app/dice3d/stagePool';
 import { DEFAULT_LIGHTING_QUALITY, LIGHTING_QUALITY } from '../../../src/app/lighting/lightingQuality';
@@ -34,10 +34,13 @@ describe('the budgets of a desktop', () => {
     expect(DESKTOP_BUDGETS).toEqual({
       imageWorkers: 6,
       imageWorkerBudget: GIB,
+      tesseraEncoders: 6,
       decodedLevelsBudget: GIB,
+      gridDetections: 7,
       tileCacheMax: 4 * GIB,
       tileCacheQuotaShare: 0.1,
       tileTextureBudget: 160 * MIB,
+      idleTokenArtOnGpu: true,
       lightingQualityDefault: 'high',
       diceWarmStages: 4,
       diceShadowMap: 1024,
@@ -59,6 +62,14 @@ describe('the budgets of a desktop', () => {
   it.each([[1, 1], [2, 1], [4, 3], [7, 6], [8, 6], [32, 6]])('with %i cores run %i image workers: one core stays free, six at most', (cores, workers) => {
     expect(imageWorkerCount(DESKTOP_BUDGETS, cores)).toBe(workers);
   });
+
+  it.each([[1, 0], [2, 1], [4, 2], [8, 4], [12, 6], [32, 6]])('with %i cores run %i tessera encoders: half the cores, six at most', (cores, encoders) => {
+    expect(tesseraEncoderCount(DESKTOP_BUDGETS, cores)).toBe(encoders);
+  });
+
+  it.each([[2, 1], [4, 1], [6, 5], [8, 7], [12, 7], [32, 7]])('with %i cores run %i grid detections at once: one after the other on four or fewer', (cores, detections) => {
+    expect(gridDetectionCount(DESKTOP_BUDGETS, cores)).toBe(detections);
+  });
 });
 
 describe('the budgets of a tablet', () => {
@@ -66,10 +77,13 @@ describe('the budgets of a tablet', () => {
     expect(MOBILE_BUDGETS).toEqual({
       imageWorkers: 2,
       imageWorkerBudget: 256 * MIB,
+      tesseraEncoders: 0,
       decodedLevelsBudget: 256 * MIB,
+      gridDetections: 1,
       tileCacheMax: 512 * MIB,
       tileCacheQuotaShare: 0.05,
       tileTextureBudget: 96 * MIB,
+      idleTokenArtOnGpu: false,
       lightingQualityDefault: 'balanced',
       diceWarmStages: 1,
       diceShadowMap: 512,
@@ -85,6 +99,14 @@ describe('the budgets of a tablet', () => {
 
   it.each([[1, 1], [2, 1], [3, 2], [8, 2]])('with %i cores run %i image workers', (cores, workers) => {
     expect(imageWorkerCount(MOBILE_BUDGETS, cores)).toBe(workers);
+  });
+
+  it('encode tesserae on the tessera worker alone', () => {
+    expect(tesseraEncoderCount(MOBILE_BUDGETS, 8)).toBe(0);
+  });
+
+  it('run grid detections one after the other', () => {
+    expect(gridDetectionCount(MOBILE_BUDGETS, 8)).toBe(1);
   });
 });
 

@@ -65,7 +65,7 @@ describe('a scene that names a relief and a shade', () => {
     await h.service.loadMap(h.rendererService, ONE);
     expect(h.store.getState()).toMatchObject({ mapLoaded: true, mapPath: ONE, background: 'maps/ground.webp' });
 
-    h.store.getState().addToken({ x: 5, y: 5, imagePath: 'tokens/rogue.png' });
+    h.store.getState().addTokens([{ x: 5, y: 5, imagePath: 'tokens/rogue.png' }]);
     await save(h.store);
     expect(saved(h, ONE)).not.toHaveProperty('relief');
     expect(saved(h, ONE)).not.toHaveProperty('shade');

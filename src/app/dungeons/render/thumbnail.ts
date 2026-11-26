@@ -11,7 +11,6 @@ import { visibleDungeon } from './visibleDungeon';
  * shows the entry floor.
  */
 
-/** Cells across a thumbnail. */
 export const THUMBNAIL_CELLS_ACROSS = 11;
 
 /** What weighs, per cell of a window, in choosing where a thumbnail looks. */

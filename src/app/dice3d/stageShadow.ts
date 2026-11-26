@@ -40,6 +40,9 @@ const SHADOW_SOFT = { blur: 17, opacity: 0.14 };
  * spans eight: 1024 texels still put more than one on every pixel. The blur
  * above is counted in texels, so half the map takes half the radius for the
  * same softness on the table, and half the taps keep their spacing.
+ *
+ * Blurring only the texels the dice cover saves nothing: the floor is drawn
+ * into the map too, so no texel of it is empty.
  */
 const SHADOW_MAP = 1024;
 const SHADOW_TAPS = 12;
@@ -124,6 +127,7 @@ const KEY_AT = [-1.7, 6.0, -1.7] as const;
 export class StageShadow {
   private readonly key: THREE.DirectionalLight;
   private readonly floorMat: THREE.ShadowMaterial;
+  private readonly floor: THREE.Mesh;
   /**
    * The map no longer shows what casts it: the bodies or the light were
    * changed, or the last frame moved a body and its ghosts have yet to go.
@@ -160,11 +164,16 @@ export class StageShadow {
 
     // The table: invisible except for the shadow falling on it.
     this.floorMat = new THREE.ShadowMaterial({ color: INK, opacity: SHADOW_SHARP.opacity });
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(24, 24), this.floorMat);
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.y = FLOOR_Y;
-    floor.receiveShadow = true;
-    scene.add(floor);
+    this.floor = new THREE.Mesh(new THREE.PlaneGeometry(24, 24), this.floorMat);
+    this.floor.rotation.x = -Math.PI / 2;
+    this.floor.position.y = FLOOR_Y;
+    this.floor.receiveShadow = true;
+    scene.add(this.floor);
+  }
+
+  /** Whether the shadow falls on the table; without it a frame holds only the bodies, an outline of them. */
+  setShown(shown: boolean): void {
+    this.floor.visible = shown;
   }
 
   /** Other bodies are on the stage: whatever the map holds is of the last ones. */

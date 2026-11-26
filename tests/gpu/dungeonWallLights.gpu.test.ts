@@ -228,7 +228,7 @@ describe("a lived-in dungeon's wall lights at night", () => {
       // Steady light without bounce: the difference a light makes is its own direct light.
       // Two-way walls: an object's outline stops light only from inside, so its top is lit from outside.
       const segs: readonly Seg[] = splitBlocking(sealedWalls(Object.values(b.parts.scene.walls).filter(wall => !b.parts.levelIds || wall.levels?.[0] === b.parts.levelIds[0]), worldTexel(b)), 'light').twoWay;
-      // The composite gives a wall's face the light of the floor before it up to a band of a few texels (dynamic-lighting.md, Wall faces): a point that near a wall says nothing.
+      // The composite gives a wall's face the light of the floor before it up to a band of a few texels (`wallBand`): a point that near a wall says nothing.
       const band = 3 * worldTexel(b, LIGHTING_QUALITY.saver.maxTexels);
       const clear = (at: { x: number; y: number }): boolean => segs.every(([ax, ay, bx, by]) => pointSegmentDistance(at, { x: ax, y: ay }, { x: bx, y: by }) >= band);
       const view = await openFloor(b, floorMap(b, 'white'), 'saver', {});

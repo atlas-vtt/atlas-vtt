@@ -131,7 +131,6 @@ export class DiceTool {
     this.state.quickDice = this.state.quickDice.filter(d => d !== die);
   }
 
-  // Get current state
   public getState(): DiceToolState {
     return { ...this.state };
   }
@@ -176,6 +175,12 @@ function prepareDiceRoll(formula: string, rules: DiceRules | RollingDice, advant
   if (helped && 'ok' in helped) return helped;
   if (written.side && written.side === side && !helped) return { ok: false, code: 'advantage' };
   return { complete, rolling, looks, helped, side };
+}
+
+/** Why the dice tool refuses to roll `formula` by `rules` with `advantage` asked for, or null where it rolls it. Pure. */
+export function diceRollProblem(formula: string, rules: DiceRules | RollingDice, advantage?: AdvantageSide): FormulaError | null {
+  const prepared = prepareDiceRoll(formula, rules, advantage);
+  return 'code' in prepared ? prepared : null;
 }
 
 /**

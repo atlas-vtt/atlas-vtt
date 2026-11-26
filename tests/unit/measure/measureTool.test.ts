@@ -199,11 +199,11 @@ describe('keeping a measurement', () => {
     measureFrom(s, 35, 175, 175, 175);
     const [first, second] = kept(s);
     const before = s.parts().slice(2);
-    s.store.getState().updateMeasure(second!.id, { color: '#00ff00' });
+    s.store.getState().patchObject('measures', second!.id, { color: '#00ff00' });
     // The same drawings: nothing was built anew, and the untouched record is the same object.
     expect(s.parts().slice(2)).toEqual(before);
     expect(s.measure.measurements.get().kept[0]).toBe(first);
-    s.store.getState().deleteMeasure(first!.id);
+    s.store.getState().removeObjects([first!.id]);
     finishMeasureExits();
     expect(s.parts().slice(2)).toEqual(before.slice(2));
   });

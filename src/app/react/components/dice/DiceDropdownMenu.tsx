@@ -82,7 +82,7 @@ export function DiceDropdownMenu({ diceTool, isOpen, onToggle, triggerRef }: Dic
     };
 
     // The document the tray is in, and its window's timer.
-    const doc = trayRef.current?.ownerDocument ?? document;
+    const doc = trayRef.current?.ownerDocument ?? activeDocument;
     const win = doc.defaultView ?? window;
     const timer = win.setTimeout(() => {
       doc.addEventListener('pointerdown', handleClickOutside);

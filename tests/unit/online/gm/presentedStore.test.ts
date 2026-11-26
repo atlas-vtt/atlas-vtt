@@ -2,7 +2,7 @@ import type { GmMessage, PlayerDrag, PlayerMove } from '../../../../src/app/onli
 import type { WorkspaceLeaf } from 'obsidian';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getHistoryStore, runUntracked } from '../../../../src/app/stores/history';
-import type { SceneState, SceneStore } from '../../../../src/app/online/gm/atlasView.ts';
+import type { ObservedStore, SceneState } from '../../../../src/app/online/gm/atlasView.ts';
 import { PlayerMoves } from '../../../../src/app/online/gm/playerMoves.ts';
 import type { PresentedTab, TabSource } from '../../../../src/app/online/gm/presentedScene.ts';
 import { PresentedStore } from '../../../../src/app/online/gm/presentedStore.ts';
@@ -76,7 +76,7 @@ describe('the shared store while the GM works on another scene tab', () => {
 
   it('holds the presented scene as last shown, marked loading, takes no writes and tells nothing until the scene is shown again', () => {
     const v = view();
-    const gate = new PresentedStore(v.store as unknown as SceneStore, v.presented, () => undefined);
+    const gate = new PresentedStore(v.store as unknown as ObservedStore, v.presented, () => undefined);
     const heard: SceneState[] = [];
     gate.subscribe((state) => heard.push(state));
 
@@ -102,7 +102,7 @@ describe('the shared store while the GM works on another scene tab', () => {
 
   it('follows what Atlas presents: another tab of the view goes live once it is shown, and none holds', () => {
     const v = view();
-    const gate = new PresentedStore(v.store as unknown as SceneStore, v.presented, () => undefined);
+    const gate = new PresentedStore(v.store as unknown as ObservedStore, v.presented, () => undefined);
     switchToHall(v);
     expect(gate.held).toBe(true);
     gate.present({ ...v.presented, tabId: 'hall', filePath: HALL, name: 'Hall' });
@@ -116,7 +116,7 @@ describe('the shared store while the GM works on another scene tab', () => {
 
   it('tells its listeners when Atlas presents another level of the scene, which changes nothing in the store', () => {
     const v = view();
-    const gate = new PresentedStore(v.store as unknown as SceneStore, v.presented, () => undefined);
+    const gate = new PresentedStore(v.store as unknown as ObservedStore, v.presented, () => undefined);
     const heard: SceneState[] = [];
     gate.subscribe((state) => heard.push(state));
 
@@ -132,7 +132,7 @@ describe('the shared store while the GM works on another scene tab', () => {
   it('ends a player\'s drag on the presented scene as one undo step, and refuses moves while it holds', () => {
     const v = view();
     const holds: number[] = [];
-    const gate = new PresentedStore(v.store as unknown as SceneStore, v.presented, () => void holds.push(Object.keys(v.store.getState().heldTokens).length));
+    const gate = new PresentedStore(v.store as unknown as ObservedStore, v.presented, () => void holds.push(Object.keys(v.store.getState().heldTokens).length));
     const sent: { body: GmMessage; to: string }[] = [];
     const moves = new PlayerMoves(gate, {
       context: () => ({ scene: SCENE, listedToken: (alias) => (alias === ALIAS.ogre ? 'ogre' : undefined), ownerOf: () => ANA, map: { width: 2000, height: 1500 }, walls: null }),
@@ -141,7 +141,8 @@ describe('the shared store while the GM works on another scene tab', () => {
       setTimer: (run, ms) => setTimeout(run, ms) as unknown as number,
       clearTimer: (timer) => clearTimeout(timer),
     });
-    moves.start();
+    // As the floor's share hands every change of the presented store on.
+    gate.subscribe((state) => moves.storeChanged(state));
     const drag: PlayerDrag = { t: 'drag', scene: SCENE, id: ALIAS.ogre, x: 300, y: 200 };
     moves.drag(ANA, drag);
     expect(v.store.getState().objects.tokens.ogre?.x).toBe(300);

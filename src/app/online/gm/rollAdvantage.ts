@@ -2,6 +2,7 @@ import type { AdvantageSide, SharedRollDice } from '../protocol/index.ts';
 import { rollingRules } from '../../gameSystems/diceSets';
 import { completeFormula } from '../../tools/completeFormula';
 import { ruledSides, withAdvantage } from '../../tools/diceAdvantage';
+import { writtenSide } from '../../tools/writtenAdvantage';
 import type { DiceRules } from '../../types/diceRulesTypes';
 import type { RollingDice } from '../../types/diceSetTypes';
 import type { TokenEntity } from '../../types';
@@ -18,6 +19,9 @@ export function mapRollDice(dice: DiceSource | null): SharedRollDice | null {
   return dice === null ? null : sharedRollDice(dice.rules());
 }
 
+/** What a token's own set is read by (`DiceSource.setFor`): the token, its character's statblock, and the library token its asset and art name. */
+export const diceKey = (token: TokenEntity): string => JSON.stringify([token.id, token.kind, token.kind === 'character' ? token.statblockPath ?? null : null, token.assetId ?? null, token.imagePath]);
+
 /** The dice of a token's own set (its character's template's), as `PlayerRolls` rolls for it; undefined where it rolls with the map's. */
 export function tokenRollDice(dice: DiceSource | null, token: TokenEntity | undefined): SharedRollDice | undefined {
   const set = token === undefined ? undefined : dice?.setFor?.(token);
@@ -27,11 +31,12 @@ export function tokenRollDice(dice: DiceSource | null, token: TokenEntity | unde
 /**
  * The side a player's roll of `formula` is made with by `rules`: the side asked for where the set has
  * a rule for it, the roll holds the set's dice and the rule keeps it within the dice's limits; none
- * otherwise, and the roll is made plain, as a statblock's roll is where its menu offers no side.
+ * otherwise, and the roll is made plain, as a statblock's roll is where its menu offers no side. A side
+ * the formula writes (`+4 adv`) is left to the dice tool, which cancels it with the side asked for.
  */
 export function playerSide(formula: string, rules: DiceRules | RollingDice, asked: AdvantageSide | undefined): AdvantageSide | undefined {
   if (asked === undefined) return undefined;
-  const complete = completeFormula(formula, rules);
+  const complete = completeFormula(writtenSide(formula).formula, rules);
   if (!complete.ok) return undefined;
   const helped = withAdvantage(complete.parsed, [], rollingRules(rules), asked);
   return helped !== null && !('ok' in helped) ? asked : undefined;

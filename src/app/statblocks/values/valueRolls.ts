@@ -6,16 +6,22 @@
  */
 
 import { rollPieces } from '../../tools/textRolls';
+import { writtenSide } from '../../tools/writtenAdvantage';
 
 /** A whole number as written on a card: an optional sign (minus sign and en dash included) on at most four digits. */
 const WHOLE_NUMBER = /^([+\-−–]?)(\d{1,4})$/;
 
-/** A whole number as the bonus it rolls: `2` and `+2` roll `+2`, `-1` and `−1` roll `-1`, `0` rolls `+0`; null for any other text. */
+/**
+ * A whole number as the bonus it rolls: `2` and `+2` roll `+2`, `-1` and `−1` roll `-1`, `0` rolls `+0`, with a side
+ * written last kept last (`7 adv` rolls `+7 adv`); null for any other text.
+ */
 export function bonusOf(text: string): string | null {
-  const match = WHOLE_NUMBER.exec(text.trim());
+  const { formula, word } = writtenSide(text.trim());
+  const match = WHOLE_NUMBER.exec(formula.trim());
   if (!match) return null;
   const value = Number(match[2]);
-  return match[1] !== '' && match[1] !== '+' && value !== 0 ? `-${value}` : `+${value}`;
+  const bonus = match[1] !== '' && match[1] !== '+' && value !== 0 ? `-${value}` : `+${value}`;
+  return word === '' ? bonus : `${bonus} ${word}`;
 }
 
 /**

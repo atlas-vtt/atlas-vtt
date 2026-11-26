@@ -9,6 +9,7 @@ export const toolbar: Translation = {
   'toolbar.cone': 'Kegel',
   'toolbar.fogEraser': 'Nebelradierer',
   'toolbar.fogTool': 'Nebelwerkzeug',
+  'toolbar.lighting': 'Beleuchtung',
   'toolbar.laser': 'Laserpointer',
   'toolbar.lassoSelection': 'Lasso-Auswahl',
   'toolbar.peek': 'Halten, um zu sehen, was die Spieler sehen',
@@ -25,7 +26,7 @@ export const toolbar: Translation = {
   'toolbar.notePin': 'Notiz-Pin-Werkzeug',
   'toolbar.pinOptions': 'Pin-Optionen',
   'toolbar.stairs': 'Treppe',
-  'toolbar.stairsNeedLevels': 'Treppen verbinden die Ebenen einer Szene. Füge zuerst auf der Seite Ebenen der Szene in der Befehlspalette eine Ebene hinzu.',
+  'toolbar.stairsNeedLevels': 'Treppen brauchen eine zweite Ebene. Füge sie unter Ebenen der Szene hinzu',
   'toolbar.rollDice': 'Würfelablage',
   'toolbar.optionsOf': 'Optionen: {label}',
   'toolbar.moveSelect': 'Bewegen/Auswählen',
@@ -66,5 +67,4 @@ export const toolbar: Translation = {
   'toolbar.ranges': 'Reichweiten',
   'toolbar.rangesTip': 'Klicke auf ein Token oder einen Ort, um seine Reichweiten zu sehen',
   'toolbar.rangesNoRules': 'Dieses Spielsystem hat keine Reichweiten oder Bewegungsabschnitte',
-  'toolbar.rangesNeedGmView': 'Wechsle zur SL-Ansicht ({key}), um Reichweiten zu sehen',
 };

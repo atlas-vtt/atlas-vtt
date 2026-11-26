@@ -14,8 +14,10 @@ const EDGE: AdvantageRule = { kind: 'number', value: 2 };
 /** Built-in set ids start with this; the vault's never do. */
 export const BUILT_IN_DICE_SET_PREFIX = 'builtin:';
 
-/** A d20, the highest face a critical success and a 1 a failure: what a collection without a system rolls. */
+/** A d20, the highest face a critical success and a 1 a failure, with advantage: 5e's, Shadowdark's, Pathfinder's. */
 export const D20_DICE_SET_ID = 'builtin:d20';
+/** A d20 as above, without advantage: what a collection without a system, or of a system without advantage, rolls. */
+export const PLAIN_D20_DICE_SET_ID = 'builtin:d20-plain';
 export const D20_ROLL_UNDER_DICE_SET_ID = 'builtin:d20-roll-under';
 export const PERCENTILE_DICE_SET_ID = 'builtin:d100-roll-under';
 export const EXPLODING_D10_DICE_SET_ID = 'builtin:d10-exploding';
@@ -23,7 +25,9 @@ export const POWER_ROLL_DICE_SET_ID = 'builtin:power-roll';
 
 export const BUILT_IN_DICE_SETS: readonly DiceSet[] = [
   { id: D20_DICE_SET_ID, name: 'd20', builtIn: true, dice: [{ count: 1, sides: 20 }], crit: 'natural', ...KEEP_BEST },
-  { id: D20_ROLL_UNDER_DICE_SET_ID, name: 'd20 roll-under', builtIn: true, dice: [{ count: 1, sides: 20 }], crit: 'roll-under', ...KEEP_BEST },
+  { id: PLAIN_D20_DICE_SET_ID, name: 'Plain d20', builtIn: true, dice: [{ count: 1, sides: 20 }], crit: 'natural' },
+  // Cairn and its kin have no advantage, so this set offers none
+  { id: D20_ROLL_UNDER_DICE_SET_ID, name: 'd20 roll-under', builtIn: true, dice: [{ count: 1, sides: 20 }], crit: 'roll-under' },
   { id: PERCENTILE_DICE_SET_ID, name: 'd100 roll-under', builtIn: true, dice: [{ count: 1, sides: 100 }], crit: 'roll-under', ...KEEP_BEST },
   {
     id: EXPLODING_D10_DICE_SET_ID,

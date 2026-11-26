@@ -40,8 +40,8 @@ export async function adoptOrphanedSnapshots(app: App, scenes: readonly OrphanSc
     const orphans = (app.vault.getFolderByPath(collectionSnapshotsFolder(collectionId))?.children ?? [])
       .filter((child): child is TFolder => child instanceof TFolder && !sceneIds.has(child.name));
     const inCollection = waiting.filter((scene) => scene.collection === collectionId);
-    // Nothing is read where no folder could move.
-    if (!orphans.some((orphan) => isRecoveredId(orphan.name)) && !inCollection.some(settled)) continue;
+    // Nothing is read where no folder could move, nor where there is no folder at all (a scene's map is parsed whole).
+    if (orphans.length === 0 || (!orphans.some((orphan) => isRecoveredId(orphan.name)) && !inCollection.some(settled))) continue;
 
     const read = await Promise.all(orphans.map(async (folder) => ({ folder, backgrounds: await backgroundsIn(service, folder) })));
     const candidates = (await Promise.all(inCollection.map(async (scene) => ({ scene, background: scene.data?.mapPath ? await sceneBackground(app, scene.data.mapPath) : undefined }))))

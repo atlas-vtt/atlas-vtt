@@ -3,6 +3,7 @@
 @use '../../../../styles/tokens' as *;
 @use '../../../../styles/mixins' as *;
 @use '../../../../styles/initiative-cards' as *;
+@use '../../../../styles/wiggle' as *;
 
 $tracker-width: 96px;
 // The compact list's line: room for a name beside the number and a badge
@@ -166,8 +167,8 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
   font-variant-numeric: tabular-nums;
 }
 
-// What the GM does with a card: drags it, hovers it for its statblock, drops another beside it. `:where` keeps the
-// specificity of the shared card rules, which the compact list overrides
+// What the GM does with a card: drags it, hovers it for its statblock. `:where` keeps the specificity of the shared
+// card rules, which the compact list overrides
 :where(.atlas-initiative-tracker) .atlas-initiative-card {
   cursor: grab;
 
@@ -195,32 +196,135 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
     background: var(--background-modifier-active-hover);
     border-color: color-mix(in oklch, var(--mono-100) 15%, transparent);
   }
+}
 
-  // Drop indicators
-  &--drop-above::before,
-  &--drop-below::after {
-    content: '';
-    position: absolute;
-    left: 8px;
-    right: 8px;
-    height: 2px;
-    background: var(--interactive-accent);
-    border-radius: $radius-s;
-    box-shadow: 0 0 8px var(--interactive-accent);
-  }
+/// A card lifted over others stays solid: its translucent `$fill` is laid over the panel's surface it rested on, and
+/// a faded card (defeated, sitting out) shows whole.
+@mixin solid-card($fill) {
+  opacity: 1;
+  background: linear-gradient($fill, $fill), var(--background-primary);
+}
 
-  &--drop-above::before {
-    top: -3px;
-  }
+// A card dragged (`useRowDrag`), as a phone's home screen is arranged (`styles/_wiggle.scss`): the cards shiver in
+// place, the held one lifts and follows the pointer and those it passes slide aside. Let go, the list takes its new
+// order at once and the card glides home from where it was dropped (`useTurnMotion`).
+.atlas-initiative-tracker__list--dragging {
+  cursor: grabbing;
 
-  &--drop-below::after {
-    bottom: -3px;
+  .atlas-initiative-card {
+    @include atlas-wiggle;
+    transition: translate $transition-fast $transition-ease-out;
+
+    &:nth-child(even) {
+      @include atlas-wiggle-shifted;
+    }
+
+    &:nth-child(3n) {
+      @include atlas-wiggle-slower;
+    }
+
+    // Lifted over its neighbours it stays solid: its translucent fill is laid over the panel's surface it rested on
+    &[data-held] {
+      @include atlas-wiggle-held;
+      @include solid-card(var(--background-modifier-active-hover));
+      z-index: 4;
+      transform: none;
+      transition: none;
+      cursor: grabbing;
+    }
   }
 }
 
-// Hide drag handle
-.atlas-initiative-card__drag-handle {
-  display: none;
+// The list scrolls, so it clips: while a card is held, and the one frame its drop settles in, its box reaches past the
+// panel's edge with as much padding inside, so the lifted card and its shadow show while nothing moves. Both states
+// alike, since the drop's glide reads places from the list's padding edge (`snapshotTurn`) before and after it. Above
+// and below it still ends inside the panel, where the scroll shades lie (the lifted card's scale fits the panel's
+// inset): cards scrolled past it while dragging fade under the shades as they do when the list is scrolled by hand.
+$held-room: $spacing-l;
+
+.atlas-initiative-panel__list:is(.atlas-initiative-tracker__list--dragging, .atlas-initiative-tracker__list--dragging-sides, .atlas-initiative-tracker__list--settling) {
+  margin: calc(-1 * #{$held-room});
+  padding: $held-room;
+  clip-path: inset(calc(#{$held-room} - #{$surface-inset}) 0);
+}
+
+// The compact list's lines are long: a smaller angle moves their ends as far as a card's
+.atlas-initiative-tracker--compact .atlas-initiative-tracker__list--dragging .atlas-initiative-card {
+  --atlas-wiggle: 0.4deg;
+}
+
+.atlas-initiative-tracker__list--settling :is(.atlas-initiative-card, .atlas-initiative-side) {
+  transition: none;
+}
+
+// Before a fight the sides are dragged by their headings, as the cards are: the order they stand in is the order
+// they act in. Held, a side lifts on the panel's surface, its cards with it; the others shiver and slide aside.
+.atlas-initiative-tracker__list--arranges-sides [data-side-place] {
+  // Its cards are placed within it, as they pile up and spread out again (`useSidePile`)
+  position: relative;
+  --atlas-pile-turn: 2.5deg;
+
+  > .atlas-initiative-side__label {
+    cursor: grab;
+  }
+}
+
+.atlas-initiative-tracker--compact .atlas-initiative-tracker__list--arranges-sides [data-side-place] {
+  --atlas-pile-turn: 0.8deg;
+}
+
+.atlas-initiative-tracker__list--dragging-sides {
+  cursor: grabbing;
+
+  [data-side-place] {
+    // A side is tall: its ends move as far as a card's at a smaller angle
+    @include atlas-wiggle(0.3deg);
+    transition: translate $transition-fast $transition-ease-out;
+    border-radius: $radius-m;
+
+    &:nth-of-type(even) {
+      @include atlas-wiggle-shifted;
+    }
+
+    &[data-held] {
+      @include atlas-wiggle-held;
+      scale: 1.03;
+      z-index: 4;
+      // Its cards share one place, the first on top and two more peeking out under it, as a phone stacks what it
+      // carries: a side of twenty is carried like one card
+      display: grid;
+      padding-bottom: $spacing-s;
+      background: var(--background-primary);
+      // The surface reaches past the side's cards by the gap between them
+      box-shadow: 0 0 0 $surface-inset var(--background-primary), $shadow-elevated;
+      transition: none;
+
+      // Each solid, so none shows the ones under it through it
+      > .atlas-initiative-card {
+        @include solid-card(var(--background-modifier-hover));
+        grid-area: 2 / 1;
+        z-index: 3;
+      }
+
+      > .atlas-initiative-card:nth-child(3) {
+        z-index: 2;
+        translate: 3px 4px;
+        rotate: var(--atlas-pile-turn);
+      }
+
+      > .atlas-initiative-card:nth-child(4) {
+        z-index: 1;
+        translate: -3px 7px;
+        rotate: calc(-1.2 * var(--atlas-pile-turn));
+      }
+
+      > .atlas-initiative-card:nth-child(n + 5) {
+        z-index: 0;
+        translate: 0 7px;
+        opacity: 0;
+      }
+    }
+  }
 }
 
 // Initiative number: a slot typed in place (`InitiativeNumber`), framed while a click would edit it
@@ -419,10 +523,9 @@ $tile-corner-radius: initiative-corner-radius($border-width-s);
 }
 
 // Hover, press, a selected token and Mod's statblock preview ring the card's edge (`--atlas-card-ring`). The art covers
-// the card's own border, fill and inset shadow, so the ring is a layer above it, `::after`, which the drop indicator
-// takes while a dragged card would land below this one. The ring stands out from the panel around the card: white on a
-// dark theme's, dark on a light theme's (the compact line is a dark surface in both and keeps white,
-// `initiative-tracker-compact.scss`)
+// the card's own border, fill and inset shadow, so the ring is a layer above it, `::after`. The ring stands out from
+// the panel around the card: white on a dark theme's, dark on a light theme's (the compact line is a dark surface in
+// both and keeps white, `initiative-tracker-compact.scss`)
 :where(.atlas-initiative-tracker) .atlas-initiative-card {
   --atlas-card-ring: transparent;
   --atlas-card-ring-hover: rgb(255 255 255 / 0.45);
@@ -447,7 +550,7 @@ $tile-corner-radius: initiative-corner-radius($border-width-s);
     --atlas-card-ring: var(--atlas-card-ring-preview);
   }
 
-  &:not(.atlas-initiative-card--drop-below)::after {
+  &::after {
     content: '';
     position: absolute;
     inset: calc(-1 * #{$border-width-s});

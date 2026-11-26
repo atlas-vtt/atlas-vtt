@@ -62,6 +62,12 @@
   }
 }
 
+// A tile while the moods are read: the tile's own corner, filling its cell of the grid.
+.atlas-sound-mood__wait {
+  height: 100%;
+  border-radius: $card-radius;
+}
+
 .atlas-sound-mood__press {
   @include bare-button;
   @include hairline-tile;
@@ -102,6 +108,11 @@
 
 .atlas-sound-mood__press:hover .atlas-sound-mood__crest {
   opacity: 0.2;
+}
+
+// The thumbnail's place while it is read: the shape it rises in from the tile's right edge.
+.atlas-sound-mood__scene-wait {
+  mask-image: linear-gradient(to right, transparent 45%, rgba(0, 0, 0, 0.35) 72%, #000 100%);
 }
 
 // A linked scene's thumbnail: it rises from the tile's right edge, so the name and its lines keep the

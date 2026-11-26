@@ -26,8 +26,8 @@ import { resourceMaxRoute } from './resourceMax.ts';
 import { OwedBooks } from './owedBooks.ts';
 import { isWriting, ownBookOf, writeWriting, writingsIn } from './playerWritings.ts';
 import { bookUpdate, NO_QUESTS, RESEND, sentOf, type SentBook } from './sentBook.ts';
-import { StatblockShare } from './statblockShare.ts';
-import { WORLD_MAP_PROBLEM_TEXT, WorldMaps, type MapImageProblem } from './worldMap.ts';
+import { readOnlySheetText, StatblockShare } from './statblockShare.ts';
+import { WORLD_MAP_PROBLEM_TEXT, WorldMaps, type WorldMapProblem } from './worldMap.ts';
 import { WorldMapForms } from './worldMapForms.ts';
 import type { WorldMapSign } from './worldMapGate.ts';
 import { WorldMapSigns } from './worldMapSigns.ts';
@@ -86,7 +86,7 @@ export class BookShare implements LootRecipientSource {
   private quests: readonly BookQuest[] = NO_QUESTS;
   private mapPath: string | null = null;
   /** Why the world map's image could not be sent when the GM was last told, so they are told once. */
-  private mapProblem: MapImageProblem | null = null;
+  private mapProblem: WorldMapProblem | null = null;
   /** What each connected player was last sent. */
   private readonly sent = new Map<string, SentBook>();
   /** The players whose page reads its book in parts (`book-parts`): they get a changed world map or quests alone. */
@@ -119,6 +119,7 @@ export class BookShare implements LootRecipientSource {
       changed: (path) => this.whileRunning(() => this.passes.of(this.characters.playersOfNote(path))),
       answered: (player, asSent) => this.whileRunning(() => this.resendStatblock(player, asSent)),
       owe: (player) => this.whileRunning(() => this.owed.owe(player)),
+      readOnly: (path, why) => this.whileRunning(() => ports.notice(readOnlySheetText(path, why))),
     });
     this.rests = new BookRests({
       rests: ports.rests, cards: ports.cards, randomId: () => ports.randomId(),
@@ -435,7 +436,7 @@ export class BookShare implements LootRecipientSource {
   }
 
   /** Tells the GM why the world map cannot be sent, once for each reason in a row. */
-  private tellMapProblem(problem: MapImageProblem | null): void {
+  private tellMapProblem(problem: WorldMapProblem | null): void {
     if (problem !== null && problem !== this.mapProblem) this.ports.notice(WORLD_MAP_PROBLEM_TEXT[problem]);
     this.mapProblem = problem;
   }

@@ -11,7 +11,6 @@ import { DEFAULT_DICE_LOOK, isDiceColour, isDiceFont, type DiceLook } from '../d
 import { readToolbarLayout, type StoredToolbarLayout } from '../toolbar/toolbarLayout';
 import {
   DEFAULT_SETTINGS,
-  isRecord,
   defaultInputMode,
   readStoredSettings,
   storedSettings,
@@ -21,6 +20,7 @@ import {
   type TutorialId,
   TUTORIAL_IDS,
 } from './atlasSettings';
+import { isRecord } from '../utils/guards';
 import {
   loadAnimateMaps, loadGmFogOpacity, loadGraphicsChoice, loadInputMode, loadLightingQuality, loadPickedLightingQuality, loadPlayerView4k,
   loadSelectionBarShown,
@@ -195,6 +195,11 @@ export class SettingsService {
     return this.settings.onboarding.enabled && !this.settings.onboarding.completed[id];
   }
 
+  /** Whether this GM has been through the welcome wizard, which every GM sees once, with tutorials switched on or off. */
+  hasBeenWelcomed(): boolean {
+    return this.settings.onboarding.completed.welcome === true;
+  }
+
   completeTutorial(id: TutorialId): void {
     this.settings.onboarding = { ...this.settings.onboarding, completed: { ...this.settings.onboarding.completed, [id]: true } };
     this.commit();
@@ -224,7 +229,6 @@ export class SettingsService {
     this.commit();
   }
 
-  // Navigation settings
   getNavigationSettings(): NavigationSettings {
     return { ...this.settings.navigation };
   }
@@ -505,11 +509,25 @@ export class SettingsService {
 
   /** Hides or shows the sidebar's starter tokens offer in one collection; the list is left out of the file once empty. */
   setStarterOfferHidden(collectionUid: string, hidden: boolean): void {
-    if (this.isStarterOfferHidden(collectionUid) === hidden) return;
-    const others = (this.settings.hiddenStarterOffers ?? []).filter((uid) => uid !== collectionUid);
-    const next = hidden ? [...others, collectionUid] : others;
+    this.setListed('hiddenStarterOffers', collectionUid, hidden);
+  }
+
+  /** Whether the GM dismissed one of the Sound page's download offers. */
+  isSoundOfferHidden(offerId: string): boolean {
+    return this.settings.hiddenSoundOffers?.includes(offerId) === true;
+  }
+
+  setSoundOfferHidden(offerId: string, hidden: boolean): void {
+    this.setListed('hiddenSoundOffers', offerId, hidden);
+  }
+
+  private setListed(key: 'hiddenStarterOffers' | 'hiddenSoundOffers', id: string, hidden: boolean): void {
+    const list = this.settings[key] ?? [];
+    if (list.includes(id) === hidden) return;
+    const others = list.filter((other) => other !== id);
+    const next = hidden ? [...others, id] : others;
     // Kept as a key while empty, so a reload while the save waits still sees this change (`reload`).
-    this.settings.hiddenStarterOffers = next.length > 0 ? next : undefined;
+    this.settings[key] = next.length > 0 ? next : undefined;
     this.commit();
   }
 
@@ -648,7 +666,6 @@ export class SettingsService {
     this.commit();
   }
 
-  // Get all settings
   getAllSettings(): AtlasSettings {
     return { ...this.settings };
   }

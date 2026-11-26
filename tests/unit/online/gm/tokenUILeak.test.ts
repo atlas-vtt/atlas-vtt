@@ -5,7 +5,7 @@ import type { TokenEntity } from '../../../../src/app/types';
 import type { ConditionDefinition } from '../../../../src/app/types/collectionSettingsTypes';
 import { describe, expect, it } from 'vitest';
 import type { SeatSource } from '../../../../src/app/online/gm/seatSource.ts';
-import { TOKEN_INTERVAL_MS, TOKEN_POLL_MS } from '../../../../src/app/online/gm/TokenShare.ts';
+import { TOKEN_INTERVAL_MS } from '../../../../src/app/online/gm/TokenShare.ts';
 import { sceneState, shareHarness, token, tokenLists, type Sent } from './shareHarness.ts';
 
 /** A seeded generator (mulberry32), so a failing trial can be replayed by its seed. */
@@ -100,7 +100,7 @@ describe('what players are sent of the tokens\' bars, conditions and names', () 
         table.settings = { ...table.settings, showNames };
         const from = table.sent.length;
         await table.set(scene());
-        await table.advance(random() < 0.5 ? TOKEN_INTERVAL_MS : TOKEN_POLL_MS);
+        await table.advance(random() < 0.5 ? TOKEN_INTERVAL_MS : 1000);
         const stepText = table.sent.slice(from).map(({ body }) => JSON.stringify(body)).join('\n');
         const list = tokenLists(table.sent).at(-1)?.tokens ?? [];
         expect(list.every((entry) => entry.ui?.nameplate !== true || showNames), `trial ${trial} step ${step}: a nameplate with names off`).toBe(true);
@@ -119,9 +119,11 @@ describe('what players are sent of the tokens\' bars, conditions and names', () 
       for (const id of rules.secretConditions) {
         const index = Number(id.slice(4));
         expect(sent, `trial ${trial}: the colour of a condition only unseen or hidden tokens carry`).not.toContain(`"${secretColour(100 + index)}"`);
+        expect(sent, `trial ${trial}: the name of a condition only unseen or hidden tokens carry`).not.toContain(`"Condition ${index}"`);
       }
-      // No definition's id, key or name leaves the GM: the browser makes its own.
-      const words = ['stale_condition_id', 'Condition ', 'Resource ', ...rules.resources.map(({ key }) => `"${key}"`), ...rules.conditions.map(({ id }) => `"${id}"`)];
+      // No definition's id or key leaves the GM, nor a resource's name: the browser makes its own. A condition on a token
+      // players see goes with its name, for the card beside the token under a player's pointer.
+      const words = ['stale_condition_id', 'Resource ', ...rules.resources.map(({ key }) => `"${key}"`), ...rules.conditions.map(({ id }) => `"${id}"`)];
       for (const word of words) expect(sent, `trial ${trial}: ${word}`).not.toContain(word);
       for (const entry of generated) {
         if (entry.role !== 'free') expect(sent, `trial ${trial}: a ${entry.role} token's name`).not.toContain(entry.name);

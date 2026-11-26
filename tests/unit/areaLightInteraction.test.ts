@@ -13,7 +13,7 @@ const LAVA: LightEmission = { bright: 5, dim: 10, color: '#ff7a2a', intensity: 1
 
 function withLava(): ReturnType<typeof setup> & { lava: string } {
   const harness = setup();
-  const lava = harness.store.getState().addLight({ x: 650, y: 150, area: AREA, emission: LAVA });
+  const lava = harness.store.getState().addObject('lights', { x: 650, y: 150, area: AREA, emission: LAVA });
   harness.store.temporal.getState().clear();
   return { ...harness, lava };
 }

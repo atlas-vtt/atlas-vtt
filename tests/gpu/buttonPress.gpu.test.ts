@@ -9,7 +9,7 @@ const OBSIDIAN = `
   button:not(.clickable-icon) { background-color: var(--interactive-normal); }
 `;
 
-/** Atlas' buttons of several kinds: the shared Button, a toolbar's (whose rules set `background` with `!important`), a bare one in an Atlas panel, a link, a swatch and a menu trigger. */
+/** Atlas' buttons of several kinds: the shared Button, a toolbar's (whose rules set `background` with `!important`), a bare one in an Atlas panel, a link, swatches (an accent or ivy colour, a dice colour) and a menu trigger. */
 const BUTTONS = `
   <div class="atlas-vtt-plugin">
     <button id="plain" class="btn btn--outline">Plain</button>
@@ -17,6 +17,8 @@ const BUTTONS = `
     <div class="atlas-panel"><button id="bare">Bare</button></div>
     <button id="link" class="btn btn--link">Link</button>
     <button id="swatch" class="atlas-command-palette-swatch">S</button>
+    <div class="atlas-accent-swatches atlas-accent-swatches--leaf"><button id="colour" class="atlas-accent-swatch">C</button></div>
+    <div class="atlas-dice-colour-strip"><button id="die" class="atlas-dice-colour-strip__option">D</button></div>
     <button id="disabled" class="btn btn--outline" disabled>Off</button>
     <button id="trigger" class="btn btn--ghost" aria-haspopup="menu" aria-expanded="true">Menu</button>
     <button id="disclosure" class="btn btn--ghost" aria-expanded="true">Fold</button>
@@ -32,7 +34,10 @@ function tinted(id: string): boolean {
 async function whilePressed(id: string): Promise<boolean> {
   const button = document.getElementById(id);
   if (!button) throw new Error(`no button ${id}`);
+  // Below the viewport the mouse would miss it, and an untinted button would pass for the wrong reason.
+  button.scrollIntoView({ block: 'center' });
   const { x, y } = centreOf(button);
+  expect([x, y].every((at, axis) => at > 0 && at < (axis === 0 ? innerWidth : innerHeight)), `${id} in the viewport`).toBe(true);
   await mouse.hover(x, y);
   await mouse.down(x, y);
   const pressed = tinted(id);
@@ -66,7 +71,7 @@ describe('the press of an Atlas button', () => {
     expect(tinted(id)).toBe(false);
   });
 
-  it.each(['link', 'swatch', 'disabled'])('leaves %s untinted', async (id) => {
+  it.each(['link', 'swatch', 'colour', 'die', 'disabled'])('leaves %s untinted', async (id) => {
     expect(await whilePressed(id)).toBe(false);
   });
 

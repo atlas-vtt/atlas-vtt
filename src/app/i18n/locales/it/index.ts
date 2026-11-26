@@ -47,6 +47,8 @@ import { importReview } from './importReview';
 import { initiative } from './initiative';
 import { issue } from './issue';
 import { laser } from './laser';
+import { remote } from './remote';
+import { downloads } from './downloads';
 import { levels } from './levels';
 import { light } from './light';
 import { link } from './link';
@@ -98,6 +100,7 @@ import { tokens } from './tokens';
 import { toolbar } from './toolbar';
 import { toolbarEdit } from './toolbarEdit';
 import { tour } from './tour';
+import { appearance } from './appearance';
 import { transfer } from './transfer';
 import { validation } from './validation';
 import { vaultImages } from './vaultImages';
@@ -110,6 +113,7 @@ import { armarium } from './armarium';
 import { armariumFindings } from './armariumFindings';
 import { armariumListing } from './armariumListing';
 import { armariumShare } from './armariumShare';
+import { armariumMusic } from './armariumMusic';
 import { armariumUpload } from './armariumUpload';
 import { assetGrid } from './assetGrid';
 import { deviceFiles } from './deviceFiles';
@@ -181,6 +185,7 @@ export const it = {
   ...initiative,
   ...issue,
   ...laser,
+  ...downloads,
   ...levels,
   ...light,
   ...link,
@@ -232,6 +237,7 @@ export const it = {
   ...toolbar,
   ...toolbarEdit,
   ...tour,
+  ...appearance,
   ...transfer,
   ...validation,
   ...vaultImages,
@@ -239,11 +245,13 @@ export const it = {
   ...vision,
   ...wall,
   ...widgets,
+  ...remote,
   ...account,
   ...armarium,
   ...armariumFindings,
   ...armariumListing,
   ...armariumShare,
+  ...armariumMusic,
   ...armariumUpload,
   ...assetGrid,
   ...deviceFiles,

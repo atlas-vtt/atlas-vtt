@@ -28,6 +28,7 @@ import { armariumFindings } from './armariumFindings';
 import { armariumListing } from './armariumListing';
 import { armariumUpload } from './armariumUpload';
 import { armariumShare } from './armariumShare';
+import { armariumMusic } from './armariumMusic';
 import { account } from './account';
 import { diceLab } from './diceLab';
 import { diceRoll } from './diceRoll';
@@ -79,6 +80,8 @@ import { toolbarEdit } from './toolbarEdit';
 import { hotkey } from './hotkey';
 import { pin } from './pin';
 import { laser } from './laser';
+import { downloads } from './downloads';
+import { remote } from './remote';
 import { audio } from './audio';
 import { draw } from './draw';
 import { dungeon } from './dungeon';
@@ -110,6 +113,7 @@ import { validation } from './validation';
 import { issue } from './issue';
 import { changelog } from './changelog';
 import { tour } from './tour';
+import { appearance } from './appearance';
 import { creatureFilter } from './creatureFilter';
 import { encounter } from './encounter';
 import { migration } from './migration';
@@ -204,6 +208,8 @@ export const en = {
   ...hotkey,
   ...pin,
   ...laser,
+  ...downloads,
+  ...remote,
   ...audio,
   ...draw,
   ...dungeon,
@@ -238,6 +244,7 @@ export const en = {
   ...issue,
   ...changelog,
   ...tour,
+  ...appearance,
   ...creatureFilter,
   ...encounter,
   ...migration,
@@ -254,6 +261,7 @@ export const en = {
   ...armariumListing,
   ...armariumUpload,
   ...armariumShare,
+  ...armariumMusic,
   ...account,
   ...selection,
   ...itemBundle,

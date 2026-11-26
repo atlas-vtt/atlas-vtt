@@ -18,7 +18,7 @@ function getWorkspaceLeafElement(leaf: WorkspaceLeaf | null | undefined): HTMLEl
     ?? null
   );
 
-  if (!(candidate instanceof HTMLElement)) {
+  if (!candidate?.instanceOf(HTMLElement)) {
     return null;
   }
 

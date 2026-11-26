@@ -84,7 +84,7 @@ function dieChanged(text: string, sides: TrayDie, delta: number, presets: readon
  * which the row's dice never count or grow.
  */
 export function presetTerm(formula: string): string {
-  return `(${formula.trim()})`;
+  return `(${writtenSide(formula).formula.trim()})`;
 }
 
 const escaped = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -103,7 +103,9 @@ const BLANK = '#';
  * are places in the formula: what the row's dice count and change.
  */
 export function withoutPresetTerms(text: string, formulas: readonly string[]): string {
-  let blanked = text;
+  // The terms are read before a side written last, which stays as it is
+  const before = writtenSide(text).formula;
+  let blanked = before;
   for (const formula of formulas) {
     const term = presetTerm(formula);
     for (const place of termPlaces(blanked, term)) {
@@ -111,20 +113,28 @@ export function withoutPresetTerms(text: string, formulas: readonly string[]): s
       blanked = `${blanked.slice(0, start)}${BLANK.repeat(term.length)}${blanked.slice(start + term.length)}`;
     }
   }
-  return blanked;
+  return `${blanked}${text.slice(before.length)}`;
 }
 
 /** How many times a saved roll stands in the tray's formula: the badge on its place in the row. */
 export function presetCount(text: string, formula: string): number {
-  return termPlaces(text, presetTerm(formula)).length;
+  return termPlaces(writtenSide(text).formula, presetTerm(formula)).length;
 }
 
 /**
  * The formula with a saved roll added (before its modifier, as a die is) or, for `delta` −1, its last copy
- * taken out with the ` + ` before it.
+ * taken out with the ` + ` before it. A side the saved roll writes (`1d20+5 adv`) is the whole formula's,
+ * written last: added with the roll where the formula writes none, and taken out with its last copy.
  */
 export function withPreset(text: string, formula: string, delta: 1 | -1): string {
-  return changedBeforeSide(text, (written) => presetChanged(written, formula, delta));
+  const changed = changedBeforeSide(text, (written) => presetChanged(written, formula, delta));
+  const side = writtenSide(formula).word;
+  if (side === '') return changed;
+  const now = writtenSide(changed);
+  if (delta > 0) return now.word === '' ? `${changed.trimEnd()} ${side}`.trim() : changed;
+  // ponytail: a side typed by hand that matches goes with the roll's last copy too; telling them apart needs the tray to remember who wrote it
+  const gone = presetCount(changed, formula) === 0 && now.word.toLowerCase() === side.toLowerCase();
+  return gone ? now.formula.trimEnd() : changed;
 }
 
 function presetChanged(text: string, formula: string, delta: 1 | -1): string {

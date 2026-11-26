@@ -129,7 +129,7 @@ describe('a press on a light marker', () => {
     const { store, torch, tool, lights, press, move, steps } = setup();
     tool.active = true;
     beginHistoryTransaction(store);
-    store.getState().updateLight(torch, { hidden: true });
+    store.getState().patchObject('lights', torch, { hidden: true });
     press(400, 300);
     move(450, 300);
     lights.cancel();
@@ -168,7 +168,7 @@ describe('the range rings of the open light', () => {
   it('follow the light\'s ranges when the popover changes them', () => {
     const { store, rings, torch } = setup();
     store.getState().openLightPopover(torch);
-    store.getState().updateLight(torch, { emission: { ...genericLight('torch'), bright: 10, dim: 15 } });
+    store.getState().patchObject('lights', torch, { emission: { ...genericLight('torch'), bright: 10, dim: 15 } });
     expect(rings.geometry()?.radius).toEqual({ bright: 140, dim: 210 });
   });
 
@@ -209,7 +209,7 @@ describe('the range rings of the open light', () => {
 
   it('never leave dim below bright: the dragged ring takes the other along', () => {
     const { store, torch, press, move, up } = setup();
-    store.getState().updateLight(torch, { emission: { ...genericLight('torch'), bright: 10, dim: 15 } });
+    store.getState().patchObject('lights', torch, { emission: { ...genericLight('torch'), bright: 10, dim: 15 } });
     store.getState().openLightPopover(torch);
     press(400, 160);
     move(400, 20);
@@ -234,13 +234,13 @@ describe('the range rings of the open light', () => {
     await Promise.resolve();
     expect(steps()).toBe(0);
     // The drag's undo step is closed: the next edit is a step of its own.
-    store.getState().updateLight(torch, { hidden: true });
+    store.getState().patchObject('lights', torch, { hidden: true });
     expect(steps()).toBe(1);
   });
 
   it('end the drag when the popover moves to another light', () => {
     const { store, torch, press, move, steps } = setup();
-    const lantern = store.getState().addLight({ x: 100, y: 500, emission: genericLight('lantern') });
+    const lantern = store.getState().addObject('lights', { x: 100, y: 500, emission: genericLight('lantern') });
     getHistoryStore(store)!.getState().clear();
     store.getState().openLightPopover(torch);
     press(400, 20);
@@ -271,7 +271,7 @@ describe('the range rings of the open light', () => {
 
   it('leave a press on the marker of a light without bright range to the marker', () => {
     const { store, torch, tool, press, move, up } = setup();
-    store.getState().updateLight(torch, { emission: { ...genericLight('torch'), bright: 0 } });
+    store.getState().patchObject('lights', torch, { emission: { ...genericLight('torch'), bright: 0 } });
     store.getState().openLightPopover(torch);
     tool.active = true;
     press(400, 300);
@@ -319,6 +319,20 @@ describe('a press outside the popover', () => {
     store.getState().openLightPopover(torch);
     pressOn(canvas, 100, 100);
     expect(store.getState().lightPopover).toBeNull();
+  });
+
+  it('tells the tool once that a press on the map closed it, and never for a press elsewhere or without a popover', () => {
+    const { store, torch, canvas, lights } = setup();
+    store.getState().openLightPopover(torch);
+    pressOn(canvas, 100, 100);
+    expect(lights.takeDismissal()).toBe(true);
+    expect(lights.takeDismissal()).toBe(false);
+    pressOn(canvas, 100, 100);
+    expect(lights.takeDismissal()).toBe(false);
+    store.getState().openLightPopover(torch);
+    pressOn(document.body);
+    pressOn(canvas, 100, 100);
+    expect(lights.takeDismissal()).toBe(false);
   });
 
   it('keeps it for a press inside it in a popout window, whose elements are another window\'s', () => {

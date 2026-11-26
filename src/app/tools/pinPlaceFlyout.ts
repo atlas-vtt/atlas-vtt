@@ -15,7 +15,7 @@ const ANCHOR_GAP_PX = 8;
 const VIEWPORT_MARGIN_PX = 8;
 
 /** Keeps a start coordinate between the window margin and `max` less the margin. */
-function clamp(start: number, max: number): number {
+function withinMargins(start: number, max: number): number {
   return Math.max(VIEWPORT_MARGIN_PX, Math.min(start, max - VIEWPORT_MARGIN_PX));
 }
 
@@ -183,8 +183,8 @@ export function createPinPlaceFlyout(container: HTMLElement, options: PinPlaceFl
       const above = roomAbove >= height || (roomBelow < height && roomAbove >= roomBelow);
       const top = above ? slot.top - gap - height : slot.bottom + gap;
       const left = slot.left + slot.width / 2 - width / 2;
-      flyout.style.left = `${clamp(left, view.right - width)}px`;
-      flyout.style.top = `${clamp(top, view.bottom - height)}px`;
+      flyout.style.left = `${withinMargins(left, view.right - width)}px`;
+      flyout.style.top = `${withinMargins(top, view.bottom - height)}px`;
       // A search leaves fewer icons: the panel keeps the size it opened with, so it stays where it hangs.
       if (search) flyout.style.height = `${height}px`;
       flyout.dataset.side = above ? 'top' : 'bottom';

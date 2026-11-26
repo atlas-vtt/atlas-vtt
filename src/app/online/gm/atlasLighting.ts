@@ -41,6 +41,10 @@ export interface AtlasPlayerSettings {
   readonly movesOnTurn?: boolean;
   /** Whether players may draw on the map (the player view's setting); off when it cannot be read. */
   readonly playersDraw?: boolean;
+  /** Whether players may ask to open doors (the player view's setting); off when it cannot be read. */
+  readonly playersOpenDoors?: boolean;
+  /** Whether every player sees through every player character's vision (the player view's setting); off, each through their own characters' alone, and off when it cannot be read. */
+  readonly sharedVision?: boolean;
   /** How the fog's edge looks (the Maps setting), for players as for the GM; unset when it cannot be read, which players see as a hard edge. */
   readonly fogEdge?: FogEdge;
 }
@@ -64,10 +68,21 @@ export function lightingSourceOf(renderer: unknown): LightingSource | null {
   return { rules: () => (rules as () => SightRules)(), measurement: () => (measurement as () => MeasurementSettings)() };
 }
 
+/** Atlas's settings service (`settingsService` of its plugin instance), unchecked. */
+const settingsServiceOf = (app: App): unknown => field(field(field(field(app, 'plugins'), 'plugins'), ATLAS_PLUGIN_ID), 'settingsService');
+
+/** Calls `listener` whenever Atlas's settings change; a settings service without `onChange` tells nothing. Returns what stops it. */
+export function followAtlasSettings(app: App, listener: () => void): () => void {
+  const settings = settingsServiceOf(app);
+  const follow = field(settings, 'onChange');
+  const stop: unknown = typeof follow === 'function' ? (follow as (listener: () => void) => unknown).call(settings, listener) : undefined;
+  return typeof stop === 'function' ? () => void (stop as () => unknown)() : () => undefined;
+}
+
 /** Atlas's own settings as its plugin instance holds them (`settingsService`). */
 export function atlasPlayerSettings(app: App): AtlasPlayerSettings {
   // Obsidian keeps the loaded plugins by id in `app.plugins.plugins`.
-  const settings = field(field(field(field(app, 'plugins'), 'plugins'), ATLAS_PLUGIN_ID), 'settingsService');
+  const settings = settingsServiceOf(app);
   const playerView = field(settings, 'getLocalPlayerViewSettings');
   const view: unknown = typeof playerView === 'function' ? (playerView as () => unknown).call(settings) : undefined;
   const readLayout = field(settings, 'initiativeLayout');
@@ -87,13 +102,15 @@ export function atlasPlayerSettings(app: App): AtlasPlayerSettings {
     turnBanner: field(turn, 'banner') !== false,
     movesOnTurn: field(turn, 'movesOnTurn') === true,
     playersDraw: field(view, 'playersDraw') === true,
+    playersOpenDoors: field(view, 'playersOpenDoors') === true,
+    sharedVision: field(view, 'sharedVision') === true,
     ...(fogEdge !== undefined && { fogEdge }),
   };
 }
 
 /** The GM's laser colour and size from Atlas's settings, as Atlas reads them (its default when they cannot be read). */
 export function atlasLaserLook(app: App): LaserPointerSettings {
-  const settings = field(field(field(field(app, 'plugins'), 'plugins'), ATLAS_PLUGIN_ID), 'settingsService');
+  const settings = settingsServiceOf(app);
   const read = field(settings, 'getLaserPointerSettings');
   const raw: unknown = typeof read === 'function' ? (read as () => unknown).call(settings) : undefined;
   return resolveLaserPointerSettings(typeof raw === 'object' && raw !== null ? raw : undefined);
@@ -128,8 +145,7 @@ export function tabAreaMap(renderer: unknown): AreaMap | null {
 
 /** The theme's accent colour as `#rrggbb`, resolved by the document itself; null when it gives none. */
 export function accentColour(doc: Document): string | null {
-  const probe = doc.body.createSpan();
-  probe.setCssProps({ color: 'var(--interactive-accent)' });
+  const probe = doc.body.createSpan({ cls: 'atlas-color-probe atlas-color-probe--accent' });
   const resolved = doc.defaultView?.getComputedStyle(probe).color ?? '';
   probe.remove();
   const channels = /^rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(resolved)?.slice(1, 4);

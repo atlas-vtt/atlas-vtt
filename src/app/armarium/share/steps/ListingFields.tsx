@@ -1,7 +1,7 @@
 import React, { useCallback, useId, useState } from 'react';
 import { getLocale, t } from '../../../i18n';
 import { textLength } from '../../upload/listingDraft';
-import { MAX_TAGS, TAG_GROUPS, type TagId, type TextLimits } from '../../upload/uploadContract';
+import { MAX_TAGS, TAG_GROUPS, type TagGroup, type TagId, type TextLimits } from '../../upload/uploadContract';
 import { fieldProblemMessage } from '../../upload/text/uploadMessages';
 import { tagGroupLabel, tagLabel } from '../../upload/text/listingVocabulary';
 
@@ -58,15 +58,23 @@ export function CountedText({ label, hint, value, onChange, limits, rows, field,
   );
 }
 
+interface TagPickerProps {
+  value: readonly TagId[];
+  onToggle: (tag: TagId) => void;
+  problems: Readonly<Record<string, string>>;
+  /** The groups the listing's kind offers (`tagGroupsOf`); all of them by default. */
+  groups?: readonly TagGroup[];
+}
+
 /** The Armarium's tags in their groups, ticked as toggle buttons; one AI tag at most, eight in all. */
-export function TagPicker({ value, onToggle, problems }: { value: readonly TagId[]; onToggle: (tag: TagId) => void; problems: Readonly<Record<string, string>> }): React.JSX.Element {
+export function TagPicker({ value, onToggle, problems, groups = TAG_GROUPS }: TagPickerProps): React.JSX.Element {
   const id = useId();
   const full = value.length >= MAX_TAGS;
   return (
     <fieldset className="atlas-share-field atlas-share-tags" aria-describedby={`${id}-count`}>
       <legend className="atlas-share-field__label">{t('armariumShare.tags')}</legend>
       <span id={`${id}-count`} className="atlas-share-field__hint">{t('armariumShare.tagsCount', { count: value.length, max: MAX_TAGS })}</span>
-      {TAG_GROUPS.map((group) => (
+      {groups.map((group) => (
         <div key={group.id} className="atlas-share-tags__group" role="group" aria-label={tagGroupLabel(group.id)}>
           <span className="atlas-share-tags__group-label" aria-hidden="true">{tagGroupLabel(group.id)}</span>
           <div className="atlas-share-tags__list">

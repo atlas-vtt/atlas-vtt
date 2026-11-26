@@ -4,17 +4,15 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { EventSystem } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
 import { WallEditor } from '../../src/app/pixi/lighting/WallEditor';
-import { wireLightingPointer } from '../../src/app/pixi/lighting/lightingPointer';
+import { lightingPointerLayers } from '../../src/app/pixi/lighting/lightingPointer';
 import type { LightingModes } from '../../src/app/pixi/lighting/LightingModes';
 import type { LightInteraction } from '../../src/app/pixi/lighting/LightInteraction';
 import type { DoorIcons } from '../../src/app/pixi/lighting/DoorIcons';
-import type { TokenRenderer } from '../../src/app/pixi/TokenRenderer';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { stubJsdomGraphics } from '../mocks/jsdomGraphics';
 
 type Keys = { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean; altKey: boolean };
-type Handler = (...args: never[]) => unknown;
 
 const keys = (changes: Partial<Keys> = {}): Keys => ({ shiftKey: false, ctrlKey: false, metaKey: false, altKey: false, ...changes });
 
@@ -32,7 +30,7 @@ function setup(mode: 'rooms' | 'zones') {
   const store: ViewAtlasStore = createViewAtlasStore(createInMemoryApp({ files: {} }).app, `rooms-pointer-${Math.random()}`);
   store.getState().setPersistenceEnabled(false);
   store.getState().setActiveTool('wall');
-  const wall = store.getState().addWall({ type: 'solid', p1: { x: 100, y: 100 }, p2: { x: 300, y: 100 }, closed: true });
+  const wall = store.getState().addObject('walls', { type: 'solid', p1: { x: 100, y: 100 }, p2: { x: 300, y: 100 }, closed: true });
   const editor = new WallEditor(viewport, store, new EventEmitter(), () => undefined, () => []);
   editor.layer.visible = true;
   const rooms = { active: mode === 'rooms', busy: false };
@@ -46,15 +44,16 @@ function setup(mode: 'rooms' | 'zones') {
     doubleClick: vi.fn(),
     cursorAt: vi.fn(() => 'crosshair'),
   };
-  const handlers: Record<string, Handler> = {};
-  const tokens = new Proxy({}, { get: (_target, name: string) => (handler: Handler) => { handlers[name] = handler; } }) as unknown as TokenRenderer;
   const wallMenu = vi.fn();
-  wireLightingPointer(tokens, {
-    lights: {} as LightInteraction,
+  const dismissal = { pending: false };
+  const lights = { takeDismissal: () => { const taken = dismissal.pending; dismissal.pending = false; return taken; } };
+  const { walls } = lightingPointerLayers({
+    lights: lights as unknown as LightInteraction,
     editor,
     modes: modes as unknown as LightingModes,
     doors: { hitTest: () => null, gmHitTest: () => null, toggle: () => undefined } as unknown as DoorIcons,
     wallMenu,
+    wallMenuAt: () => true,
     doorMenu: () => undefined,
   });
   cleanup = () => {
@@ -62,14 +61,13 @@ function setup(mode: 'rooms' | 'zones') {
     viewport.destroy();
     restoreGraphics();
   };
-  const call = <R>(name: string, ...args: unknown[]): R => (handlers[name] as unknown as (...a: unknown[]) => R)(...args);
   return {
-    store, wall, editor, modes, rooms, wallMenu,
-    down: (x: number, y: number, k: Partial<Keys> = {}): boolean => call('setWallPointerDownHandler', x, y, keys(k)),
-    move: (x: number, y: number, k: Partial<Keys> = {}): void => call('setWallPointerMoveHandler', x, y, keys(k)),
-    up: (): void => call('setWallPointerUpHandler'),
-    menu: (x: number, y: number): void => call('setWallContextMenuHandler', x, y, 0, 0),
-    cursor: (x: number, y: number): string | null => call('setWallCursorProvider', x, y),
+    store, wall, editor, modes, rooms, wallMenu, dismissal,
+    down: (x: number, y: number, k: Partial<Keys> = {}): boolean => walls.pointerDown(x, y, keys(k)),
+    move: (x: number, y: number, k: Partial<Keys> = {}): void => walls.pointerMove(x, y, keys(k)),
+    up: (): void => walls.pointerUp(),
+    menu: (x: number, y: number): void => walls.openMenu(x, y, 0, 0),
+    cursor: (x: number, y: number): string | null => walls.cursorAt(x, y),
   };
 }
 
@@ -127,5 +125,16 @@ describe('the walls in the lighting tool\'s rooms mode', () => {
     menu(200, 101);
     expect(modes.pointerDown).toHaveBeenCalledTimes(1);
     expect(wallMenu).not.toHaveBeenCalled();
+  });
+});
+
+describe('a press that closed a light\'s popover', () => {
+  it('only closes it: the lighting tool neither places nor draws with it, and takes the next press as usual', () => {
+    const { modes, dismissal, down } = setup('zones');
+    dismissal.pending = true;
+    expect(down(500, 500)).toBe(true);
+    expect(modes.pointerDown).not.toHaveBeenCalled();
+    expect(down(500, 500)).toBe(true);
+    expect(modes.pointerDown).toHaveBeenCalledTimes(1);
   });
 });

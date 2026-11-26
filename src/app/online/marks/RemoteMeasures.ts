@@ -9,6 +9,7 @@ import { toldMeasures, type ToldMeasure } from './measureWords.ts';
 import { PointerTrack } from './PointerTrack.ts';
 import type { LayBodies, RemoteMeasure, RemoteMeasurePorts } from './remoteMeasurePorts.ts';
 import { RemoteKept } from './RemoteKept.ts';
+import { RemoteRanges } from './RemoteRanges.ts';
 import { colourNumber, colourOf, endOf, fixedOf, sameLook, sameMeasurement, samePoint, samePoints, type Live, type Sender } from './toldMeasures.ts';
 
 export type { LayBodies, MeasureRules, RemoteMeasure, RemoteMeasurePorts } from './remoteMeasurePorts.ts';
@@ -37,6 +38,9 @@ const NO_TOKENS = {};
  * messages tell, so it glides between two messages, and its label says the distance to the end as
  * drawn; a ruler's corners before its end stand as told.
  *
+ * A sender's range marks (the GM's rings of Ranges and range check) are drawn beside its
+ * measurements (`RemoteRanges`), whether or not it tells any measurement.
+ *
  * Measurements come and go as Atlas's own do (`MeasurePresence`): a kept one grows in from where it
  * starts and fades out when its sender deletes it, one being drawn fades in and fades out when it
  * ends, and one kept from it takes its place as it stands. An edit of a kept measurement (moved,
@@ -59,10 +63,13 @@ export class RemoteMeasures {
   private auras = false;
   /** The kept measurements' drawings, and those fading away. */
   private readonly keptDrawings: RemoteKept;
+  /** The senders' range marks. */
+  private readonly ranges: RemoteRanges;
 
   constructor(private readonly ports: RemoteMeasurePorts) {
     this.outlines = ports.gmOutlines === true ? new MeasureInkLayer('remote-measure-outlines') : null;
     this.container.addChild(this.shapes.view, ...(this.outlines ? [this.outlines.view] : []), this.labels);
+    this.ranges = new RemoteRanges(this.shapes, this.labels);
     this.keptDrawings = new RemoteKept({ surfaces: () => this.surfaces(), look: () => this.look(), ...(ports.token && { token: (id: string) => ports.token?.(id) ?? null }) });
   }
 
@@ -85,6 +92,7 @@ export class RemoteMeasures {
     const present = new Set(measures.map((entry) => entry.who));
     for (const [who, sender] of this.senders) if (!present.has(who)) this.remove(who, sender, true);
     const look = this.look();
+    this.ranges.update(measures, look);
     for (const entry of measures) {
       const known = this.senders.get(entry.who);
       const told = toldMeasures(entry);
@@ -159,11 +167,13 @@ export class RemoteMeasures {
       });
       sender.live?.drawn.redraw(look);
     }
+    this.ranges.rescale(look);
   }
 
   clear(): void {
     for (const [who, sender] of this.senders) this.remove(who, sender);
     this.keptDrawings.clear();
+    this.ranges.clear();
     this.moving = false;
     this.auras = false;
   }

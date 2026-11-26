@@ -1,4 +1,5 @@
 import { headerOf } from '../../imageProcessing/imageDimensions';
+import { sha256 } from '../../utils/hashing';
 import { IMAGE_MIME_TYPES, MAX_PARTS, PART_BYTES, type GmMessage } from '../protocol/index.ts';
 
 /** Bytes in base64, in slices small enough for `String.fromCharCode`. */
@@ -25,9 +26,8 @@ export function messageParts(body: GmMessage, id: () => string): GmMessage[] {
 }
 
 /** SHA-256 of bytes, in lowercase hex. */
-export async function sha256Hex(bytes: Uint8Array<ArrayBuffer>): Promise<string> {
-  const digest = await crypto.subtle.digest('SHA-256', bytes);
-  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+export function sha256Hex(bytes: Uint8Array<ArrayBuffer>): Promise<string> {
+  return sha256(bytes);
 }
 
 const MIME_TYPES: Readonly<Record<string, string>> = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif', avif: 'image/avif' };

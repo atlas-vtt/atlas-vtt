@@ -62,6 +62,11 @@ export const MAP_LAYER_Z = {
    * where its pin does: every pin for the GM, for players only pins out of the fog (`PlayerPins`).
    */
   pinNames: 1010,
+  /**
+   * The ring over a party token under committed fog (`FoggedPartyRings`): above the fog, so everyone at the
+   * table (GM, player window, online players) sees where the party's token stands though the fog covers it.
+   */
+  foggedParty: 1005,
   /** Tokens being placed by hand (GM only): above everything on the map but the laser. */
   placement: 1100,
   /** The ring that closes around a finger whose press becomes a long press (never in the players' picture). */

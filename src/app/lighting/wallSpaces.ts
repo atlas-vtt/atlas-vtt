@@ -6,9 +6,10 @@ import { inflatePolyline, inflateShape, normalizePolygon, subtractShapes, unionS
 import { quantizeCoordinate } from './quantizedPoint';
 import { outlinesWithHoles, type RoomArea } from './rooms';
 import { sealedWalls } from './sealWalls';
-import { boxAround, segmentGrid, type SegmentGrid } from './segmentGrid';
+import { boxAround, boxOf, segmentGrid, type SegmentGrid } from './segmentGrid';
 import { shapeContainment, shapeContains } from './shapeContains';
-import { along, beside, distanceTo, edgesWithShapeOnLeft, lengthOf, sideOf, type Segment as Line } from './wallSides';
+import { along, beside, distanceTo, edgesWithShapeOnLeft, lengthOf, type Segment as Line } from './wallSides';
+import { deepPoint, knowsFloor, seenFrom } from './openRoomFloor';
 
 /**
  * The spaces walls close in: the rooms of a map, which are nothing but its walls. A space is what a
@@ -106,7 +107,6 @@ const ASIDE = 3;
 const NEAREST_ENDS = 4;
 const MOST_OPEN_ENDS = 400;
 
-const knowsFloor = (wall: WallSegment): boolean => wall.floor === 'left' || wall.floor === 'right';
 /** Whether `line` runs along an outline, whose edges are filed for what comes within `ON_OUTLINE` of a place. */
 const runsAlong = (line: Line, outline: SegmentGrid<Line>): boolean => [0.1, 0.5, 0.9].every((share) => {
   const point = along(line, share);
@@ -149,11 +149,12 @@ export function openingClosures(walls: readonly WallSegment[], closed: readonly 
   if (open.length === 0 || open.length > MOST_OPEN_ENDS) return [];
   const closures = new Map<string, Line>();
   const key = (point: { x: number; y: number }): string => `${Math.round(point.x * 8)},${Math.round(point.y * 8)}`;
+  const keys = new Map(ends.map(({ point }) => [point, key(point)]));
   for (const end of open) {
-    const from = key(end.point);
+    const from = keys.get(end.point)!;
     const near = (among: typeof ends, most: number): void => {
       const others = among
-        .map((other) => ({ other, to: key(other.point), distance: Math.hypot(other.point.x - end.point.x, other.point.y - end.point.y) }))
+        .map((other) => ({ other, to: keys.get(other.point)!, distance: Math.hypot(other.point.x - end.point.x, other.point.y - end.point.y) }))
         .filter(({ to }) => to !== from)
         .sort((a, b) => a.distance - b.distance);
       const seen = new Set<string>();
@@ -161,8 +162,8 @@ export function openingClosures(walls: readonly WallSegment[], closed: readonly 
         if (seen.size >= most) break;
         if (seen.has(to)) continue;
         const line = { p1: end.point, p2: other.point };
-        // A line along a wall closes nothing, and one across a wall is no opening.
-        if (real.some((wall) => cross(line, wall) || distanceTo(wall, along(line, 0.5)) <= 0.5)) continue;
+        // A line along a wall closes nothing, and one across a wall is no opening: only walls whose box comes near the line's can be either.
+        if (joined.touching(boxOf(line)).some((wall) => cross(line, wall) || distanceTo(wall, along(line, 0.5)) <= 0.5)) continue;
         seen.add(to);
         closures.set(from < to ? `${from}|${to}` : `${to}|${from}`, line);
       }
@@ -186,63 +187,6 @@ function sidesOf(space: RoomArea, outline: SegmentGrid<Line>, walls: readonly Wa
     if (onLeft === onRight) continue;
     if ((wall.floor === 'left') === onLeft) floor += length;
     else rock += length;
-  }
-  return { floor, rock };
-}
-
-/** The directions looked in from a point, and the points of a space tried for the one deepest inside it. */
-const DIRECTIONS = 32;
-const GRID = 9;
-
-/** A point of `space` far from its outline: the best of a grid over it, or null for a space too thin to hold one. */
-function deepPoint(space: RoomArea, outline: readonly Line[]): { x: number; y: number } | null {
-  let [left, top, right, bottom] = [Infinity, Infinity, -Infinity, -Infinity];
-  for (const { p1 } of outline) {
-    left = Math.min(left, p1.x);
-    right = Math.max(right, p1.x);
-    top = Math.min(top, p1.y);
-    bottom = Math.max(bottom, p1.y);
-  }
-  let best: { x: number; y: number } | null = null;
-  let depth = 0;
-  for (let column = 1; column < GRID; column++) {
-    for (let row = 1; row < GRID; row++) {
-      const point = { x: left + ((right - left) * column) / GRID, y: top + ((bottom - top) * row) / GRID };
-      if (!shapeContains(space, point)) continue;
-      const clear = outline.reduce((least, edge) => Math.min(least, distanceTo(edge, point)), Infinity);
-      if (clear > depth) [best, depth] = [point, clear];
-    }
-  }
-  return best;
-}
-
-/**
- * What stands round a point: of the directions looked in from it, how many end at the floor side
- * of a wall that knows it and how many at a rock side or at no wall at all. Inside a room, open
- * or not, most directions end at its walls' floor sides; out in the open or in rock between
- * rooms, most do not.
- */
-function seenFrom(point: { x: number; y: number }, walls: readonly WallSegment[]): { floor: number; rock: number } {
-  let [floor, rock] = [0, 0];
-  for (let index = 0; index < DIRECTIONS; index++) {
-    // Off the axes, so a look never runs along a wall drawn on the grid.
-    const angle = ((index + 0.37) / DIRECTIONS) * 2 * Math.PI;
-    const [dx, dy] = [Math.cos(angle), Math.sin(angle)];
-    let nearest = Infinity;
-    let hit: WallSegment | null = null;
-    for (const wall of walls) {
-      const [ex, ey] = [wall.p2.x - wall.p1.x, wall.p2.y - wall.p1.y];
-      const denominator = dx * ey - dy * ex;
-      if (Math.abs(denominator) < 1e-12) continue;
-      const t = ((wall.p1.x - point.x) * ey - (wall.p1.y - point.y) * ex) / denominator;
-      const u = ((wall.p1.x - point.x) * dy - (wall.p1.y - point.y) * dx) / denominator;
-      if (t > 0 && t < nearest && u >= 0 && u <= 1) [nearest, hit] = [t, wall];
-    }
-    if (!hit) rock++;
-    else if (knowsFloor(hit)) {
-      if (sideOf(hit, point) === hit.floor) floor++;
-      else rock++;
-    }
   }
   return { floor, rock };
 }

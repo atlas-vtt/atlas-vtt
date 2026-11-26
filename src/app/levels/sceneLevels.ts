@@ -107,6 +107,16 @@ export function exploredMaskOf(state: Pick<ViewState, 'exploredMask' | 'explored
   return id === null || id === firstLevelId(state.levels) ? state.exploredMask : state.exploredMasks?.[id] ?? null;
 }
 
+/** The saved explored memories of every level but the one `view` shows, by level id; none in a scene without levels. */
+export function otherLevelsExplored(state: Pick<ViewState, 'exploredMask' | 'exploredMasks'> & LevelView): Record<string, string> {
+  if (!hasLevels(state.levels)) return {};
+  const viewed = viewedLevelId(state);
+  return Object.fromEntries(state.levels.flatMap((level) => {
+    const mask = level.id === viewed ? null : exploredMaskOf(state, level.id);
+    return mask ? [[level.id, mask] as const] : [];
+  }));
+}
+
 /**
  * Whether `object` is on level `levelId` and on no other: what moves with that level's image when
  * its alignment changes. A wall or light of several levels, or of all, stays with the others.

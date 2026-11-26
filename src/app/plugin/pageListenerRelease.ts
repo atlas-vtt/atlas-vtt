@@ -1,4 +1,5 @@
 import type { Plugin } from 'obsidian';
+import { followEveryDocument } from '../platform/atlasDocuments';
 import { keepReactOffDocument, releaseLibraryGlobals, takeLibraryGlobals } from '../react/libraryGlobals';
 
 /**
@@ -9,13 +10,13 @@ import { keepReactOffDocument, releaseLibraryGlobals, takeLibraryGlobals } from 
 export function registerPageListenerRelease(plugin: Plugin): void {
   const globals = takeLibraryGlobals();
   const docs = new Set<Document>();
-  const keepOff = (doc: Document): void => {
+  const stopFollowing = followEveryDocument(plugin.app.workspace, (doc) => {
     docs.add(doc);
     keepReactOffDocument(globals, doc);
-  };
-  keepOff(document);
-  plugin.app.workspace.iterateAllLeaves((leaf) => keepOff(leaf.view.containerEl.doc));
-  plugin.registerEvent(plugin.app.workspace.on('window-open', (_workspaceWindow, win) => keepOff(win.document)));
-  plugin.registerEvent(plugin.app.workspace.on('window-close', (_workspaceWindow, win) => docs.delete(win.document)));
-  plugin.register(() => releaseLibraryGlobals(globals, docs));
+    return () => docs.delete(doc);
+  });
+  plugin.register(() => {
+    releaseLibraryGlobals(globals, docs);
+    stopFollowing();
+  });
 }

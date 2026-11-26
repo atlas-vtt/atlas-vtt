@@ -22,6 +22,7 @@ export const toolbar = {
   "toolbar.laser": "Puntatore laser",
   "toolbar.lassoSelection": "Selezione a lazo",
 
+  "toolbar.lighting": "Illuminazione",
   "toolbar.lootRoller": "Tabelle casuali",
   "toolbar.measureOptions": "Opzioni di misurazione",
   "toolbar.moveOptions": "Opzioni di spostamento",
@@ -88,5 +89,4 @@ export const toolbar = {
   "toolbar.ranges": "Gittate",
   "toolbar.rangesTip": "Fai clic su un token o su un punto per vederne le gittate",
   "toolbar.rangesNoRules": "Questo sistema di gioco non ha gittate né passi di movimento",
-  "toolbar.rangesNeedGmView": "Passa alla vista del master ({key}) per vedere le gittate",
 } satisfies Translation;

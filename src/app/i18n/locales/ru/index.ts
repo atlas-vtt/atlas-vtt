@@ -57,6 +57,8 @@ import { toolbarEdit } from './toolbarEdit';
 import { hotkey } from './hotkey';
 import { pin } from './pin';
 import { laser } from './laser';
+import { remote } from './remote';
+import { downloads } from './downloads';
 import { audio } from './audio';
 import { editToken } from './editToken';
 import { templateEditor } from './templateEditor';
@@ -88,6 +90,7 @@ import { validation } from './validation';
 import { issue } from './issue';
 import { changelog } from './changelog';
 import { tour } from './tour';
+import { appearance } from './appearance';
 import { creatureFilter } from './creatureFilter';
 import { encounter } from './encounter';
 import { migration } from './migration';
@@ -108,6 +111,7 @@ import { armarium } from './armarium';
 import { armariumFindings } from './armariumFindings';
 import { armariumListing } from './armariumListing';
 import { armariumShare } from './armariumShare';
+import { armariumMusic } from './armariumMusic';
 import { armariumUpload } from './armariumUpload';
 import { deviceFiles } from './deviceFiles';
 import { docs } from './docs';
@@ -175,6 +179,7 @@ export const ru: Translation = {
   ...transfer,
   ...view,
   ...widgets,
+  ...remote,
   ...sbImport,
   ...vaultImages,
   ...filters,
@@ -186,6 +191,7 @@ export const ru: Translation = {
   ...hotkey,
   ...pin,
   ...laser,
+  ...downloads,
   ...audio,
   ...editToken,
   ...hex,
@@ -213,6 +219,7 @@ export const ru: Translation = {
   ...issue,
   ...changelog,
   ...tour,
+  ...appearance,
   ...creatureFilter,
   ...encounter,
   ...migration,
@@ -240,6 +247,7 @@ export const ru: Translation = {
   ...armariumFindings,
   ...armariumListing,
   ...armariumShare,
+  ...armariumMusic,
   ...armariumUpload,
   ...deviceFiles,
   ...docs,

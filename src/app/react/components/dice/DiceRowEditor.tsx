@@ -3,7 +3,7 @@ import { Plus, X } from 'lucide-react';
 import { cn } from '../../../../utils/cn';
 import { faceOf, rowColumns } from './DiceTrayDice';
 import { MAX_ROW, typedRowDie, withRowDie, withRowSlotMoved, withoutRowSlot, type DiceShelf, type RowDieProblem, type ShelfChange } from './diceShelf';
-import { useRowDrag } from './useRowDrag';
+import { useRowDrag } from '../../hooks/useRowDrag';
 import { t } from '../../../i18n';
 
 interface DiceRowEditorProps {
@@ -96,7 +96,7 @@ export function DiceRowEditor({ shelf, onChange }: DiceRowEditorProps): React.Re
     const face = faceOf(slot, shelf.presets, '', {});
     return face ? [{ slot, face }] : [];
   });
-  const drag = useRowDrag(rowRef, places.length, (from, to) => {
+  const drag = useRowDrag(() => [...(rowRef.current?.children ?? [])].slice(0, places.length), (from, to) => {
     const change = withRowSlotMoved(shelf, from, to);
     if (change) onChange(change);
   });

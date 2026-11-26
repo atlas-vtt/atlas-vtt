@@ -1,7 +1,7 @@
 import type { FederatedPointerEvent } from 'pixi.js';
 
 /**
- * What the viewport's dispatch (`TokenRenderer`) asks about drawings and texts. No annotation
+ * What the map's pointer (`MapPointer`) asks about drawings and texts. No annotation
  * listens to the pointer itself: the dispatch asks here where their turn comes, and they say by the
  * tool in hand what they take (`AnnotationInteraction`).
  */

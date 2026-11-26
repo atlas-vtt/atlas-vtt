@@ -61,11 +61,6 @@
   stroke: var(--interactive-accent);
   transition: stroke-dasharray 120ms $press-ease;
 
-  // While held it follows the pointer, which a transition would only lag.
-  [data-held] > svg > & {
-    transition: none;
-  }
-
   @media (prefers-reduced-motion: reduce) {
     transition: none;
   }
@@ -88,8 +83,14 @@
     height: 12px;
     rotate: none;
   }
+}
 
-  [data-wet] > & {
-    color: var(--text-normal);
-  }
+// Written out whole, not nested as `[…] > &`: main.scss wraps every file in .atlas-vtt-plugin, which a nested parent selector would put between the two.
+// While held the fill follows the pointer, which a transition would only lag.
+.atlas-sound-knob[data-held] > svg > .atlas-sound-knob__fill {
+  transition: none;
+}
+
+.atlas-sound-knob[data-wet] > .atlas-sound-knob__value {
+  color: var(--text-normal);
 }

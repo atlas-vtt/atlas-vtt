@@ -1,6 +1,7 @@
 import { Container, Graphics, Text, TextStyle } from 'pixi.js';
 import { canvasBadgeColors, isDarkTheme } from '../utils/canvasBadgeColors';
 import { spacing } from '../../styles/designTokens';
+import { uiCorner } from '../utils/squareCorners';
 
 const FONT_SIZE = 13;
 const FONT_FAMILY = 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
@@ -32,7 +33,7 @@ export function createHexLinkChip({ number, title }: HexLinkChipContent): Contai
   const height = contentHeight + 2 * spacing.s;
 
   const background = new Graphics()
-    .roundRect(-width / 2, -height, width, height, height / 2)
+    .roundRect(-width / 2, -height, width, height, uiCorner(height / 2))
     .fill({ color: colors.background, alpha: 0.95 })
     .stroke({ width: 0.5, color: colors.stroke, alpha: isDarkTheme() ? 0.4 : 0.3 });
   chip.addChild(background);

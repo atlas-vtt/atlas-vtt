@@ -3,6 +3,7 @@ import { Application, CanvasSource, Container, Matrix, RenderTexture, Sprite, Te
 import { Viewport } from 'pixi-viewport';
 import { imageWorldRect, NO_STRETCH, sameStretch, turnedBox, type MapStretch } from '../../src/app/grid/mapStretch';
 import type { ArtAlpha, LevelArt } from '../../src/app/levels/artRaster';
+import { viewedImagePlacement } from '../../src/app/levels/levelAlignment';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import type { SceneLevel } from '../../src/app/types/sceneLevelTypes';
 import type { TokenRenderer } from '../../src/app/pixi/TokenRenderer';
@@ -19,6 +20,7 @@ import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { roofPieces } from '../../src/app/levels/roofs';
 import type { RoofImageRead } from '../../src/app/pixi/lighting/levels/Roof';
 import { ViewRoofs } from '../../src/app/pixi/roofs/ViewRoofs';
+import { viewAudience } from './viewAudience';
 
 /** The scene's two floors: the view looks at the upper one and down into the ground floor. */
 export const LEVELS: SceneLevel[] = [
@@ -180,6 +182,8 @@ export interface LevelsView {
   maps: Record<string, FakeMap>;
   /** Shows map `background` on the viewed level, placed by `placement` (as the store must place it), and lets the lighting follow its size. */
   showViewedMap(background: string, placement: MapStretch): Promise<void>;
+  /** Draws the viewed level's map with `placement` alone, the scene unchanged: a preview (grid alignment, Position floor). */
+  previewViewedMap(placement: MapStretch): void;
   /** The GM's canvas through the camera, drawn as the render scheduler draws it, read back. */
   gmCanvas(scale: number, x: number, y: number): Uint8ClampedArray;
   dispose(): void;
@@ -224,7 +228,7 @@ export async function openLevelsView({ map, pane, paneHeight = pane, resolution 
   // The first level's map is the scene's own.
   store.setState({ background: levels[0]?.background ?? null });
   const art = tokenArt ?? Texture.WHITE;
-  const tokens: TokenArt = { acquire: () => Promise.resolve(art), release: () => undefined, destroyAll: () => undefined };
+  const tokens: TokenArt = { acquire: () => Promise.resolve(art), release: () => undefined };
   let releaseBelowImage = (): void => undefined;
   const belowLoaded = holdBelowImage ? new Promise<void>((resolve) => { releaseBelowImage = resolve; }) : Promise.resolve();
   const readRoof = (path: string): Promise<RoofImageRead> => {
@@ -240,13 +244,14 @@ export async function openLevelsView({ map, pane, paneHeight = pane, resolution 
       const shown = roofs;
       return shown ? (point) => shown.covers(point) : null;
     },
-    createArt: () => tokens,
+    art: tokens,
     levelArt: (background) => {
       const found = background === null ? undefined : maps[background];
       return found ? Promise.resolve(fakeLevelArt(found)) : Promise.reject(new Error(`No map ${String(background)} in the fake vault`));
     },
     viewedFog: viewedFog ?? ((): FogCover => undefined),
     placeEraser: (eraser) => viewport.addChildAt(eraser, viewport.getChildIndex(floor) + 1),
+    previewing: () => !sameStretch(floorImage.mapStretch, viewedImagePlacement(store.getState())),
   };
   const bounds = (): MapBounds => {
     const rect = floorImage.worldRect!;
@@ -259,7 +264,7 @@ export async function openLevelsView({ map, pane, paneHeight = pane, resolution 
     ...(withRoofs !== 'vault' && { host: { createMapImage: () => fakeMapImage(maps, Promise.resolve(), 'roof-image'), readRoof } }), fadeMs: 0,
   }) : null;
   const controller = new LightingController({
-    viewport, app, store, eventBus: new EventEmitter(), obsApp, viewId: 'levels-view',
+    viewport, app, store, eventBus: new EventEmitter(), obsApp, viewId: 'levels-view', audience: viewAudience(store).audience,
     bounds, albedo: () => null, below: host, roofFadeMs: 0, ...(roofs && { roofs }),
     ...(quality && { quality: { current: () => quality, onChange: () => () => undefined } }),
     ...(qualitySource && { quality: qualitySource }),
@@ -267,9 +272,7 @@ export async function openLevelsView({ map, pane, paneHeight = pane, resolution 
   made.controller = controller;
   const ignore = (): void => undefined;
   controller.wire({
-    setLightHandlers: ignore, setWallPointerDownHandler: ignore, setWallContextMenuHandler: ignore, setWallPointerMoveHandler: ignore,
-    setWallPointerUpHandler: ignore, setWallDoubleClickHandler: ignore, setWallCursorProvider: ignore, setDoorMenuHandlers: ignore,
-    setDoorClickHandler: ignore, setPlayerSightProvider: ignore, setGlideWay: ignore, setArtFloors: ignore, refreshPlayerSight: ignore, getSensedOutlineLayer: () => ({ visible: false }),
+    setPlayerSightProvider: ignore, setGlideWay: ignore, setArtFloors: ignore, getSensedOutlineLayer: () => ({ visible: false }),
   } as unknown as TokenRenderer);
   let time = 1000;
   const renderer = app.renderer as WebGLRenderer;
@@ -287,6 +290,7 @@ export async function openLevelsView({ map, pane, paneHeight = pane, resolution 
       await floorImage.load(background, undefined, placement);
       controller.renderer.refreshBounds();
     },
+    previewViewedMap: (placement) => floorImage.setStretch(placement),
     displayFrames: (count) => { for (let i = 0; i < count; i++) app.ticker.update(time += 16); },
     settle: async () => {
       for (let i = 0; i < 3; i++) {

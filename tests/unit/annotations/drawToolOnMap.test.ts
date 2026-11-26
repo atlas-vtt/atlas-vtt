@@ -5,7 +5,6 @@ import { eraserRadius, stampSize, strokeWidth, textHeight } from '../../../src/a
 import { inFill } from '../../../src/app/annotations/lineMath';
 import { FONT_FAMILIES, TEXT_PLATE } from '../../../src/app/annotations/madeText';
 import { openShapeOf } from '../../../src/app/pixi/utils/openShape';
-import { markHandled, resetHandled } from '../../../src/app/pixi/utils/handledEvents';
 import { getHistoryStore } from '../../../src/app/stores/history';
 import type { DrawingStroke, TextElement } from '../../../src/app/types';
 import { CELL, drawScene, type DrawScene } from '../../helpers/drawScene';
@@ -84,13 +83,10 @@ describe('the Draw tool on the map: the pen', () => {
     s.tool({ mode: 'pen' });
     s.drag([[10, 10], [200, 10]], { button: 2 });
     expect(s.drawings()).toEqual([]);
-    // The dispatch claimed the press (a pin, a door badge): PIXI hands every listener the same event.
-    s.viewport.once('pointerdown', markHandled);
-    s.renderer.hearPressesLast();
+    // The map's pointer claimed the press (a pin, a door badge): PIXI hands every listener the same event.
+    s.claimNextPress();
     s.drag([[10, 10], [200, 10]]);
     expect(s.drawings()).toEqual([]);
-    s.viewport.once('pointerdown', resetHandled);
-    s.renderer.hearPressesLast();
     s.drag([[10, 10], [200, 10]]);
     expect(s.drawings()).toHaveLength(1);
   });
@@ -474,8 +470,7 @@ describe('the Draw tool on the map: limits and views', () => {
     s.click(0, 0);
     s.pointer('pointermove', 140, 0);
     expect(s.renderer.drawing).toBe(true);
-    s.players.shown = true;
-    s.renderer.refreshVisibility();
+    s.peek(true);
     expect(s.renderer.drawing).toBe(false);
     s.click(140, 0);
     expect(s.drawings()).toEqual([]);

@@ -102,10 +102,10 @@ function Dial({ value, guess, onChange }: { value: number; guess: number; onChan
   const rowRef = useRef<HTMLDivElement>(null)
   const nameId = useId()
   const lowest = guess / REACH
-  const clamp = (px: number): number => Math.min(guess * REACH, Math.max(lowest, px))
+  const clampSize = (px: number): number => Math.min(guess * REACH, Math.max(lowest, px))
   const index = Math.round(Math.log(value / lowest) / Math.log(FINE))
-  const latest = useRef({ value, onChange, clamp })
-  latest.current = { value, onChange, clamp }
+  const latest = useRef({ value, onChange, clampSize })
+  latest.current = { value, onChange, clampSize }
 
   // Not passive, so the wheel turns the dial instead of scrolling the panel
   useEffect(() => {
@@ -115,7 +115,7 @@ function Dial({ value, guess, onChange }: { value: number; guess: number; onChan
       if (event.deltaY === 0) return
       event.preventDefault()
       const now = latest.current
-      now.onChange(now.clamp(now.value * (event.deltaY < 0 ? FINE : 1 / FINE)))
+      now.onChange(now.clampSize(now.value * (event.deltaY < 0 ? FINE : 1 / FINE)))
     }
     row.addEventListener("wheel", onWheel, { passive: false })
     return () => row.removeEventListener("wheel", onWheel)
@@ -124,7 +124,7 @@ function Dial({ value, guess, onChange }: { value: number; guess: number; onChan
   return (
     <div ref={rowRef} className="atlas-true-scale__dial-row">
       <span id={nameId} hidden>{t("tableTv.setup.fit")}</span>
-      <Button variant="ghost" size="icon" aria-label={t("tableTv.setup.smaller")} onClick={() => onChange(clamp(value / COARSE))}>
+      <Button variant="ghost" size="icon" aria-label={t("tableTv.setup.smaller")} onClick={() => onChange(clampSize(value / COARSE))}>
         <Minus />
       </Button>
       <input
@@ -135,9 +135,9 @@ function Dial({ value, guess, onChange }: { value: number; guess: number; onChan
         max={STEPS}
         step={1}
         value={Math.min(STEPS, Math.max(0, index))}
-        onChange={(event) => onChange(clamp(lowest * FINE ** Number(event.target.value)))}
+        onChange={(event) => onChange(clampSize(lowest * FINE ** Number(event.target.value)))}
       />
-      <Button variant="ghost" size="icon" aria-label={t("tableTv.setup.larger")} onClick={() => onChange(clamp(value * COARSE))}>
+      <Button variant="ghost" size="icon" aria-label={t("tableTv.setup.larger")} onClick={() => onChange(clampSize(value * COARSE))}>
         <Plus />
       </Button>
     </div>

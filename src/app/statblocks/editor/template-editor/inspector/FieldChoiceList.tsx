@@ -4,6 +4,7 @@ import { cn } from '../../../../../utils/cn';
 import { FIELD_TYPE_LABELS } from '../editorGlyphs';
 import type { FieldChoice, FieldChoiceGroup } from './fieldChoices';
 import { t } from '../../../../i18n';
+import { revealInList } from '../../../../utils/scrollWithin';
 
 export interface FieldChoiceListProps {
   id: string;
@@ -40,7 +41,8 @@ export function FieldChoiceList({ id, label, groups, active, onHover, onPick }: 
   const activeId = active ? choiceId(id, active) : null;
 
   useEffect(() => {
-    if (activeId) ref.current?.ownerDocument.getElementById(activeId)?.scrollIntoView({ block: 'nearest' });
+    const row = activeId ? ref.current?.ownerDocument.getElementById(activeId) : null;
+    if (row) revealInList(row);
   }, [activeId]);
 
   return (

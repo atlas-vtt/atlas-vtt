@@ -12,7 +12,7 @@ const cursor = (changes: Partial<PlayerCursor> = {}): PlayerCursor => ({ t: 'cur
 function shown(): MarkHarness {
   const harness = markHarness(MAP);
   harness.cursorsOn = true;
-  harness.share.setScene('s1');
+  harness.share.feed.setScene({ id: 's1', lit: false });
   return harness;
 }
 
@@ -37,7 +37,7 @@ describe('everyone\'s cursors', () => {
 
   it('are neither taken nor sent while the setting is off, and go once it is switched off', () => {
     const harness = markHarness(MAP);
-    harness.share.setScene('s1');
+    harness.share.feed.setScene({ id: 's1', lit: false });
     harness.share.receive(ANA, cursor());
     harness.cursor.moveTo([300, 200], harness.now());
     harness.advance(MARKS_INTERVAL_MS);
@@ -65,18 +65,14 @@ describe('everyone\'s cursors', () => {
     ]);
   });
 
-  it('leave out a cursor whose owner did nothing for long until they do again, and tell the GM\'s overlay', () => {
+  it('leave out a cursor whose owner did nothing for long, by itself, until they do again, and tell the GM\'s overlay', () => {
     const harness = shown();
     harness.share.receive(ANA, cursor());
     harness.advance(CURSOR_REST_MS - 1);
     // A page sends only while its owner is at work: the same place again (a scroll, a zoom) keeps the cursor.
     harness.share.receive(ANA, cursor({ pts: [] }));
     harness.advance(CURSOR_REST_MS - 1);
-    harness.share.update();
-    harness.advance(MARKS_INTERVAL_MS);
     expect(lastMarks(harness)?.cursors).toHaveLength(1);
-    harness.advance(2);
-    harness.share.update();
     harness.advance(MARKS_INTERVAL_MS);
     expect(lastMarks(harness)?.cursors).toEqual([]);
     expect(harness.cursorShows.at(-1)).toEqual([]);
@@ -167,7 +163,7 @@ describe('everyone\'s cursors', () => {
   it('start anew with another scene', () => {
     const harness = shown();
     harness.share.receive(ANA, cursor());
-    harness.share.setScene('s2');
+    harness.share.feed.setScene({ id: 's2', lit: false });
     harness.advance(MARKS_INTERVAL_MS);
     expect(harness.cursorShows.at(-1)).toEqual([]);
     expect(harness.sent.filter(({ body }) => body.scene === 's2' && (body.cursors?.length ?? 0) > 0)).toEqual([]);

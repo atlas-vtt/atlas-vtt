@@ -24,7 +24,7 @@ function openStore(): { store: ViewAtlasStore; history: () => HistoryState } {
 const x = (store: ViewAtlasStore, id: string): number | undefined => store.getState().objects.tokens[id]?.x;
 const stacks = (history: () => HistoryState): string => `${history().pastStates.length}/${history().futureStates.length}`;
 const wallCount = (store: ViewAtlasStore): number => Object.keys(store.getState().objects.walls).length;
-const addWall = (store: ViewAtlasStore, at: number): string => store.getState().addWall({ type: 'solid', p1: { x: at, y: 0 }, p2: { x: at, y: 70 } });
+const addWall = (store: ViewAtlasStore, at: number): string => store.getState().addObject('walls', { type: 'solid', p1: { x: at, y: 0 }, p2: { x: at, y: 70 } });
 
 /** Runs `effect` inside the next notification of the store, once. */
 function onNextWrite(store: ViewAtlasStore, effect: () => void): void {
@@ -40,7 +40,7 @@ function onNextWrite(store: ViewAtlasStore, effect: () => void): void {
 describe('what the history does around store notifications', () => {
   it('still takes back a change Atlas made to the very entity the undone step changed', () => {
     const { store, history } = openStore();
-    const a = store.getState().addToken({ x: 0, y: 0, imagePath: 'art/a.png' });
+    const a = store.getState().addTokens([{ x: 0, y: 0, imagePath: 'art/a.png' }])[0]!;
     store.getState().moveToken(a, 70, 0);
     runUntracked(store, () => store.getState().retargetRenamedFile('art/a.png', 'art/a2.png'));
     history().undo();
@@ -49,7 +49,7 @@ describe('what the history does around store notifications', () => {
 
   it('saves nothing for an undo alone; the next write saves the undone state', () => {
     const { store, history } = openStore();
-    const a = store.getState().addToken({ x: 0, y: 0, imagePath: 'art/a.png' });
+    const a = store.getState().addTokens([{ x: 0, y: 0, imagePath: 'art/a.png' }])[0]!;
     store.getState().moveToken(a, 70, 0);
     const setItem = vi.spyOn(store.persist.getOptions().storage!, 'setItem').mockImplementation(() => undefined);
     store.setState({ persistenceEnabled: true });
@@ -63,7 +63,7 @@ describe('what the history does around store notifications', () => {
 
   it('leaves no step for a gesture cancelled inside a notification once its close waits for the write', async () => {
     const { store, history } = openStore();
-    const a = store.getState().addToken({ x: 0, y: 0, imagePath: 'art/a.png' });
+    const a = store.getState().addTokens([{ x: 0, y: 0, imagePath: 'art/a.png' }])[0]!;
     beginHistoryTransaction(store);
     store.getState().moveToken(a, 50, 0);
     onNextWrite(store, () => {
@@ -79,7 +79,7 @@ describe('what the history does around store notifications', () => {
 
   it('leaves the step to the write in whose notification a gesture was cancelled at once', () => {
     const { store, history } = openStore();
-    const a = store.getState().addToken({ x: 0, y: 0, imagePath: 'art/a.png' });
+    const a = store.getState().addTokens([{ x: 0, y: 0, imagePath: 'art/a.png' }])[0]!;
     beginHistoryTransaction(store);
     store.getState().moveToken(a, 50, 0);
     onNextWrite(store, () => {
@@ -101,7 +101,7 @@ describe('what the history does around store notifications', () => {
     beginHistoryTransaction(store);
     placed.push(addWall(store, 10), addWall(store, 20));
     onNextWrite(store, () => {
-      store.getState().deleteWalls(placed);
+      store.getState().removeObjects(placed);
       discardHistoryTransaction(store);
     });
     store.getState().setActiveTool('select');
@@ -137,7 +137,7 @@ describe('what the history does around store notifications', () => {
 
   it('records no step for the write in whose notification a transaction begins', () => {
     const { store, history } = openStore();
-    const a = store.getState().addToken({ x: 0, y: 0, imagePath: 'art/a.png' });
+    const a = store.getState().addTokens([{ x: 0, y: 0, imagePath: 'art/a.png' }])[0]!;
     onNextWrite(store, () => beginHistoryTransaction(store));
     store.getState().moveToken(a, 70, 0);
     expect(stacks(history)).toBe('1/0');
@@ -149,7 +149,7 @@ describe('what the history does around store notifications', () => {
 
   it('records a write a listener makes during an undo before the undone step goes onto the redo stack', () => {
     const { store, history } = openStore();
-    const a = store.getState().addToken({ x: 0, y: 0, imagePath: 'art/a.png' });
+    const a = store.getState().addTokens([{ x: 0, y: 0, imagePath: 'art/a.png' }])[0]!;
     store.getState().moveToken(a, 70, 0);
     onNextWrite(store, () => store.getState().moveToken(a, 30, 0));
     history().undo();
@@ -189,8 +189,8 @@ describe('what the history does around store notifications', () => {
   it('records a write on one view made while another view writes untracked, and the other way round', () => {
     const { store: one, history: oneHistory } = openStore();
     const { store: two, history: twoHistory } = openStore();
-    runUntracked(two, () => one.getState().addToken({ x: 0, y: 0, imagePath: 'art/a.png' }));
-    runUntracked(one, () => two.getState().addToken({ x: 0, y: 0, imagePath: 'art/b.png' }));
+    runUntracked(two, () => one.getState().addTokens([{ x: 0, y: 0, imagePath: 'art/a.png' }])[0]!);
+    runUntracked(one, () => two.getState().addTokens([{ x: 0, y: 0, imagePath: 'art/b.png' }])[0]!);
     expect(stacks(oneHistory)).toBe('1/0');
     expect(stacks(twoHistory)).toBe('1/0');
   });

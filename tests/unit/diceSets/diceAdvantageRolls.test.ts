@@ -6,7 +6,7 @@ import type { DiceSet } from '../../../src/app/types/diceSetTypes';
 
 const builtIn = (id: string): DiceSet => BUILT_IN_DICE_SETS.find((set) => set.id === id)!;
 const d20 = builtIn('builtin:d20');
-const rollUnder = builtIn('builtin:d20-roll-under');
+const rollUnder: DiceSet = { ...builtIn('builtin:d20-roll-under'), advantage: { kind: 'keep' }, disadvantage: { kind: 'keep' } };
 const percentile = builtIn('builtin:d100-roll-under');
 const powerRoll = builtIn('builtin:power-roll');
 const set = (fields: Partial<DiceSet>): DiceSet => ({ id: 'set', name: 'Set', builtIn: false, crit: 'natural', dice: [{ count: 1, sides: 20 }], ...fields });

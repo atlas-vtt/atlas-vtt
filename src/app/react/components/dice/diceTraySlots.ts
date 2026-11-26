@@ -4,6 +4,7 @@
  */
 import type { DicePreset, DiceRowSlot } from '../../../types/dicePresetTypes';
 import { MAX_DICE, MAX_PER_DIE, diceCounts, modifierSuffix, trayDiceCount, writeTray } from './diceTrayPool';
+import { changedBeforeSide } from '../../../tools/writtenAdvantage';
 import { modifierOf, presetTerm, withDie, withPreset, withoutPresetTerms } from './diceTrayText';
 
 /** A saved roll written as a formula, which joins what the tray holds; a designed one rolls on its own. */
@@ -40,5 +41,5 @@ export function slotAlone(formula: string, slot: DiceRowSlot, presets: readonly 
   if (slot.kind === 'die') return writeTray({ pool: { [slot.sides]: 1 }, modifier });
   const saved = savedFormula(slot, presets);
   if (saved === undefined) return null;
-  return modifier === 0 ? saved : `${presetTerm(saved)}${modifierSuffix(modifier)}`;
+  return modifier === 0 ? saved : changedBeforeSide(saved, (formula) => `${presetTerm(formula)}${modifierSuffix(modifier)}`);
 }

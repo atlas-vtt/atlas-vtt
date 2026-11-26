@@ -50,6 +50,7 @@ export const settings: Translation = {
   'settings.updates.heading': 'Обновления',
   'settings.updates.notice': 'Atlas {version} готов к установке.',
   'settings.updates.noticeTitle': 'Доступно обновление',
+  'settings.updates.partUpdate': 'Atlas обновлён на этом устройстве лишь частично: работает версия {running}, остальное от версии {installed}. Программа синхронизации пропустила его большой файл main.js; скопируйте этот файл с другого устройства или из выпуска Atlas {installed} на GitHub в папку плагина в этом хранилище.',
   'settings.updates.showAfterUpdates': 'Показывать изменения после обновления',
   'settings.updates.showAfterUpdatesDesc': 'Один раз открывать описание выпуска после обновления Atlas. Список изменений всегда доступен здесь.',
   'settings.updates.upToDate': 'Установлена последняя версия Atlas',

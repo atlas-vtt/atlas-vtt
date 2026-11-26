@@ -1,4 +1,5 @@
 import { getLocale, t } from '../../../i18n';
+import type { MessageKey, MessageValues } from '../../../i18n/types';
 import {
   EXCLUSIVE_TAGS,
   LISTING_TEXT,
@@ -24,7 +25,9 @@ import { formatByteSize } from '../../../utils/fileSize';
 export type UploadContext = 'share' | 'publish';
 
 type Until = string | null;
-type Sentence = (until: Until, context: UploadContext) => string;
+/** Says a sentence by its key: `t`, or a share's own words for what it shares (`refusalSaid`). */
+export type Say = (key: MessageKey, values?: MessageValues) => string;
+type Sentence = (until: Until, context: UploadContext, say: Say) => string;
 
 
 function dateOf(iso: string): Date | null {
@@ -52,30 +55,30 @@ function withDay(until: Until, open: () => string, dated: (day: string) => strin
 }
 
 const REFUSALS: Readonly<Record<UploadRefusal, Sentence>> = {
-  'signed-out': () => t('armariumUpload.refusal.signed-out'),
-  suspended: (until) =>
-    withDay(until, () => t('armariumUpload.refusal.suspended'), (day) => t('armariumUpload.refusal.suspendedUntil', { day })),
-  restricted: (until) =>
-    withDay(until, () => t('armariumUpload.refusal.restricted'), (day) => t('armariumUpload.refusal.restrictedUntil', { day })),
-  terms: () => t('armariumUpload.refusal.terms'),
-  'email-unverified': () => t('armariumUpload.refusal.email-unverified'),
-  'needs-linked-provider': (_until, context) =>
-    context === 'publish' ? t('armariumUpload.refusal.needsLinkedProviderPublish') : t('armariumUpload.refusal.needs-linked-provider'),
+  'signed-out': (_until, _context, say) => say('armariumUpload.refusal.signed-out'),
+  suspended: (until, _context, say) =>
+    withDay(until, () => say('armariumUpload.refusal.suspended'), (day) => say('armariumUpload.refusal.suspendedUntil', { day })),
+  restricted: (until, _context, say) =>
+    withDay(until, () => say('armariumUpload.refusal.restricted'), (day) => say('armariumUpload.refusal.restrictedUntil', { day })),
+  terms: (_until, _context, say) => say('armariumUpload.refusal.terms'),
+  'email-unverified': (_until, _context, say) => say('armariumUpload.refusal.email-unverified'),
+  'needs-linked-provider': (_until, context, say) =>
+    context === 'publish' ? say('armariumUpload.refusal.needsLinkedProviderPublish') : say('armariumUpload.refusal.needs-linked-provider'),
   // The account service keeps this reason in its list and never answers with it: no account waits for its age.
-  'account-too-new': () => t('armariumUpload.error.general'),
-  'not-staff': () => t('armariumUpload.refusal.not-staff'),
-  'session-too-old': () => t('armariumUpload.refusal.session-too-old'),
-  'staff-sign-in-method': () => t('armariumUpload.refusal.staff-sign-in-method'),
-  deleting: () => t('armariumUpload.refusal.deleting'),
-  'uploads-closed': () => t('armariumUpload.refusal.uploads-closed'),
-  'too-large': () => t('armariumUpload.refusal.too-large', { size: formatByteSize(UPLOAD_LIMITS.maxBytes, getLocale()) }),
-  'too-many-open': () => t('armariumUpload.refusal.too-many-open', { count: UPLOAD_LIMITS.openSubmissions }),
-  'too-many-today': (until) => {
+  'account-too-new': (_until, _context, say) => say('armariumUpload.error.general'),
+  'not-staff': (_until, _context, say) => say('armariumUpload.refusal.not-staff'),
+  'session-too-old': (_until, _context, say) => say('armariumUpload.refusal.session-too-old'),
+  'staff-sign-in-method': (_until, _context, say) => say('armariumUpload.refusal.staff-sign-in-method'),
+  deleting: (_until, _context, say) => say('armariumUpload.refusal.deleting'),
+  'uploads-closed': (_until, _context, say) => say('armariumUpload.refusal.uploads-closed'),
+  'too-large': (_until, _context, say) => say('armariumUpload.refusal.too-large', { size: formatByteSize(UPLOAD_LIMITS.maxBytes, getLocale()) }),
+  'too-many-open': (_until, _context, say) => say('armariumUpload.refusal.too-many-open', { count: UPLOAD_LIMITS.openSubmissions }),
+  'too-many-today': (until, _context, say) => {
     const date = until === null ? null : dateOf(until);
-    return date === null ? t('armariumUpload.refusal.too-many-today') : t('armariumUpload.refusal.tooManyTodayUntil', { time: formatClock(date) });
+    return date === null ? say('armariumUpload.refusal.too-many-today') : say('armariumUpload.refusal.tooManyTodayUntil', { time: formatClock(date) });
   },
-  'storage-full': () => t('armariumUpload.refusal.storage-full'),
-  'publishing-paused': () => t('armariumUpload.refusal.publishing-paused'),
+  'storage-full': (_until, _context, say) => say('armariumUpload.refusal.storage-full'),
+  'publishing-paused': (_until, _context, say) => say('armariumUpload.refusal.publishing-paused'),
 };
 
 /** Every other code the upload and publish routes answer with, and the ones Atlas raises itself (`network`, `empty-file`, `stopped`). */
@@ -87,43 +90,44 @@ export const UPLOAD_ERROR_CODES = [
 ] as const;
 type ErrorCode = (typeof UPLOAD_ERROR_CODES)[number];
 
-const ERRORS: Readonly<Record<ErrorCode, () => string>> = {
-  'not-found': () => t('armariumUpload.error.not-found'),
-  'bad-request': () => t('armariumUpload.error.general'),
-  'bad-origin': () => t('armariumUpload.error.general'),
-  'too-many-requests': () => t('armariumUpload.error.too-many-requests'),
-  'bad-part-size': () => t('armariumUpload.error.bad-part-size'),
-  'bad-part-hash': () => t('armariumUpload.error.bad-part-hash'),
-  'upload-incomplete': () => t('armariumUpload.error.upload-incomplete'),
-  'upload-expired': () => t('armariumUpload.error.upload-expired'),
-  'upload-corrupt': () => t('armariumUpload.error.upload-corrupt'),
-  'upload-gone': () => t('armariumUpload.error.upload-gone'),
-  'wrong-state': () => t('armariumUpload.error.wrong-state'),
-  'bad-fields': () => t('armariumUpload.error.bad-fields'),
-  'declaration-missing': () => t('armariumUpload.error.declaration-missing'),
-  'listing-not-yours': () => t('armariumUpload.error.listing-not-yours'),
-  'listing-removed': () => t('armariumUpload.error.listing-removed'),
-  'version-not-higher': () => t('armariumUpload.error.version-not-higher'),
-  'format-changed': () => t('armariumUpload.error.format-changed'),
-  'check-files-invalid': () => t('armariumUpload.error.check-files-invalid'),
-  'blocked-file': () => t('armariumUpload.error.blocked-file'),
-  'changed-meanwhile': () => t('armariumUpload.error.changed-meanwhile'),
-  internal: () => t('armariumUpload.error.general'),
-  network: () => t('armariumUpload.error.network'),
-  'empty-file': () => t('armariumUpload.error.empty-file'),
-  stopped: () => t('armariumUpload.error.stopped'),
-  'device-session-stale': () => t('armariumUpload.error.device-session-stale'),
+const ERRORS: Readonly<Record<ErrorCode, (say: Say) => string>> = {
+  'not-found': (say) => say('armariumUpload.error.not-found'),
+  'bad-request': (say) => say('armariumUpload.error.general'),
+  'bad-origin': (say) => say('armariumUpload.error.general'),
+  'too-many-requests': (say) => say('armariumUpload.error.too-many-requests'),
+  'bad-part-size': (say) => say('armariumUpload.error.bad-part-size'),
+  'bad-part-hash': (say) => say('armariumUpload.error.bad-part-hash'),
+  'upload-incomplete': (say) => say('armariumUpload.error.upload-incomplete'),
+  'upload-expired': (say) => say('armariumUpload.error.upload-expired'),
+  'upload-corrupt': (say) => say('armariumUpload.error.upload-corrupt'),
+  'upload-gone': (say) => say('armariumUpload.error.upload-gone'),
+  'wrong-state': (say) => say('armariumUpload.error.wrong-state'),
+  'bad-fields': (say) => say('armariumUpload.error.bad-fields'),
+  'declaration-missing': (say) => say('armariumUpload.error.declaration-missing'),
+  'listing-not-yours': (say) => say('armariumUpload.error.listing-not-yours'),
+  'listing-removed': (say) => say('armariumUpload.error.listing-removed'),
+  'version-not-higher': (say) => say('armariumUpload.error.version-not-higher'),
+  'format-changed': (say) => say('armariumUpload.error.format-changed'),
+  'check-files-invalid': (say) => say('armariumUpload.error.check-files-invalid'),
+  'blocked-file': (say) => say('armariumUpload.error.blocked-file'),
+  'changed-meanwhile': (say) => say('armariumUpload.error.changed-meanwhile'),
+  internal: (say) => say('armariumUpload.error.general'),
+  network: (say) => say('armariumUpload.error.network'),
+  'empty-file': (say) => say('armariumUpload.error.empty-file'),
+  stopped: (say) => say('armariumUpload.error.stopped'),
+  'device-session-stale': (say) => say('armariumUpload.error.device-session-stale'),
 };
 
 const has = <T extends string>(table: Readonly<Record<T, unknown>>, code: string): code is T => Object.hasOwn(table, code);
 
 /**
  * One sentence for a code an upload or a publish was answered with, said where `context` names. `until` is the
- * moment a refusal ends, where the API named one. A code Atlas does not know gets the general sentence.
+ * moment a refusal ends, where the API named one. A code Atlas does not know gets the general sentence. A share says
+ * it through `say`, in the words of what it shares.
  */
-export function uploadMessageFor(code: string, until: Until = null, context: UploadContext = 'share'): string {
-  if (has(REFUSALS, code)) return REFUSALS[code](until, context);
-  return has(ERRORS, code) ? ERRORS[code]() : t('armariumUpload.error.general');
+export function uploadMessageFor(code: string, until: Until = null, context: UploadContext = 'share', say: Say = t): string {
+  if (has(REFUSALS, code)) return REFUSALS[code](until, context, say);
+  return has(ERRORS, code) ? ERRORS[code](say) : say('armariumUpload.error.general');
 }
 
 /** Where a submission stands. */

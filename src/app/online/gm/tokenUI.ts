@@ -1,4 +1,4 @@
-import { MAX_CONDITION_TEXT, MAX_TOKEN_CONDITIONS, MAX_TOKEN_VALUE, type SharedBar, type SharedCondition, type SharedTokenUI } from '../protocol/index.ts';
+import { MAX_CONDITION_NAME, MAX_CONDITION_TEXT, MAX_TOKEN_CONDITIONS, MAX_TOKEN_VALUE, type SharedBar, type SharedCondition, type SharedTokenUI } from '../protocol/index.ts';
 import { resolveActiveConditions, type ActiveCondition } from '../../utils/activeConditions';
 import { isTokenDowned } from '../../pixi/token-renderer/isTokenDowned';
 import type { ResourceDefinition } from '../../resources/resourceTypes';
@@ -34,18 +34,25 @@ function barsOf(token: TokenEntity, rules: TokenRules): SharedBar[] {
   });
 }
 
-/** Condition badges as players are sent them, within the protocol's bounds. */
-export function sharedConditions(conditions: readonly ActiveCondition[]): SharedCondition[] {
-  return conditions.slice(0, MAX_TOKEN_CONDITIONS).map(({ color, glyph, value }) => ({
-    colour: hexColour(color),
-    glyph: glyph.kind === 'icon' ? { kind: 'icon', icon: glyph.icon } : { kind: 'text', text: glyph.text.slice(0, MAX_CONDITION_TEXT) || '?' },
-    value: value !== undefined && finiteValue(value) ? value : null,
-  }));
+/**
+ * Condition badges as players are sent them, within the protocol's bounds. `names` gives each condition's name by id
+ * (its definition's, without the number), for the card beside a hovered token; the initiative cards need none.
+ */
+export function sharedConditions(conditions: readonly ActiveCondition[], names?: ReadonlyMap<string, string>): SharedCondition[] {
+  return conditions.slice(0, MAX_TOKEN_CONDITIONS).map(({ id, color, glyph, value }) => {
+    const name = names?.get(id)?.trim().slice(0, MAX_CONDITION_NAME);
+    return {
+      colour: hexColour(color),
+      glyph: glyph.kind === 'icon' ? { kind: 'icon', icon: glyph.icon } : { kind: 'text', text: glyph.text.slice(0, MAX_CONDITION_TEXT) || '?' },
+      value: value !== undefined && finiteValue(value) ? value : null,
+      ...(name ? { name } : {}),
+    };
+  });
 }
 
-/** The condition badges on a token's ring, as Atlas resolves them (`resolveActiveConditions`): those its collection defines, in order. */
+/** The condition badges on a token's ring, as Atlas resolves them (`resolveActiveConditions`): those its collection defines, in order, named. */
 function conditionsOf(token: TokenEntity, rules: TokenRules): SharedCondition[] {
-  return sharedConditions(resolveActiveConditions(token, rules.conditions));
+  return sharedConditions(resolveActiveConditions(token, rules.conditions), new Map(rules.conditions.map(({ id, name }) => [id, name])));
 }
 
 /**

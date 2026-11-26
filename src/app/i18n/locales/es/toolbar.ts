@@ -9,6 +9,7 @@ export const toolbar: Translation = {
   'toolbar.cone': 'Cono',
   'toolbar.fogEraser': 'Borrador de niebla',
   'toolbar.fogTool': 'Herramienta de niebla',
+  'toolbar.lighting': 'Iluminación',
   'toolbar.laser': 'Puntero láser',
   'toolbar.lassoSelection': 'Selección con lazo',
   'toolbar.peek': 'Mantén pulsado para ver lo que ven los jugadores',
@@ -25,7 +26,7 @@ export const toolbar: Translation = {
   'toolbar.notePin': 'Herramienta de chincheta de nota',
   'toolbar.pinOptions': 'Opciones de chincheta',
   'toolbar.stairs': 'Escaleras',
-  'toolbar.stairsNeedLevels': 'Las escaleras unen las plantas de una escena. Primero añade una planta en la página Plantas de la escena de la paleta de comandos.',
+  'toolbar.stairsNeedLevels': 'Las escaleras necesitan una segunda planta. Añádela en Plantas de la escena',
   'toolbar.rollDice': 'Bandeja de dados',
   'toolbar.optionsOf': 'Opciones de {label}',
   'toolbar.moveSelect': 'Mover/seleccionar',
@@ -66,5 +67,4 @@ export const toolbar: Translation = {
   'toolbar.ranges': 'Alcances',
   'toolbar.rangesTip': 'Haz clic en un token o un lugar para ver sus alcances',
   'toolbar.rangesNoRules': 'Este sistema de juego no tiene alcances ni tramos de movimiento',
-  'toolbar.rangesNeedGmView': 'Cambia a la vista del DJ ({key}) para ver los alcances',
 };

@@ -9,6 +9,7 @@ import type { FullOf } from '../../src/app/pixi/annotations/DrawToolHost';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import type { DrawingStroke, TextElement } from '../../src/app/types';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { viewAudience } from './viewAudience';
 import { stubJsdomGraphics } from '../mocks/jsdomGraphics';
 
 /** The keys and the button a pointer event comes with. */
@@ -43,8 +44,8 @@ export interface DrawScene {
   fieldKey(key: string, init?: KeyboardEventInit): KeyboardEvent;
   /** Told when a press on an annotation starts the drag of the tokens selected with it. */
   dragTokens: Mock<() => void>;
-  /** Whether the canvas shows the players' picture, as a peek would make it: null leaves it to the store. */
-  players: { shown: boolean | null };
+  /** Holds or lets go of the peek key: the canvas shows the players' picture meanwhile. */
+  peek(held: boolean): void;
   /** Takes the Draw tool into hand in `mode`, with other choices where given. */
   tool(choices: Partial<DrawToolChoices>): void;
   pointer(type: 'pointerdown' | 'pointermove' | 'pointerup' | 'pointertap' | 'pointercancel', x: number, y: number, keys?: PointerKeys): void;
@@ -68,6 +69,8 @@ export interface DrawScene {
   drag(path: readonly (readonly [number, number])[], keys?: PointerKeys): void;
   /** A click in place: a press and its release. */
   click(x: number, y: number, keys?: PointerKeys): void;
+  /** The next press is claimed before the drawings and texts hear it, as the map's pointer claims one on a pin or a door badge. */
+  claimNextPress(): void;
   /** A key pressed while the map has the keyboard. */
   key(key: string): KeyboardEvent;
   drawings(): DrawingStroke[];
@@ -83,6 +86,8 @@ export interface DrawSceneOptions {
   keysBelongToMap?: (event: KeyboardEvent) => boolean;
   /** Called with the store before the drawings and texts listen to it: what subscribes here hears every change before they do, as the selection's own marks do on the map. */
   hearsFirst?: (store: ReturnType<typeof createViewAtlasStore>) => void;
+  /** Where the move and select tools give a press to something before the drawings on the map: a linked hex. */
+  overMap?: (point: { x: number; y: number }) => boolean;
 }
 
 export function drawScene(options: DrawSceneOptions = {}): DrawScene {
@@ -95,13 +100,21 @@ export function drawScene(options: DrawSceneOptions = {}): DrawScene {
   store.getState().setMapPath('maps/draw.atlasmap');
   if (options.playerView) store.setState({ isPlayerView: true });
   options.hearsFirst?.(store);
+  // The map's pointer hears presses before the drawings and texts: what it claims, they leave alone
+  let claimNext = false;
+  viewport.on('pointerdown', (event: FederatedPointerEvent) => {
+    if (!claimNext) return;
+    claimNext = false;
+    markHandled(event);
+  });
   const full = vi.fn<(of: FullOf) => void>();
   const dragTokens = vi.fn<() => void>();
-  const players: DrawScene['players'] = { shown: null };
+  const view = viewAudience(store);
   const grid = options.grid === undefined ? SQUARE_GRID : options.grid;
   const renderer = new AnnotationsRenderer({
-    viewport, store, grid: () => grid, full, showsPlayers: () => players.shown, accent: () => 0x8a5cf5, now: () => clock, dragTokens,
+    viewport, store, grid: () => grid, full, audience: view.audience, accent: () => 0x8a5cf5, now: () => clock, dragTokens,
     ...(options.keysBelongToMap && { keysBelongToMap: options.keysBelongToMap }),
+    ...(options.overMap && { overMap: options.overMap }),
   });
   let clock = 0;
   const boundary = new EventBoundary(viewport);
@@ -116,7 +129,7 @@ export function drawScene(options: DrawSceneOptions = {}): DrawScene {
     return event;
   };
   const scene: DrawScene = {
-    renderer, viewport, store, full, dragTokens, players, host,
+    renderer, viewport, store, full, dragTokens, peek: view.peek, host,
     field: () => host.querySelector('textarea'),
     type(words): void {
       const field = host.querySelector('textarea');
@@ -130,6 +143,9 @@ export function drawScene(options: DrawSceneOptions = {}): DrawScene {
       const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init });
       field.dispatchEvent(event);
       return event;
+    },
+    claimNextPress(): void {
+      claimNext = true;
     },
     tool(choices): void {
       store.getState().setDrawTool(choices);

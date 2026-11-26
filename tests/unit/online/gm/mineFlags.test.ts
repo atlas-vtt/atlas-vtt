@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { Ownership } from '../../../../src/app/online/gm/ownership.ts';
 import { boundOwnership } from './fakeSeats.ts';
 import { TOKEN_INTERVAL_MS } from '../../../../src/app/online/gm/TokenShare.ts';
-import { sceneState, shareHarness, token, tokenLists, type ShareHarness } from './shareHarness.ts';
+import { toAll } from './playerPages.ts';
+import { sceneState, shareHarness, token, type ShareHarness } from './shareHarness.ts';
 
 const ANA = 'a'.repeat(20);
 const BEN = 'b'.repeat(20);
@@ -13,17 +14,18 @@ const withTokens = (...tokens: ReturnType<typeof token>[]): ReturnType<typeof sc
   sceneState({ objects: { ...sceneState().objects, tokens: Object.fromEntries(tokens.map((entry) => [entry.id, entry])) } });
 
 type Mine = Extract<GmMessage, { t: 'mine' }>;
-const mineTo = (table: ShareHarness, player: string): Mine[] => table.sent.flatMap(({ body, to }) => (body.t === 'mine' && to === player ? [body] : []));
+const mineTo = (table: ShareHarness, player: string): Mine[] => table.pages.of(player).all('mine');
 
-/** The players' id of a GM token in the last list, found by its place. */
+/** The players' id of a GM token in the last list, found by its place: the list is one for all, so Ana's tells it. */
 function aliasAt(table: ShareHarness, x: number): string | undefined {
-  return tokenLists(table.sent).at(-1)?.tokens.find((entry) => entry.x === x)?.id;
+  return table.pages.of(ANA).tokens.find((entry) => entry.x === x)?.id;
 }
 
 async function table(initial = withTokens(token('f', { x: 1 }), token('r', { x: 2 }), token('x', { x: 3, isHidden: true }))): Promise<{ readonly share: ShareHarness; readonly owners: Ownership }> {
   const owners = boundOwnership([{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }]);
   owners.welcome([{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }]);
   const share = shareHarness(initial, ART, owners);
+  share.pages.join(ANA, BEN);
   owners.onChange(() => share.share.ownersChanged());
   share.share.start();
   await share.set(initial);
@@ -38,9 +40,9 @@ describe('mine flags', () => {
     owners.give(['r'], {}, BEN);
     expect(mineTo(share, ANA).at(-1)?.tokens).toEqual([aliasAt(share, 1)]);
     expect(mineTo(share, BEN).at(-1)?.tokens).toEqual([aliasAt(share, 2)]);
-    expect(share.sent.filter(({ body }) => body.t === 'tokens').every(({ to }) => to === undefined)).toBe(true);
-    const anaTraffic = JSON.stringify(share.sent.filter(({ to }) => to === ANA || to === undefined));
-    expect(anaTraffic).not.toContain(JSON.stringify([aliasAt(share, 2)]));
+    const lists = share.sent.filter(({ body }) => body.t === 'tokens');
+    expect(toAll(lists)).toEqual(lists);
+    expect(JSON.stringify(share.pages.of(ANA).inbox)).not.toContain(JSON.stringify([aliasAt(share, 2)]));
   });
 
   it('never name a hidden token, even one the player owns', async () => {
@@ -60,10 +62,15 @@ describe('mine flags', () => {
     await share.advance(TOKEN_INTERVAL_MS);
     expect(mineTo(share, ANA)).toHaveLength(count);
     owners.left(ANA);
+    share.pages.leave(ANA);
+    share.pages.join(ANA);
+    const back = share.pages.mark();
     share.share.resend(ANA);
     owners.joined({ id: ANA, name: 'Ana' });
     expect(mineTo(share, ANA)).toHaveLength(count + 1);
-    expect(share.sent.slice(-4).map(({ body, to }) => [body.t, to])).toEqual([['scene', ANA], ['tokens', ANA], ['fog', ANA], ['mine', ANA]]);
+    const heard = share.pages.since(back);
+    expect(Object.keys(heard)).toEqual([ANA]);
+    expect(heard[ANA]?.map(({ t }) => t)).toEqual(['scene', 'tokens', 'fog', 'mine']);
   });
 
   it('are taken back when the GM gives a token to nobody, and are sent to nobody kicked from the table', async () => {
@@ -73,8 +80,10 @@ describe('mine flags', () => {
     owners.give(['r'], {}, null);
     expect(mineTo(share, ANA).at(-1)?.tokens).toEqual([aliasAt(share, 1)]);
     owners.remove(ANA);
-    const before = share.sent.length;
+    const before = share.pages.mark();
     owners.give(['f'], {}, BEN);
-    expect(share.sent.slice(before).map(({ to }) => to)).toEqual([BEN]);
+    const heard = share.pages.since(before);
+    expect(Object.keys(heard)).toEqual([BEN]);
+    expect(heard[BEN]).toHaveLength(1);
   });
 });

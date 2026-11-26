@@ -12,7 +12,7 @@ import type { ResourceEdit } from './resourceEdit.ts';
 import type { ResourceAnswer } from './resourceWrites.ts';
 import type { RestGate } from './restGate.ts';
 import type { StatblockWriteOutcome } from './statblockGate.ts';
-import type { FileStat, WorldMapTree } from './worldMap.ts';
+import type { FileStat, WorldMapAnswer } from './worldMap.ts';
 
 /** What the players' books (`BookShare`) ask of Atlas and the table: everything that reaches beyond them. */
 export interface BookSharePorts extends Timers {
@@ -34,8 +34,8 @@ export interface BookSharePorts extends Timers {
   stored?: AssetStoring | undefined;
   /** The file at a vault path as it is now, or null when there is none. */
   stat(path: string): FileStat | null;
-  /** The world map players may be shown now with the maps it leads into, or null for none. */
-  worldMap(): Promise<WorldMapTree | null>;
+  /** The world map players may be shown now with the maps it leads into (`WorldMapAnswer`). */
+  worldMap(): Promise<WorldMapAnswer>;
   /** The log entries that tell who found readable pins, by `foundPinKey`: the world map's signs show them found. */
   foundPins?(): ReadonlyMap<string, string>;
   /** Tells the GM something they need to act on (a world map whose image cannot be sent). */

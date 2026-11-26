@@ -6,13 +6,13 @@ import { setRestGate, type RestGate } from '../../../../src/app/online/gm/book/r
 import { setStatblockGate } from '../../../../src/app/online/gm/book/statblockGate.ts';
 import type { RestOffer } from '../../../../src/app/recovery/restOffer';
 import type { TemplateBlock, TemplateField } from '../../../../src/app/statblocks/model/templateTypes';
-import { FakeSocket, workspace } from './fakeTable.ts';
-import { ANA, BEN, BRANNOCH, cave, delivered, MIRA, openTable, traffic, type OpenTable } from './bookTableHarness.ts';
+import { workspace } from './fakeTable.ts';
+import { ANA, BEN, BRANNOCH, cave, MIRA, openTable, traffic, type OpenTable } from './bookTableHarness.ts';
 import { fakeTokenSource } from './fakeTokenSource.ts';
 import { advanceSettled as advance } from './settled.ts';
 import { StatblockNotes, templateOf } from './statblockNotes.ts';
 
-vi.mock('obsidian', () => ({ Notice: class {}, normalizePath: (path: string) => path, requestUrl: () => Promise.resolve({ status: 201, json: null }), PluginSettingTab: class {}, Setting: class {} }));
+vi.mock('obsidian', () => ({ Notice: class {}, normalizePath: (path: string) => path, requestUrl: () => Promise.resolve({ status: 201, json: null }), PluginSettingTab: class {}, Setting: class {}, Platform: { isMacOS: false } }));
 // Node has no tile worker: a map's pyramid is still being cut for as long as the test runs, as on a slow device.
 vi.mock('../../../../src/app/pixi/mosaicCanvas/prebuildMosaicCanvas', async (original) => ({ ...(await original<typeof import('../../../../src/app/pixi/mosaicCanvas/prebuildMosaicCanvas')>()), buildMapPyramid: () => new Promise(() => undefined) }));
 vi.mock('../../../../src/app/pixi/mosaicCanvas/TesseraDecoderClient', async (original) => ({
@@ -52,9 +52,8 @@ const FILLED = ['---', 'statblock: true', `atlas-template: ${TEMPLATE.id}`, 'nam
 function pageOf(table: OpenTable, player: string): { readonly book: PlayerBook | undefined; readonly statblock: BookStatblock | null } {
   let book: PlayerBook | undefined;
   let statblock: BookStatblock | null = null;
-  for (const { to, body } of delivered(table.socket)) {
-    if (to !== player) continue;
-    const read = parseGmMessage(JSON.parse(JSON.stringify(body)));
+  for (const body of table.pages.of(player).read) {
+    const read = parseGmMessage(body);
     if (read?.t === 'book') [book, statblock] = [read.book, null];
     else if (read?.t === 'book-sheet' && book !== undefined) book = { ...book, character: read.character };
     else if (read?.t === 'book-statblock') statblock = read.statblock;
@@ -71,8 +70,6 @@ describe('the statblock of a token granted to a player', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'performance', 'Date'] });
     vi.stubGlobal('window', globalThis);
-    vi.stubGlobal('WebSocket', FakeSocket);
-    FakeSocket.all = [];
     workspace.leaves = [];
     workspace.presented = null;
     notes = new StatblockNotes().install();
@@ -125,7 +122,7 @@ describe('the statblock of a token granted to a player', () => {
     await advance(BOOK_POLL_MS);
     expect(pageOf(table, ANA).book?.character).toMatchObject({ name: 'Brannoch', resources: [{ key: 'hp', current: 7 }, { key: 'doom' }] });
     expect(abilities(pageOf(table, ANA).statblock)).toEqual(['Cleave']);
-    const others = traffic(delivered(table.socket).filter(({ to }) => to !== ANA));
+    const others = traffic(table.pages.of(BEN).inbox);
     for (const his of ['Brannoch', 'Cleave', 'Hits twice']) expect(others).not.toContain(his);
     // Hurt and unlinked from its note while hidden: the sheet and the statblock follow the token.
     table.tab.store.set(cave({ brannoch: { isHidden: true, resources: { hp: { current: 3, max: 12 } } } }));
@@ -163,7 +160,7 @@ describe('the statblock of a token granted to a player', () => {
     const hidden = (name: string): Parameters<typeof cave>[0] => ({ ...heroes, mira: { ...heroes.mira, isHidden: true, name } });
     const table = await openTable(new BookShelf(), PLAYERS, { [BRANNOCH]: ANA, [MIRA]: BEN }, PLAYERS, hidden('Mira'));
     await advance(BOOK_POLL_MS);
-    const toAna = (): string => traffic(delivered(table.socket).filter(({ to }) => to !== BEN));
+    const toAna = (): string => traffic(table.pages.of(ANA).inbox);
     expect(pageOf(table, BEN).book?.character?.name).toBe('Mira');
     expect(pageOf(table, ANA).statblock?.recovery).toHaveLength(1);
     expect(pageOf(table, ANA).statblock?.allies).toBeUndefined();

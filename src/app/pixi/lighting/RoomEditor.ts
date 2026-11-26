@@ -13,9 +13,12 @@ import type { Point } from '../../types/visionTypes';
 import type { MapBounds } from '../../vision/visibility';
 import { wallList } from '../../vision/wallList';
 import { closesDraft } from '../areas/areaGeometry';
+import type { BucketMap } from './roomBucket';
+import { RoomBucketTool } from './roomBucketTool';
+import { RoomPointer } from './RoomPointer';
 import { RoomOverlay } from './RoomOverlay';
+import { roomSizesOf } from '../../stores/roomsSlice';
 import { wallEndReach } from './wallEnds';
-import { switchApplies } from '../../types/toolSwitches';
 
 export interface RoomEditorDeps {
   viewport: Viewport;
@@ -26,15 +29,15 @@ export interface RoomEditorDeps {
   onActiveChange: () => void;
   /** The map's canvas: a pointer cancelled on it, or its window losing focus, drops a stroke or door that will get no release. */
   canvas: HTMLCanvasElement;
+  /** The map shown, whose art a bucket pours over; null while none is. */
+  mapImage: () => BucketMap | null;
 }
 
-/** What a press needs of the pointer event: Alt does the opposite of carving or filling, Shift snaps to the grid. */
+/** What a press needs of the pointer event: Alt does the opposite of carving or filling, Shift snaps corners to the grid and keeps a brush stroke straight (`RoomPointer`). */
 export type RoomKeys = { altKey: boolean; shiftKey?: boolean };
 
 /** How far, in screen pixels, a door must be dragged to be one. */
 const DOOR_DRAG = 5;
-/** How long the walls must rest before the rock is darkened anew, in milliseconds. */
-const SHADE_REST_MS = 120;
 
 /**
  * The lighting tool's rooms mode: rooms are carved out of the rock with a rectangle, corner by
@@ -45,22 +48,31 @@ const SHADE_REST_MS = 120;
  */
 export class RoomEditor {
   private readonly overlay: RoomOverlay;
+  private readonly bucket: RoomBucketTool;
   private readonly stroke = new ShapeStroke();
   private subMode: WallToolSubMode = 'draw';
   /** Corners of a polygon being placed. */
   private draft: Point[] = [];
   private pointer: Point | null = null;
+  private readonly brush: RoomPointer;
   /** Where a door being dragged starts, and whether it is a secret door (Alt). */
   private door: { from: Point; secret: boolean } | null = null;
   /** The stroke under way fills rock back in. */
   private filling = false;
-  /** The wait before the rock is darkened anew after the walls changed, or null. */
-  private shadeTimer: number | null = null;
   private readonly cleanups: Array<() => void> = [];
 
   constructor(private readonly deps: RoomEditorDeps) {
     const { viewport, store, eventBus } = deps;
-    this.overlay = new RoomOverlay(viewport, store, deps.bounds);
+    this.overlay = new RoomOverlay(viewport, store, deps.bounds, deps.canvas.ownerDocument.defaultView);
+    this.brush = new RoomPointer(viewport, store);
+    this.bucket = new RoomBucketTool({
+      store, canvas: deps.canvas, parent: this.overlay.view, mapImage: deps.mapImage, shown: () => this.shown,
+      carve: (area, filling) => this.apply(area, filling),
+      onAlt: (held) => {
+        this.takeAlt(held);
+        this.draw();
+      },
+    });
     const onSubMode = (subMode: WallToolSubMode): void => {
       const was = this.active;
       this.subMode = subMode;
@@ -69,20 +81,26 @@ export class RoomEditor {
       deps.onActiveChange();
       this.draw();
     };
-    const redraw = (): void => this.draw();
+    // The camera moved under a pointer at rest: the brush's rings both go back under it (a stroke under way keeps its points).
+    const redraw = (): void => {
+      const atRest = this.busy ? null : this.brush.atRest();
+      if (atRest) this.pointer = atRest;
+      this.draw();
+    };
     eventBus.on('wall-submode-changed', onSubMode);
     viewport.on('zoomed', redraw);
+    viewport.on('moved', redraw);
     this.cleanups.push(
       () => eventBus.off('wall-submode-changed', onSubMode),
       () => viewport.off('zoomed', redraw),
+      () => viewport.off('moved', redraw),
       store.subscribe((state, previous) => {
         // A wall's end dragged in this mode changes the walls at every step: the rock follows once they rest.
-        if (levelObjects(state).walls !== levelObjects(previous).walls) this.shadeSoon();
-        if (state.roomTool === previous.roomTool) return;
+        if (levelObjects(state).walls !== levelObjects(previous).walls) this.overlay.shadeSoon();
+        if (state.roomTool === previous.roomTool && state.roomSizes === previous.roomSizes) return;
         this.stop();
         this.draw();
       }),
-      () => this.shadeNow(false),
     );
   }
 
@@ -113,7 +131,7 @@ export class RoomEditor {
   pointerDown(point: Point, keys: RoomKeys): boolean {
     if (!this.shown) return false;
     const { roomTool } = this.deps.store.getState();
-    const at = this.snapped(point, keys);
+    const at = this.brush.snapped(point, keys.shiftKey);
     if (roomTool.action === 'door') {
       this.door = { from: at, secret: keys.altKey };
       this.pointer = at;
@@ -122,13 +140,17 @@ export class RoomEditor {
       return true;
     }
     this.filling = (roomTool.action === 'fill') !== keys.altKey;
+    this.bucket.altHeld = keys.altKey;
     if (roomTool.shape === 'polygon') {
       if (closesDraft(this.draft, point, this.zoom())) this.closeDraft();
       else this.draft.push(at);
     } else {
-      this.stroke.mode = roomTool.shape;
-      this.stroke.brushRadius = roomTool.brushSize;
+      // A bucket is dragged like a brush: it pours from every point of the path on release, and carves the brush's trail too.
+      this.stroke.mode = roomTool.shape === 'bucket' ? 'brush' : roomTool.shape;
+      this.stroke.brushRadius = roomSizesOf(this.deps.store.getState()).brushSize;
       this.stroke.begin(at);
+      this.brush.begin(at);
+      if (this.stroke.mode === 'brush') this.pointer = at;
       this.watchPointer(true);
     }
     this.draw();
@@ -137,9 +159,12 @@ export class RoomEditor {
 
   pointerMove(point: Point, keys: RoomKeys): void {
     if (!this.shown) return;
-    this.pointer = this.stroke.mode === 'brush' && this.stroke.active ? point : this.snapped(point, keys);
-    if (!this.stroke.active && this.draft.length === 0) this.filling = (this.deps.store.getState().roomTool.action === 'fill') !== keys.altKey;
-    if (this.stroke.active) this.stroke.extend(this.stroke.mode === 'rectangle' ? this.pointer : point);
+    this.brush.seen(point);
+    // A brush or bucket stroke is steadied (`RoomPointer.follow`); a corner or a door's end snaps.
+    const brushing = this.stroke.mode === 'brush' && this.stroke.active;
+    this.pointer = brushing ? this.brush.follow(point, keys.shiftKey === true) : this.brush.snapped(point, keys.shiftKey);
+    this.takeAlt(keys.altKey);
+    if (this.stroke.active) this.stroke.extend(this.stroke.mode === 'rectangle' || brushing ? this.pointer : point);
     this.draw();
   }
 
@@ -154,12 +179,17 @@ export class RoomEditor {
     }
     if (!this.stroke.active) return;
     const shape = this.stroke.finish();
-    if (shape) this.apply(areaOf(strokePolygons(shape)));
+    // The stroke ended where the brush trailed to; the rings go back under the pointer.
+    this.brush.end();
+    this.pointer = this.brush.atRest() ?? this.pointer;
+    if (this.bucket.pours && shape?.type === 'brush') this.bucket.pour(shape, this.filling);
+    else if (shape) this.apply(areaOf(strokePolygons(shape)));
     this.draw();
   }
 
   pointerLeft(): void {
     this.pointer = null;
+    this.brush.left();
     this.draw();
   }
 
@@ -181,9 +211,11 @@ export class RoomEditor {
   }
 
   stop(): void {
+    this.bucket.settle();
     this.watchPointer(false);
     this.door = null;
     this.stroke.cancel();
+    this.brush.end();
     this.draft = [];
     this.draw();
   }
@@ -229,55 +261,40 @@ export class RoomEditor {
   }
 
   /** Carves `area` or fills it in, as one edit of the level's walls and one undo step. */
-  private apply(area: RoomArea): void {
+  private apply(area: RoomArea, filling = this.filling): void {
     if (area.length === 0) return;
     const state = this.deps.store.getState();
     const walls = levelObjects(state).walls;
     const chain = `room_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    const { remove, add } = (this.filling ? filledWalls : carvedWalls)(area, wallList(walls), wallSpaces(walls), chain);
+    const { remove, add } = (filling ? filledWalls : carvedWalls)(area, wallList(walls), wallSpaces(walls), chain);
     if (remove.length === 0 && add.length === 0) return;
     state.editWalls(remove, add);
     // What was just carved shows at once.
-    this.shadeNow(true);
-  }
-
-  /** With Shift, a corner lands on the nearest crossing of a square grid. */
-  private snapped(point: Point, { shiftKey }: RoomKeys): Point {
-    const grid = this.deps.store.getState().grid;
-    if (!switchApplies(this.deps.store.getState(), 'roomSnap', shiftKey) || !grid || grid.type !== 'square' || !(grid.size > 0)) return point;
-    const snap = (v: number, offset: number): number => Math.round((v - offset) / grid.size) * grid.size + offset;
-    return { x: snap(point.x, grid.offsetX), y: snap(point.y, grid.offsetY) };
-  }
-
-  /** Darkens the rock anew once the walls have rested `SHADE_REST_MS`: finding the rooms of a large map takes tens of milliseconds. */
-  private shadeSoon(): void {
-    if (!this.shown || this.shadeTimer !== null) return;
-    const win = this.deps.canvas.ownerDocument.defaultView;
-    if (!win) return;
-    this.shadeTimer = win.setTimeout(() => this.shadeNow(true), SHADE_REST_MS);
-  }
-
-  /** Drops a darkening that waits, and with `draw` darkens the rock for the walls as they are. */
-  private shadeNow(draw: boolean): void {
-    if (this.shadeTimer !== null) this.deps.canvas.ownerDocument.defaultView?.clearTimeout(this.shadeTimer);
-    this.shadeTimer = null;
-    if (draw) this.overlay.drawShade();
+    this.overlay.drawShade();
   }
 
   private zoom(): number {
     return this.deps.viewport.scale.x;
   }
 
+  /** Alt held or not while nothing is under way: what the next stroke does. A stroke keeps what its press chose. */
+  private takeAlt(altKey: boolean): void {
+    if (this.stroke.active || this.draft.length > 0) return;
+    this.filling = (this.deps.store.getState().roomTool.action === 'fill') !== altKey;
+    this.bucket.altHeld = altKey;
+  }
+
   private draw(): void {
     // The rock is darkened for the walls as they are; nothing is drawn anew where they did not change.
-    this.shadeNow(true);
-    const preview = this.shown ? { stroke: this.stroke, draft: this.draft, pointer: this.pointer, door: this.door?.from ?? null, filling: this.filling } : null;
+    this.overlay.drawShade();
+    const preview = this.shown ? { stroke: this.stroke, draft: this.draft, pointer: this.pointer, door: this.door?.from ?? null, filling: this.filling, pours: this.bucket.pours, lead: this.brush.lead } : null;
     this.overlay.draw(preview);
   }
 
   destroy(): void {
     this.watchPointer(false);
     for (const cleanup of this.cleanups) cleanup();
+    this.bucket.destroy();
     this.overlay.destroy();
   }
 }

@@ -12,7 +12,7 @@ const showNotice = vi.hoisted(() => vi.fn());
 vi.mock('../../src/app/ui/notice', () => ({ showNotice }));
 vi.mock('../../src/app/resources/useMapResources', () => ({ useMapResources: () => [] }));
 const played = vi.hoisted(() => ({ campaign: null as { campaign: { name: string } } | null }));
-vi.mock('../../src/app/campaigns/usePlayedSystemCampaign', () => ({ usePlayedSystemCampaign: () => played.campaign }));
+vi.mock('../../src/app/campaigns/playedSystemCampaignName', () => ({ playedSystemCampaignName: () => played.campaign?.campaign.name }));
 vi.mock('../../src/app/pixi/utils/tokenHighlight', () => ({ zoomToTokenWithHighlight: vi.fn() }));
 vi.mock('../../src/app/react/components/StatblockHoverPreview', () => ({
   StatblockHoverPreview: () => null,
@@ -58,7 +58,7 @@ function setup(): { app: App; store: ViewAtlasStore } {
 }
 
 function add(store: ViewAtlasStore, name: string, statblockPath?: string, ownModifier = 0): string {
-  const token = store.getState().addToken({ kind: 'character', name, x: 0, y: 0, imagePath: `tokens/${name}.webp`, ...(statblockPath && { statblockPath }) });
+  const token = store.getState().addTokens([{ kind: 'character', name, x: 0, y: 0, imagePath: `tokens/${name}.webp`, ...(statblockPath && { statblockPath }) }])[0]!;
   const tokenId = typeof token === 'string' ? token : Object.values(store.getState().objects.tokens).find((t) => t.kind === 'character' && t.name === name)!.id;
   return store.getState().addToInitiative({ ...initiativeEntryForToken(store.getState().objects.tokens[tokenId]!), initiativeModifier: ownModifier });
 }

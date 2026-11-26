@@ -8,7 +8,6 @@ export const statblockEditor = {
   'statblockEditor.aliases': 'Aliases',
   'statblockEditor.allTemplates': 'All templates',
   'statblockEditor.apply': 'Apply',
-  'statblockEditor.autoLayout': 'Shown with Atlas\' field layout',
   'statblockEditor.beingSaved': 'The template is being saved.',
   'statblockEditor.blank': 'Blank',
   'statblockEditor.builtInDetail': 'Built-in',

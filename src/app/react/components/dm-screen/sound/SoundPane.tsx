@@ -16,7 +16,9 @@ import { MeterBoard } from './meterBoard';
 import { MoodGrid } from './MoodGrid';
 import { SoundDesk } from './SoundDesk';
 import { announceSound, SoundLiveRegion } from './SoundLiveRegion';
-import { useMoods, useSoundValue, useStoredSounds } from './useSound';
+import { useMoods, useSoundValue, useStoredSounds, useStoreValue } from './useSound';
+import { MoodsSkeleton } from './MoodsSkeleton';
+import { useLoadingReveal } from '../../../../packages/components/primitives/useLoadingReveal';
 import { useMeterLoop } from './useMeterLoop';
 import { useSoundKeys } from './useSoundKeys';
 import { MeterBoardContext } from './VerticalFader';
@@ -58,7 +60,9 @@ export function SoundPane({ active }: SoundPaneProps): React.JSX.Element {
   const [query, setQuery] = useState('');
   const searching = useDeferredValue(query.trim());
   const sounding = useSoundValue(director, ({ mix }) => mix.table.music !== null || mix.table.layers.length > 0);
-  const moodsRead = MoodStore.forApp(app).isLoaded();
+  const moodStore = MoodStore.forApp(app);
+  const moodsRead = useStoreValue(moodStore, () => moodStore.isLoaded());
+  const showMoodsSkeleton = useLoadingReveal(!moodsRead);
 
   const moveMood = useCallback((mood: Mood, index: number): void => {
     const order = orderForMove(moods, mood.id, index);
@@ -98,6 +102,7 @@ export function SoundPane({ active }: SoundPaneProps): React.JSX.Element {
           {libraryShown ? <LibraryView query={query} onQuery={setQuery} railSlot={railSlot} /> : <div className="atlas-sound-lib" aria-busy="true" />}
           <div className="atlas-sound-moods">
             {moods.length > 0 && <MoodGrid app={app} director={director} moods={moods} search={searching} moveMood={moveMood} onNewMood={nameNewMood} />}
+            {!moodsRead && showMoodsSkeleton && <MoodsSkeleton />}
             {moods.length === 0 && moodsRead && (
               <div className="atlas-sound-no-moods">
                 <h2>{t('audio.mood.none')}</h2>

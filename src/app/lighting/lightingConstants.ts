@@ -176,6 +176,7 @@ export const BOUNCE = {
   cascades: 4,
   emitTexel: 4,
   spread: 250,
+  /** Low enough that past a light's dim radius, where the rules count no light, its bounce stays under a fiftieth of its bright level on a mid-grey floor. */
   floorGain: 0.001,
   wallGain: 0.6,
   gain: 1,
@@ -257,7 +258,8 @@ export function tileWallReach(texel: number): number {
 /**
  * Wall ends closer than this to another wall are joined by a bridge, for light and sight
  * alike: wider than any gap the field closes by itself (two capsules with their bilinear
- * margin, plus the tile's contact fade), so light and sight always agree on what is closed.
+ * margin, plus a texel on either side: twice `wallBand`), so light and sight always agree on
+ * what is closed.
  */
 export function sealTolerance(texel: number): number {
   return 2 * (wallRadius(texel) + fieldMargin(texel)) + 2 * texel;

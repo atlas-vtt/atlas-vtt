@@ -38,6 +38,7 @@ import { SceneTabBar } from './components/SceneTabBar';
 import { LevelSwitcher } from './components/levels/LevelSwitcher';
 import { ZoomCluster } from './components/ZoomCluster';
 import { LevelLinkPopoverHost } from './components/levels/LevelLinkPopover';
+import { DoorAskPopoverHost } from '../online/gm/doors/DoorAskPopover';
 import { SceneSwitcher } from './components/scene-switcher/SceneSwitcher';
 import { presentTab as presentSceneTab } from '../services/PlayerWindowPresenter';
 import { usePresentedScene } from './hooks/usePresentedScene';
@@ -47,7 +48,6 @@ import { canRunMapHotkeys, matchesMapHotkey } from '../keyboard/mapHotkeys';
 import { SettingsService } from '../services/SettingsService';
 import { HotkeyHelp } from '../keyboard/HotkeyHelp';
 import { MapTours } from '../onboarding/MapTours';
-import { defeatedOnMap } from '../initiative/defeatedOnMap';
 
 
 // Import the new context and hook
@@ -126,7 +126,7 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
 
   // Handle keyboard shortcuts for DM view
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleKeyDown = (e: KeyboardEvent): void => {
       if (!canRunMapHotkeys(e, view?.viewId)) return;
       if (matchesMapHotkey(e, 'help', settings)) {
         e.preventDefault(); store.getState().setHotkeyHelpOpen(true); return;
@@ -170,13 +170,13 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
       if (!isPlayerView && initiativeTrackerOpen && initiativeIsActive) {
         if (matchesMapHotkey(e, 'previousTurn', settings)) {
           e.preventDefault();
-          previousTurn(defeatedOnMap(app, store.getState()));
+          previousTurn();
           window.dispatchEvent(new CustomEvent('atlas-initiative-hotkey', { detail: 'prev' }));
           return;
         }
         if (matchesMapHotkey(e, 'nextTurn', settings)) {
           e.preventDefault();
-          nextTurn(defeatedOnMap(app, store.getState()));
+          nextTurn();
           window.dispatchEvent(new CustomEvent('atlas-initiative-hotkey', { detail: 'next' }));
           return;
         }
@@ -272,7 +272,10 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
           </BottomToolbarRow>
 
           {!isPlayerView && !isMapLoading && (
-            <PanelBoundary name="the level switcher"><LevelSwitcher /><LevelLinkPopoverHost /></PanelBoundary>
+            <>
+              <PanelBoundary name="the level switcher"><LevelSwitcher /><LevelLinkPopoverHost /></PanelBoundary>
+              <PanelBoundary name="the door asks"><DoorAskPopoverHost /></PanelBoundary>
+            </>
           )}
 
           {!isPlayerView && !isMapLoading && <PanelBoundary name="the zoom buttons"><ZoomCluster /></PanelBoundary>}

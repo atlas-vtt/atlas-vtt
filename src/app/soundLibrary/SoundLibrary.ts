@@ -1,9 +1,10 @@
 import type { App } from 'obsidian';
+import { SOUND_RATE } from '../sound/engine/soundMath';
 import type { SoundKind } from '../sound/soundTypes';
 import { realLibraryDeps } from './soundLibraryDeps';
 import { FolderTree, type IndexedFile } from './FolderTree';
 import { KnownCopies } from './knownCopies';
-import { OpenPlace } from './libraryPlace';
+import { OpenPlace, SortChoice, type SortMemory } from './libraryPlace';
 import { SoundLengths } from './soundLengths';
 import type { SoundFileEntry, SoundLocation } from './soundLocation';
 import { externalAudioPath, isExternalAudioPath, joinRelative, parentOfRelative, readExternalAudioPath, relativeBelow } from './soundPaths';
@@ -21,12 +22,17 @@ const MANY_CHANGES = 64;
 /** A rescan asked for sooner after the last is left out: returning to the window should cost nothing. */
 const RESCAN_REST_MS = 5000;
 
+/** A length is a file's as it is now: one changed on disk is read again. */
+const lengthKey = (file: LibraryFile): string => `${file.kind}|${file.path}|${file.size}|${file.mtime}`;
+
 export interface SoundLibraryDeps {
   roots: SoundRoots;
   /** The root's files; null where this device cannot reach them. */
   open(root: LinkedSoundRoot): SoundLocation | null;
   /** How long a file at a URL plays. */
   probeSeconds(url: string): Promise<number | null>;
+  /** Where the order the rows are shown in is kept on this device; without it, for the session. */
+  sortMemory?: SortMemory;
   /** Lets go of what the deps listen to. */
   dispose?(): void;
 }
@@ -80,17 +86,20 @@ export class SoundLibrary {
   }
 
   readonly place = new OpenPlace();
+  readonly sort: SortChoice;
   /** The Atlas copies read in the roots: a source beside its own copy is listed as the copy alone. */
   readonly copies = new KnownCopies((kind, path) => this.opened(kind)?.tree.fileAt(path) ?? null, () => this.changed());
   private readonly open = new Map<SoundKind, OpenRoot>();
   private readonly viewListeners = new Set<() => void>();
   private revision = 0;
+  private readonly hits = new WeakMap<IndexedFile, LibraryFile>();
   private readonly dropRoots: () => void;
   private readonly lengths: SoundLengths;
 
   constructor(private readonly deps: SoundLibraryDeps) {
     this.dropRoots = deps.roots.onChange(() => this.changed());
     this.lengths = new SoundLengths((url) => deps.probeSeconds(url));
+    this.sort = new SortChoice(deps.sortMemory);
   }
 
   get roots(): SoundRoots {
@@ -130,7 +139,17 @@ export class SoundLibrary {
     if (words.length === 0) return [];
     return KINDS.flatMap((kind) => this.filesOf(kind)
       .filter((file) => words.every((word) => file.words.includes(word)) && !this.isCopied(kind, file.entry.path))
-      .map(({ entry }) => ({ ...entry, kind })));
+      .map((file) => this.hitOf(file, kind)));
+  }
+
+  /** A file as a search finds it: the same object for every search while its listing stands, so the rows made of it do too. */
+  private hitOf(file: IndexedFile, kind: SoundKind): LibraryFile {
+    let hit = this.hits.get(file);
+    if (hit?.kind !== kind) {
+      hit = { ...file.entry, kind };
+      this.hits.set(file, hit);
+    }
+    return hit;
   }
 
   /** Whether a file of a root is a source with its own Atlas copy beside it, which the library does not list. */
@@ -148,10 +167,20 @@ export class SoundLibrary {
     }
   }
 
-  /** How long a file plays: a row in view asks, and `onLengths` tells when the answer is in. */
-  secondsOf(file: LibraryFile): number | null | undefined {
+  /**
+   * How long a file plays: a row in view asks, a sort by length asks `forList` for every row listed, and `onLengths`
+   * tells when the answer is in. An Atlas copy whose header was read says it without a read of its own.
+   */
+  secondsOf(file: LibraryFile, forList = false): number | null | undefined {
+    const frames = this.copies.framesOf(file.kind, file.path, file.size);
+    if (frames !== null) return frames / SOUND_RATE;
     const url = this.locationOf(file.kind)?.resourceUrl(file.path) ?? null;
-    return this.lengths.secondsOf(`${file.kind}|${file.path}|${file.size}|${file.mtime}`, url);
+    return this.lengths.secondsOf(lengthKey(file), url, forList);
+  }
+
+  /** Whether `secondsOf` has its answer for a file, without asking. */
+  knowsSeconds(file: LibraryFile): boolean {
+    return this.copies.framesOf(file.kind, file.path, file.size) !== null || this.lengths.knows(lengthKey(file)) || this.locationOf(file.kind) === null;
   }
 
   onLengths(listener: () => void): () => void {

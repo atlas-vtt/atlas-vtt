@@ -11,6 +11,11 @@ export const SKELETON_MIN_VISIBLE_MS = 320;
 export interface LoadingRevealOptions {
   delayMs?: number;
   minVisibleMs?: number;
+  /**
+   * A load that runs at mount waits its delay too. For a piece that mounts late inside content already shown (a
+   * row scrolled into a list), whose load mostly ends within a frame: shown at once it would flicker.
+   */
+  waitAtMount?: boolean;
 }
 
 /**
@@ -24,9 +29,9 @@ export interface LoadingRevealOptions {
  */
 export function useLoadingReveal(
   loading: boolean,
-  { delayMs = SKELETON_DELAY_MS, minVisibleMs = SKELETON_MIN_VISIBLE_MS }: LoadingRevealOptions = {},
+  { delayMs = SKELETON_DELAY_MS, minVisibleMs = SKELETON_MIN_VISIBLE_MS, waitAtMount = false }: LoadingRevealOptions = {},
 ): boolean {
-  const [shown, setShown] = useState(loading);
+  const [shown, setShown] = useState(loading && !waitAtMount);
   // Unset for the skeleton of a load that ran at mount: it has no minimum time.
   const shownAt = useRef(Number.NEGATIVE_INFINITY);
 

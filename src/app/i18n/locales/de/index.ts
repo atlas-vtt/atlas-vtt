@@ -6,6 +6,7 @@ import { armarium } from './armarium';
 import { armariumFindings } from './armariumFindings';
 import { armariumListing } from './armariumListing';
 import { armariumShare } from './armariumShare';
+import { armariumMusic } from './armariumMusic';
 import { armariumUpload } from './armariumUpload';
 import { assetGrid } from './assetGrid';
 import { atlasLinks } from './atlasLinks';
@@ -58,6 +59,8 @@ import { issue } from './issue';
 import { itemBundle } from './itemBundle';
 import { itemReview } from './itemReview';
 import { laser } from './laser';
+import { downloads } from './downloads';
+import { remote } from './remote';
 import { levels } from './levels';
 import { light } from './light';
 import { link } from './link';
@@ -116,6 +119,7 @@ import { tokens } from './tokens';
 import { toolbar } from './toolbar';
 import { toolbarEdit } from './toolbarEdit';
 import { tour } from './tour';
+import { appearance } from './appearance';
 import { transfer } from './transfer';
 import { uvtt } from './uvtt';
 import { uvttFloors } from './uvttFloors';
@@ -138,6 +142,7 @@ export const de: Translation = {
   ...armariumFindings,
   ...armariumListing,
   ...armariumShare,
+  ...armariumMusic,
   ...armariumUpload,
   ...assetGrid,
   ...atlasLinks,
@@ -190,6 +195,8 @@ export const de: Translation = {
   ...itemBundle,
   ...itemReview,
   ...laser,
+  ...downloads,
+  ...remote,
   ...levels,
   ...light,
   ...link,
@@ -248,6 +255,7 @@ export const de: Translation = {
   ...toolbar,
   ...toolbarEdit,
   ...tour,
+  ...appearance,
   ...transfer,
   ...uvtt,
   ...uvttFloors,

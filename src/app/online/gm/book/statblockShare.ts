@@ -10,6 +10,7 @@ import type { StatblockWriteOutcome } from './statblockGate.ts';
 import type { DrawnStatblock } from './statblockSheet.ts';
 import { NO_STATBLOCK, StatblockSheets } from './statblockSheets.ts';
 import type { AssetStoring } from '../assets/assetUses.ts';
+import { t } from '../../../i18n';
 
 export interface StatblockSharePorts {
   read(path: string): Promise<ResolvedStatblock | null>;
@@ -31,6 +32,17 @@ export interface StatblockSharePorts {
   answered(player: string, asSent: boolean): void;
   /** A player's edit was refused once it was written: they are owed their whole book. */
   owe(player: string): void;
+  /** A character's note is sent its player read-only, because its template is missing or of a newer Atlas: once per note and reason. */
+  readOnly?(path: string, why: ReadOnlyReason): void;
+}
+
+/** Why a player may change nothing of their statblock: its template is missing, or says it is of a newer Atlas. */
+export type ReadOnlyReason = 'missing' | 'newer';
+
+/** What the GM is told when a character's note goes to its player read-only: the note by its name, and why. */
+export function readOnlySheetText(path: string, why: ReadOnlyReason): string {
+  const note = (path.split('/').pop() ?? path).replace(/\.md$/i, '');
+  return why === 'missing' ? t('online.sheet.templateMissing', { note }) : t('online.sheet.templateNewer', { note });
 }
 
 /** A player's edit of their character's statblock: a value, an entry of a list, or an ability. */
@@ -56,6 +68,8 @@ export class StatblockShare {
   private readonly sheets: StatblockSheets;
   /** What each player was last sent of their statblock, and the note it was drawn of. */
   private readonly sentTo = new Map<string, { readonly path: string | null; readonly drawn: DrawnStatblock }>();
+  /** The notes the GM was told are sent read-only, and why. */
+  private readonly toldReadOnly = new Map<string, ReadOnlyReason>();
 
   constructor(private readonly ports: StatblockSharePorts) {
     this.sheets = new StatblockSheets(ports);
@@ -64,7 +78,9 @@ export class StatblockShare {
   /** The statblock a character's player gets now: none without a note, undefined while its note is read or drawn. */
   of(character: PlayedCharacter | null): DrawnStatblock | undefined {
     if (character === null || character.statblockPath === null) return NO_STATBLOCK;
-    return this.sheets.drawn(character.statblockPath, character.key, character.drawnWith.definitions, character.drawnWith.resources);
+    const drawn = this.sheets.drawn(character.statblockPath, character.key, character.drawnWith.definitions, character.drawnWith.resources);
+    if (drawn?.statblock) this.tellReadOnly(character.statblockPath, drawn.statblock);
+    return drawn;
   }
 
   /** A character's note as it is drawn now; undefined before it was read. */
@@ -91,6 +107,24 @@ export class StatblockShare {
   /** Only the notes of characters still played are kept. */
   retain(paths: ReadonlySet<string>): void {
     this.sheets.retain(paths);
+    for (const path of [...this.toldReadOnly.keys()]) if (!paths.has(path)) this.toldReadOnly.delete(path);
+  }
+
+  /**
+   * Tells the GM once that a note goes to its player read-only, and why: the page can only say that
+   * nothing may be changed, and the GM is the one who can mend the template. A note that becomes
+   * changeable again, or read-only for another reason, is told of anew.
+   */
+  private tellReadOnly(path: string, statblock: BookStatblock): void {
+    const status = this.sheets.resolved(path)?.templateStatus;
+    const why = !statblock.editable && (status === 'missing' || status === 'newer') ? status : null;
+    if (why === null) {
+      this.toldReadOnly.delete(path);
+      return;
+    }
+    if (this.toldReadOnly.get(path) === why) return;
+    this.toldReadOnly.set(path, why);
+    this.ports.readOnly?.(path, why);
   }
 
   /** A player's edit of their own character's statblock: false when it is refused at once. */

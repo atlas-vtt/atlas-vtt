@@ -18,12 +18,23 @@ function scene(): MeasureScene {
   return current;
 }
 
-/** Players' view of the tokens: footprints, what they see in their frame and what the canvas shows them. */
-function players(footprints: TokenFootprint[], seen: Set<string>, canvas: { players: boolean }): MeasurePlayersView & { seenAtStart: Mock<MeasurePlayersView['seenAtStart']> } {
+/** Players' view of the tokens: footprints, what they see in their frame and what the canvas shows them, told to whoever follows it when the test says it changed. */
+function players(footprints: TokenFootprint[], seen: Set<string>, canvas: { players: boolean }): MeasurePlayersView & {
+  seenAtStart: Mock<MeasurePlayersView['seenAtStart']>;
+  changed(): void;
+  followers(): number;
+} {
+  const listeners = new Set<() => void>();
   return {
     footprints: () => footprints,
     seenAtStart: vi.fn(() => (id: string) => seen.has(id)),
     seenOnCanvas: () => (canvas.players ? (id: string): boolean => seen.has(id) : null),
+    onChange: (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    changed: () => listeners.forEach((listener) => listener()),
+    followers: () => listeners.size,
   };
 }
 
@@ -192,6 +203,32 @@ describe('MeasureRenderer and the players\' picture', () => {
     s.pointer('pointerup', 300, 100);
   });
 
+  it('follows the players\' view it is given, and lets go of the one before and when it is destroyed', () => {
+    const s = scene();
+    // The goblin the ruler starts on is never seen: the players' picture leaves the ruler out.
+    const [shownBefore, shownAfter] = [{ players: false }, { players: false }];
+    const first = players([GOBLIN, HERO], new Set(['hero']), shownBefore);
+    s.measure.playersView = first;
+    s.store.getState().setActiveTool('measure');
+    s.pointer('pointerdown', 100, 100);
+    s.pointer('pointermove', 300, 100);
+    expect(s.visible()).toEqual([true, true]);
+    shownBefore.players = true;
+    first.changed();
+    expect(s.visible()).toEqual([false, false]);
+    const second = players([GOBLIN, HERO], new Set(['hero']), shownAfter);
+    s.measure.playersView = second;
+    expect([first.followers(), second.followers()]).toEqual([0, 1]);
+    expect(s.visible()).toEqual([true, true]);
+    shownAfter.players = true;
+    second.changed();
+    expect(s.visible()).toEqual([false, false]);
+    s.pointer('pointerup', 300, 100);
+    s.destroy();
+    current = undefined;
+    expect(second.followers()).toBe(0);
+  });
+
   it('keeps the hidden label at the zoom\'s size, so it shows right when it comes back', () => {
     const s = scene();
     s.measure.playersView = players([GOBLIN], new Set(), { players: true });
@@ -211,13 +248,12 @@ describe('MeasureRenderer and the players\' picture', () => {
     const seen = vi.fn(() => true);
     const footprints = vi.fn(() => []);
     const seenAtStart = vi.fn(() => seen);
-    // The GM's own layers follow the canvas whatever is measured: the range marks, which are no measurement's, are on one.
-    s.measure.playersView = { footprints, seenAtStart, seenOnCanvas: () => seen };
+    // The GM's own layers follow the canvas whatever is measured.
+    s.measure.playersView = { footprints, seenAtStart, seenOnCanvas: () => seen, onChange: () => () => undefined };
     s.measure.refreshVisibility();
     expect(seen).not.toHaveBeenCalled();
     expect(footprints).not.toHaveBeenCalled();
     expect(seenAtStart).not.toHaveBeenCalled();
-    expect(s.measure.ranges.view.visible).toBe(false);
     expect(s.measure.handles.layer.visible).toBe(false);
   });
 });

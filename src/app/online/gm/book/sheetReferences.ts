@@ -2,14 +2,8 @@ import { isReferenceKey, isReferenceNumber, MAX_SHEET_LIST, MAX_SHEET_REFERENCES
 import { HIT_POINT_KEYS } from '../../../resources/resourceFields';
 import type { StatblockTemplate, TemplateField } from '../../../statblocks/model/templateTypes';
 import { readerFor, slotKeyOf, type FieldRecord } from '../../../statblocks/values/fieldValues';
-import { parseNumberText } from '../../../statblocks/values/numberText';
+import { referenceNumber } from '../../../statblocks/values/numberText';
 import { fieldsByLabel, statblockLookup, tableColumns } from '../../../statblocks/values/statblockLookup';
-
-/** The number a reference reads, as the card fills it in: a number, or text that writes one. */
-function numberOf(value: unknown): number | null {
-  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
-  return typeof value === 'string' ? parseNumberText(value) : null;
-}
 
 /** The paths of a field's own value and of what it holds one step in (`stats.0`, `saves.dex`), under each of `names`. */
 function fieldPaths(names: readonly string[], value: unknown): string[] {
@@ -55,7 +49,7 @@ export function sheetReferences(template: StatblockTemplate, shown: FieldRecord,
     const key = referenceKey(path);
     if (count >= MAX_SHEET_REFERENCES) break;
     if (!isReferenceKey(key) || Object.hasOwn(references, key)) continue;
-    const number = numberOf(lookup(path));
+    const number = referenceNumber(lookup(path));
     if (number === null || !isReferenceNumber(number)) continue;
     references[key] = number;
     count += 1;

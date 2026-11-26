@@ -3,7 +3,7 @@ import { scrollWithin } from '../../utils/scrollWithin';
 
 interface TurnInView {
   fightRuns: boolean;
-  /** Whose turn it is: a combatant's entry or a side. */
+  /** What tells whose turn it is (`turnKey`): a combatant or a side. */
   turnOf: string | undefined;
   round: number;
   /** The list starts at the turn: its top is brought into view. */

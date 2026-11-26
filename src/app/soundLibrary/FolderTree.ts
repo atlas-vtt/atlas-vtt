@@ -18,7 +18,7 @@ const EMPTY_LISTING: SoundListing = { folders: [], files: [] };
 const identityOf = (name: string, size?: number): string => `${size ?? '*'}|${name}`;
 
 /** What a flat list sorts by, worked out once per file: a collator on thousands of names per report of a walk costs frames. `Track 2` before `Track 10`, `Émile` among the e. */
-const sortKey = (name: string): string => name.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/\d+/g, (digits) => digits.padStart(8, '0'));
+export const sortKey = (name: string): string => name.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/\d+/g, (digits) => digits.padStart(8, '0'));
 
 const sameListing = (a: SoundListing, b: SoundListing): boolean =>
   a.folders.length === b.folders.length && a.files.length === b.files.length
@@ -39,6 +39,8 @@ export class FolderTree {
   private readonly missing = new Set<string>();
   private counts: Map<string, number> | null = null;
   private indexed: IndexedFile[] | null = null;
+  /** Each file's index entry while its listing stands: a walk's report rebuilds the list, never a key of a file it already read. */
+  private readonly indexOf = new WeakMap<SoundFileEntry, IndexedFile>();
   private byIdentity: Map<string, SoundFileEntry | null> | null = null;
   private walking = false;
   private walkedOnce = false;
@@ -107,9 +109,18 @@ export class FolderTree {
   /** Every file read so far by name, ready for a search; the same array until one changes, so rows memoised on it stay put. */
   allFiles(): readonly IndexedFile[] {
     this.indexed ??= [...this.files.values()]
-      .map((entry) => ({ entry, words: entry.path.toLowerCase(), order: `${sortKey(entry.name)}\0${entry.path}` }))
+      .map((entry) => this.indexEntryOf(entry))
       .sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
     return this.indexed;
+  }
+
+  private indexEntryOf(entry: SoundFileEntry): IndexedFile {
+    let file = this.indexOf.get(entry);
+    if (!file) {
+      file = { entry, words: entry.path.toLowerCase(), order: `${sortKey(entry.name)}\0${entry.path}` };
+      this.indexOf.set(entry, file);
+    }
+    return file;
   }
 
   /** Whether every folder has been read once: what is not listed by then is not there. */
@@ -191,9 +202,15 @@ export class FolderTree {
     }
     this.missing.delete(folder);
     if (before && sameListing(before, listing)) return false;
+    // A file the folder still holds as it was keeps its entry, so what was worked out for it (`indexEntryOf`, its row) stands.
+    const kept = new Map((before?.files ?? []).map((file) => [file.path, file]));
+    const files = listing.files.map((file) => {
+      const was = kept.get(file.path);
+      return was && was.size === file.size && was.mtime === file.mtime && was.name === file.name ? was : file;
+    });
     for (const file of before?.files ?? []) this.files.delete(file.path);
-    for (const file of listing.files) this.files.set(file.path, file);
-    this.listings.set(folder, listing);
+    for (const file of files) this.files.set(file.path, file);
+    this.listings.set(folder, { ...listing, files });
     for (const sub of before?.folders ?? []) {
       if (!listing.folders.some((folderNow) => folderNow.path === sub.path)) this.forget(sub.path);
     }

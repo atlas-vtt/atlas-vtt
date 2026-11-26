@@ -4,6 +4,7 @@ import { wallBand } from '../../../lighting/lightingConstants';
 import { DEFAULT_AMBIENT_COLOR } from '../../../lighting/sceneLightingOptions';
 import { linearColor } from '../../../lighting/srgb';
 import type { MapBounds } from '../../../vision/visibility';
+import { destroyTree } from '../../utils/destroyTree';
 import type { EngineShaderSource } from './engineShaders';
 import { ambientLift } from './senseDrawing';
 import { createQuad, createShader, createTarget, destroyQuad, quadGeometry, renderInto, type Quad } from './gpu';
@@ -135,7 +136,7 @@ export class ZoneMap {
 
   destroy(): void {
     for (const { mesh } of this.slots) mesh.shader?.destroy();
-    this.scene.destroy({ children: true });
+    destroyTree(this.scene);
     this.geometry.destroy();
     destroyQuad(this.quad);
     this.texture.destroy(true);

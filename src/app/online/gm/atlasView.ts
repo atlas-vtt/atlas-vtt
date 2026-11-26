@@ -11,7 +11,7 @@ export const LOCAL_PLAYER_VIEW_TYPE = 'atlas-vtt-local-player';
 
 /** The part of an Atlas map tab's store the companion reads. */
 export type SceneState = Pick<ViewState, 'mapPath' | 'mapLoaded' | 'isMapLoading' | 'background' | 'lighting' | 'objects' | 'grid' | 'heldTokens' | 'exploredMask' | 'exploredEdits' | 'isDragging' | '_audioDirty'>
-  & Partial<Pick<ViewState, 'tokenSettings' | 'levels' | 'viewedLevel' | 'exploredMasks' | 'levelAlignments'>>;
+  & Partial<Pick<ViewState, 'tokenSettings' | 'levels' | 'viewedLevel' | 'exploredMasks' | 'exploredForgotten' | 'levelAlignments'>>;
 
 /**
  * What the companion asks of an Atlas tab's renderer (`PixiRendererOrchestrator`): the tokens the
@@ -22,18 +22,22 @@ export interface PlayerTokenSource {
   getGridOptions(): { readonly size: number } | null;
 }
 
-/** An Atlas map tab's store, as far as the companion uses it. */
+/** An Atlas map tab's store, as far as the shares use it: what it holds, and writes. */
 export interface SceneStore {
   getState(): SceneState;
   /** A write through Atlas's own middleware (immer and history): one undo step. */
   setState(recipe: (draft: SceneState) => void): void;
-  subscribe(listener: (state: SceneState) => void): () => void;
   /** Whether the GM's view shows what this store holds (a floor's store: that floor); unset, it does. */
   shown?(): boolean;
 }
 
+/** A store that tells of its changes: Atlas's own, and the presented scene's (`PresentedStore`). */
+export interface ObservedStore extends SceneStore {
+  subscribe(listener: (state: SceneState) => void): () => void;
+}
+
 /** Atlas's store is zustand's `create` result: a function with the store methods on it. */
-function isStore(value: unknown): value is SceneStore {
+function isStore(value: unknown): value is ObservedStore {
   return (typeof value === 'object' || typeof value === 'function') && value !== null && 'getState' in value && typeof value.getState === 'function' && 'subscribe' in value && typeof value.subscribe === 'function'
     && 'setState' in value && typeof value.setState === 'function';
 }
@@ -50,6 +54,14 @@ export function call(target: unknown, method: string): unknown {
   return typeof fn === 'function' ? (fn as () => unknown).call(target) : undefined;
 }
 
+/** Hears each change of what players see that comes without a store change (the renderer's `CanvasAudience.onSightChange`); a renderer without one tells nothing. Returns what stops it. */
+export function followPlayerSight(renderer: unknown, listener: () => void): () => void {
+  const audience = call(renderer, 'getCanvasAudience');
+  const follow: unknown = typeof audience === 'object' && audience !== null && 'onSightChange' in audience ? audience.onSightChange : undefined;
+  const stop: unknown = typeof follow === 'function' ? (follow as (listener: () => void) => unknown).call(audience, listener) : undefined;
+  return typeof stop === 'function' ? () => void (stop as () => unknown)() : () => undefined;
+}
+
 /** A renderer (`view.serviceManager.getRendererService().getRenderer()`) as the players' token source, or null when it is none. */
 export function asTokenSource(renderer: unknown): PlayerTokenSource | null {
   return isTokenSource(renderer) ? renderer : null;
@@ -63,7 +75,7 @@ export function rendererOf(leaf: WorkspaceLeaf): unknown {
 }
 
 /** The store of an Atlas map tab, or null for any other leaf. */
-export function sceneStoreOf(leaf: WorkspaceLeaf): SceneStore | null {
+export function sceneStoreOf(leaf: WorkspaceLeaf): ObservedStore | null {
   const view: unknown = leaf.view;
   if (leaf.view.getViewType() !== ATLAS_VIEW_TYPE || typeof view !== 'object' || view === null || !('atlasStore' in view)) return null;
   return isStore(view.atlasStore) ? view.atlasStore : null;
@@ -91,12 +103,11 @@ export function tokenLabel(token: TokenEntity): string {
 }
 
 /**
- * The resource and condition definitions the tab's token renderer draws by (its collection sync, one
- * private hop: `getTokenRenderer().collectionSync`), or null while they cannot be read (another Atlas
- * version, no renderer, a failing read): then players get no bars and no condition badges.
+ * The resource and condition definitions a tab's token renderer (`getTokenRenderer()`) draws by (its collection
+ * sync, one private hop: `collectionSync`), or null while they cannot be read (another Atlas version, no
+ * renderer, a failing read): then players get no bars and no condition badges.
  */
-export function tokenRulesOf(renderer: unknown): TokenRules | null {
-  const tokens = call(renderer, 'getTokenRenderer');
+export function tokenRulesOf(tokens: unknown): TokenRules | null {
   const sync: unknown = typeof tokens === 'object' && tokens !== null && 'collectionSync' in tokens ? tokens.collectionSync : undefined;
   try {
     const resources = call(sync, 'resources');
@@ -109,14 +120,14 @@ export function tokenRulesOf(renderer: unknown): TokenRules | null {
 }
 
 /**
- * Where the tab's token renderer draws each of these tokens now (`getTokenRenderer().getTokenSprites()`):
+ * Where a tab's token renderer (`getTokenRenderer()`) draws each of these tokens now (`getTokenSprites()`):
  * during the GM's own drag Atlas moves the sprites with every pointer move but writes the store only
  * every 50 ms. Tokens without a sprite, or with a place that is no number, are left out; empty while
  * the renderer cannot be read.
  */
-export function drawnTokenPlaces(renderer: unknown, tokenIds: readonly string[]): ReadonlyMap<string, { readonly x: number; readonly y: number }> {
+export function drawnTokenPlaces(tokens: unknown, tokenIds: readonly string[]): ReadonlyMap<string, { readonly x: number; readonly y: number }> {
   const places = new Map<string, { readonly x: number; readonly y: number }>();
-  const sprites = call(call(renderer, 'getTokenRenderer'), 'getTokenSprites');
+  const sprites = call(tokens, 'getTokenSprites');
   if (typeof sprites !== 'object' || sprites === null) return places;
   for (const id of tokenIds) {
     const sprite: unknown = Object.hasOwn(sprites, id) ? (sprites as Record<string, unknown>)[id] : undefined;

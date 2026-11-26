@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ExploredEditStack, editPolygons, packCoverage, strokePolygons, travelledCoverage, unpackCoverage } from '../../src/app/lighting/exploredEdits';
+import { ExploredEditStack, editPolygons, packCoverage, strokePolygons, travelledCoverage, unpackCoverage, type ExploredStep } from '../../src/app/lighting/exploredEdits';
 import type { Point } from '../../src/app/types/visionTypes';
 
 /** Whether `point` lies in one of the polygons (even-odd). */
@@ -124,10 +124,10 @@ describe('packCoverage', () => {
 describe('ExploredEditStack', () => {
   let serial = 0;
   const step = (name: string): { region: string; before: Uint8Array; after: Uint8Array; serial: number } => ({ region: name, before: Uint8Array.from([0]), after: Uint8Array.from([1]), serial: ++serial });
-  const names = (stack: ExploredEditStack<string>, from: number, to: number): string[] => stack.path(from, to).map((taken) => taken.region);
+  const names = (stack: ExploredEditStack<ExploredStep<string>>, from: number, to: number): string[] => stack.path(from, to).map((taken) => taken.region);
 
   it('undoes the newest step first and redoes the oldest first', () => {
-    const stack = new ExploredEditStack<string>(50);
+    const stack = new ExploredEditStack<ExploredStep<string>>(50);
     stack.record(1, step('a'));
     stack.record(2, step('b'));
     stack.record(3, step('c'));
@@ -138,7 +138,7 @@ describe('ExploredEditStack', () => {
   });
 
   it('drops the steps that were undone when a new edit follows', () => {
-    const stack = new ExploredEditStack<string>(50);
+    const stack = new ExploredEditStack<ExploredStep<string>>(50);
     stack.record(1, step('a'));
     stack.record(2, step('b'));
     stack.record(3, step('c'));
@@ -148,14 +148,14 @@ describe('ExploredEditStack', () => {
   });
 
   it('keeps as many steps as the undo history, and leaves out a step it no longer has', () => {
-    const stack = new ExploredEditStack<string>(3);
+    const stack = new ExploredEditStack<ExploredStep<string>>(3);
     for (let revision = 1; revision <= 5; revision++) stack.record(revision, step(String(revision)));
     expect(stack.size).toBe(3);
     expect(names(stack, 5, 0)).toEqual(['5', '4', '3']);
   });
 
   it('forgets everything when cleared', () => {
-    const stack = new ExploredEditStack<string>(50);
+    const stack = new ExploredEditStack<ExploredStep<string>>(50);
     stack.record(1, step('a'));
     stack.clear();
     expect(stack.size).toBe(0);

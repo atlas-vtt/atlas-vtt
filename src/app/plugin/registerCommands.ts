@@ -8,6 +8,8 @@ import type { GlobalAssetManagerService } from '../services/GlobalAssetManagerSe
 import type { ImageDisplayService } from '../services/ImageDisplayService';
 import { openPlayerWindow, presentActiveTab } from '../services/PlayerWindowPresenter';
 import { PlayerWindowService } from '../services/PlayerWindowService';
+import { setTableCurtain } from '../services/tableControls';
+import { tableControlsStore } from '../stores/tableControlsStore';
 import { fullScreenAvailable, isPlayerWindowFullScreen, refreshPlayerWindowDisplay, setPlayerWindowFullScreen } from '../services/playerWindowDisplay';
 import { playerWindowStore } from '../stores/playerWindowStore';
 import { hasBestiaryFrontmatter } from '../services/statblockNoteSource';
@@ -32,12 +34,18 @@ function isImageFile(file: TFile): boolean {
   return IMAGE_EXTENSIONS.includes(file.extension.toLowerCase());
 }
 
-/** Opens Atlas' start page in a new tab and brings it to the front. */
+/**
+ * Opens Atlas' start page in a new tab of the main window and brings it to the front. A new tab opens beside the active
+ * one, which may be in another window or a sidebar: the main window's last tab is made active first.
+ */
 export async function openDashboard(plugin: Plugin): Promise<void> {
   try {
-    const leaf = plugin.app.workspace.getLeaf(true);
+    const { workspace } = plugin.app;
+    const mainTab = workspace.getMostRecentLeaf(workspace.rootSplit);
+    if (mainTab) workspace.setActiveLeaf(mainTab, { focus: false });
+    const leaf = workspace.getLeaf(true);
     await leaf.setViewState({ type: DASHBOARD_VIEW_TYPE, state: {} });
-    plugin.app.workspace.setActiveLeaf(leaf);
+    workspace.setActiveLeaf(leaf);
   } catch (error) {
     console.error('[Atlas] Error opening dashboard:', error);
     showNotice(t('notice.dashboardOpenFailed'));
@@ -98,9 +106,9 @@ function registerPlayerViewCommands(plugin: Plugin, imageDisplay: ImageDisplaySe
     id: 'toggle-player-window-curtain',
     name: t('playerBar.toggleCurtain'),
     checkCallback: (checking) => {
-      const service = PlayerWindowService.getInstance();
-      if (!service?.isWindowOpen()) return false;
-      if (!checking) service.setCurtain(!service.isCurtained());
+      const { curtain, online } = tableControlsStore.getState();
+      if (!online && !PlayerWindowService.getInstance()?.isWindowOpen()) return false;
+      if (!checking) setTableCurtain(!curtain);
       return true;
     },
   });

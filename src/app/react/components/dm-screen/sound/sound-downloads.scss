@@ -1,0 +1,115 @@
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+@use './sound-look' as *;
+
+// The downloads panel: the mood popover's surface and caret, over the downloads button at the rail's foot.
+.atlas-sound-popover.atlas-sound-downloads {
+  width: 320px;
+  gap: $spacing-s;
+}
+
+.atlas-sound-downloads__top {
+  display: flex;
+  align-items: center;
+  gap: $spacing-s;
+  min-height: 28px;
+
+  h3 {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    color: var(--text-normal);
+    font-size: $font-ui-medium;
+    font-weight: var(--font-semibold);
+  }
+}
+
+.atlas-sound-downloads__clear,
+.atlas-sound-downloads__show {
+  @include bare-button;
+  @include pressable;
+  @include atlas-truncate;
+  flex-shrink: 1;
+  min-width: 0;
+  height: 28px;
+  padding: 0 $spacing-s;
+  border-radius: $control-radius;
+  color: var(--atlas-sound-muted);
+  font-size: $font-ui-small;
+  transition: color $transition-normal $press-ease, background-color $transition-normal $press-ease, transform $press-ms $press-ease;
+
+  &:hover {
+    background: $hairline;
+    color: var(--text-normal);
+  }
+}
+
+.atlas-sound-downloads__list {
+  @include atlas-flex-col($spacing-s);
+  align-items: stretch;
+  max-height: min(360px, 50vh);
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.atlas-sound-downloads__job {
+  @include atlas-flex-col($spacing-xs);
+  align-items: stretch;
+  @include atlas-panel-inset-radius($spacing-m);
+  padding: $spacing-s;
+  background: var(--background-secondary);
+}
+
+.atlas-sound-downloads__head {
+  display: flex;
+  align-items: center;
+  gap: $spacing-s;
+  min-height: 28px;
+}
+
+.atlas-sound-downloads__title {
+  @include atlas-truncate;
+  flex: 1;
+  min-width: 0;
+  color: var(--text-normal);
+  font-weight: $font-weight-medium;
+}
+
+.atlas-sound-icon.atlas-sound-downloads__action {
+  width: 28px;
+  height: 28px;
+}
+
+// The bar moves by a transform alone, so its glide between announcements costs no paint.
+.atlas-sound-downloads__bar {
+  height: 4px;
+  overflow: hidden;
+  border-radius: $radius-s;
+  background: $hairline;
+
+  span {
+    display: block;
+    height: 100%;
+    background: var(--interactive-accent);
+    transform-origin: left;
+    transition: transform $transition-slow linear;
+
+    @media (prefers-reduced-motion: reduce) {
+      transition: none;
+    }
+  }
+}
+
+.atlas-sound-downloads__line {
+  color: var(--atlas-sound-muted);
+  font-size: $font-ui-small;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+// Written out whole, not nested as `[…] > &`: main.scss wraps every file in .atlas-vtt-plugin, which a nested parent selector would put between the two.
+.atlas-sound-downloads__job[data-state='failed'] .atlas-sound-downloads__line {
+  color: var(--text-warning);
+}

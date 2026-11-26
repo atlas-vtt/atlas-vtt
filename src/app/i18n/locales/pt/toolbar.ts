@@ -9,6 +9,7 @@ export const toolbar: Translation = {
   'toolbar.cone': 'Cone',
   'toolbar.fogEraser': 'Borracha de névoa',
   'toolbar.fogTool': 'Ferramenta de névoa',
+  'toolbar.lighting': 'Iluminação',
   'toolbar.laser': 'Ponteiro laser',
   'toolbar.lassoSelection': 'Seleção por laço',
   'toolbar.peek': 'Segure para ver o que os jogadores veem',
@@ -25,7 +26,7 @@ export const toolbar: Translation = {
   'toolbar.notePin': 'Ferramenta de alfinete de nota',
   'toolbar.pinOptions': 'Opções do alfinete',
   'toolbar.stairs': 'Escadas',
-  'toolbar.stairsNeedLevels': 'Escadas ligam os andares de uma cena. Primeiro adicione um andar na página Andares da cena da paleta de comandos.',
+  'toolbar.stairsNeedLevels': 'Escadas precisam de um segundo andar. Adicione-o em Andares da cena',
   'toolbar.rollDice': 'Bandeja de dados',
   'toolbar.optionsOf': 'Opções de {label}',
   'toolbar.moveSelect': 'Mover/Selecionar',
@@ -66,5 +67,4 @@ export const toolbar: Translation = {
   'toolbar.ranges': 'Alcances',
   'toolbar.rangesTip': 'Clique em um token ou lugar para ver os alcances dele',
   'toolbar.rangesNoRules': 'Este sistema de jogo não tem alcances nem passos de movimento',
-  'toolbar.rangesNeedGmView': 'Mude para a visão do Mestre ({key}) para ver os alcances',
 };

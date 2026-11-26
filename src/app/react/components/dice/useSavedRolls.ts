@@ -5,7 +5,7 @@ import type { AdvantageSide, DiceSet } from '../../../types/diceSetTypes';
 import { useDiceSets } from '../../hooks/useDiceSets';
 import { useAtlasUI } from '../../root/AtlasUIContext';
 import { withPresetReplaced, type DiceShelf, type ShelfChange } from './diceShelf';
-import { presetSet } from './presetLook';
+import { rollSavedRoll } from './rollSavedRoll';
 import { useDiceShelf } from './useDiceShelf';
 
 export interface SavedRolls {
@@ -30,12 +30,7 @@ export function useSavedRolls(diceTool: DiceTool): SavedRolls {
   const { sets } = useDiceSets(app);
   const [editingId, setEditing] = useState<string | null>(null);
 
-  const roll = (preset: DicePreset, side: AdvantageSide | null = null): void => {
-    const set = presetSet(preset);
-    // A side the set has no rule for rolls as it is.
-    const advantage = side && (!set || set[side]) ? side : undefined;
-    diceTool.rollDice(preset.formula, undefined, undefined, { ...(set && { set }), ...(advantage && { advantage }) });
-  };
+  const roll = (preset: DicePreset, side: AdvantageSide | null = null): void => rollSavedRoll(diceTool, preset, side);
 
   return {
     shelf,

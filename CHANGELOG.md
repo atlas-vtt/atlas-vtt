@@ -2,6 +2,145 @@
 
 <!-- Generated from changelog/*.md. Run npm run changelog:generate. -->
 
+## 0.20.0 — Remote Control and Appearance Settings
+
+2026-11-25
+
+### New
+
+**New Feature: Remote Control (Atlas Online)**
+- Switch between "Token Control" and "Remote Control" play modes for your players
+- Remote control allows them to move their tokens with their phones in a gamepad-like style while watching the local player view together
+
+**New Feature: Door actions (Atlas Online)**
+- Players in Atlas Online can now ask to open doors which will prompt the DM to accept or deny
+
+**New Experimental Feature: Bucket Fill for room placement**
+- Easily fills a room up to the walls drawn on the map. Contributed by ThatMattLatt
+
+**New Feature: Welcome wizard and looks**
+- Introduced a welcome wizard for a better first time user experience
+- Atlas now has looks of its own, no theme to install: Medieval, a new Sci-fi look, or keep your own theme
+- Pick a look in the welcome wizard or under Appearance settings in the command palette
+
+**Appearance settings**
+- Choose between running your native Obsidian theme, the classic Atlas Ivy theme or a new modern/sci-fi theme
+- Change your accent color, toggle transparency, remove rounded corners or hide Atlas UI elements for a more minimal look
+
+**Player view**
+- New settings for resource visibility: All, enemies, party or none
+- Redesigned table settings
+
+**Armarium: Music**
+- Share a track or an album from the Sound library, with a cover, an artist and a track order
+- Install albums and tracks from the Armarium into your music folder, ready to play
+
+**General**
+- Reorder widgets by dragging them in the command palette's Widgets page
+
+### Improved
+
+**Performance**
+- Moving and selecting tokens: about 5x smoother
+- Going back to a scene you had open: about 3x faster
+- Switching floors: about 3x smoother
+- Importing very large maps: more than twice as fast
+- Atlas' share of Obsidian's start-up time: cut in half
+- Opening a scene for the first time: about 25% faster
+- Panning and zooming: about 70% less processor load
+- Opening Dice settings and Appearance settings: about 8x faster
+
+**General Improvements**
+- Initiative cards show conditions for combatants without tokens
+- Stream Deck: keys set to "Music in mix" now work as the Music key
+- Rooms: a menu with brush size and Stabilization, hold Shift to keep strokes straight. With a contribution by ThatMattLatt
+
+### Fixed
+
+- The toolbar's Lighting button is now translated
+- Initiative cards show cut-out tokens whole instead of zoomed in
+- DM screen: arrow keys and Enter work in the list of notes to link to a map
+- Sound settings: the Master slider follows the Sound page and the Stream Deck
+- Stream Deck: a Master volume change is no longer undone by the next setting change
+- Stream Deck: volume keys stop at +6 dB
+- Sound: the library's Music and Ambience counts match the list
+- Sound: long tag names show in full on hover
+- Sound: turning up reverb no longer makes a sound louder
+- Stream Deck: the Music and Ambience keys now move the Sound page's faders correctly
+- Deleting a scene stops showing it to players: a new scene made later with the same name no longer appears on the player view by itself
+
+### Atlas Online
+
+- Shared Vision is now a setting toggle
+- Hide the map and Pause now reach online players too
+- Opening a local player view is now easier during an online session
+- Better error messages
+- Party tokens under Fog of War stay visible and movable for their players
+- Letting in several waiting players at once no longer removes all but the first
+
+
+Thanks to my Patreon supporters Aaron, Aaron W Scott, Aiden Hatcher, Andrew, Anna B. Meyer, basilisk, Bradley Bell, Carl Corneil, Chris Del Gigante, Daniel Mensinga, Daria Ambrose, Deus Ex Minima, Dewwww, Dom Bosco, Eskil Bolsøy, George Young, Giodude, Hannes Pingel, Ionazh, James, Joe Wehr, Josh Zindler, Joshua Herrin, Justin Wright, Kevin Hait, Krangal, LittleBlueShyGuy, lmc, Markus Baumann, Michael Breuer, MrEhm, Nick, Pau Benazet Montobbio, SamDark, Scaradeus, ShonkyMapCo, Tim, Tim Roddick-Hull, Tobias Redlich, Venivici, Voider Elf, Xethgnur, z-lf and Zack Samuels. You mean everything to me :heart:
+
+Help me develop Atlas: https://www.patreon.com/cw/atlas_vtt
+
+## 0.19.0 — Music packs and Stream Deck
+
+2026-11-22
+
+### New
+
+**Music packs**
+- Atlas now ships with an optional, premium music collection of over 28 hours, 365 free, beautiful fantasy tracks by Swedish artist Vindsvept on the Sound page, in ten packs sorted by mood 
+- For streaming credits: You can copy a credit line from the Sound entry in Obsidian's Atlas settings
+
+**Native Atlas Stream Deck Support**
+- start or end combat, hide or reveal the local player view, switch the shared scene, play moods, pause, skip and change volume all directly from your stream deck 
+- hover your mouse over any image in obsidian and click the stream deck button to share the handout with players. clicking again will dismiss it. works with Atlas Online and the local player view
+- Configure under Settings → Stream Deck
+
+**Downloads**
+- a button at the bottom of the Sound page shows your downloads and lets you cancel or retry them
+
+### Improved
+
+- Improved performance for download of starter ambience pack
+- Improved performance of sound page with many tracks
+- You can hide the starter ambience and starter music offers
+- Sort the Sound library by name or length by clicking a column heading
+- Smoother dragging for initiative tracker entries
+- The dice tray only offers advantage and disadvantage where the collection's dice rules support it
+- When combatants act by sides, drag a side's heading to choose who goes first
+- Ranges from the measure tool now show in the player view and to online players
+
+### Fixed
+
+- Long translations no longer overlap in rows of buttons
+- Clicking a hex linked to a note works again when a drawing covers the hex
+- Clicking the map while a light's panel is open now only closes the panel
+- FLAC files no longer fail to import on the Sound page
+- Values written with `adv` or `dis` (`+7 adv`) now work in statblocks, references, sums and saved rolls
+- "Combat has started" and "Combat has ended" now show in the middle of the player view when the initiative list is vertical
+- The initiative list shows a fade at the bottom when there is more to scroll
+- Forget explored areas now forgets every floor of a scene
+- Sharing to the Armarium no longer fails when the server has a short hiccup
+- Fitting the grid of a moved floor no longer turns the map black
+- Position floor on a hex grid no longer jumps a row at the map's edge
+
+### Atlas Online
+
+- Players can roll and edit values written with `adv` or `dis`, in the dice tray and on the character sheet
+- The character sheet shows statblock text formatted as in Obsidian: bold, links, no raw HTML
+- Improved performance of lit scenes on Windows hybrid graphics laptops
+- The laser dot no longer stays on the map after a player lifts their finger on a phone or tablet
+- Pinch-zooming the world map in Safari on a Mac is now smooth
+- Numbers with a reference (`@dex.mod`) on the character sheet show their value
+- New modern/sci-fi theme available for Atlas Online
+
+
+Thanks to my Patreon supporters Aaron, Aaron W Scott, Aiden Hatcher, Andrew, Anna B. Meyer, basilisk, Bradley Bell, Carl Corneil, Chris Del Gigante, Daniel Mensinga, Daria Ambrose, Deus Ex Minima, Dewwww, Dom Bosco, Eskil Bolsøy, George Young, Giodude, Hannes Pingel, Ionazh, Jake kulig, Josh Zindler, Joshua Herrin, Kevin Hait, Krangal, LittleBlueShyGuy, Markus Baumann, Michael Breuer, MrEhm, Nick, Pau Benazet Montobbio, SamDark, Scaradeus, ShonkyMapCo, Tim, Tim Roddick-Hull, Tobias Redlich, Voider Elf, Xethgnur, z-lf and Zack Samuels. You mean everything to me :heart:
+
+Help me develop Atlas: https://www.patreon.com/cw/atlas_vtt
+
 ## 0.18.0 — Initiative, dice and seven languages
 
 2026-11-21

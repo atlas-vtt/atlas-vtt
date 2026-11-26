@@ -21,7 +21,7 @@ export const LIGHT_DRAG_THRESHOLD = 5;
 /** What a press needs of the pointer event; PIXI reuses its event objects, so it is read at once. */
 type Press = Pick<FederatedPointerEvent, 'global' | 'ctrlKey' | 'metaKey'>;
 
-/** What the token renderer's viewport dispatch asks about placed lights, with any tool. */
+/** What the map's pointer (`MapPointer`) asks about placed lights, with any tool. */
 export interface LightPointerHandlers {
   /** A left press at a world point; true when a marker or a ring handle took it. */
   pointerDown(worldX: number, worldY: number, event: FederatedPointerEvent): boolean;
@@ -68,6 +68,8 @@ export class LightInteraction {
   private gesture: Gesture | null = null;
   /** A store write is being announced: a cancel in it closes its undo step only once that write is done. */
   private inStoreWrite = false;
+  /** The latest press on the map closed the popover: the lighting tool takes it for that alone (`takeDismissal`). */
+  private dismissedOnMap = false;
   private readonly doc: Document;
   private readonly unsubscribe: () => void;
   private readonly abort = (): void => this.cancel();
@@ -128,6 +130,16 @@ export class LightInteraction {
     this.deps.markers.setHovered(null);
   }
 
+  /**
+   * Whether the press being dispatched closed the popover from the map, so a tool that would
+   * place or draw there leaves it at that, as a click outside a menu only closes the menu.
+   */
+  takeDismissal(): boolean {
+    const dismissed = this.dismissedOnMap;
+    this.dismissedOnMap = false;
+    return dismissed;
+  }
+
   /** Cancels a press or drag under way: what a drag changed is put back, and it leaves no undo step. */
   cancel(): void {
     this.gesture?.end(false);
@@ -158,7 +170,7 @@ export class LightInteraction {
       }
       const at = viewport.toWorld(move.global.x, move.global.y);
       // An area light's area moves along, from where it lay when the drag began.
-      store.getState().updateLight(lightId, lightMovedTo(light, origin.x + at.x - grabbed.x, origin.y + at.y - grabbed.y));
+      store.getState().patchObject('lights', lightId, lightMovedTo(light, origin.x + at.x - grabbed.x, origin.y + at.y - grabbed.y));
     };
     this.track({
       ring: null,
@@ -167,7 +179,7 @@ export class LightInteraction {
       end: (commit) => {
         if (dragging) {
           markers.setDragging(null);
-          this.settle(commit, () => store.getState().updateLight(lightId, lightMovedTo(light, origin.x, origin.y)), lightId);
+          this.settle(commit, () => store.getState().patchObject('lights', lightId, lightMovedTo(light, origin.x, origin.y)), lightId);
         }
         if (commit && !moved && !add) store.getState().openLightPopover(lightId);
       },
@@ -192,7 +204,7 @@ export class LightInteraction {
       const radius = Math.max(0, ringRadiusAt(rings.geometry() ?? geometry, field, at) - offset);
       const scale = rings.unitScale();
       const next = dragRange(light.emission, field, worldToGameUnits(radius, scale), this.free(move), maxLightRange(scale));
-      if (next !== light.emission) store.getState().updateLight(lightId, { emission: next });
+      if (next !== light.emission) store.getState().patchObject('lights', lightId, { emission: next });
     };
     this.track({
       ring: lightId,
@@ -200,7 +212,7 @@ export class LightInteraction {
       onMove,
       end: (commit) => {
         rings.setDragging(null);
-        this.settle(commit, () => store.getState().updateLight(lightId, { emission }), lightId);
+        this.settle(commit, () => store.getState().patchObject('lights', lightId, { emission }), lightId);
       },
     });
   }
@@ -222,7 +234,7 @@ export class LightInteraction {
       const light = readLight(levelObjects(store.getState()).lights[lightId]);
       if (!light) return;
       const next = snapDirection(directionTo(light, viewport.toWorld(move.global.x, move.global.y)) + offset, this.free(move));
-      if (next !== (light.rotation ?? 0)) store.getState().updateLight(lightId, { rotation: next });
+      if (next !== (light.rotation ?? 0)) store.getState().patchObject('lights', lightId, { rotation: next });
     };
     this.track({
       ring: lightId,
@@ -230,7 +242,7 @@ export class LightInteraction {
       onMove,
       end: (commit) => {
         rings.setDragging(null);
-        this.settle(commit, () => store.getState().updateLight(lightId, { rotation }), lightId);
+        this.settle(commit, () => store.getState().patchObject('lights', lightId, { rotation }), lightId);
       },
     });
   }
@@ -285,6 +297,7 @@ export class LightInteraction {
    */
   private readonly onDocumentPointerDown = (event: PointerEvent): void => {
     const { store, canvas, viewport, markers, rings } = this.deps;
+    this.dismissedOnMap = false;
     if (!store.getState().lightPopover) return;
     const target = elementOf(event.target);
     if (target?.closest('.atlas-light-popover')) return;
@@ -292,6 +305,7 @@ export class LightInteraction {
       const rect = canvas.getBoundingClientRect();
       const point = viewport.toWorld(event.clientX - rect.left, event.clientY - rect.top);
       if (rings.handleAt(point.x, point.y) || markers.hitTest(point.x, point.y)) return;
+      this.dismissedOnMap = true;
     }
     store.getState().closeLightPopover();
   };

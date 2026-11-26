@@ -36,14 +36,27 @@ describe('the dice set a collection rolls', () => {
 
   it('rolls its game system\'s set where its pick is gone and no dice rules are stored', () => {
     expect(collectionDiceSet({ diceSetId: 'gone', systemPresetId: cairn.id }, presets, sets).id).toBe('builtin:d20-roll-under');
-    expect(collectionDiceSet({ diceSetId: 'gone' }, presets, sets).id).toBe('builtin:d20');
+    expect(collectionDiceSet({ diceSetId: 'gone' }, presets, sets).id).toBe('builtin:d20-plain');
   });
 
-  it('is its game system\'s without dice of its own, else the plain d20', () => {
+  it('is its game system\'s without dice of its own, else a plain d20', () => {
     expect(collectionDiceSet({ systemPresetId: cairn.id }, presets, sets).id).toBe('builtin:d20-roll-under');
     const older = { ...drawSteel, id: 'user-ds', rules: { ...drawSteel.rules, diceSetId: undefined } } as never;
-    expect(collectionDiceSet({ systemPresetId: 'user-ds' }, [older], sets).id).toBe('builtin:power-roll');
-    expect(collectionDiceSet({}, presets, sets).id).toBe('builtin:d20');
+    expect(collectionDiceSet({ systemPresetId: 'user-ds' }, [older], sets)).toMatchObject({ id: COLLECTION_DICE_ID, dice: [{ count: 2, sides: 10 }] });
+    expect(collectionDiceSet({}, presets, sets).id).toBe('builtin:d20-plain');
+    expect(collectionDiceSet({ dice: { defaultRoll: '1d20', crit: 'natural' } }, presets, sets).id).toBe('builtin:d20-plain');
+  });
+
+  it('offers advantage only where a set has a rule for it', () => {
+    const dnd = presets.find((preset) => preset.name === 'D&D 5e')!;
+    const ose = presets.find((preset) => preset.name === 'Old-School Essentials')!;
+    expect(collectionDiceSet({}, presets, sets).advantage).toBeUndefined();
+    expect(collectionDiceSet({ dice: { defaultRoll: '1d20', crit: 'natural' } }, presets, sets).advantage).toBeUndefined();
+    expect(collectionDiceSet({ systemPresetId: ose.id }, presets, sets).advantage).toBeUndefined();
+    expect(collectionDiceSet({ systemPresetId: cairn.id }, presets, sets).advantage).toBeUndefined();
+    // A 5e collection saved before sets kept its system's d20 rules: it still rolls with advantage
+    expect(collectionDiceSet({ systemPresetId: dnd.id, dice: { defaultRoll: '1d20', crit: 'natural' } }, presets, sets).id).toBe('builtin:d20');
+    expect(collectionDiceSet({ systemPresetId: dnd.id }, presets, sets).advantage).toEqual({ kind: 'keep' });
   });
 });
 

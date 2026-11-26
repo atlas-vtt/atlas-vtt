@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { BUILT_IN_DICE_SETS } from '../../../src/app/gameSystems/builtInDiceSets';
 import { codeRoll } from '../../../src/app/noteDice/noteDiceLinks';
 import { trayStatus, type TrayAdvantage } from '../../../src/app/react/components/dice/diceTrayStatus';
-import { modifierOf, withDie, withModifier } from '../../../src/app/react/components/dice/diceTrayText';
+import { slotAlone } from '../../../src/app/react/components/dice/diceTraySlots';
+import { modifierOf, presetCount, withDie, withModifier, withPreset } from '../../../src/app/react/components/dice/diceTrayText';
 import { advantageSidesFor, ruledSides } from '../../../src/app/tools/diceAdvantage';
 import { DiceTool, rollDiceFormula, type DiceRollInputs } from '../../../src/app/tools/DiceTool';
 import { combinedSide, writtenSide } from '../../../src/app/tools/writtenAdvantage';
@@ -118,5 +119,33 @@ describe('dice in notes with a written side', () => {
   it('links inline code that writes its side', () => {
     expect(codeRoll('dice: 1d20+5 adv')).toBe('1d20+5 adv');
     expect(codeRoll('1d20 dis')).toBe('1d20 dis');
+  });
+});
+
+describe('a saved roll that writes its side', () => {
+  const stealth = { id: 'stealth', name: 'Stealth', formula: '1d20+5 adv' };
+
+  it('joins the tray as its bracketed roll with the side written last, and takes the side with its last copy', () => {
+    const one = withPreset('', stealth.formula, 1);
+    expect(one).toBe('(1d20+5) adv');
+    expect(withPreset('1d6 + 2', stealth.formula, 1)).toBe('1d6 + (1d20+5) + 2 adv');
+    const two = withPreset(one, stealth.formula, 1);
+    expect(two).toBe('(1d20+5) + (1d20+5) adv');
+    expect(presetCount(two, stealth.formula)).toBe(2);
+    expect(withPreset(two, stealth.formula, -1)).toBe('(1d20+5) adv');
+    expect(withPreset(withPreset('1d6', stealth.formula, 1), stealth.formula, -1)).toBe('1d6');
+    // A side the formula already writes stays: opposite words would not read
+    expect(withPreset('1d20 dis', stealth.formula, 1)).toBe('1d20 + (1d20+5) dis');
+  });
+
+  it('rolls alone with the tray\'s modifier and its side', () => {
+    expect(slotAlone('2d6 + 3', { kind: 'preset', id: 'stealth' }, [stealth])).toBe('(1d20+5) + 3 adv');
+  });
+
+  it('rolls with the set\'s rule for its side', () => {
+    const roll = rollDiceFormula(withPreset('', stealth.formula, 1), d20, inputs([4, 20], [17, 20]))!;
+    expect(roll.advantage).toBe('advantage');
+    expect(values(roll.rolls)).toEqual(['(4)', 17]);
+    expect(roll.total).toBe(22);
   });
 });

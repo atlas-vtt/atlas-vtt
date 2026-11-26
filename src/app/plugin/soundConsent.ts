@@ -25,8 +25,9 @@ const folderNameOf = (path: string): string => path.split(/[\\/]/).filter(Boolea
 /**
  * Asks the GM what Atlas may do before it converts a linked folder: once per folder while sound is on, and again
  * once a folder is unlinked and linked anew; for a root without a choice whose walk ended, one dialog at a time.
- * Closing a dialog without a choice unlinks the folder (a vault folder for every device that shares its settings).
- * Returns the release.
+ * Closing a dialog without a choice takes the folder back (`SoundRoots.takeBack`): the folder it replaced comes back
+ * with its choice, else the root is unlinked (a vault folder for every device that shares its settings). Returns the
+ * release.
  */
 export function registerConversionConsent(
   plugin: Plugin,
@@ -67,8 +68,11 @@ export function registerConversionConsent(
           if (disposed) return;
           if (current === asking) current = null;
           if (stillAsking(kind, path)) {
-            if (choice === null) library.roots.unlink(kind);
-            else library.roots.setOriginals(kind, choice);
+            if (choice === null) {
+              library.roots.takeBack(kind);
+              // The folder cancelled is asked about again whenever it is linked again.
+              asked.delete(kind);
+            } else library.roots.setOriginals(kind, choice);
           }
           showing = false;
           check();

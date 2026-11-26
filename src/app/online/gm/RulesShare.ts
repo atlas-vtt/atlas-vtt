@@ -1,11 +1,12 @@
-import type { GmMessage, SharedMoveStep, SharedRollDice, SharedRowPlace, SharedRules } from '../protocol/index.ts';
+import type { SharedMoveStep, SharedRollDice, SharedRowPlace, SharedRules } from '../protocol/index.ts';
 import { MAX_COORDINATE } from '../protocol/index.ts';
 import { areaRulesOf, readUnitName, resolveMeasurementSettings, type MeasurementSettings } from '../../grid/measurementFormat';
 import type { SceneState, SceneStore } from './atlasView.ts';
+import { Feed, type FeedPorts, type FeedScene } from './feed/Feed.ts';
+import type { FeedOut } from './feed/feedOutbox.ts';
 import { sharedMoveSteps, type TokenMoves } from './moveShare.ts';
 
-export interface RulesSharePorts {
-  send(body: GmMessage, to?: string): void;
+export interface RulesSharePorts extends FeedPorts {
   /** How the GM's own ruler labels distances on this map, or null while it cannot be read. */
   measurement?(): MeasurementSettings | null;
   /** The GM's accent colour as `#rrggbb`, or null while it cannot be read. */
@@ -20,6 +21,8 @@ export interface RulesSharePorts {
   tokenMoves?(): TokenMoves | null;
   /** The GM's dice row for this map, or null where it has the standard dice. */
   diceRow?(): readonly SharedRowPlace[] | null;
+  /** Whether players may ask the GM to open a closed door their token stands at. */
+  doors?(): boolean;
 }
 
 /**
@@ -57,9 +60,9 @@ const finiteOr = (value: number | undefined, fallback: number): number => (typeo
 /**
  * What a player's measure and laser tools work by, from the scene's grid, the GM's measurement (else
  * the grid's own, as Atlas's ruler falls back to), accent and whether everyone's cursor shows, and
- * the map's dice where the tab has them; null for a grid players cannot use.
+ * the map's dice where the tab has them, and whether players may ask to open doors; null for a grid players cannot use.
  */
-export function sharedRules(grid: SceneState['grid'], measurement: MeasurementSettings | null, accent: string | null, cursors = false, dice: SharedRollDice | null = null, draw: { readonly cell: number } | null = null, moveSteps: readonly SharedMoveStep[] | null = null, diceRow: readonly SharedRowPlace[] | null = null): SharedRules | null {
+export function sharedRules(grid: SceneState['grid'], measurement: MeasurementSettings | null, accent: string | null, cursors = false, dice: SharedRollDice | null = null, draw: { readonly cell: number } | null = null, moveSteps: readonly SharedMoveStep[] | null = null, diceRow: readonly SharedRowPlace[] | null = null, doors = false): SharedRules | null {
   if (grid === null || !Number.isFinite(grid.size) || !(grid.size > 0) || grid.size > MAX_COORDINATE) return null;
   const offsetX = finiteOr(grid.offsetX, 0);
   const offsetY = finiteOr(grid.offsetY, 0);
@@ -79,48 +82,34 @@ export function sharedRules(grid: SceneState['grid'], measurement: MeasurementSe
     ...(draw !== null && Number.isFinite(draw.cell) && draw.cell > 0 && draw.cell <= MAX_COORDINATE && { draw: { cell: draw.cell } }),
     ...(moveSteps !== null && { moveSteps }),
     ...(diceRow !== null && { diceRow }),
+    ...(doors && { doors: true as const }),
   };
 }
 
 /**
  * The shared scene's rules (`sharedRules`), sent to all when the scene is shared, to a player who
- * joins, and again whenever they changed when `update` looks (once a second, with the scene's poll):
- * so a GM who lets players draw, or no longer, or changes the dice row, is followed by a running table
- * within that second.
+ * joins, and again whenever they changed: the feed updates at each change of Atlas (a GM who lets players
+ * draw, or no longer, changes the dice row or the measurement), `storeChanged` at each change of the grid
+ * or the map.
  */
 export class RulesShare {
-  private readonly store: SceneStore;
-  private readonly ports: RulesSharePorts;
-  private scene: string | null = null;
-  private last: { readonly body: GmMessage; readonly text: string } | null = null;
+  readonly feed: Feed;
+  /** The grid and the map the rules were last worked out with. */
+  private read: Pick<SceneState, 'grid' | 'mapPath'> | null = null;
 
-  constructor(store: SceneStore, ports: RulesSharePorts) {
-    this.store = store;
-    this.ports = ports;
+  constructor(private readonly store: SceneStore, private readonly ports: RulesSharePorts) {
+    this.feed = new Feed(ports, { build: (scene, out) => this.build(scene, out) });
   }
 
-  /** The shared scene the rules belong to; null sends none. */
-  setScene(scene: string | null): void {
-    this.scene = scene;
-    this.last = null;
-    this.update();
+  /** The store changed: the rules are worked out again where its grid or its map is another. */
+  storeChanged(state: Pick<SceneState, 'grid' | 'mapPath'>): void {
+    if (state.grid !== this.read?.grid || state.mapPath !== this.read.mapPath) this.feed.update();
   }
 
-  /** Sends the rules when they changed since they were last sent. */
-  update(): void {
-    if (this.scene === null) return;
+  private build(scene: FeedScene, out: FeedOut): void {
     const state = this.store.getState();
-    const rules = sharedRules(state.grid, this.ports.measurement?.() ?? null, this.ports.accent?.() ?? null, this.ports.cursorsShown?.() === true, this.ports.rollDice?.() ?? null, this.ports.draw?.() ?? null, sharedMoveSteps(this.ports.tokenMoves?.()?.rules()), this.ports.diceRow?.() ?? null);
-    if (rules === null) return;
-    const body: GmMessage = { t: 'rules', scene: this.scene, ...rules };
-    const text = JSON.stringify(body);
-    if (text === this.last?.text) return;
-    this.last = { body, text };
-    this.ports.send(body);
-  }
-
-  /** The last rules again, to one player or to all. */
-  resend(to?: string): void {
-    if (this.last !== null) this.ports.send(this.last.body, to);
+    this.read = { grid: state.grid, mapPath: state.mapPath };
+    const rules = sharedRules(state.grid, this.ports.measurement?.() ?? null, this.ports.accent?.() ?? null, this.ports.cursorsShown?.() === true, this.ports.rollDice?.() ?? null, this.ports.draw?.() ?? null, sharedMoveSteps(this.ports.tokenMoves?.()?.rules()), this.ports.diceRow?.() ?? null, this.ports.doors?.() === true);
+    if (rules !== null) out.send({ t: 'rules', scene: scene.id, ...rules });
   }
 }

@@ -1,0 +1,47 @@
+name: Guards
+
+# Makes a pull request from a fork loud when it raises a baseline or a budget
+# or changes a check, until the maintainer has looked at it and labelled it
+# `guards-ok`. It runs on `pull_request_target`, so this file and the script
+# come from the base branch and the pull request can edit neither. It must
+# never check out, install or run anything of the pull request: the merge
+# commit is fetched as data and only read through git.
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+jobs:
+  guards:
+    if: github.event.pull_request.head.repo.full_name != github.repository && !contains(github.event.pull_request.labels.*.name, 'guards-ok')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout the base branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Check baselines, budgets and the checks themselves
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          merge_ref="refs/pull/${PR_NUMBER}/merge"
+          found=0
+          git ls-remote --exit-code origin "$merge_ref" > /dev/null || found=$?
+          # 2 says the ref is not there; anything else is a failure to ask, which must not pass.
+          if [ "$found" -eq 2 ]; then
+            echo "This pull request does not merge cleanly into its base, so there is no merge commit to read. The guard runs once it does."
+            exit 0
+          fi
+          [ "$found" -eq 0 ] || exit "$found"
+          git fetch --depth=1 origin "$merge_ref"
+          node scripts/check-guards.mjs --base HEAD --head FETCH_HEAD --strict

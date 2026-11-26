@@ -27,6 +27,7 @@ const FIELDS: TemplateField[] = [
   { key: 'size', label: 'Size', type: 'choice', options: ['Small', 'Medium', 'Large'] },
   { key: 'langs', label: 'Languages', type: 'choice', options: ['Common', 'Elvish', 'Dwarvish'], several: true },
   { key: 'level', label: 'Level', type: 'rating' },
+  { key: 'perception', label: 'Perception', type: 'number' },
   { key: 'dmg', label: 'Damage', type: 'dice' },
   { key: 'tags', label: 'Tags', type: 'list' },
   { key: 'stats', label: 'Abilities', type: 'scores', slots: ['Str', 'Dex'] },
@@ -37,7 +38,7 @@ const FIELDS: TemplateField[] = [
 ];
 const stat = (field: string): TemplateBlock => ({ id: `${field}00000`.slice(0, 8), type: 'stat', field, look: 'run-in' });
 const BLOCKS: TemplateBlock[] = [
-  stat('speed'), { id: 'story000', type: 'text', field: 'story' }, stat('size'), stat('langs'), stat('level'), stat('dmg'),
+  stat('speed'), { id: 'story000', type: 'text', field: 'story' }, stat('size'), stat('langs'), stat('level'), stat('perception'), stat('dmg'),
   { id: 'tags0000', type: 'tags', field: 'tags', look: 'chips' }, { id: 'stats000', type: 'scores', field: 'stats', orientation: 'row' },
   stat('secret'), stat('seen'), { id: 'actions0', type: 'entries', field: 'actions' }, { id: 'spells00', type: 'spells', field: 'spells' },
 ];
@@ -53,6 +54,7 @@ size: Small
 langs:
   - Common
 level: 3
+perception: +4 adv
 dmg: 1d6
 tags: [brave, loud]
 stats:
@@ -127,6 +129,7 @@ describe('a player\'s edit of a value of their own statblock', () => {
     const note = noteOf();
     const fits: [string, SheetRaw, SheetRaw | undefined][] = [
       ['story', 'Line one\n\nLine **two**', undefined], ['size', 'Large', 'Small'], ['langs', ['Common', 'Dwarvish'], ['Common']], ['level', '1/4', 3], ['level', 5, 3],
+      ['perception', '+5 adv', '+4 adv'], ['perception', 6, '+4 adv'], ['perception', '10 + @level dis', '+4 adv'],
       ['dmg', '2d8 + 1', '1d6'], ['tags', ['brave', 'quiet', 3], ['brave', 'loud']], ['stats', [[11, 12]], [[10, 12]]],
     ];
     for (const [key, value, base] of fits) {
@@ -197,7 +200,7 @@ describe('a player\'s edit of a value of their own statblock', () => {
     // The value: of another kind, not an option, out of order, twice, no dice, a list of what no list holds.
     const misfits: [string, SheetRaw, SheetRaw | undefined][] = [
       ['speed', 40, '30 ft.'], ['speed', 'two\nlines', '30 ft.'], ['size', 'Huge', 'Small'], ['size', ['Small'], 'Small'], ['langs', ['Elvish', 'Common'], ['Common']],
-      ['langs', ['Common', 'Common'], ['Common']], ['langs', ['Orcish'], ['Common']], ['level', 'many', 3], ['dmg', 'lots', '1d6'], ['dmg', 6, '1d6'],
+      ['langs', ['Common', 'Common'], ['Common']], ['langs', ['Orcish'], ['Common']], ['level', 'many', 3], ['perception', 'fast adv', '+4 adv'], ['perception', '4 adv dis', '+4 adv'], ['perception', '1d20 adv', '+4 adv'], ['dmg', 'lots', '1d6'], ['dmg', 6, '1d6'],
       ['tags', [{ a: 1 }], ['brave', 'loud']], ['tags', 'brave', ['brave', 'loud']], ['stats', 'high', [[10, 12]]], ['story', 5, undefined],
     ];
     for (const [key, value, base] of misfits) expect(checkFieldEdit(note.inputs, field(key, value, base)), `${key} ${JSON.stringify(value)}`).toBeNull();

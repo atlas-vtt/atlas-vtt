@@ -18,13 +18,17 @@ $length-track: calc(7ch + #{$spacing-s + $spacing-l});
   }
 }
 
-.atlas-sound-lib__row {
+.atlas-sound-lib__row,
+.atlas-sound-lib__colheads {
   display: grid;
   grid-template-columns: 36px minmax(0, 1fr) 100px $length-track 88px 32px;
   align-items: center;
+  padding: 0 $surface-inset;
+}
+
+.atlas-sound-lib__row {
   // The ⋯ (28 px) at its end stands $surface-inset from top, bottom and end, concentric with the row's corner.
   height: 36px;
-  padding: 0 $surface-inset;
   border-radius: $radius-m;
   contain: layout style;
   transition: background-color 100ms var(--atlas-sound-lib-press);
@@ -289,6 +293,10 @@ $length-track: calc(7ch + #{$spacing-s + $spacing-l});
 @media (pointer: coarse) {
   .atlas-sound-lib__row {
     height: 44px;
+  }
+
+  .atlas-sound-lib__row,
+  .atlas-sound-lib__colheads {
     grid-template-columns: 48px minmax(0, 1fr) 100px $length-track 88px 48px;
   }
 

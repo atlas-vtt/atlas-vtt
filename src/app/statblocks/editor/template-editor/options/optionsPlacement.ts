@@ -11,6 +11,7 @@
  */
 
 import type { Box } from '../gapGeometry';
+import { clamp } from '../../../../utils/math';
 
 export interface OptionsRoom {
   /** The tile the Options belong to. */
@@ -38,8 +39,6 @@ export interface OptionsPlacement {
 export const OPTIONS_GAP = 8;
 /** Room they keep to the view's edges. */
 export const OPTIONS_MARGIN = 8;
-
-const clamp = (value: number, low: number, high: number): number => Math.min(Math.max(value, low), Math.max(low, high));
 
 /** The Options' place for their natural size (`height`: their whole content, also while they scroll). */
 export function placeOptions(room: OptionsRoom, size: { width: number; height: number }): OptionsPlacement {

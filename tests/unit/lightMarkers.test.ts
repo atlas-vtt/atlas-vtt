@@ -32,7 +32,7 @@ function setup(readTheme: () => LightMarkerTheme = () => THEME): { markers: Ligh
 
 function addLight(store: ViewAtlasStore, x: number, y: number, kind: LightKind = 'torch', hidden?: boolean): string {
   const emission = kind === 'custom' ? { ...genericLight('torch'), kind } : { ...genericLight(kind), kind };
-  return store.getState().addLight({ x, y, emission, ...(hidden ? { hidden } : {}) });
+  return store.getState().addObject('lights', { x, y, emission, ...(hidden ? { hidden } : {}) });
 }
 
 /** A marker's badge, glyph and how often its badge strokes a ring. */
@@ -110,11 +110,11 @@ describe('LightMarkers', () => {
     const marker = markers.view.children[0]!;
     const { badge } = parts(marker);
     const drawn = badge.context.instructions.length;
-    store.getState().updateLight(id, { x: 300, y: 50 });
+    store.getState().patchObject('lights', id, { x: 300, y: 50 });
     expect(markers.view.children[0]).toBe(marker);
     expect(marker.position).toMatchObject({ x: 300, y: 50 });
     expect(badge.context.instructions).toHaveLength(drawn);
-    store.getState().deleteLight(id);
+    store.getState().removeObjects([id]);
     expect(markers.view.children).toHaveLength(0);
     expect(marker.destroyed).toBe(true);
   });
@@ -125,7 +125,7 @@ describe('LightMarkers', () => {
     const id = addLight(store, 100, 200, 'torch');
     const { glyph } = parts(markers.view.children[0]!);
     const torch = glyph.texture;
-    store.getState().updateLight(id, { emission: { ...genericLight('magical'), kind: 'magical' } });
+    store.getState().patchObject('lights', id, { emission: { ...genericLight('magical'), kind: 'magical' } });
     expect(glyph.texture).not.toBe(torch);
     expect(glyph.tint).toBe(0x8fb8ff);
   });
@@ -136,8 +136,8 @@ describe('LightMarkers', () => {
     addLight(store, 100, 200, 'lantern');
     addLight(store, 200, 200, 'custom');
     const unknown = 'brazier' as LightKind;
-    store.getState().addLight({ x: 300, y: 200, emission: { ...genericLight('lantern'), kind: unknown } });
-    store.getState().addLight({ x: 400, y: 200, emission: { ...genericLight('lantern'), bright: 12, kind: unknown } });
+    store.getState().addObject('lights', { x: 300, y: 200, emission: { ...genericLight('lantern'), kind: unknown } });
+    store.getState().addObject('lights', { x: 400, y: 200, emission: { ...genericLight('lantern'), bright: 12, kind: unknown } });
     const [lantern, custom, equalsLantern, edited] = markers.view.children.map((marker) => parts(marker).glyph);
     expect(equalsLantern!.texture).toBe(lantern!.texture);
     expect(edited!.texture).toBe(custom!.texture);
@@ -186,7 +186,7 @@ describe('LightMarkers', () => {
     const { glyph } = parts(markers.view.children[0]!);
     expect(glyph.alpha).toBeLessThan(0.5);
     expect(glyph.tint).toBe(THEME.stroke);
-    store.getState().updateLight(id, { hidden: false });
+    store.getState().patchObject('lights', id, { hidden: false });
     expect(glyph.alpha).toBe(1);
     expect(glyph.tint).toBe(0xff9a3c);
   });
@@ -198,7 +198,7 @@ describe('LightMarkers', () => {
     const { glyph, badge } = parts(markers.view.children[0]!);
     const fills = (): number => badge.context.instructions.filter((instruction) => instruction.action === 'fill').length;
     const plain = fills();
-    store.getState().updateLight(id, { activeBelowAmbient: 0.5 });
+    store.getState().patchObject('lights', id, { activeBelowAmbient: 0.5 });
     expect(glyph.alpha).toBeLessThan(0.5);
     // The moon: a disc on the badge's edge with a crescent in it.
     expect(fills()).toBeGreaterThan(plain);
@@ -211,21 +211,21 @@ describe('LightMarkers', () => {
     const { markers, store } = setup();
     store.getState().setSceneLighting({ enabled: true, ambient: 1 });
     const id = addLight(store, 100, 200);
-    store.getState().updateLight(id, { activeBelowAmbient: 0.5 });
+    store.getState().patchObject('lights', id, { activeBelowAmbient: 0.5 });
     const { glyph } = parts(markers.view.children[0]!);
     expect(glyph.alpha).toBeLessThan(0.5);
     // A cave around the lamp: dark while the sun shines outside.
-    const cave = store.getState().addLightZone({ polygon: [{ x: 0, y: 100 }, { x: 200, y: 100 }, { x: 200, y: 300 }, { x: 0, y: 300 }], ambient: 0 });
+    const cave = store.getState().addObject('lightZones', { polygon: [{ x: 0, y: 100 }, { x: 200, y: 100 }, { x: 200, y: 300 }, { x: 0, y: 300 }], ambient: 0 });
     expect(glyph.alpha).toBe(1);
-    store.getState().updateLightZone(cave, { ambient: 0.8 });
+    store.getState().patchObject('lightZones', cave, { ambient: 0.8 });
     expect(glyph.alpha).toBeLessThan(0.5);
-    store.getState().updateLightZone(cave, { ambient: 0.2 });
+    store.getState().patchObject('lightZones', cave, { ambient: 0.2 });
     expect(glyph.alpha).toBe(1);
     // Moved off the lamp, the zone no longer counts for it.
-    store.getState().updateLightZone(cave, { polygon: [{ x: 500, y: 100 }, { x: 700, y: 100 }, { x: 700, y: 300 }, { x: 500, y: 300 }] });
+    store.getState().patchObject('lightZones', cave, { polygon: [{ x: 500, y: 100 }, { x: 700, y: 100 }, { x: 700, y: 300 }, { x: 500, y: 300 }] });
     expect(glyph.alpha).toBeLessThan(0.5);
-    store.getState().updateLightZone(cave, { polygon: [{ x: 0, y: 100 }, { x: 200, y: 100 }, { x: 200, y: 300 }, { x: 0, y: 300 }] });
-    store.getState().deleteLightZone(cave);
+    store.getState().patchObject('lightZones', cave, { polygon: [{ x: 0, y: 100 }, { x: 200, y: 100 }, { x: 200, y: 300 }, { x: 0, y: 300 }] });
+    store.getState().removeObjects([cave]);
     expect(glyph.alpha).toBeLessThan(0.5);
   });
 

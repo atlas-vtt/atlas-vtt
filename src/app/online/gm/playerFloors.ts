@@ -8,6 +8,9 @@ import type { SceneState } from './atlasView.ts';
 /** A floor of the shared scene, by its level id; null is the first floor, and a scene without levels' only one. */
 export type Floor = string | null;
 
+/** The key of a floor's share: its level id, '' for a scene of one floor. */
+export const floorKey = (floor: Floor): string => floor ?? '';
+
 /** What decides on which floor each player stands. */
 export interface FloorInputs {
   readonly state: Pick<SceneState, 'objects' | 'levels'>;

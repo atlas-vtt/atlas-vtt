@@ -97,7 +97,7 @@ describe('what an aura costs while its token is dragged', () => {
 
   it('is under a millisecond a move for an aura of three cells among walls, every move into another cell', async () => {
     const walls = (view: PlayerViewScene): void => {
-      for (let i = 0; i < 12; i++) view.store.getState().addWall({ type: 'solid', p1: { x: 20 * i, y: 200 }, p2: { x: 20 * i + 20, y: 200 + (i % 2) * 8 } });
+      for (let i = 0; i < 12; i++) view.store.getState().addObject('walls', { type: 'solid', p1: { x: 20 * i, y: 200 }, p2: { x: 20 * i + 20, y: 200 + (i % 2) * 8 } });
     };
     const s = await withHero(true);
     const bare = await withHero(true);
@@ -146,13 +146,13 @@ describe('the body of an aura under the lighting', () => {
     cleanup.push(() => { measure.destroy(); view.dispose(); });
     const state = store.getState();
     state.setSceneLighting({ enabled: true, ambient: 0 });
-    state.addWall({ type: 'solid', p1: { x: 128, y: -64 }, p2: { x: 128, y: 320 } });
-    state.addLight({ x: 64, y: 128, emission: { bright: 10, dim: 20, color: '#ffffff', intensity: 1, animation: 'none' } });
+    state.addObject('walls', { type: 'solid', p1: { x: 128, y: -64 }, p2: { x: 128, y: 320 } });
+    state.addObject('lights', { x: 64, y: 128, emission: { bright: 10, dim: 20, color: '#ffffff', intensity: 1, animation: 'none' } });
     store.setState({ objects: { ...store.getState().objects, tokens: { hero: { id: 'hero', kind: 'character', name: 'hero', imagePath: '', x: TOKEN.x, y: TOKEN.y } as TokenEntity } } });
     if (aura) {
       store.getState().setTokenAuras([{ tokenId: 'hero', aura: 20, points: [{ x: TOKEN.x, y: TOKEN.y }, { x: TOKEN.x + 144, y: TOKEN.y }] }], { color: '#e93147' });
       const [id] = Object.keys(store.getState().objects.measures ?? {});
-      store.getState().updateMeasure(id!, { walls: false });
+      store.getState().patchObject('measures', id!, { walls: false });
       await measureMotionDone();
     }
     displayFrames(30);

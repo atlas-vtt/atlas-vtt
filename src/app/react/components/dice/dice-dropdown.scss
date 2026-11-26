@@ -349,11 +349,11 @@ $tray-quiet-text: color-mix(in srgb, var(--text-muted) 70%, var(--text-normal));
 }
 
 .atlas-dice-tray__advantage {
+  // As tall as every other control: the options $surface-inset inside the track.
+  --atlas-segmented-fit-height: calc(#{$tray-control} - #{2 * $surface-inset});
   margin-inline: var(--atlas-menu-text-inset);
 
-  // As tall as every other control: the options $surface-inset inside the track.
   .atlas-segmented__option {
-    height: calc(#{$tray-control} - #{2 * $surface-inset});
     padding-block: 0;
   }
 }
@@ -572,10 +572,6 @@ $tray-history-row: $button-height-m;
   height: $icon-s;
   color: $tray-quiet-text;
   transition: transform $transition-fast $transition-ease-out;
-
-  [aria-expanded='true'] > & {
-    transform: rotate(180deg);
-  }
 
   @media (prefers-reduced-motion: reduce) {
     transition: none;
@@ -881,8 +877,8 @@ $history-close: 180ms;
       height: $touch-target;
     }
 
-    .atlas-dice-tray__advantage .atlas-segmented__option {
-      min-height: $touch-target;
+    .atlas-dice-tray__advantage {
+      --atlas-segmented-fit-height: #{$touch-target};
     }
 
     .atlas-toggle::before {
@@ -896,4 +892,9 @@ $history-close: 180ms;
 // Says what the tray holds after clicks and keys, for screen readers only.
 .atlas-dice-tray__announce {
   @include atlas-visually-hidden;
+}
+
+// Written out whole, not nested as `[…] > &`: main.scss wraps every file in .atlas-vtt-plugin, which a nested parent selector would put between the two.
+[aria-expanded='true'] > .atlas-dice-tray__history-chevron {
+  transform: rotate(180deg);
 }

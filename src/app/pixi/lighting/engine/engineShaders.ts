@@ -1,4 +1,5 @@
 import { defaultFilterVert } from 'pixi.js';
+import type { PictureChoice } from '../../../lighting/graphicsSettings';
 import { FULLSCREEN_VERTEX } from './glsl';
 import { capsuleFieldFragment, capsuleFieldVertex } from './capsuleFieldShader';
 import { cascadeFragment, cascadeVertex, emissionFragment, resolveFragment } from './cascadeShaders';
@@ -23,6 +24,8 @@ export interface EngineShaderSource {
   readonly name: string;
   readonly vertex: string;
   readonly fragment: string;
+  /** The polygon picture (Saver) draws with it too; any other program only the traced picture uses, and a device on Saver never compiles it. */
+  readonly polygons?: true;
 }
 
 /**
@@ -31,7 +34,7 @@ export interface EngineShaderSource {
  * compile on the device (`verifyEngineShaders`), cover all of them.
  */
 export const ENGINE_SHADERS = {
-  capsuleField: { name: 'atlas-capsule-field', vertex: capsuleFieldVertex, fragment: capsuleFieldFragment },
+  capsuleField: { name: 'atlas-capsule-field', vertex: capsuleFieldVertex, fragment: capsuleFieldFragment, polygons: true },
   tile: { name: 'atlas-visibility-tile', vertex: tileVertex, fragment: tileFragment },
   tileSmooth: { name: 'atlas-visibility-tile-smooth', vertex: tileVertex, fragment: tileSmoothFragment },
   areaDistance: { name: 'atlas-area-light-distance', vertex: tileVertex, fragment: areaDistanceFragment },
@@ -41,23 +44,36 @@ export const ENGINE_SHADERS = {
   reflection: { name: 'atlas-reflected-light', vertex: reflectionVertex, fragment: reflectionFragment },
   reflectionBlur: { name: 'atlas-reflected-light-blur', vertex: FULLSCREEN_VERTEX, fragment: reflectionBlurFragment },
   lightMap: { name: 'atlas-light-map', vertex: lightMapVertex, fragment: lightMapFragment },
-  darkness: { name: 'atlas-darkness', vertex: darknessVertex, fragment: darknessFragment },
-  pierce: { name: 'atlas-darkness-pierce', vertex: pierceVertex, fragment: pierceFragment },
+  darkness: { name: 'atlas-darkness', vertex: darknessVertex, fragment: darknessFragment, polygons: true },
+  pierce: { name: 'atlas-darkness-pierce', vertex: pierceVertex, fragment: pierceFragment, polygons: true },
   zone: { name: 'atlas-ambient-zone', vertex: lightMapVertex, fragment: zoneFragment },
   bounceEmission: { name: 'atlas-bounce-emission', vertex: cascadeVertex, fragment: emissionFragment },
   bounceCascade: { name: 'atlas-bounce-cascade', vertex: cascadeVertex, fragment: cascadeFragment },
   bounceResolve: { name: 'atlas-bounce-resolve', vertex: cascadeVertex, fragment: resolveFragment },
-  sight: { name: 'atlas-sight', vertex: sightVertex, fragment: sightFragment },
+  sight: { name: 'atlas-sight', vertex: sightVertex, fragment: sightFragment, polygons: true },
   composite: { name: 'atlas-lighting-composite', vertex: defaultFilterVert, fragment: compositeFragmentFor('traced') },
-  wallBand: { name: 'atlas-wall-band', vertex: capsuleFieldVertex, fragment: wallBandFragment },
-  polygonLight: { name: 'atlas-polygon-light', vertex: polygonVertex, fragment: polygonLightFragment },
-  areaPicture: { name: 'atlas-polygon-area-picture', vertex: polygonVertex, fragment: areaPictureFragment },
-  areaLight: { name: 'atlas-polygon-area-light', vertex: lightMapVertex, fragment: areaLightFragment },
-  polygonReflection: { name: 'atlas-polygon-reflected-light', vertex: reflectionVertex, fragment: polygonReflectionFragment },
-  reflectionCut: { name: 'atlas-polygon-reflection-cut', vertex: polygonVertex, fragment: reflectionCutFragment },
-  flatZone: { name: 'atlas-flat-zone', vertex: lightMapVertex, fragment: flatZoneFragment },
-  compositePolygons: { name: 'atlas-lighting-composite-polygons', vertex: defaultFilterVert, fragment: compositeFragmentFor('polygons') },
-  compositeUpscale: { name: 'atlas-lighting-composite-upscale', vertex: defaultFilterVert, fragment: compositeUpscaleFragment },
-  roof: { name: 'atlas-roof', vertex: defaultFilterVert, fragment: roofFragment },
-  unlitOpenings: { name: 'atlas-unlit-openings', vertex: sightVertex, fragment: unlitOpeningsFragment },
+  wallBand: { name: 'atlas-wall-band', vertex: capsuleFieldVertex, fragment: wallBandFragment, polygons: true },
+  polygonLight: { name: 'atlas-polygon-light', vertex: polygonVertex, fragment: polygonLightFragment, polygons: true },
+  areaPicture: { name: 'atlas-polygon-area-picture', vertex: polygonVertex, fragment: areaPictureFragment, polygons: true },
+  areaLight: { name: 'atlas-polygon-area-light', vertex: lightMapVertex, fragment: areaLightFragment, polygons: true },
+  polygonReflection: { name: 'atlas-polygon-reflected-light', vertex: reflectionVertex, fragment: polygonReflectionFragment, polygons: true },
+  reflectionCut: { name: 'atlas-polygon-reflection-cut', vertex: polygonVertex, fragment: reflectionCutFragment, polygons: true },
+  flatZone: { name: 'atlas-flat-zone', vertex: lightMapVertex, fragment: flatZoneFragment, polygons: true },
+  compositePolygons: { name: 'atlas-lighting-composite-polygons', vertex: defaultFilterVert, fragment: compositeFragmentFor('polygons'), polygons: true },
+  compositeUpscale: { name: 'atlas-lighting-composite-upscale', vertex: defaultFilterVert, fragment: compositeUpscaleFragment, polygons: true },
+  roof: { name: 'atlas-roof', vertex: defaultFilterVert, fragment: roofFragment, polygons: true },
+  unlitOpenings: { name: 'atlas-unlit-openings', vertex: sightVertex, fragment: unlitOpeningsFragment, polygons: true },
 } as const satisfies Record<string, EngineShaderSource>;
+
+const ALL_SHADERS: readonly EngineShaderSource[] = Object.values(ENGINE_SHADERS);
+const POLYGON_SHADERS = ALL_SHADERS.filter((source) => source.polygons === true);
+
+/**
+ * The programs a picture may draw with, which the device is asked about before it draws. A device
+ * stepped down to the polygon picture after its graphics driver died must not compile the traced
+ * picture's long loops, which Direct3D's compiler unrolls.
+ */
+export function shadersOfPicture(picture: PictureChoice): readonly EngineShaderSource[] {
+  return picture === 'traced' ? ALL_SHADERS : POLYGON_SHADERS;
+}
+

@@ -1,6 +1,6 @@
 import type { CampaignPlayers } from '../../campaigns/players/CampaignPlayers';
 import { assignmentsFrom, holdsAssignments, NO_ASSIGNMENTS, withCarriedAssignments, type TokenAssignments } from '../../campaigns/players/tokenAssignments';
-import { isRecord } from '../../campaigns/campaignValues';
+import { isRecord } from '../../utils/guards';
 
 /** The token owners and player tokens an older Atlas kept in this device's data (`ownership` in `online.json`); none where there are none. */
 export function readLegacyAssignments(ownership: unknown): TokenAssignments {

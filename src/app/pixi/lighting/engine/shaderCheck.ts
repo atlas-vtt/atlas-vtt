@@ -16,11 +16,46 @@ type Gl = WebGLRenderingContext | WebGL2RenderingContext;
  * the shaders (or a context that came back broken) from ever reaching that point.
  */
 export function failedEngineShaders(gl: Gl, sources: readonly EngineShaderSource[] = Object.values(ENGINE_SHADERS)): ShaderFailure[] {
+  return shaderLinkFailures(startShaderLinks(gl, sources));
+}
+
+/** Engine programs handed to the driver to compile and link, not asked about yet. */
+export interface ShaderLinks {
+  gl: Gl;
+  links: { name: string; program: WebGLProgram | null; vertex: WebGLShader | null; fragment: WebGLShader | null }[];
+}
+
+/**
+ * Hands the driver every engine program of `sources` to compile and link, without asking how it
+ * went: the browser's graphics process does that work meanwhile, so asking later
+ * (`shaderLinkFailures`) no longer waits for it.
+ */
+export function startShaderLinks(gl: Gl, sources: readonly EngineShaderSource[]): ShaderLinks {
+  // Where the driver offers it, links run on its own threads instead of one after another.
+  gl.getExtension('KHR_parallel_shader_compile');
+  return {
+    gl,
+    links: sources.map((source) => {
+      const { vertex: vertexSource = '', fragment: fragmentSource = '' } = engineProgram(source);
+      const vertex = compile(gl, gl.VERTEX_SHADER, vertexSource);
+      const fragment = compile(gl, gl.FRAGMENT_SHADER, fragmentSource);
+      const program = vertex && fragment ? gl.createProgram() : null;
+      if (program) {
+        gl.attachShader(program, vertex!);
+        gl.attachShader(program, fragment!);
+        gl.linkProgram(program);
+      }
+      return { name: source.name, program, vertex, fragment };
+    }),
+  };
+}
+
+/** The programs of `started` that did not link, with the driver's logs; every object it made is deleted. */
+export function shaderLinkFailures({ gl, links }: ShaderLinks): ShaderFailure[] {
   const failures: ShaderFailure[] = [];
-  for (const source of sources) {
-    const { vertex = '', fragment = '' } = engineProgram(source);
-    const log = linkLog(gl, vertex, fragment);
-    if (log !== null) failures.push({ name: source.name, log });
+  for (const { name, program, vertex, fragment } of links) {
+    const log = linkLog(gl, program, vertex, fragment);
+    if (log !== null) failures.push({ name, log });
   }
   return failures;
 }
@@ -30,18 +65,12 @@ export function describeShaderFailures(failures: readonly ShaderFailure[]): stri
   return failures.map(({ name, log }) => `${name}: ${log}`).join('\n');
 }
 
-/** Null when the program links; otherwise the driver's logs. */
-function linkLog(gl: Gl, vertexSource: string, fragmentSource: string): string | null {
-  const vertex = compile(gl, gl.VERTEX_SHADER, vertexSource);
-  const fragment = compile(gl, gl.FRAGMENT_SHADER, fragmentSource);
-  const program = gl.createProgram();
+/** Null when the program linked; otherwise the driver's logs. */
+function linkLog(gl: Gl, program: WebGLProgram | null, vertex: WebGLShader | null, fragment: WebGLShader | null): string | null {
   if (!vertex || !fragment || !program) {
     deleteAll(gl, program, vertex, fragment);
     return 'the graphics device created no shader object';
   }
-  gl.attachShader(program, vertex);
-  gl.attachShader(program, fragment);
-  gl.linkProgram(program);
   const linked = gl.getProgramParameter(program, gl.LINK_STATUS) === true;
   const logs = linked ? [] : [gl.getShaderInfoLog(vertex), gl.getShaderInfoLog(fragment), gl.getProgramInfoLog(program)];
   deleteAll(gl, program, vertex, fragment);

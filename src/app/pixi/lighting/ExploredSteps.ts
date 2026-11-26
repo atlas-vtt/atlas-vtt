@@ -1,5 +1,5 @@
 import type { Renderer } from 'pixi.js';
-import { ExploredEditStack, MAX_STEP_SERIAL, packCoverage, travelledCoverage, unpackCoverage, type ExploredEditMode } from '../../lighting/exploredEdits';
+import { ExploredEditStack, MAX_STEP_SERIAL, packCoverage, travelledCoverage, unpackCoverage, type ExploredEditMode, type ExploredStep } from '../../lighting/exploredEdits';
 import { HISTORY_LIMIT } from '../../stores/history';
 import type { ExploredShapes } from '../../vision/exploredShapes';
 import type { MapBounds } from '../../vision/visibility';
@@ -19,7 +19,7 @@ import type { TexelRegion } from './StampScratch';
  * edit and the moment the steps go.
  */
 export class ExploredSteps {
-  private readonly stack = new ExploredEditStack<TexelRegion>(HISTORY_LIMIT);
+  private readonly stack = new ExploredEditStack<ExploredStep<TexelRegion>>(HISTORY_LIMIT);
   private seen: ExploredTexture | null = null;
   private serial = 0;
 

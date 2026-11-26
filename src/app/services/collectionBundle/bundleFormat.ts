@@ -31,16 +31,17 @@ export const BUNDLE_FILES_DIR = 'files';
  * template rolls with: matched by its set id and placed in the dice sets folder). Development
  * builds wrote templates as format 7, which this version still reads. `preview-light` and
  * `preview-dark` are an item bundle's alone: a template's card drawn for its Armarium listing.
+ * `music-track` is a music bundle's alone (format 11): one track of an album or single, an Atlas copy.
  */
 const BUNDLE_FILE_ROLES = [
   'asset-file', 'thumbnail', 'scene-map', 'scene-thumbnail', 'scene-snapshot', 'scene-snapshot-thumbnail', 'background', 'token-image', 'statblock-note', 'statblock-image',
   'linked-note', 'note-attachment', 'cover', 'loot-base', 'loot-item', 'statblock-template', 'system-preset',
-  'statblock-template-body', 'dice-set', 'preview-light', 'preview-dark',
+  'statblock-template-body', 'dice-set', 'preview-light', 'preview-dark', 'music-track',
 ] as const;
 export type BundleFileRole = typeof BUNDLE_FILE_ROLES[number];
 
 /** Roles only an item bundle's files have: no collection lists them. */
-const ITEM_ONLY_ROLES: ReadonlySet<BundleFileRole> = new Set<BundleFileRole>(['preview-light', 'preview-dark']);
+const ITEM_ONLY_ROLES: ReadonlySet<BundleFileRole> = new Set<BundleFileRole>(['preview-light', 'preview-dark', 'music-track']);
 
 /** Markdown notes, whatever brought them along: any of them may be a native statblock naming its template. */
 export const NOTE_FILE_ROLES: ReadonlySet<BundleFileRole> = new Set<BundleFileRole>(['statblock-note', 'linked-note', 'loot-item']);

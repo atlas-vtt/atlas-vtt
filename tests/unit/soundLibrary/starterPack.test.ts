@@ -15,6 +15,7 @@ import {
 import { StockPackError } from '../../../src/app/services/stockPacks/verifiedFetch';
 import { VaultLocation } from '../../../src/app/soundLibrary/vaultLocation';
 import { sha256 } from '../../../src/app/utils/hashing';
+import { recordingProgress } from '../../helpers/recordingProgress';
 import { createInMemoryApp, type InMemoryApp } from '../../mocks/inMemoryVault';
 
 let base: string;
@@ -94,15 +95,24 @@ describe('the starter pack', () => {
   it('is fetched whole, checked, then written into its folder of the ambience root', async () => {
     const { files, served } = await packOf({ 'Cave.ogg': 'CAVE', 'Credits.md': 'CREDITS' });
     const fetch = serving(served);
-    const steps: number[] = [];
-    await installStarterPack(library, { files, fetch, onStep: (share) => steps.push(share) });
-    expect(fetch.mock.calls.map(([url]) => url)).toEqual(['https://assets.atlas-vtt.dev/starter/ambience-1/cave.ogg', 'https://assets.atlas-vtt.dev/starter/ambience-1/credits.md']);
+    const { progress, files: reported, total } = recordingProgress();
+    await installStarterPack(library, { files, fetch, progress });
+    expect(fetch.mock.calls.map(([url]) => url)).toEqual(['https://assets.atlas-vtt.dev/starter/ambience-2/cave.ogg', 'https://assets.atlas-vtt.dev/starter/ambience-2/credits.md']);
     expect(fs.readFileSync(inPack('Cave.ogg'), 'utf8')).toBe('CAVE');
     expect(fs.readFileSync(inPack('Credits.md'), 'utf8')).toBe('CREDITS');
     // Listed at once, so its copies can be made before the first press.
     expect(library.filesOf('ambience').map(({ entry }) => entry.path)).toContain(`${STARTER_FOLDER}/Cave.ogg`);
-    expect(steps[0]).toBe(0);
-    expect(steps.at(-1)).toBe(1);
+    expect(total()).toEqual({ bytes: files.reduce((sum, file) => sum + file.bytes, 0), files: 2 });
+    expect(reported).toEqual(files.map((file) => ({ bytes: file.bytes, fetched: true })));
+  });
+
+  it('writes nothing once cancelled, though some of its files came', async () => {
+    const { files, served } = await packOf({ 'Cave.ogg': 'CAVE', 'Campfire.ogg': 'FIRE', 'Credits.md': 'CREDITS' });
+    const recording = recordingProgress((count) => { if (count === 1) recording.controller.abort(); });
+    const fetch = serving(served);
+    await expect(installStarterPack(library, { files, fetch, progress: recording.progress })).rejects.toThrow();
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fs.existsSync(path.join(ambience(), STARTER_FOLDER))).toBe(false);
   });
 
   it('writes nothing when a file is not the one it names, or cannot be fetched', async () => {

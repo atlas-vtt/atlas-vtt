@@ -9,4 +9,5 @@ export const cover: Translation = {
   'cover.upload': 'Importer une image',
   'cover.uploadHint': 'Utiliser votre propre image comme couverture',
   'cover.uploaded': 'Image importée',
+  'cover.unreadable': '{name} n’est pas une image qu’Atlas sait lire. Choisissez un autre fichier.',
 };

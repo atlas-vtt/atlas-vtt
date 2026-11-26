@@ -53,6 +53,10 @@ import { experimentalSettingsSection } from './src/app/settings/experimentalSett
 import { mapsSettingsSection } from './src/app/settings/mapsSettingsSection';
 import { mapImageCacheSettingsSection } from './src/app/settings/mapImageCacheSettingsSection';
 import { registerDiceLookSync } from './src/app/plugin/diceLookSync';
+import { registerLookSync } from './src/app/appearance/atlasLook';
+import { LookService } from './src/app/appearance/lookService';
+import { registerAtlasApi } from './src/app/api/atlasApi';
+import type { AtlasApi } from './src/app/api/apiTypes';
 import { registerAccentColorSync } from './src/app/plugin/accentColorSync';
 import { applyDiceBudgets, registerDiceStageRelease } from './src/app/plugin/diceStageRelease';
 import { registerForegroundWork } from './src/app/plugin/foregroundWork';
@@ -65,7 +69,8 @@ import { EXTENSION_ATLASMAP } from './src/app/utils/sceneFiles';
 import { registerColorSwatchIcons } from './src/app/plugin/colorSwatchIcons';
 import { HeaderAutocompleteSuggest } from './src/app/plugin/HeaderAutocompleteSuggest';
 import { registerAtlasLinks } from './src/app/links/registerAtlasLinks';
-import { openDashboard, registerCommands } from './src/app/plugin/registerCommands';
+import { registerCommands } from './src/app/plugin/registerCommands';
+import { startFirstRun } from './src/app/plugin/firstRun';
 import { registerArmarium } from './src/app/plugin/armarium';
 import { CampaignFiles } from './src/app/campaigns/CampaignFiles';
 import { CampaignBooks } from './src/app/campaigns/players/CampaignBooks';
@@ -81,9 +86,12 @@ import { recordCampaignPlay } from './src/app/campaigns/recordCampaignPlay';
 import { registerPartySync } from './src/app/plugin/partySync';
 import { registerPlayerTokens } from './src/app/plugin/playerTokens';
 import { registerSoundDirector } from './src/app/plugin/soundDirector';
+import { registerDownloads } from './src/app/plugin/downloads';
 import { SoundDirector } from './src/app/soundDirector/SoundDirector';
 import { SceneMoodLinks } from './src/app/soundLibrary/SceneMoodLinks';
 import { soundSettingsSection } from './src/app/settings/soundSettingsSection';
+import { soundRemoteSettingsSection } from './src/app/settings/soundRemoteSettingsSection';
+import { registerSoundRemote } from './src/app/plugin/soundRemote';
 import { registerOnlinePlay, type OnlinePlay } from './src/app/plugin/onlinePlay';
 import { registerAtlasAccount } from './src/app/plugin/atlasAccount';
 import { accountSettingsSection } from './src/app/account/accountSettingsSection';
@@ -100,11 +108,13 @@ import { registerObsidianSyncNotice } from './src/app/plugin/obsidianSyncNotice'
 import { registerVaultSync } from './src/app/plugin/vaultSync';
 import { ChangelogService } from './src/app/changelog/ChangelogService';
 import { registerUpdateWatch } from './src/app/updates/registerUpdateWatch';
+import { warnOfPartUpdate } from './src/app/updates/updateNotice';
 import { AtlasErrorLog } from './src/app/support/errorLog';
 import { IssueReporter } from './src/app/support/IssueReporter';
 import { TabletDiagnosticsModal } from './src/app/support/tablet/TabletDiagnosticsModal';
 import { runInBackground } from './src/app/utils/backgroundTask';
 import { TesseraDecoderClient } from './src/app/pixi/mosaicCanvas/TesseraDecoderClient';
+import { ScenePrebuildClient } from './src/app/pixi/lighting/prebuild/ScenePrebuildClient';
 import { MapProcessing } from './src/app/pixi/mosaicCanvas/mapProcessing';
 import { registerMapProcessingStatus } from './src/app/plugin/mapProcessingStatus';
 import { DungeonWorkerClient } from './src/app/dungeons/worker/DungeonWorkerClient';
@@ -121,6 +131,10 @@ import { registerLastInput } from './src/app/platform/lastInput';
 import { registerKeyboardViewport } from './src/app/platform/keyboardViewport';
 import { registerAudioUnlock } from './src/app/plugin/audioUnlock';
 import { registerUnsupportedDevice } from './src/app/plugin/unsupportedDevice';
+// Atlas' Mediaeval and Sci-fi looks (scoped to `body.atlas-look`) after every other stylesheet: CSS lands in
+// styles.css in import order, so where a look and a plugin rule are equally specific the look wins, as it did
+// when it was a theme loaded after the plugin's styles.
+import './styles/looks/atlas-looks.css';
 
 declare const __ATLAS_RELEASE_BUILD__: boolean;
 
@@ -134,6 +148,9 @@ export default class AtlasVTTPlugin extends Plugin {
   public globalAssetManager!: GlobalAssetManagerService;
   private imageDisplayService!: ImageDisplayService;
   private changelogService: ChangelogService | undefined;
+  private looks: LookService | undefined;
+  /** What other plugins may call (`src/app/api`), while Atlas runs. */
+  public api: AtlasApi | undefined;
 
   /** The scene presented to players on this device, whether or not the player window is open (read-only). */
   get presentedScene(): PresentedSceneSource {
@@ -223,6 +240,8 @@ export default class AtlasVTTPlugin extends Plugin {
     this.settingsService = new SettingsService(this.app, settingsReady, this);
     // Before the views too: every restored map view joins it, for its fights.
     const soundDirector = registerSoundDirector(this);
+    registerDownloads(this);
+    const soundRemote = registerSoundRemote(this, soundDirector);
 
     // Before the views: a restored map may start Atlas's first check of the vault,
     // whose folder renames reach map files only through these vault events.
@@ -260,6 +279,11 @@ export default class AtlasVTTPlugin extends Plugin {
     await this.settingsService.initialize();
     if (this.unloaded) return;
     registerDiceLookSync(this, this.settingsService);
+    const looks = LookService.forApp(this.app, this.settingsService);
+    this.looks = looks;
+    looks.reconcileAtStart();
+    registerLookSync(this, looks);
+    registerAtlasApi(this);
     this.registerStatblockPanels();
     const installed = await existingInstallation;
     if (this.unloaded) return;
@@ -282,6 +306,7 @@ export default class AtlasVTTPlugin extends Plugin {
       navigationSettingsSection(this.settingsService, FingerSettings.forApp(this.app), zoomButtonsRow(this.app)),
       diceSettingsSection(this.settingsService),
       soundSettingsSection(this.settingsService, soundDirector),
+      ...(isDesktopApp() ? [soundRemoteSettingsSection(soundRemote)] : []),
       mapsSettingsSection(this.settingsService),
       mapImageCacheSettingsSection(() => TesseraDecoderClient.forApp(this.app)),
       hotkeySettingsSection(this.settingsService),
@@ -309,9 +334,8 @@ export default class AtlasVTTPlugin extends Plugin {
       registerColorSwatchIcons();
       this.imageDisplayService.registerContextMenu();
       registerChromeVisibility(this);
-      this.changelogService?.showUpdates();
-      // A vault Atlas has never run in opens on the start page, whose tour takes it from there.
-      runInBackground(existingInstallation.then(async (existing) => { if (!existing && !this.unloaded) await openDashboard(this); }), 'Opening the start page');
+      warnOfPartUpdate(this.manifest.version);
+      runInBackground(existingInstallation.then((existing) => { if (!this.unloaded) startFirstRun(this, this.settingsService, existing, () => this.changelogService?.showUpdates()); }), 'Welcoming the GM');
       runInBackground(addStarterTokens(this.app, AssetService.getInstance(this.app), this.settingsService), 'Adding the starter tokens');
       runInBackground(this.carryOverTokenBars(), 'Carrying over the token bar settings');
       runInBackground(migrateLegacySnapshots(this.app, AssetService.getInstance(this.app)), 'Moving scene snapshots into their collections');
@@ -351,6 +375,9 @@ export default class AtlasVTTPlugin extends Plugin {
     if (this.unsupported) return;
     this.changelogService?.destroy();
     void this.settingsService?.saveSettingsNow();
+    // Disabling Atlas gives the GM their theme back; a reload or an update keeps the look.
+    this.looks?.restoreOnDisable(this.manifest.id);
+    LookService.release(this.app);
     SystemPresetFiles.release(this.app);
     PlayedRules.release(this.app);
     CampaignBooks.release(this.app);
@@ -378,6 +405,7 @@ export default class AtlasVTTPlugin extends Plugin {
     TemplateLibrary.release(this.app);
     MapProcessing.release(this.app);
     TesseraDecoderClient.release(this.app);
+    ScenePrebuildClient.release(this.app);
     DungeonWorkerClient.release(this.app);
     MosaicCanvasService.release(this.app);
     disposeImageProcessing();

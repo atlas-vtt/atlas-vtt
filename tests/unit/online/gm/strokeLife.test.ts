@@ -5,7 +5,6 @@ import type { SceneState, SceneStore } from '../../../../src/app/online/gm/atlas
 import { MAX_LIVE_PEN_POINTS, PlayerStrokes, STROKE_SILENCE_MS } from '../../../../src/app/online/gm/playerStrokes.ts';
 import { clearDrawnBy } from '../../../../src/app/online/gm/playerDrawingsClear.ts';
 import type { SeatSource } from '../../../../src/app/online/gm/seatSource.ts';
-import { TOKEN_POLL_MS } from '../../../../src/app/online/gm/TokenShare.ts';
 import {
   MARKS_INTERVAL_MS, MAX_PLAYER_SEE_THROUGH_POINTS, MAX_PLAYER_STROKE_POINTS, parsePlayerMessage,
   type DrawLook, type GmMessage, type MarksMessage, type PlayerStroke, type SharedStroke,
@@ -32,11 +31,12 @@ const strokes = (table: ShareHarness): readonly SharedStroke[] => lastMarks(tabl
 async function started(): Promise<ShareHarness> {
   const state = sceneState({ grid: GRID });
   const table = shareHarness(state, IMAGES, SEATS);
+  table.pages.join(ANA, BEN);
   table.settings = DRAWING;
   table.layers = fakeLayers({ state: () => table.state(), source: GENERIC_SOURCE, bounds: { width: 2000, height: 2000 }, grid: () => null, collections: null });
   table.share.start();
   await table.set(state);
-  await table.advance(TOKEN_POLL_MS);
+  await table.advance(1000);
   return table;
 }
 
@@ -65,7 +65,7 @@ describe('how long a drawing a player is making is shown', () => {
     }
     expect(strokes(table)).toHaveLength(1);
     // Then nothing more: no word that it was dropped, no request to make it.
-    await table.advance(STROKE_SILENCE_MS + 2 * TOKEN_POLL_MS);
+    await table.advance(STROKE_SILENCE_MS + 2000);
     expect(strokes(table)).toEqual([]);
   });
 
@@ -76,7 +76,7 @@ describe('how long a drawing a player is making is shown', () => {
     await table.advance(MARKS_INTERVAL_MS);
     expect(strokes(table)).toHaveLength(2);
     table.settings = { ...DRAWING, playersDraw: false };
-    await table.advance(TOKEN_POLL_MS + MARKS_INTERVAL_MS);
+    await table.advance(1000 + MARKS_INTERVAL_MS);
     expect(strokes(table)).toEqual([]);
   });
 
@@ -97,7 +97,7 @@ describe('how long a drawing a player is making is shown', () => {
     await table.advance(MARKS_INTERVAL_MS);
     expect(strokes(table).map(({ who }) => who)).toEqual([BEN]);
     // Ben takes his own drawing off the map: what he is drawing stays.
-    const mine = ofKind(table.sent, 'draw-mine').filter(({ to }) => to === BEN).at(-1)?.body.drawings[0]?.id ?? '';
+    const mine = table.pages.of(BEN).last('draw-mine')?.drawings[0]?.id ?? '';
     table.share.receive(BEN, { t: 'draw-remove', scene, n: next(), ids: [mine] });
     await table.advance(MARKS_INTERVAL_MS);
     expect(Object.values(table.state().objects.drawings)).toHaveLength(0);

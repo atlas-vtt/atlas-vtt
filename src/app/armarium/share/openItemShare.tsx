@@ -8,17 +8,17 @@ import { showHostedDialog } from '../../statblocks/editor/hostedDialog';
 import { showNotice } from '../../ui/notice';
 import type { ContextMenuEntry } from '../../react/components/context-menu/AtlasContextMenu';
 import { createItemShareSession } from '../upload/createShareSession';
-import type { ItemShareSession } from '../upload/ItemShareSession';
+import type { AnyShareSession } from '../upload/anyShareSession';
 import type { SharedItem } from '../upload/shareState';
 import { ArmariumShareLayer } from './ArmariumShareLayer';
 import { ItemSharePicker } from './ItemSharePicker';
 import { leaveShare } from './leaveShare';
 
 /** The class of a hosted share's container: Atlas' scope, whose styles the share's dialogs take. */
-const HOST_CLASS = 'atlas-vtt-plugin atlas-share-host';
+export const HOST_CLASS = 'atlas-vtt-plugin atlas-share-host';
 
-/** The share of one item over whatever is open; a host that goes without Close (its window closed) leaves it as Close does. */
-function HostedShare({ app, session, onClose }: { app: App; session: ItemShareSession; onClose: () => void }): React.JSX.Element {
+/** A share over whatever is open; a host that goes without Close (its window closed) leaves it as Close does. */
+export function HostedShare({ app, session, onClose }: { app: App; session: AnyShareSession; onClose: () => void }): React.JSX.Element {
   const closed = useRef(false);
   useEffect(() => () => {
     if (!closed.current) void leaveShare(session);

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { Container, Graphics, Sprite, Texture, TextureSource } from 'pixi.js';
+import { Container, Sprite, Texture, TextureSource } from 'pixi.js';
 import { syncTokenArtwork } from '../../src/app/pixi/token-renderer/tokenArtwork';
 import { getTokenRingOuterDiameter, tokenArtBox } from '../../src/app/pixi/token-renderer/tokenRingMetrics';
 import { computeTokenPixelSize, computeTokenStrokeWidth } from '../../src/app/pixi/token-renderer/tokenSizing';
@@ -23,9 +23,7 @@ function tokenGroup(showRing: boolean, gridSize: number, size: number, texture: 
   }) as TokenGroupContainer;
   const art = new Sprite(texture);
   art.label = 'tokenSprite';
-  const mask = new Graphics();
-  mask.label = 'tokenArtMask';
-  group.addChild(mask, art);
+  group.addChild(art);
   syncTokenArtwork(group, tokenSize);
   return { group, art };
 }
@@ -55,7 +53,7 @@ describe('token art size with and without a ring', () => {
 
   it('draws the tokens of a level below at the same size as the map: framed in their circle, unframed whole', async () => {
     const texture = artOf(200, 100);
-    const shared = { acquire: (): Promise<Texture> => Promise.resolve(texture), release: (): void => {}, destroyAll: (): void => {} };
+    const shared = { acquire: (): Promise<Texture> => Promise.resolve(texture), release: (): void => {} };
     let loaded = 0;
     const below = new BelowTokens(shared, () => { loaded++; });
     const token = (id: string, showRing: boolean): TokenEntity => ({ id, x: 0, y: 0, size: 1, imagePath: `${id}.png`, showRing } as TokenEntity);

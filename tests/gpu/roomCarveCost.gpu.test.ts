@@ -48,7 +48,7 @@ describe('the cost of a carve on a cave of 3,500 walls', () => {
     store.getState().setActiveTool('wall');
     store.getState().editWalls([], cave(7, 3500, MAP, carvedWalls, floorOf).map(({ id: _id, kind: _kind, ...wall }) => wall));
     const random = seeded(5);
-    for (let lamp = 0; lamp < 6; lamp++) store.getState().addLight({ x: random() * MAP, y: random() * MAP, emission: TORCH });
+    for (let lamp = 0; lamp < 6; lamp++) store.getState().addObject('lights', { x: random() * MAP, y: random() * MAP, emission: TORCH });
     store.setState((state) => ({ objects: { ...state.objects, tokens: { hero: HERO } } }));
     store.getState().setSceneLighting({ enabled: true, ambient: 0.3 });
 
@@ -129,8 +129,8 @@ describe('the cost of a carve on a cave of 3,500 walls', () => {
     const edit = carvedBefore(area, walls, floorBefore(walls), 'before');
     const worked = performance.now() - started;
     runHistoryTransaction(store, () => {
-      if (edit.remove.length > 0) store.getState().deleteWalls(edit.remove);
-      for (const wall of edit.add) store.getState().addWall(wall);
+      if (edit.remove.length > 0) store.getState().removeObjects(edit.remove);
+      for (const wall of edit.add) store.getState().addObject('walls', wall);
     });
     const written = performance.now() - started - worked;
     floorBefore(wallList(levelObjects(store.getState()).walls));

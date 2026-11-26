@@ -1,8 +1,8 @@
-import type { GmMessage, PlayerDrag, PlayerDragCancel, PlayerMove } from '../protocol/index.ts';
+import type { GmMessage, MoveRefusedReason, PlayerDrag, PlayerDragCancel, PlayerMove } from '../protocol/index.ts';
 import { placeTokens, type PlacedTokensState } from '../../stores/tokenStacking';
 import { countTurnMoveIn, type TurnMovesDraft } from '../../stores/turnMovesSlice';
 import type { ViewState } from '../../types/viewState';
-import { checkMove, dropPlace, insideMap, MoveRate, samePlace, type MoveContext } from './moveCheck.ts';
+import { checkMove, dropPlace, insideMap, MoveRate, refusalReason, samePlace, type MoveContext } from './moveCheck.ts';
 import { PlayerDrags } from './playerDrags.ts';
 import { mapTokens } from '../../tokens/offMap';
 
@@ -13,12 +13,11 @@ export interface MoveStore {
   getState(): MoveState;
   /** A write as the GM's own: Atlas's history records it as one undo step. */
   setState(recipe: (draft: MoveState) => void): void;
-  subscribe(listener: (state: MoveState) => void): () => void;
 }
 
 export interface PlayerMovePorts {
-  /** The shared scene, its list and owners, and the map's size, as they are now. */
-  context(): Omit<MoveContext, 'tokens'>;
+  /** The shared scene, the token list of the picture player `from` sees, the owners and the map's size, as they are now. */
+  context(from: string): Omit<MoveContext, 'tokens'>;
   send(body: GmMessage, to: string): void;
   now(): number;
   setTimer(run: () => void, ms: number): number;
@@ -51,19 +50,17 @@ export class PlayerMoves {
   private readonly waiting = new Map<string, Waiting>();
   private readonly drags: PlayerDrags;
   private timer: number | undefined;
-  private unsubscribe: (() => void) | null = null;
 
   constructor(store: MoveStore, ports: PlayerMovePorts) {
     this.store = store;
     this.ports = ports;
-    this.drags = new PlayerDrags(store, { ...ports, context: (state) => this.context(state) });
+    this.drags = new PlayerDrags(store, { ...ports, context: (state, from) => this.context(state, from) });
   }
 
-  start(): void {
-    this.unsubscribe ??= this.store.subscribe((state) => {
-      this.drags.storeChanged(state);
-      if (this.waiting.size > 0 && !this.drags.gmHolds(state)) this.schedule();
-    });
+  /** The store changed: drags the GM's own hold took over end, and moves held for the GM's drag are taken once it closed. */
+  storeChanged(state: MoveState): void {
+    this.drags.storeChanged(state);
+    if (this.waiting.size > 0 && !this.drags.gmHolds(state)) this.schedule();
   }
 
   /** A drag message: the token follows the player's pointer on the GM's map. */
@@ -98,8 +95,6 @@ export class PlayerMoves {
 
   stop(): void {
     this.drags.stop();
-    this.unsubscribe?.();
-    this.unsubscribe = null;
     if (this.timer !== undefined) this.ports.clearTimer(this.timer);
     this.timer = undefined;
     this.waiting.clear();
@@ -109,10 +104,10 @@ export class PlayerMoves {
     const state = this.store.getState();
     if (!this.rate.take(from, this.ports.now()) || !state.mapLoaded || state.isMapLoading) return this.refuse(from, move);
     const dropped = this.drags.drop(from, move);
-    if (dropped === 'turn') return this.refuse(from, move, 'turn');
+    if (dropped === 'turn' || dropped === 'paused') return this.refuse(from, move, dropped);
     if (dropped !== null) return dropped !== false && samePlace(dropped, move) ? undefined : this.refuse(from, move);
-    const verdict = checkMove(from, move, this.context(state));
-    if (!verdict.ok) return this.refuse(from, move, verdict.reason === 'turn' ? 'turn' : undefined);
+    const verdict = checkMove(from, move, this.context(state, from));
+    if (!verdict.ok) return this.refuse(from, move, refusalReason(verdict));
     if (!this.drags.gmHolds(state)) return this.apply(from, verdict.tokenId, move);
     const earlier = this.waiting.get(verdict.tokenId);
     if (earlier !== undefined && earlier.from !== from) this.refuse(earlier.from, earlier.move);
@@ -136,10 +131,9 @@ export class PlayerMoves {
     this.waiting.clear();
     for (const { from, move, x, y } of waiting) {
       const now = this.store.getState();
-      const verdict = now.mapLoaded && !now.isMapLoading ? checkMove(from, move, this.context(now)) : null;
+      const verdict = now.mapLoaded && !now.isMapLoading ? checkMove(from, move, this.context(now, from)) : null;
       const token = verdict?.ok === true ? mapTokens(now.objects)[verdict.tokenId] : undefined;
-      if (verdict?.ok === false && verdict.reason === 'turn') this.refuse(from, move, 'turn');
-      else if (verdict?.ok !== true || token === undefined || token.x !== x || token.y !== y) this.refuse(from, move);
+      if (verdict?.ok !== true || token === undefined || token.x !== x || token.y !== y) this.refuse(from, move, verdict === null ? undefined : refusalReason(verdict));
       else this.apply(from, verdict.tokenId, move);
     }
   }
@@ -153,7 +147,7 @@ export class PlayerMoves {
   private apply(from: string, tokenId: string, move: PlayerMove): void {
     const state = this.store.getState();
     const token = mapTokens(state.objects)[tokenId];
-    const context = this.context(state);
+    const context = this.context(state, from);
     const at = token === undefined ? move : dropPlace(context, state, token, move);
     if (at === null) return this.refuse(from, move);
     const stopped = !samePlace(at, move);
@@ -168,19 +162,20 @@ export class PlayerMoves {
   }
 
   /**
-   * Tells the sender the move was not taken, with the token's place where the players see it, and
-   * `turn` where the token may move only on its turn; every other refusal names no reason.
+   * Tells the sender the move was not taken, with the token's place where their picture lists it, and
+   * `turn` where the token may move only on its turn and `paused` while the GM paused play; every
+   * other refusal names no reason.
    */
-  private refuse(from: string, move: PlayerMove, reason?: 'turn'): void {
+  private refuse(from: string, move: PlayerMove, reason?: MoveRefusedReason): void {
     const state = this.store.getState();
-    const context = this.context(state);
+    const context = this.context(state, from);
     const tokenId = context.scene === move.scene ? context.listedToken(move.id) : undefined;
     const token = tokenId === undefined ? undefined : mapTokens(state.objects)[tokenId];
     const seen = token !== undefined && token.isHidden !== true && insideMap(token.x, token.y, null);
     this.ports.send({ t: 'move-refused', scene: move.scene, id: move.id, x: seen ? token.x : null, y: seen ? token.y : null, ...(reason ? { reason } : {}) }, from);
   }
 
-  private context(state: MoveState): MoveContext {
-    return { ...this.ports.context(), tokens: mapTokens(state.objects) };
+  private context(state: MoveState, from: string): MoveContext {
+    return { ...this.ports.context(from), tokens: mapTokens(state.objects) };
   }
 }

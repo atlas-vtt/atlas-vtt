@@ -21,6 +21,9 @@ declare module 'obsidian' {
     /** Active theme name, empty for the default theme; the elements holding the theme's CSS and the enabled snippets'. */
     customCss?: {
       theme?: string;
+      /** Installed community themes, by name. */
+      themes?: Record<string, unknown>;
+      setTheme?(name: string): void;
       styleEl?: HTMLStyleElement | null;
       extraStyleEls?: HTMLStyleElement[];
     };
@@ -95,6 +98,15 @@ declare module 'obsidian' {
     dirty?: boolean;
     /** Whether a save of the view is being written to its file. */
     readonly saving?: boolean;
+  }
+
+  interface Vault {
+    /** A setting of the vault's `app.json` or `appearance.json` (`accentColor`: a hex colour, `''` for the theme's own). */
+    getConfig?(key: string): unknown;
+    /** Writes a setting and applies it as Obsidian's own settings do (`accentColor` recolours every window). */
+    setConfig?(key: string, value: unknown): void;
+    /** A setting changed: written by `setConfig` or read from its file after another device's sync. */
+    on(name: 'config-changed', callback: (key: string) => unknown, ctx?: unknown): EventRef;
   }
 
   interface WorkspaceLeaf {

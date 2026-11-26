@@ -53,6 +53,21 @@ describe('placing a floor by whole cells', () => {
     expect(movedFloorAlignment(scene, from, { x: 3.5, y: -2 }, true).alignment.offset).toEqual({ x: 143.5, y: 68 });
   });
 
+  it('stops a floor on a hex grid at the world\'s edge where it lies, never on the far side of where it was going', () => {
+    const from = { offset: { x: 0, y: 0 }, scale: 1, stretch: { x: 1, y: 1 } };
+    const row = 70 * Math.sqrt(3) / 2;
+    // Pointy-top hexes: a row up from the top edge stays; up and right goes right along the row.
+    const pointy = { levels: LEVELS, grid: { ...SQUARE, type: 'hex-vertical' as const } };
+    expect(movedFloorAlignment(pointy, from, { x: 0, y: -row }, false)).toEqual({ alignment: from, stopped: true });
+    expect(movedFloorAlignment(pointy, from, { x: 105, y: -row }, false)).toEqual({ alignment: { ...from, offset: { x: 70, y: 0 } }, stopped: true });
+    // Flat-top hexes: a column left from the left edge stays.
+    const flat = { levels: LEVELS, grid: { ...SQUARE, type: 'hex-horizontal' as const } };
+    expect(movedFloorAlignment(flat, from, { x: -row, y: 0 }, false)).toEqual({ alignment: from, stopped: true });
+    // A floor a row down moves up to the edge and no further.
+    const below = { ...from, offset: { x: 35, y: Math.round(row * 1e4) / 1e4 } };
+    expect(movedFloorAlignment(pointy, below, { x: -35, y: -3 * row }, false).alignment.offset).toEqual({ x: 0, y: 0 });
+  });
+
   it('places a floor against the one below it, else the one above', () => {
     expect(referenceFloor(LEVELS, 'ground')).toBe('cellar');
     expect(referenceFloor(LEVELS, 'cellar')).toBe('ground');

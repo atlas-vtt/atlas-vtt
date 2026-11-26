@@ -1,9 +1,8 @@
 import React, { useCallback, useState } from 'react';
-import { setRoll } from '../../../gameSystems/diceSets';
 import type { DicePreset } from '../../../types/dicePresetTypes';
 import { DieStill } from '../collection-settings/dice-lab/DieStill';
 import { useDieImages } from '../collection-settings/dice-lab/useDieImages';
-import { lookBonus } from './presetLook';
+import { presetFaceFormula } from './presetLook';
 import { presetFaceParts } from './presetFace';
 
 /** The height a designed roll's die is drawn at on its place, as the row's pencil dice are. */
@@ -18,8 +17,7 @@ export function PresetLookFace({ preset }: { preset: DicePreset & { look: NonNul
   const holder = useCallback((element: HTMLElement | null): void => setDoc(element?.ownerDocument ?? null), []);
   const first = preset.look.dice[0]!;
   const image = useDieImages([{ sides: first.sides, ...(first.colour && { colour: first.colour }) }], doc);
-  const bonus = lookBonus(preset);
-  const parts = presetFaceParts(`${setRoll(preset.look.dice)}${bonus === 0 ? '' : bonus > 0 ? `+${bonus}` : bonus}`);
+  const parts = presetFaceParts(presetFaceFormula(preset));
   return (
     <span ref={holder} className="atlas-preset-face" aria-hidden="true">
       <DieStill sides={first.sides} colour={first.colour} image={image({ sides: first.sides, ...(first.colour && { colour: first.colour }) })} height={STILL_HEIGHT} />

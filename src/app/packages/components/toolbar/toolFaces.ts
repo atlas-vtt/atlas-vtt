@@ -61,7 +61,7 @@ export function singleToolFace(tool: Tool, icon: ToolFace["icon"], label: string
 }
 
 export function lightingToolFace(activeTool: Tool): ToolFace {
-  return singleToolFace("wall", Lightbulb, "Lighting", activeTool)
+  return singleToolFace("wall", Lightbulb, t('toolbar.lighting'), activeTool)
 }
 
 /** Note pins, and the stairs that join a scene's levels: both lead somewhere else from a spot on the map. */

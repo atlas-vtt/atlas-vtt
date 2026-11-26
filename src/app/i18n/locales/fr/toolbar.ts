@@ -9,6 +9,7 @@ export const toolbar: Translation = {
   'toolbar.cone': 'Cône',
   'toolbar.fogEraser': 'Gomme de brouillard',
   'toolbar.fogTool': 'Outil de brouillard',
+  'toolbar.lighting': 'Éclairage',
   'toolbar.laser': 'Pointeur laser',
   'toolbar.lassoSelection': 'Sélection au lasso',
   'toolbar.peek': 'Maintenez pour voir ce que voient les joueurs',
@@ -25,7 +26,7 @@ export const toolbar: Translation = {
   'toolbar.notePin': 'Outil d\'épingle de note',
   'toolbar.pinOptions': 'Options des épingles',
   'toolbar.stairs': 'Escaliers',
-  'toolbar.stairsNeedLevels': 'Les escaliers relient les niveaux d\'une scène. Ajoutez d\'abord un niveau depuis la page Niveaux de la scène de la palette de commandes.',
+  'toolbar.stairsNeedLevels': 'Les escaliers demandent un deuxième niveau. Ajoutez-le dans Niveaux de la scène',
   'toolbar.rollDice': 'Plateau de dés',
   'toolbar.optionsOf': 'Options : {label}',
   'toolbar.moveSelect': 'Déplacer / sélectionner',
@@ -66,5 +67,4 @@ export const toolbar: Translation = {
   'toolbar.ranges': 'Portées',
   'toolbar.rangesTip': 'Cliquez sur un jeton ou un endroit pour voir ses portées',
   'toolbar.rangesNoRules': 'Ce système de jeu n\'a ni paliers de portée ni paliers de déplacement',
-  'toolbar.rangesNeedGmView': 'Passez en vue MJ ({key}) pour voir les portées',
 };

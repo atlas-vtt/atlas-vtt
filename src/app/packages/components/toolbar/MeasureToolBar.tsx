@@ -38,7 +38,7 @@ function MeasureBars({ playerView }: MeasureToolBarProps): React.ReactElement {
   const mode = useAtlasStore((state) => state.measureTool.mode)
   const setMeasureTool = useAtlasStore((state) => state.setMeasureTool)
   const unavailable = useUnavailableMeasureModes()
-  // Ranges shows the GM's own rings: the players' view has no such mode. Left where it can no longer be chosen, the tool takes its first mode.
+  // Ranges is the GM's to point with: the players' view has no such mode. Left where it can no longer be chosen, the tool takes its first mode.
   const rangesLeft = mode === 'ranges' && (playerView || unavailable(mode) !== null)
   useEffect(() => {
     if (rangesLeft) setMeasureTool({ mode: DEFAULT_MEASURE_TOOL.mode })

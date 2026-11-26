@@ -6,6 +6,7 @@ import { useAtlasStore } from '../react/ViewStoreContext';
 import type { SettingsService } from '../services/SettingsService';
 import { t, tPointer } from '../i18n';
 import { isOnScreen, useWatched } from './useWatched';
+import { shouldWelcome } from './WelcomeWizard';
 
 /** Online play's controls, added to the map by its own code once a table can be started or is running. */
 const ONLINE_DOCK = '.atlas-online-dock';
@@ -17,9 +18,9 @@ interface MapToursProps {
 }
 
 /**
- * The GM's first-run tours of a map view: the map itself the first time a scene is loaded, then
- * online play's dock and table log the first time each appears. One at a time, only while the view
- * is on screen and nothing of its own stands over the map.
+ * The GM's first-run tours of a map view, once the welcome wizard is done: the map itself the first time a scene is
+ * loaded, then online play's dock and table log the first time each appears. One at a time, only while the view is on
+ * screen and nothing of its own stands over the map.
  */
 export function MapTours({ root, settings: explicit }: MapToursProps): React.JSX.Element | null {
   const settings = useAtlasSettings(explicit);
@@ -29,7 +30,20 @@ export function MapTours({ root, settings: explicit }: MapToursProps): React.JSX
   const shown = useWatched(root, isOnScreen);
   const hasDock = useWatched(root, hasDockIn);
   const hasLog = useWatched(root, hasLogIn);
-  if (!settings || busy || !shown) return null;
+  if (!settings || busy || !shown || shouldWelcome(settings)) return null;
+  return <MapTour settings={settings} root={root} keyLabel={key} hasDock={hasDock} hasLog={hasLog} />;
+}
+
+interface MapTourProps {
+  settings: SettingsService;
+  root: HTMLElement | null;
+  keyLabel: (id: MapHotkeyId) => string;
+  hasDock: boolean;
+  hasLog: boolean;
+}
+
+/** The first of the map's tours this GM has not taken yet, if any. */
+function MapTour({ settings, root, keyLabel: key, hasDock, hasLog }: MapTourProps): React.JSX.Element | null {
   if (settings.shouldShowTutorial('map')) {
     const trackpad = settings.getNavigationSettings().inputMode === 'trackpad';
     return <Tutorial settings={settings} id="map" root={root} label={t('tour.map.label')} steps={mapSteps(key, trackpad)} />;

@@ -219,6 +219,6 @@ describe('importing a collection\'s dice sets', () => {
     await importInto(fan, await withoutDiceSets(await release(await creatorVault({ diceSetId: 'duality' }))));
     expect(setPaths(fan)).toEqual([]);
     expect(await setIdOf(fan)).toBe('duality');
-    expect((await rolledBy(fan)).id).toBe('builtin:d20');
+    expect((await rolledBy(fan)).id).toBe('builtin:d20-plain');
   });
 });

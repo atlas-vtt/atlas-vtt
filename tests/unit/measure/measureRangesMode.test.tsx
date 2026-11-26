@@ -75,14 +75,12 @@ describe('the Ranges mode in the measure tool\'s bar', () => {
     expect(store.getState().measureTool.mode).toBe('ruler');
   });
 
-  it('takes no choice in the session view, and the tool leaves it there for its first mode', async () => {
+  it('can be chosen in the session view, where players see its rings as they see a measurement', () => {
     const store = renderBar(BANDED, NO_MOVEMENT_RULES);
-    fireEvent.click(ranges());
     act(() => { store.setState({ isGMView: false }); });
-    expect(inert()).toBe(true);
-    await waitFor(() => expect(store.getState().measureTool.mode).toBe('ruler'));
-    act(() => { store.setState({ isGMView: true }); });
     expect(inert()).toBe(false);
+    fireEvent.click(ranges());
+    expect(store.getState().measureTool.mode).toBe('ranges');
   });
 
   it('is not offered in the players\' view, which leaves it when it is the tool\'s mode', async () => {

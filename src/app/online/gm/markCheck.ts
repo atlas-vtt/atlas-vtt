@@ -57,7 +57,8 @@ export function checkLaser(message: PlayerLaser, context: MarkContext): LaserSta
 const measureNearMap = (measure: SharedMeasure, map: MapSize | null): boolean => nearMap(measure.a, map) && nearMap(measure.b, map);
 
 /** Whether every point of a measurement told in full is near the map. */
-function fullNearMap({ pts }: FullMeasure, map: MapSize | null): boolean {
+/** Whether every point of a measurement told in full is near the map (`nearMap`). */
+export function fullNearMap({ pts }: FullMeasure, map: MapSize | null): boolean {
   for (let index = 0; index + 1 < pts.length; index += 2) {
     if (!nearMap([pts[index] ?? Number.NaN, pts[index + 1] ?? Number.NaN], map)) return false;
   }

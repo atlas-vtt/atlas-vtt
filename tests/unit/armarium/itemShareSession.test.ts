@@ -127,6 +127,20 @@ describe('sharing a single Atlas file in the Armarium', () => {
     expect(pack).toHaveBeenCalledTimes(2);
   });
 
+  it('goes back from a packing that failed to the item step, where the cover can be changed', async () => {
+    const { session, pack } = setup();
+    pack.mockRejectedValueOnce(new Error('The source image cannot be decoded.'));
+    await toItemStep(session);
+    session.confirmItem();
+    await vi.waitFor(() => expect(session.snapshot().refusal?.code).toBe('export-failed'));
+    session.backFromPacking();
+    expect(session.snapshot()).toMatchObject({ step: 'bundle', refusal: null, packing: null });
+    session.setCover(null);
+    session.confirmItem();
+    await vi.waitFor(() => expect(session.snapshot().step).toBe('listing'));
+    expect(pack).toHaveBeenCalledTimes(2);
+  });
+
   it('packs the cover chosen on the item step: an uploaded image, or none', async () => {
     const { session, pack } = setup();
     await toItemStep(session);

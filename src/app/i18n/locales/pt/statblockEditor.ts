@@ -7,7 +7,6 @@ export const statblockEditor: Translation = {
   'statblockEditor.aliases': 'Apelidos',
   'statblockEditor.allTemplates': 'Todos os modelos',
   'statblockEditor.apply': 'Aplicar',
-  'statblockEditor.autoLayout': 'Mostrada com o layout de campos do Atlas',
   'statblockEditor.beingSaved': 'O modelo está sendo salvo.',
   'statblockEditor.blank': 'Em branco',
   'statblockEditor.builtInDetail': 'Embutido',

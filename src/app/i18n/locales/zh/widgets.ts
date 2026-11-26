@@ -20,6 +20,7 @@ export const widgets: Translation = {
   'widgets.showAll': '显示全部小组件',
   'widgets.showCount': '显示计数',
   'widgets.showCountHint': '在时钟中心显示已填的格数',
+  'widgets.reorder': '拖动以排序',
   'widgets.segments': '格数',
   'widgets.showInitiative': '显示先攻追踪',
   'widgets.showToPlayers': '向玩家显示',

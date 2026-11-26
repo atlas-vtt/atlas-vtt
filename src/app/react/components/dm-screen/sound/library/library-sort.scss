@@ -1,0 +1,138 @@
+@use '../../../../../../../styles/tokens' as *;
+@use '../../../../../../../styles/mixins' as *;
+
+// ---- The heads over the rows ----
+
+// The rows' own grid (`library-rows.scss`, `library-narrow.scss`), so each head stands over its column at every
+// width. It stays over the rows as they scroll by, on the pane's own colour.
+.atlas-sound-lib__colheads {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  height: 28px;
+  background: var(--background-primary);
+  box-shadow: 0 1px 0 var(--atlas-sound-lib-hairline);
+  color: var(--atlas-sound-muted);
+  font-size: $font-ui-smaller;
+
+  @media (pointer: coarse) {
+    height: 44px;
+  }
+}
+
+.atlas-sound-lib__colhead {
+  display: flex;
+  min-width: 0;
+}
+
+.atlas-sound-lib__colhead--name {
+  grid-column: 2;
+}
+
+// Over the state and the length: a long word in another language has room, and still ends where the lengths end.
+// Narrow, those columns take what they hold (`library-narrow.scss`): the head keeps its whole word, the name's column gives.
+.atlas-sound-lib__colhead--length {
+  grid-column: 3 / 5;
+  min-width: auto;
+  justify-content: flex-end;
+  padding-inline-end: $spacing-l;
+}
+
+// The word sits where its column's text sits: the press area reaches past it by its own padding.
+.atlas-sound-lib .atlas-sound-lib__sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  max-width: 100%;
+  height: 22px;
+  padding: 0 $spacing-xs;
+  overflow: hidden;
+  border-radius: $radius-s;
+  font-weight: $font-weight-medium;
+  transition: color 100ms var(--atlas-sound-lib-press), background-color 100ms var(--atlas-sound-lib-press);
+
+  &:hover {
+    background: var(--atlas-sound-lib-hairline);
+    color: var(--text-normal);
+  }
+
+  &[data-active] {
+    color: var(--text-normal);
+  }
+
+  @media (pointer: coarse) {
+    height: 44px;
+  }
+}
+
+// A word longer than its column (a narrow list in a long language) ends in an ellipsis; the mark stays.
+.atlas-sound-lib__sort-word {
+  @include atlas-truncate;
+  min-width: 0;
+}
+
+.atlas-sound-lib__colhead--name .atlas-sound-lib__sort {
+  margin-inline-start: -$spacing-xs;
+}
+
+.atlas-sound-lib__colhead--length .atlas-sound-lib__sort {
+  flex-shrink: 0;
+  max-width: none;
+  margin-inline-end: -$spacing-xs;
+}
+
+// Its whole word counts in the columns' sizes: cut, it would let the name's column take its room.
+.atlas-sound-lib__colhead--length .atlas-sound-lib__sort-word {
+  min-width: auto;
+  overflow: visible;
+}
+
+// On every head, seen only on the sorted one: a press moves no word. Pointed at, the others show what a press would do.
+.atlas-sound-lib__sort-mark {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  opacity: 0;
+  transition: opacity 100ms var(--atlas-sound-lib-press);
+}
+
+.atlas-sound-lib__sort:hover .atlas-sound-lib__sort-mark {
+  opacity: 0.5;
+}
+
+.atlas-sound-lib__sort[data-active] .atlas-sound-lib__sort-mark {
+  opacity: 1;
+}
+
+// The lengths coming in, in the mark's place: it fills from the top, clockwise.
+.atlas-sound-lib__sort-ring {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  transform: rotate(-90deg);
+  fill: none;
+  stroke-width: 1.5;
+}
+
+.atlas-sound-lib__sort-ring-track {
+  stroke: var(--atlas-sound-lib-hairline);
+}
+
+.atlas-sound-lib__sort-ring-fill {
+  stroke: var(--atlas-sound-muted);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 150ms var(--atlas-sound-lib-press);
+}
+
+@container atlas-sound-lib-main (max-width: 620px) {
+  .atlas-sound-lib__colhead--length {
+    padding-inline-end: $spacing-xs;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-sound-lib__sort-ring-fill {
+    transition: none;
+  }
+}

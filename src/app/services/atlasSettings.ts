@@ -12,6 +12,7 @@ import type { SharedSoundRoots } from '../soundLibrary/soundRootsStore';
 import { DEFAULT_TABLE_TV_SETTINGS, readTableTvSettings, type TableTvSettings } from './tableTvSettings';
 import { DEFAULT_FOG_EDGE, type FogEdge } from '../fog/fogEdge';
 import { DEFAULT_DRAG_DISTANCE, type DragDistance } from '../measure/dragDistance';
+import { isRecord } from '../utils/guards';
 
 /**
  * How wheel events drive the map viewport.
@@ -25,7 +26,7 @@ export interface NavigationSettings {
 }
 
 /** Every tutorial Atlas has; the settings list those the user finished or skipped. */
-export const TUTORIAL_IDS = ['dashboard', 'map', 'online', 'tableLog', 'assets', 'palette', 'tokenStatblocks', 'lootSettings', 'lootRoller', 'lootResults', 'savedRolls'] as const;
+export const TUTORIAL_IDS = ['welcome', 'dashboard', 'map', 'online', 'tableLog', 'assets', 'palette', 'tokenStatblocks', 'lootSettings', 'lootRoller', 'lootResults', 'savedRolls'] as const;
 export type TutorialId = typeof TUTORIAL_IDS[number];
 
 export interface AtlasSettings {
@@ -43,6 +44,11 @@ export interface AtlasSettings {
    * collection's folder. Absent while none is hidden. Read with `isStarterOfferHidden`.
    */
   hiddenStarterOffers?: readonly string[] | undefined;
+  /**
+   * Ids of the Sound page's download offers the GM dismissed (`starter-ambience`, `starter-music`; ids never
+   * change). Absent while none is. Read with `isSoundOfferHidden`; the root's ⋯ menu still offers them.
+   */
+  hiddenSoundOffers?: readonly string[] | undefined;
   /** A fact about this device, kept in its local storage and never in the plugin's data (`deviceSettings.ts`). */
   navigation: NavigationSettings;
   laserPointer: LaserPointerSettings;
@@ -60,7 +66,7 @@ export interface AtlasSettings {
   fogEdge: FogEdge;
   /** When a dragged token shows how far it has moved: always, only while a fight runs, or never. Read with `getDragDistance`. */
   dragDistance: DragDistance;
-  /** Colour of the dice: card stock, dark or the accent colour. Read with `getDiceLook`. */
+  /** Colour of the dice: card stock, dark, the accent colour or a colour of the Appearance page. Read with `getDiceLook`. */
   diceColour: DiceColour;
   /** Face of the dice numerals and roll totals. Read with `getDiceLook`. */
   diceFont: DiceFont;
@@ -108,6 +114,10 @@ export interface AtlasSettings {
     initiativeMaxCards: number;
     /** Online play: players draw and write on the shared map with a Draw tool of their own. */
     playersDraw: boolean;
+    /** Online play: players at a closed door may ask the GM to open it. */
+    playersOpenDoors: boolean;
+    /** Online play: every player sees through every player character's vision; off, each through their own characters' alone. */
+    sharedVision: boolean;
   };
   /** The player view on a TV lying on the table (TrueScale). Read with `getTableTvSettings`. */
   tableTv: TableTvSettings;
@@ -155,6 +165,8 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
     turnDim: false,
     initiativeMaxCards: 0,
     playersDraw: false,
+    playersOpenDoors: false,
+    sharedVision: false,
   },
   tableTv: DEFAULT_TABLE_TV_SETTINGS,
 };
@@ -164,10 +176,6 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
  * is the device's (local storage), the user's game system presets are vault files.
  */
 const NOT_PREFERENCES = ['navigation', 'systemPresets'] as const;
-
-export function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
 
 /** `target` with `source`'s values on top, records merged key by key; keys only `source` has are kept. */
 function deepMerge<T extends object>(target: T, source: Partial<T>): T {
@@ -203,15 +211,16 @@ export function readStoredSettings(stored: unknown, inputMode: NavigationInputMo
       experimental: isRecord(record.experimental) ? merged.experimental : {},
       toolbar: readToolbarLayout(record.toolbar),
       tableTv: readTableTvSettings(record.tableTv),
-      hiddenStarterOffers: readUidList(record.hiddenStarterOffers),
+      hiddenStarterOffers: readIdList(record.hiddenStarterOffers),
+      hiddenSoundOffers: readIdList(record.hiddenSoundOffers),
     },
     // Never rewritten on reading: the settings are shared with devices that may run another version.
     foreignHotkeys: keptHotkeys(record.hotkeys),
   };
 }
 
-/** A list of collection uids as stored; anything else reads as none. */
-function readUidList(value: unknown): readonly string[] | undefined {
+/** A list of ids as stored (collection uids, offer ids); anything else reads as none. */
+function readIdList(value: unknown): readonly string[] | undefined {
   if (!Array.isArray(value)) return undefined;
   const uids = value.filter((uid): uid is string => typeof uid === 'string' && uid !== '');
   return uids.length > 0 ? [...new Set(uids)] : undefined;

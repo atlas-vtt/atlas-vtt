@@ -20,6 +20,8 @@ export const dungeon: Translation = {
 
   'dungeon.preview.label': 'Предпросмотр подземелья',
   'dungeon.preview.failed': 'Не удалось нарисовать предпросмотр.',
+  'dungeon.preview.cardsFailed': 'Не удалось нарисовать некоторые изображения.',
+  'dungeon.preview.retry': 'Попробовать снова',
   'dungeon.preview.floor': 'Показан этаж',
 
   'dungeon.name': 'Название',

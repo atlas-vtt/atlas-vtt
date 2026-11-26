@@ -72,10 +72,14 @@ describe('a wall chain under fingers', () => {
   async function withWalls(): Promise<{ m: TouchMap; walls: () => { p1: Point; p2: Point }[]; done: () => void }> {
     const m = await map();
     const controller = new LightingController({
-      viewport: m.viewport, app: m.app, store: m.store, eventBus: new EventEmitter(), obsApp: m.obsidian, viewId: 'touch-shapes',
+      viewport: m.viewport, app: m.app, store: m.store, eventBus: new EventEmitter(), obsApp: m.obsidian, viewId: 'touch-shapes', audience: m.audience,
       bounds: () => ({ x: 0, y: 0, width: VIEW.width, height: VIEW.height }), albedo: () => null,
     });
     controller.wire(m.tokens);
+    const { lights, walls, doors } = controller.pointerLayers();
+    m.pointer.attach('lights', lights);
+    m.pointer.attach('walls', walls);
+    m.pointer.attach('doors', doors);
     m.taps.lighting = () => controller.tapPlacing();
     m.store.getState().setActiveTool('wall');
     m.store.getState().setLightingTool({ mode: 'draw', drawMode: 'point-to-point' });
@@ -140,7 +144,7 @@ describe('the fog tool\'s polygon under fingers', () => {
     const shown: FogOperation[] = [];
     const layer = m.viewport.addChild(new Container());
     const gesture = new FogGesture({
-      layer, viewport: m.viewport, canvas: () => m.canvas, store: m.store,
+      layer, viewport: m.viewport, canvas: () => m.canvas, store: m.store, showsPlayers: () => m.audience.showsPlayers(),
       host: { showStroke: (stroke) => { if (stroke) shown.push(stroke); }, showCommitted: () => undefined },
     });
     const stop = m.store.subscribe((state, previous) => {

@@ -61,10 +61,13 @@ describe('a pin under a finger and under a mouse', () => {
     const pins = new PinRenderer(m.viewport, new EventEmitter(), m.store);
     pins.setMapSize(() => ({ width: 300, height: 300 }));
     const pressed: string[] = [];
-    m.tokens.setPinHitTestProvider((x, y) => pins.hitTestPins(x, y));
-    m.tokens.setPinClickHandler((pinId: string, e: FederatedPointerEvent) => {
-      pressed.push(pinId);
-      pins.handleViewportPinPointerDown(pinId, e);
+    m.pointer.attach('pins', {
+      hitTest: (x, y) => pins.hitTestPins(x, y),
+      press: (pinId: string, e: FederatedPointerEvent) => {
+        pressed.push(pinId);
+        pins.handleViewportPinPointerDown(pinId, e);
+      },
+      hover: () => undefined,
     });
     const pinId = m.store.getState().addNotePin(PIN.x, PIN.y, 'note.md');
     await frame();
@@ -96,8 +99,7 @@ describe('a pin under a finger and under a mouse', () => {
     const pins = new PinRenderer(m.viewport, new EventEmitter(), m.store);
     pins.setMapSize(() => ({ width: 300, height: 300 }));
     const pressed: string[] = [];
-    m.tokens.setPinHitTestProvider((x, y) => pins.hitTestPins(x, y));
-    m.tokens.setPinClickHandler((pinId: string) => { pressed.push(pinId); });
+    m.pointer.attach('pins', { hitTest: (x, y) => pins.hitTestPins(x, y), press: (pinId: string) => { pressed.push(pinId); }, hover: () => undefined });
     // The token's edge is about 34 px from (200, 200): the finger well inside it, 18 px from a pin that stands outside
     const pinId = m.store.getState().addNotePin(246, 200, 'note.md');
     await frame();

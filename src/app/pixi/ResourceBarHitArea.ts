@@ -1,6 +1,7 @@
 import { Graphics } from 'pixi.js';
 import type { ResourceSlot } from './token-renderer/resources/ResourceStack';
 import type { BarReach } from './token-renderer/resources/stepperLayout';
+import { uiCorner } from './utils/squareCorners';
 
 /**
  * Clickable overlay on a token resource (bar or wheel) that lights up on hover and while its editor is open.
@@ -58,7 +59,7 @@ export class ResourceBarHitArea extends Graphics {
   private redraw(): void {
     if (this.destroyed || !this.slot) return;
     const { left, top, width, height } = this.slot;
-    const radius = height / 2;
+    const radius = uiCorner(height / 2);
     this.clear();
     this.roundRect(left, top, width, height, radius)
       .fill({ color: 0xffffff, alpha: this.hovered && !this.active ? 0.14 : 0 });

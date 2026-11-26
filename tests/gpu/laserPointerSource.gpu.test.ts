@@ -116,7 +116,7 @@ describe('laser with a read-only tool source', () => {
     expect(scene.app.ticker.count).toBe(scene.baselineTicker);
     scene.setTool('move');
     scene.setTool('laser-pointer');
-    scene.app.canvas.dispatchEvent(new MouseEvent('mouseleave'));
+    scene.app.canvas.dispatchEvent(new PointerEvent('pointerleave'));
     scene.pointer('pointerdown', 1);
     expect(scene.app.ticker.count).toBe(scene.baselineTicker);
   });

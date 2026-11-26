@@ -109,4 +109,6 @@ export const armariumListing: Translation = {
   'armariumListing.problem.tagsExclusive': 'Verwende nur eines von {tags}.',
   'armariumListing.kind.dice': 'Würfelsets',
   'armariumListing.kindLine.dice': 'Würfel für die Würfelablage, mit ihren Farben und Regeln.',
+  'armariumListing.kind.music': 'Musik',
+  'armariumListing.kindLine.music': 'Alben und Tracks für die Sound-Seite.',
 };

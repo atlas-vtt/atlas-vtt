@@ -17,12 +17,12 @@ const askName: AskName = (current) => promptForText({ title: t('mapFeature.renam
 export function mapFeatureMenuEntries(store: ViewAtlasStore, feature: MapFeature, ask: AskName = askName): ContextMenuEntry[] {
   const { id } = feature;
   const setTerrain = (changes: FeatureTerrain): void => {
-    store.getState().updateMapFeature(id, { terrain: terrainWith(feature.terrain, changes) });
+    store.getState().patchObject('mapFeatures', id, { terrain: terrainWith(feature.terrain, changes) });
   };
   const rename = async (): Promise<void> => {
     const name = (await ask(feature.name))?.trim().slice(0, MAX_FEATURE_NAME);
     // Another write may have removed the feature while the dialog was open
-    if (name && name !== feature.name && everyLevelObjects(store.getState()).mapFeatures?.[id]) store.getState().updateMapFeature(id, { name });
+    if (name && name !== feature.name && everyLevelObjects(store.getState()).mapFeatures?.[id]) store.getState().patchObject('mapFeatures', id, { name });
   };
   const cover = feature.terrain?.cover;
   const coverRow = (value: FeatureCover | undefined): ContextMenuEntry => ({
@@ -44,6 +44,6 @@ export function mapFeatureMenuEntries(store: ViewAtlasStore, feature: MapFeature
     },
     { type: 'submenu', label: t('mapFeature.cover'), icon: 'shield', children: [coverRow(undefined), ...FEATURE_COVERS.map(coverRow)] },
     MENU_SEPARATOR,
-    { type: 'item', label: t('mapFeature.remove'), icon: 'trash-2', destructive: true, onClick: () => store.getState().deleteMapFeature(id) },
+    { type: 'item', label: t('mapFeature.remove'), icon: 'trash-2', destructive: true, onClick: () => store.getState().removeObjects([id]) },
   ];
 }

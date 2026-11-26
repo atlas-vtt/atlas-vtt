@@ -74,6 +74,7 @@ export const settings: Translation = {
   'settings.updates.checking': '正在检查…',
   'settings.updates.notice': 'Atlas {version} 已可以安装。',
   'settings.updates.noticeTitle': '有可用更新',
+  'settings.updates.partUpdate': 'Atlas 在此设备上只更新了一部分：正在运行的是 {running} 版，其余部分是 {installed} 版。同步工具漏掉了它体积较大的 main.js；请从你的另一台设备，或从 GitHub 上 Atlas 的 {installed} 版发布中，把这个文件复制到此仓库的插件文件夹。',
   'settings.updates.upToDate': 'Atlas 已是最新版本',
   'settings.updates.update': '更新',
   'settings.updates.whatsNew': '新功能',

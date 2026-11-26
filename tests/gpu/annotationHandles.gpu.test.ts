@@ -9,6 +9,7 @@ import { AnnotationsRenderer } from '../../src/app/pixi/annotations/AnnotationsR
 import { captureWithLayerVisibility, type LayerVisibility } from '../../src/app/pixi/playerSafeFrame';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { viewAudience } from '../helpers/viewAudience';
 
 vi.mock('events', async () => import('eventemitter3'));
 
@@ -52,7 +53,7 @@ async function open(): Promise<Scene> {
   const store = createViewAtlasStore(createInMemoryApp().app, `annotation-handles-${Math.random()}`);
   store.getState().setPersistenceEnabled(false);
   store.getState().setMapPath('maps/handles.atlasmap');
-  const annotations = new AnnotationsRenderer({ viewport, store, grid: () => null, accent: () => ACCENT });
+  const annotations = new AnnotationsRenderer({ viewport, store, audience: viewAudience(store).audience, grid: () => null, accent: () => ACCENT });
   cleanup.push(() => {
     annotations.destroy();
     viewport.destroy();

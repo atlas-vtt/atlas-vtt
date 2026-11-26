@@ -6,6 +6,7 @@
  */
 
 import { parseRating } from '../../creatures/creatureValues';
+import { writtenSide } from '../../tools/writtenAdvantage';
 import type { FieldValue } from '../model/templateTypes';
 
 /** A Unicode minus (U+2212) or an en dash typed for one. */
@@ -37,6 +38,15 @@ export function numericValue(value: FieldValue | undefined): number | null {
   if (typeof value === 'number') return Number.isFinite(value) ? value : null;
   if (typeof value === 'string') return parseNumberText(value);
   return null;
+}
+
+/**
+ * The number an `@` reference reads: a finite number, or text that writes one. A side written
+ * after it (`+2 adv`) belongs to the value's own roll, so the reference reads the number before it.
+ */
+export function referenceNumber(value: unknown): number | null {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  return typeof value === 'string' ? parseNumberText(writtenSide(value).formula) : null;
 }
 
 /** The number a rating stands for when the text is only a rating ("1/4", "½", "3"); null otherwise. */

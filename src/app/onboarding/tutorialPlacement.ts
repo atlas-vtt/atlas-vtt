@@ -1,10 +1,10 @@
+import { clamp } from '../utils/math';
+
 /** Space kept between the card, its target and the window's edges. */
 const GAP = 16;
 
 interface Box { left: number; top: number; right: number; bottom: number }
 interface Size { width: number; height: number }
-
-const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(value, max));
 
 /**
  * Where a tutorial card goes next to the element it explains: below it, above

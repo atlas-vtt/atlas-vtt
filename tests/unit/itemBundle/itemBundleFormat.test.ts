@@ -72,8 +72,9 @@ describe('an item manifest', () => {
     ]) expect(itemManifestProblem(manifest('statblock-template', files))).toMatch(/damaged/i);
   });
 
-  it('refuses a manifest of a newer format as made with a newer Atlas', () => {
-    expect(itemManifestProblem({ ...manifest('dice-set', [{ vaultPath: SET, role: 'dice-set' }]), format: 11 })).toMatch(/newer version/);
+  it('refuses a manifest of a newer format as made with a newer Atlas, and one of the three kinds under music\'s format as damaged', () => {
+    expect(itemManifestProblem({ ...manifest('dice-set', [{ vaultPath: SET, role: 'dice-set' }]), format: 12 })).toMatch(/newer version/);
+    expect(itemManifestProblem({ ...manifest('dice-set', [{ vaultPath: SET, role: 'dice-set' }]), format: 11 })).toMatch(/damaged/i);
   });
 
   it('refuses files a kind does not hold, a missing or second item file and a note that names no template', () => {

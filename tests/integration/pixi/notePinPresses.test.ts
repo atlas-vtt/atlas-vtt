@@ -7,11 +7,14 @@ import { TokenRenderer } from '../../../src/app/pixi/token-renderer';
 import { PinRenderer } from '../../../src/app/pixi/PinRenderer';
 import { AnnotationsRenderer } from '../../../src/app/pixi/annotations/AnnotationsRenderer';
 import { FogOfWarRenderer } from '../../../src/app/pixi/fog/FogOfWarRenderer';
+import { MapPointer } from '../../../src/app/pixi/pointer/MapPointer';
+import { listenToViewport } from '../../../src/app/pixi/pointer/viewportPointer';
 import { AssetService } from '../../../src/app/services/AssetService';
 import { createViewAtlasStore } from '../../../src/app/storeFactory';
 import type { GridSystem } from '../../../src/app/grid/GridSystem';
 import { createInMemoryApp } from '../../mocks/inMemoryVault';
 import { stubJsdomGraphics } from '../../mocks/jsdomGraphics';
+import { viewAudience } from '../../helpers/viewAudience';
 
 vi.mock('../../../src/app/react/root/ContextMenuContext', () => ({
   openContextMenuGlobal: vi.fn(),
@@ -37,8 +40,9 @@ const gridSystem = {
 } as unknown as GridSystem;
 
 /**
- * The view as the app builds it: the pin renderer comes with the viewport, the token renderer,
- * whose press dispatch claims pins, tokens and badges, only once the first map brings a grid.
+ * The view as the app builds it: the map's pointer, which claims presses on pins, tokens and
+ * badges, listens first; the pin, fog and drawing renderers come after it, the token renderer only
+ * once the first map brings a grid.
  */
 describe('Presses with the note pin tool', () => {
   let viewport: Viewport;
@@ -48,6 +52,7 @@ describe('Presses with the note pin tool', () => {
   let drawing: AnnotationsRenderer;
   let fog: FogOfWarRenderer;
   let tokens: TokenRenderer;
+  let stopPointer: () => void;
   let restoreGraphics: () => void;
   let placed: ReturnType<typeof vi.fn>;
   /** PIXI hands every press the same pooled event object. */
@@ -70,21 +75,20 @@ describe('Presses with the note pin tool', () => {
     store.getState().setMapPath('maps/world.atlasmap');
     eventBus = new EventEmitter();
 
+    const pointer = new MapPointer({ store, gmView: () => true, placing: () => false });
+    stopPointer = listenToViewport(pointer, viewport, document.createElement('canvas'));
     pins = new PinRenderer(viewport, eventBus, store);
-    fog = new FogOfWarRenderer(viewport, { canvas: createEl('canvas') } as unknown as Application, eventBus as never, store, () => null);
-    drawing = new AnnotationsRenderer({ viewport, store, grid: () => null });
-    tokens = new TokenRenderer(app, viewport, gridSystem, vi.fn(), store, eventBus, 'pin-press-view');
+    pointer.attach('pins', pins.pointerLayer(() => undefined));
+    const { audience } = viewAudience(store, eventBus);
+    fog = new FogOfWarRenderer(viewport, { canvas: createEl('canvas') } as unknown as Application, eventBus as never, store, () => null, audience);
+    drawing = new AnnotationsRenderer({ viewport, store, grid: () => null, audience });
+    tokens = new TokenRenderer(app, viewport, gridSystem, vi.fn(), store, eventBus, audience, 'pin-press-view');
     tokens.setPixiApp({
       ticker: { add: vi.fn(), remove: vi.fn(), lastTime: 0 },
       canvas: document.createElement('canvas'),
       renderer: { generateTexture: vi.fn(() => new Texture()) },
     } as unknown as Application);
-    tokens.setPinHitTestProvider((x, y) => pins.hitTestPins(x, y));
-    tokens.setPinClickHandler((pinId, e) => pins.handleViewportPinPointerDown(pinId, e));
-    // As the view does once the dispatch listens (`_initGridInternal`)
-    pins.reorderViewportListeners();
-    drawing.hearPressesLast();
-    fog.reorderViewportListeners();
+    pointer.attach('tokens', tokens.pointer);
 
     placed = vi.fn();
     eventBus.on('canvas-click', placed);
@@ -94,6 +98,7 @@ describe('Presses with the note pin tool', () => {
   });
 
   afterEach(() => {
+    stopPointer();
     tokens.destroy();
     drawing.destroy();
     fog.destroy();
@@ -131,17 +136,12 @@ describe('Presses with the note pin tool', () => {
     expect(Object.keys(store.getState().objects.drawings)).toHaveLength(1);
   });
 
-  it('draws no stroke on a pin with a Draw tool that was in hand before the dispatch listened', () => {
+  it('draws no stroke on a pin with a Draw tool that was in hand when the view was built', () => {
     drawing.destroy();
     store.getState().setDrawTool({ mode: 'pen' });
     store.getState().setActiveTool('draw');
-    // Built with the tool in hand, it listens at once: before a dispatch made after it.
-    drawing = new AnnotationsRenderer({ viewport, store, grid: () => null });
-    tokens.destroy();
-    tokens = new TokenRenderer(createInMemoryApp({ files: {} }).app, viewport, gridSystem, vi.fn(), store, eventBus, 'pin-press-view');
-    tokens.setPinHitTestProvider((x, y) => pins.hitTestPins(x, y));
-    tokens.setPinClickHandler((pinId, e) => pins.handleViewportPinPointerDown(pinId, e));
-    drawing.hearPressesLast();
+    // Built with the tool in hand, it listens at once: still after the map's pointer.
+    drawing = new AnnotationsRenderer({ viewport, store, grid: () => null, audience: viewAudience(store).audience });
     press(500, 400);
     press(100, 100);
     expect(Object.keys(store.getState().objects.drawings)).toHaveLength(1);

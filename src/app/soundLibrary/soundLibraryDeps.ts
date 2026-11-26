@@ -13,6 +13,9 @@ const localKey = (kind: SoundKind): string => `atlas-vtt:sound-root:${kind}`;
 
 const originalsKey = (kind: SoundKind): string => `atlas-vtt:sound-root-originals:${kind}`;
 
+/** The order the library's rows are shown in: a viewer's, on this device. */
+const SORT_KEY = 'atlas-vtt:sound-library-sort';
+
 const vaultFolderOf = (app: App): string | null => (app.vault.adapter instanceof FileSystemAdapter ? app.vault.adapter.getBasePath() : null);
 
 function rootFacts(app: App): SoundRootFacts {
@@ -58,6 +61,7 @@ export function realLibraryDeps(app: App): SoundLibraryDeps {
       return files ? new ExternalLocation(root.path, { files, trashItem: systemTrash(window), resourceUrl: diskResourceUrl, vaultFolder: vaultFolderOf(app) }) : null;
     },
     probeSeconds: readAudioSecondsAt,
+    sortMemory: { read: (): unknown => app.loadLocalStorage(SORT_KEY), write: (sort) => app.saveLocalStorage(SORT_KEY, sort) },
     dispose: () => {
       app.vault.offref(renamed);
       roots.dispose();

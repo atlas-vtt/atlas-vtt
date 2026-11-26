@@ -4,6 +4,7 @@ import type { Rect } from '../../../lighting/segments';
 import type { Point } from '../../../types/visionTypes';
 import type { WallSegment } from '../../../types/wallTypes';
 import { sweepLightMask, wallsInReach, type Swept } from '../../../vision/visibility';
+import { destroyTree } from '../../utils/destroyTree';
 import { ENGINE_SHADERS } from './engineShaders';
 import { createPlaceholder, createShader, createTarget, renderInto } from './gpu';
 
@@ -77,7 +78,7 @@ export class LimitedTileMask {
   }
 
   destroy(): void {
-    this.scene.destroy({ children: true });
+    destroyTree(this.scene);
     this.outside.destroy();
     this.across.destroy();
     this.placeholder.destroy(true);

@@ -1,15 +1,19 @@
-import { CURSOR_KEEPALIVE_MS, GM_MARKS, MARKS_INTERVAL_MS, MAX_LASER_SPAN_MS, MAX_MARK_KEPT, MAX_MARK_LASER_NUMBERS, type GmMessage, type LaserState, type MarksMessage, type MeasureState, type PlayerCursor, type PlayerLaser, type PlayerMeasure, type PlayerStroke, type SharedStroke } from '../protocol/index.ts';
+import { GM_MARKS, MARKS_INTERVAL_MS, MAX_LASER_SPAN_MS, MAX_MARK_KEPT, MAX_MARK_LASER_NUMBERS, type GmMessage, type LaserState, type MarksMessage, type MeasureState, type PlayerCursor, type PlayerLaser, type PlayerMeasure, type PlayerStroke, type SharedStroke } from '../protocol/index.ts';
 import type { UnderWaySource } from '../../annotations/underWay';
 import type { FogCoverage } from '../../fog/fogCoverage';
 import type { SceneSource } from '../../host/sceneSource';
 import type { Measurements } from '../../pixi/measure/measurements';
 import { CursorShare, type CursorSharePorts } from './CursorShare.ts';
-import { GmMeasures, type PlayersView, type TokenAlias } from './gmMeasures.ts';
+import type { TokenSeen } from '../../vision/measureOrigin';
+import { GmMeasureAudiences, hasNone, measureEntry, type MarkAudience } from './gmMeasureAudiences.ts';
+import type { KeptBy, PlayersView, TokenAlias } from './gmMeasures.ts';
+import { MarksOut, type MarksFor, type MarksOutPorts } from './marksOut.ts';
 import { GmStrokes } from './gmStrokes.ts';
 import { checkLaser, checkMeasure, markRate } from './markCheck.ts';
 import type { MapSize, MoveRate } from './moveCheck.ts';
 import { PlayerStrokes } from './playerStrokes.ts';
-import { legacyMeasures, Pacer, type CursorSource, type LaserSource, type PacerClock } from '../marks/index.ts';
+import { legacyMeasures, type CursorSource, type LaserSource } from '../marks/index.ts';
+import { Feed, type FeedPorts, type FeedScene } from './feed/Feed.ts';
 
 /** The GM's own marks on the shared tab: its renderer's measurements, its laser, and what players see of the tokens. */
 export interface GmMarkSource extends PlayersView {
@@ -31,8 +35,7 @@ export interface GmMarkSource extends PlayersView {
 /** Players' marks, for the GM to see over the map. */
 export type PlayerMarks = Pick<MarksMessage, 'lasers' | 'measures'>;
 
-export interface MarkSharePorts extends PacerClock, Partial<Pick<CursorSharePorts, 'nameOf' | 'showPlayerCursors'>> {
-  send(body: GmMessage, to?: string): void;
+export interface MarkSharePorts extends FeedPorts, Partial<Pick<CursorSharePorts, 'nameOf' | 'showPlayerCursors'>>, Pick<MarksOutPorts, 'playersOf'> {
   /**
    * Sends to all through the live lane, where there is one: before any game message that waits, and
    * a newer `marks` takes the place of one not sent yet, so nothing queues for a slow uplink. Without
@@ -41,6 +44,11 @@ export interface MarkSharePorts extends PacerClock, Partial<Pick<CursorSharePort
   sendLive?(body: GmMessage, key: string, to?: string): void;
   /** The GM's measurements and laser on the shared tab, the same object while its renderer is the same; null while it has none, and without it players see none of the GM's marks. */
   gmMarks?(): GmMarkSource | null;
+  /**
+   * The players told the GM's measurements alike, given the tokens the party sees (`seen`): each picture's,
+   * whose own lists a measurement or aura on a token is told by. Without it everyone is told them as the party sees.
+   */
+  audiences?(seen: TokenSeen): readonly MarkAudience[];
   /** The GM's accent colour as `#rrggbb`, which the GM's measurements are drawn in; null while it cannot be read. */
   accent?(): string | null;
   /**
@@ -52,6 +60,8 @@ export interface MarkSharePorts extends PacerClock, Partial<Pick<CursorSharePort
   cursorsShown?(): boolean;
   /** The id players know a token by, which an aura names the token it lies around by; without it players are told no aura. */
   tokenAlias?: TokenAlias;
+  /** Who kept a measurement of the scene's and the id they let it go by (`PlayerMeasures.told`); null for the GM's own. Without it none is told as a player's. */
+  keptBy?: KeptBy;
   /**
    * Whether the drawing `player` is making in `scene` is followed: where the GM would take the
    * drawing itself, the cell its sizes are shares of; else null. Without it no player's is.
@@ -63,12 +73,8 @@ export interface MarkSharePorts extends PacerClock, Partial<Pick<CursorSharePort
   showPlayerStrokes?(strokes: readonly SharedStroke[]): void;
 }
 
-/** The live lane's key for `marks`: one waits at most. */
-const MARKS_KEY = 'marks';
-
 /** A player's laser that sent nothing for this long is gone (the client sends while it shows, at least twice a second). */
 export const LASER_SILENCE_MS = 1000;
-const isEmpty = (marks: MarksMessage): boolean => marks.lasers.length === 0 && marks.measures.length === 0 && (marks.cursors?.length ?? 0) === 0 && (marks.strokes?.length ?? 0) === 0;
 const NO_STROKES: readonly SharedStroke[] = [];
 
 /** Obsidian's default accent, for when the theme's cannot be read. */
@@ -94,30 +100,18 @@ interface PlayerMeasureState {
 }
 
 type LaserEntry = MarksMessage['lasers'][number];
-type MeasureEntry = MarksMessage['measures'][number];
 
 /** A laser as `marks` and the GM's overlay take it: its look and pointer, with these trail points and the time they cover. */
 const laserEntry = (who: string, { color, size, at, on }: LaserState, pts: readonly number[], span: number | null): LaserEntry => ({ who, color, size, at, pts, on, ...(span !== null && { span }) });
-
-/** Whether a sender is drawing a measurement, which a span then times: by what it tells in full, where it tells any. */
-const isDrawing = ({ live, full }: MeasureState): boolean => (full ? full.live : live) !== null;
-
-/** Whether a sender has no measurement at all. */
-const hasNone = (state: MeasureState): boolean => !isDrawing(state) && (state.full ?? state).kept.length === 0;
-
-/** A sender's measurements as `marks` and the GM's overlay take them, with the time since the live one's end was last told. */
-const measureEntry = (who: string, state: MeasureState, span: number | null): MeasureEntry => {
-  const { color, live, kept, full } = state;
-  return { who, color, live, kept, ...(isDrawing(state) && span !== null && { span }), ...(full && { full }) };
-};
 
 /** The time messages cover together: null once one of them told none, and no more than a message may tell. */
 const spansAdded = (covered: number | null, span: number | undefined): number | null => (covered === null || span === undefined ? null : Math.min(MAX_LASER_SPAN_MS, covered + span));
 
 /**
- * Everyone's marks in the shared scene, sent to all as one `marks` message at most every
- * `MARKS_INTERVAL_MS` through the live lane, only when something changed: the GM's measurements
- * players may see (`GmMeasures`), the drawing the GM is making where players will see it (`GmStrokes`),
+ * Everyone's marks in the shared scene, sent as one `marks` message at most every `MARKS_INTERVAL_MS`
+ * through the live lane, only when something changed (`MarksOut`): the GM's measurements players may see,
+ * each told by what the picture of its audience shows (`GmMeasureAudiences`: to all at once where every
+ * picture agrees), the drawing the GM is making where players will see it (`GmStrokes`),
  * the GM's laser, each player's checked laser and measurements, the drawing each player is making
  * while the GM lets players draw (`PlayerStrokes`), and, while the GM lets
  * everyone see them, everyone's cursors (`CursorShare`). Each client leaves out its own. The GM's own overlay does not wait for that pace: it is shown a player's marks
@@ -126,13 +120,12 @@ const spansAdded = (covered: number | null, span: number | undefined): number | 
  * A player's measurements told in full go on in full, and beside them in the older words, which
  * are made from them here as the GM's own are (`legacyMeasures`): whatever a page said in those
  * words beside its full ones is not sent on. Only the GM's measurements have a colour of their
- * own, an effect or an aura: a player's are taken without (`checkMeasure`).
+ * own, an effect or an aura: a player's are taken without (`checkMeasure`), and drawn in the GM's
+ * accent, as the GM's own are where they name no colour: a colour never says who measured.
  */
 export class MarkShare {
-  private readonly ports: MarkSharePorts;
-  private readonly map: () => MapSize | null;
-  private readonly pacer: Pacer;
-  private readonly gm = new GmMeasures();
+  readonly feed: Feed;
+  private readonly gm = new GmMeasureAudiences();
   private readonly strokes = new GmStrokes();
   private readonly playerStrokes = new PlayerStrokes();
   /** The players' drawings under way the GM's overlay was last shown. */
@@ -143,18 +136,17 @@ export class MarkShare {
   private readonly measureRate: MoveRate = markRate();
   private readonly strokeRate: MoveRate = markRate();
   private readonly cursors: CursorShare;
-  private scene: string | null = null;
   private source: GmMarkSource | null = null;
   private stopSource: (() => void) | null = null;
-  private last: { readonly body: MarksMessage; readonly text: string } | null = null;
-  /** When marks last went out. */
-  private sentAt = Number.NEGATIVE_INFINITY;
+  private readonly out: MarksOut;
+  /** Looks again when the first mark ends by time alone (`rearm`). */
+  private wake: number | undefined;
 
   /** `map` is the shared map's size, which marks must stay near; null when it is unknown. */
-  constructor(ports: MarkSharePorts, map: () => MapSize | null) {
-    this.ports = ports;
-    this.map = map;
-    this.pacer = new Pacer(ports, MARKS_INTERVAL_MS, () => this.send());
+  constructor(private readonly ports: MarkSharePorts, private readonly map: () => MapSize | null) {
+    this.out = new MarksOut(ports);
+    // Another scene starts without marks.
+    this.feed = new Feed(ports, { interval: MARKS_INTERVAL_MS, channels: [this.out], build: () => this.send(), reset: (scene) => this.reset(scene), opened: () => this.update() });
     this.cursors = new CursorShare({
       now: () => ports.now(),
       shown: () => ports.cursorsShown?.() === true,
@@ -164,10 +156,7 @@ export class MarkShare {
     });
   }
 
-  /** The shared scene; another one starts without marks. */
-  setScene(scene: string | null): void {
-    if (scene === this.scene) return;
-    this.scene = scene;
+  private reset(scene: FeedScene | null): void {
     this.lasers.clear();
     this.measures.clear();
     this.gm.reset();
@@ -175,21 +164,25 @@ export class MarkShare {
     this.playerStrokes.reset();
     this.showStrokes(NO_STROKES);
     this.cursors.reset();
-    this.pacer.cancel();
-    this.last = null;
     this.ports.showPlayerMarks?.({ lasers: [], measures: [] });
-    this.update();
+    // No scene follows no marks of the GM's: a scene shared again reads them afresh.
+    if (scene === null) this.update();
+  }
+
+  /** The id of the shared scene, or null while none is. */
+  private get scene(): string | null {
+    return this.feed.scene?.id ?? null;
   }
 
   /** The drawings under way of `players` (of everyone without) go at once: the GM cleared what those players drew. */
   dropStrokes(players?: ReadonlySet<string>): void {
-    if (this.playerStrokes.drop((player) => players !== undefined && !players.has(player))) this.pacer.request();
+    if (this.playerStrokes.drop((player) => players !== undefined && !players.has(player))) this.feed.update();
   }
 
   /** The request `n` of a player's Draw tool was dealt with: the drawing they were making is on the map now, or is not. */
   strokeEnded(player: string, n: number, made: boolean): void {
     this.playerStrokes.ended(player, n, made, this.ports.now());
-    this.pacer.request();
+    this.feed.update();
   }
 
   /** A player's laser, measurements, cursor or drawing under way: checked, then kept until they change, go silent or the player leaves. */
@@ -211,14 +204,16 @@ export class MarkShare {
       this.lasers.set(from, { state, waiting: { pts, span: spansAdded(waiting.span, state.span) }, at: now });
       this.show({ laser: from });
     } else {
-      const state = this.measureRate.take(from, now) ? checkMeasure(message, context) : null;
-      if (state === null) return;
+      const checked = this.measureRate.take(from, now) ? checkMeasure(message, context) : null;
+      if (checked === null) return;
+      // A measurement's colour says what it is for, never who made it: a player's is drawn in the colour the GM's own have.
+      const state = { ...checked, color: this.accent() };
       const covered = this.measures.get(from)?.covered;
       if (hasNone(state)) this.measures.delete(from);
       else this.measures.set(from, { state, covered: spansAdded(covered === undefined ? 0 : covered, state.span) });
       this.show({ measure: from });
     }
-    this.pacer.request();
+    this.feed.update();
   }
 
   /** A player left: their marks go. */
@@ -229,7 +224,7 @@ export class MarkShare {
     const hadStroke = this.playerStrokes.playerLeft(player);
     if (!hadLaser && !hadMeasures && !hadCursor && !hadStroke) return;
     this.show();
-    this.pacer.request();
+    this.feed.update();
   }
 
   /**
@@ -250,29 +245,27 @@ export class MarkShare {
     if (silent) this.show();
     // A drawing under way goes the moment the GM would no longer take it: players may not draw any more, or its maker left this floor.
     const scene = this.scene;
-    if (this.playerStrokes.any && this.playerStrokes.drop((player) => scene !== null && this.ports.strokesTaken?.(player, scene) != null)) this.pacer.request();
+    if (this.playerStrokes.any && this.playerStrokes.drop((player) => scene !== null && this.ports.strokesTaken?.(player, scene) != null)) this.feed.update();
     this.cursors.update();
-    if (this.scene !== null) this.pacer.request();
+    if (this.scene !== null) this.feed.update();
+    this.rearm();
   }
 
-  /** The last marks again, to one player or to all. */
-  resend(to?: string): void {
-    if (this.last !== null && !isEmpty(this.last.body)) this.ports.send(this.last.body, to);
+  /** What the players see of the tokens changed: the GM's measurements are told again by it. */
+  seenChanged(): void {
+    if (this.scene !== null) this.feed.update();
   }
 
-  /**
-   * The last marks to a player whose map shows again, also where there are none (so marks they held
-   * from before go): through the live lane under a key of that player's, where a newer one replaces it.
-   */
+  /** The last marks to a player whose map shows again, also where there are none (so marks they held from before go). */
   catchUp(to: string): void {
-    if (this.last === null) return;
-    if (this.ports.sendLive === undefined) this.ports.send(this.last.body, to);
-    else this.ports.sendLive(this.last.body, MARKS_KEY, to);
+    this.out.catchUp(to);
   }
 
   stop(): void {
     this.follow(null);
-    this.pacer.cancel();
+    this.feed.cancel();
+    if (this.wake !== undefined) this.ports.clearTimer(this.wake);
+    this.wake = undefined;
   }
 
   private follow(source: GmMarkSource | null): void {
@@ -286,13 +279,13 @@ export class MarkShare {
     const { measurements } = source;
     const measured = (): void => queueMicrotask(() => {
       if (this.source !== source || measurements === null) return;
-      this.gm.follow(measurements.get(), source, this.ports.now());
-      this.pacer.request();
+      this.gm.follow(measurements.get(), () => source.footprints(), this.audiences(source), this.ports.now());
+      this.feed.update();
     });
-    const request = (): void => this.pacer.request();
+    const request = (): void => this.feed.update();
     const drawn = (): void => {
       this.strokes.moved(this.ports.now());
-      this.pacer.request();
+      this.feed.update();
     };
     const stops = [
       measurements?.subscribe(measured) ?? (() => undefined), source.laser.subscribe(request), source.cursor?.subscribe(request) ?? (() => undefined),
@@ -329,23 +322,28 @@ export class MarkShare {
     // The GM is shown the players' drawings as everyone else is told them, in the same step: each tells the points since the last.
     this.showStrokes(playerStrokes);
     const strokes = [...(stroke === undefined ? [] : [{ who: GM_MARKS, ...stroke }]), ...playerStrokes];
-    const body: MarksMessage = {
-      t: 'marks',
-      scene: this.scene,
-      lasers: [...this.gmLaser(), ...playerLasers.filter((laser) => laser.at !== null || laser.on || laser.pts.length > 0)],
-      measures: [...this.gmMeasures(), ...playerMeasures],
-      ...(cursors !== undefined && { cursors }),
-      ...(strokes.length > 0 && { strokes }),
-    };
-    const text = JSON.stringify(body);
-    // Cursors that show go out now and then while nothing changes, so a page can tell a GM that went silent.
-    const keepAlive = (body.cursors?.length ?? 0) > 0 && now - this.sentAt >= CURSOR_KEEPALIVE_MS;
-    // Nothing to tell before anyone made a mark: players start without any.
-    if ((text === this.last?.text && !keepAlive) || (this.last === null && isEmpty(body))) return;
-    this.last = { body, text };
-    this.sentAt = now;
-    if (this.ports.sendLive === undefined) this.ports.send(body);
-    else this.ports.sendLive(body, MARKS_KEY);
+    const scene = this.scene;
+    const lasers = [...this.gmLaser(), ...playerLasers.filter((laser) => laser.at !== null || laser.on || laser.pts.length > 0)];
+    const marks = this.gmMeasures(now).map(({ key, entries }): MarksFor => ({
+      key,
+      body: { t: 'marks', scene, lasers, measures: [...entries, ...playerMeasures], ...(cursors !== undefined && { cursors }), ...(strokes.length > 0 && { strokes }) },
+    }));
+    this.out.tell(marks, now);
+    this.rearm();
+  }
+
+  /**
+   * Looks again when the first mark ends by time alone: a player's laser falls silent, a cursor comes to
+   * rest, a drawing's maker falls silent or its moment as kept passes, or the cursors are due to go out again.
+   */
+  private rearm(): void {
+    if (this.wake !== undefined) this.ports.clearTimer(this.wake);
+    this.wake = undefined;
+    const now = this.ports.now();
+    const lasers = [...this.lasers.values()].map(({ at }) => at + LASER_SILENCE_MS + 1);
+    const ends = [...lasers, this.cursors.restsAt(this.source?.cursor ?? null, now), this.out.keepAliveAt(), this.playerStrokes.endsAt(), this.strokes.endsAt(now)];
+    const next = Math.min(...ends.filter((at): at is number => at !== undefined && at > now));
+    if (this.scene !== null && Number.isFinite(next)) this.wake = this.ports.setTimer(() => this.update(), next - now);
   }
 
   /** Shows the GM the players' drawings under way; nothing where none are shown and none were. */
@@ -369,11 +367,22 @@ export class MarkShare {
     return at === null && !on && pts.length === 0 ? [] : [{ who: GM_MARKS, ...source.laserLook(), at, pts, on, ...(span !== undefined && { span }) }];
   }
 
-  private gmMeasures(): MarksMessage['measures'] {
-    if (this.source === null) return [];
-    const state: MeasureState = { color: this.ports.accent?.() ?? DEFAULT_ACCENT, ...this.gm.shown(this.source.seen(), this.ports.tokenAlias) };
-    const span = this.gm.takeSpan();
-    return hasNone(state) ? [] : [measureEntry(GM_MARKS, state, span ?? null)];
+  /** The colour measurements that name none are drawn in: the GM's accent. */
+  private accent(): string {
+    return this.ports.accent?.() ?? DEFAULT_ACCENT;
+  }
+
+  /** The GM's measurements as each audience is told them; one audience told none without the GM's marks. */
+  private gmMeasures(now: number): ReturnType<GmMeasureAudiences['told']> {
+    const source = this.source;
+    if (source === null) return [{ key: '', entries: [] }];
+    return this.gm.told(this.audiences(source), this.accent(), now, this.ports.tokenAlias, this.ports.keptBy);
+  }
+
+  /** Who is told the GM's measurements alike, by what each picture shows of the tokens `source` says the party sees. */
+  private audiences(source: GmMarkSource): readonly MarkAudience[] {
+    const seen = source.seen();
+    return this.ports.audiences?.(seen) ?? [{ key: '', seen }];
   }
 
   /** A player's measurements told in full, with the older words made from them for the pages that read no others; others as they came. */

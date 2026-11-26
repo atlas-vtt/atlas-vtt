@@ -5,7 +5,7 @@ export const fog: Translation = {
   'fog.modes': 'Nebel',
   'fog.tools': 'Nebelformen und -aktionen',
   'fog.fog': 'Nebel',
-  'fog.fogTip': 'Halte Alt, um stattdessen zu radieren. Rechtsklick auf Nebel, um ihn aufzudecken oder zu löschen',
+  'fog.fogTip': 'Halte Alt zum Radieren. Rechtsklick auf Nebel deckt ihn auf oder löscht ihn',
   'fog.eraser': 'Radierer',
   'fog.eraserTip': 'Halte Alt, um stattdessen Nebel hinzuzufügen',
   'fog.reveal': 'Aufdecken',

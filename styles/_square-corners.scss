@@ -1,0 +1,21 @@
+// Square corners (Appearance settings, `LookService.squareCorners`): no corner Atlas draws is rounded, under any look.
+// Atlas' radii are literals across hundreds of rules, Tailwind's and the looks' among them, some of them `!important`,
+// so one rule outranks them all: an `!important` declaration in a layer beats every one outside layers, however
+// specific. It names Atlas' scopes by class, which the browser rules out fast for everything else on the page.
+// A token stays round: its art is cut to the circle inside its ring, wherever Atlas shows it. The canvas draws its own
+// UI square through `uiCorner` (`src/app/pixi/utils/squareCorners.ts`).
+$atlas-scopes: '.atlas-vtt-plugin', '.atlas-portal-host', '.atlas-notice', '.atlas-statblock', '.statblock-hover-preview';
+$token-shapes: '.atlas-token-image-wrapper, .atlas-token-portrait--unframed .atlas-image-placeholder, .atlas-token-card__mask, .atlas-initiative-card__avatar, .atlas-initiative-card__defeated-overlay, .dice-log-entry__avatar--fallback, .token';
+
+@layer atlas-square-corners {
+  @each $scope in $atlas-scopes {
+    body.atlas-square-corners #{$scope},
+    body.atlas-square-corners #{$scope}::before,
+    body.atlas-square-corners #{$scope}::after,
+    body.atlas-square-corners #{$scope} :not(#{$token-shapes}),
+    body.atlas-square-corners #{$scope} :not(#{$token-shapes})::before,
+    body.atlas-square-corners #{$scope} :not(#{$token-shapes})::after {
+      border-radius: 0 !important;
+    }
+  }
+}

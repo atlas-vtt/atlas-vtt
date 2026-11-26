@@ -1,0 +1,421 @@
+# start
+* scene 48517ef7426fc44e
+>ana tokens#1 80b064328560e5b7
+>ana mine 8bbb8282730d7c28
+>ana fog#1 7cd622bfde7ababa
+>ana lighting 708c04f5eadeffd6
+>ana sight#1 1c13b92e42d08960
+>ana explored 7a90b32534f9e577
+>ana widgets 887c694c0904ddca
+>ana grid db5746270505d164
+>ana annotations 8b63d9615d7d7ac2
+>ana draw-mine 689fe0e6a6323bf7
+>ana initiative 7a5bd04bbf141768
+>ana pins 9c924f3963d70fa0
+>ana doors dfcee3e411c6c612
+>ana sensed f05a870606bd4ecd
+>ben tokens#1 2b6a094ebb209ea3
+>ben mine e9e9bb835be9135e
+>ben fog#1 af37e4374675aeee
+>ben lighting 708c04f5eadeffd6
+>ben sight#1 ba850ab1cfcea3e9
+>ben explored 3b47b0cf6a45f2be
+>ben widgets 887c694c0904ddca
+>ben grid db5746270505d164
+>ben annotations c92ffd530b51a528
+>ben draw-mine 689fe0e6a6323bf7
+>ben initiative 94d2947494f7f019
+>ben pins 69f25c5b6ba468f1
+>ben doors aeed4de0abcde8f4
+>ben sensed f05a870606bd4ecd
+>cara tokens#1 062bd94f466c20fb
+>cara mine a573ac81e3df66d1
+>cara fog#1 441d51ccf1fae98b
+>cara lighting 708c04f5eadeffd6
+>cara sight#1 6b9e6e2a94fd1ece
+>cara explored 538206f1d59c35f3
+>cara widgets 887c694c0904ddca
+>cara grid db5746270505d164
+>cara annotations 8b63d9615d7d7ac2
+>cara draw-mine 689fe0e6a6323bf7
+>cara initiative e64dcc8e8cc52316
+>cara pins 9c924f3963d70fa0
+>cara doors dfcee3e411c6c612
+>cara sensed f05a870606bd4ecd
+* rules 6e446b7566fd3b31
+>ben marks live:marks eced6898c3700343
+# a burst of moves
+>ben delta/tokens#2 6d9f0459b7040074
+>ben delta/sight#2 10da9215d65b1a63
+>ben delta/tokens#3 9170c4baff1c3fd8
+>ben delta/sight#3 fbf9a6703b0078f4
+# a burst across the feeds
+>ana tokens#2 f41afb64e86c5744
+>ana liquids 63f6ae34009bb484
+>ana annotations 6a1a50881995de8a
+>ana draw-mine ccad625c42b904df
+>ana initiative 4cf13f72a6ca81a0
+>ana widgets ae584d4ba6f7b782
+>ana delta/fog#2 b6e140db922c1838
+>ben delta/tokens#4 7978ebf7365bd7fe
+>ben liquids 6fad76645bbdb933
+>ben initiative 3e65597e11a5234e
+>ben widgets ae584d4ba6f7b782
+>ben delta/fog#2 ac8b35b852d4f866
+>cara liquids 09ef65a638285450
+>cara initiative 93ae779da8b269a3
+>cara widgets ae584d4ba6f7b782
+>cara delta/fog#2 dcd1509217dd58cc
+>ana liquids 38d47b519a5e6f83
+>ana initiative 2d209888bec078a7
+>ana widgets a6a2f9bfcbb6da67
+>ben delta/tokens#5 e04c2eb4622b4342
+>ben liquids f30fa2798c322cd8
+>ben initiative 444d357583c43e42
+>ben widgets a6a2f9bfcbb6da67
+>cara liquids a0bc753d1a0c67d9
+>cara initiative f56e720fbb41233c
+>cara widgets a6a2f9bfcbb6da67
+# a drag that rests
+>ben delta/tokens#6 512570d54f5bba42
+>ben live live:#0 da5edca5c2766070
+>ben delta/sight#4 a0ee05d397ba0041
+>ben live live:#0 bf7fe72e51d817f8
+>ben delta/sight#5 ae27962e160039c6
+>ben live live:#0 0b89116b15ac746f
+>ben delta/tokens#7 0aa8153ea608101e
+>ben live live:#0 3238bbb218aa46b2
+# the drop
+>ben live live:#0/1 e3796a79f855b5f3
+# lasers
+>ana marks live:marks 1f84e87d893e4374
+>ben marks live:marks 82310c0bdfd360e2
+>cara marks live:marks 1f84e87d893e4374
+>ana marks live:marks 33f77d9a37a6aba2
+>ben marks live:marks 6a89bbd29483ec02
+>cara marks live:marks 33f77d9a37a6aba2
+>ana marks live:marks 1dfbb0867181f376
+>ben marks live:marks eec994112a2f3ce8
+>cara marks live:marks 1dfbb0867181f376
+# Ana draws
+>ana annotations 210fae9ef94ee299
+>ana draw-mine f2220177a5701165
+>ben annotations cac6b517a3fa3bc1
+>ben draw-mine ccad625c42b904df
+>cara annotations 07225b242e435431
+>cara draw-mine ccad625c42b904df
+>ana draw-mine d987293375bcd8f3
+# resyncs
+>ana tokens#2 f41afb64e86c5744
+>ana fog#2 bae845450ba2d9eb
+>ana sight#1 1c13b92e42d08960
+# a resync a second later
+>ana tokens#2 f41afb64e86c5744
+# resend to Ben
+>ben scene 48517ef7426fc44e
+>ben tokens#7 5a36fcfa2563ea46
+>ben lighting 708c04f5eadeffd6
+>ben fog#2 ab90b05f3d1c328c
+>ben sight#5 943ca9cd32e8701d
+>ben explored 3b47b0cf6a45f2be
+>ben grid db5746270505d164
+>ben annotations cac6b517a3fa3bc1
+>ben initiative 444d357583c43e42
+>ben pins 69f25c5b6ba468f1
+>ben doors aeed4de0abcde8f4
+>ben sensed f05a870606bd4ecd
+>ben liquids f30fa2798c322cd8
+>ben draw-mine ccad625c42b904df
+>ben widgets a6a2f9bfcbb6da67
+>ben mine e9e9bb835be9135e
+>ben rules 6e446b7566fd3b31
+>ben marks eec994112a2f3ce8
+# resend to all
+* scene 48517ef7426fc44e
+>ana tokens#2 f41afb64e86c5744
+>ana lighting 708c04f5eadeffd6
+>ana fog#2 bae845450ba2d9eb
+>ana sight#1 1c13b92e42d08960
+>ana explored 7a90b32534f9e577
+>ana grid db5746270505d164
+>ana annotations 210fae9ef94ee299
+>ana initiative 2d209888bec078a7
+>ana pins 9c924f3963d70fa0
+>ana doors dfcee3e411c6c612
+>ana sensed f05a870606bd4ecd
+>ana liquids 38d47b519a5e6f83
+>ana draw-mine d987293375bcd8f3
+>ana widgets a6a2f9bfcbb6da67
+>ana mine 8bbb8282730d7c28
+>ben tokens#7 5a36fcfa2563ea46
+>ben lighting 708c04f5eadeffd6
+>ben fog#2 ab90b05f3d1c328c
+>ben sight#5 943ca9cd32e8701d
+>ben explored 3b47b0cf6a45f2be
+>ben grid db5746270505d164
+>ben annotations cac6b517a3fa3bc1
+>ben initiative 444d357583c43e42
+>ben pins 69f25c5b6ba468f1
+>ben doors aeed4de0abcde8f4
+>ben sensed f05a870606bd4ecd
+>ben liquids f30fa2798c322cd8
+>ben draw-mine ccad625c42b904df
+>ben widgets a6a2f9bfcbb6da67
+>ben mine e9e9bb835be9135e
+>cara tokens#1 062bd94f466c20fb
+>cara lighting 708c04f5eadeffd6
+>cara fog#2 ac8a33946ee50cb9
+>cara sight#1 6b9e6e2a94fd1ece
+>cara explored 538206f1d59c35f3
+>cara grid db5746270505d164
+>cara annotations 07225b242e435431
+>cara initiative f56e720fbb41233c
+>cara pins 9c924f3963d70fa0
+>cara doors dfcee3e411c6c612
+>cara sensed f05a870606bd4ecd
+>cara liquids a0bc753d1a0c67d9
+>cara draw-mine ccad625c42b904df
+>cara widgets a6a2f9bfcbb6da67
+>cara mine a573ac81e3df66d1
+* rules 6e446b7566fd3b31
+>ana marks 1dfbb0867181f376
+>ben marks eec994112a2f3ce8
+>cara marks 1dfbb0867181f376
+# after the resends
+# the assets refreshed
+* scene 48517ef7426fc44e
+>ana tokens#3 b6861252b4aeff3b
+>ana mine 8bbb8282730d7c28
+>ana fog#3 c9202037db59d84b
+>ana lighting 708c04f5eadeffd6
+>ana sight#2 7a66f619798a903b
+>ana explored 3b47b0cf6a45f2be
+>ana widgets a6a2f9bfcbb6da67
+>ana grid db5746270505d164
+>ana liquids 0f4add1af701a468
+>ana annotations 22ed571f6ced6d5a
+>ana draw-mine dda374e30ad4dfb1
+>ana initiative 2d209888bec078a7
+>ana pins 9c924f3963d70fa0
+>ana doors dfcee3e411c6c612
+>ana sensed f05a870606bd4ecd
+>ben tokens#8 12dc748a1a7c5690
+>ben mine e9e9bb835be9135e
+>ben fog#3 da2f247848dbcda5
+>ben lighting 708c04f5eadeffd6
+>ben sight#6 764826c2b5fc8679
+>ben explored 538206f1d59c35f3
+>ben widgets a6a2f9bfcbb6da67
+>ben grid db5746270505d164
+>ben liquids 0dc4dda336d71a2c
+>ben annotations 65ff4df7cf5e58a1
+>ben draw-mine 689fe0e6a6323bf7
+>ben initiative 444d357583c43e42
+>ben pins 9acac8924d83533b
+>ben doors aeed4de0abcde8f4
+>ben sensed f05a870606bd4ecd
+>cara tokens#2 d79615a8d54c6944
+>cara mine a573ac81e3df66d1
+>cara fog#3 ff83b58036f3c454
+>cara lighting 708c04f5eadeffd6
+>cara sight#2 30238befe17f6a86
+>cara explored 4ba03a445dbd6a9b
+>cara widgets a6a2f9bfcbb6da67
+>cara grid db5746270505d164
+>cara liquids c0985c0184f61aeb
+>cara annotations 93218c3f1833e1f5
+>cara draw-mine 689fe0e6a6323bf7
+>cara initiative f56e720fbb41233c
+>cara pins 9c924f3963d70fa0
+>cara doors dfcee3e411c6c612
+>cara sensed f05a870606bd4ecd
+* rules 6e446b7566fd3b31
+* marks live:marks 1dfbb0867181f376
+# the goblin given to Cara
+>cara tokens#3 20a502b26c16e03e
+>cara mine a5e75cca454ae1ab
+>cara initiative 3e1f6f29090101d9
+>cara sight#3 52ffe53937b4e1d4
+>ben delta/tokens#9 bf08a08d1d21f660
+>ben marks live:marks eec994112a2f3ce8
+>cara marks live:marks eec994112a2f3ce8
+# the memory saved again
+>ana annotations 6a1a50881995de8a
+>ana draw-mine ab2593799a197c26
+>ben annotations 7ef0ba0eda34476e
+>ben draw-mine ccad625c42b904df
+>cara annotations 3f561584a472d80f
+>cara draw-mine ccad625c42b904df
+# Shared vision on
+>ana tokens#9 8ab22850d735c119
+>ana lighting 708c04f5eadeffd6
+>ana fog#3 3cf78b05df57ca3f
+>ana sight#6 fc413c8133fe092e
+>ana explored 73d7077b1d42b171
+>ana grid db5746270505d164
+>ana liquids 2667d4a4d35bae35
+>ana annotations 13b18e9ff7f60a97
+>ana initiative 1062461c7176cdfe
+>ana pins 4ffc59ac27a0f1f6
+>ana doors aeed4de0abcde8f4
+>ana sensed f05a870606bd4ecd
+>ana widgets a6a2f9bfcbb6da67
+>ana mine 8bbb8282730d7c28
+>ben mine e9e9bb835be9135e
+>cara mine a5e75cca454ae1ab
+>ben tokens#9 8ab22850d735c119
+>ben lighting 708c04f5eadeffd6
+>ben fog#3 3cf78b05df57ca3f
+>ben sight#6 fc413c8133fe092e
+>ben explored 73d7077b1d42b171
+>ben grid db5746270505d164
+>ben liquids 2667d4a4d35bae35
+>ben annotations 13b18e9ff7f60a97
+>ben initiative 1062461c7176cdfe
+>ben pins 4ffc59ac27a0f1f6
+>ben doors aeed4de0abcde8f4
+>ben sensed f05a870606bd4ecd
+>ben widgets a6a2f9bfcbb6da67
+>ben mine e9e9bb835be9135e
+>cara tokens#9 8ab22850d735c119
+>cara lighting 708c04f5eadeffd6
+>cara fog#3 3cf78b05df57ca3f
+>cara sight#6 fc413c8133fe092e
+>cara explored 73d7077b1d42b171
+>cara grid db5746270505d164
+>cara liquids 2667d4a4d35bae35
+>cara annotations 13b18e9ff7f60a97
+>cara initiative 1062461c7176cdfe
+>cara pins 4ffc59ac27a0f1f6
+>cara doors aeed4de0abcde8f4
+>cara sensed f05a870606bd4ecd
+>cara widgets a6a2f9bfcbb6da67
+>cara mine a5e75cca454ae1ab
+>ana draw-mine ab2593799a197c26
+>ben draw-mine ccad625c42b904df
+>cara draw-mine ccad625c42b904df
+# the rat moves under Shared vision
+* marks live:marks eec994112a2f3ce8
+# Ben leaves
+# Dan joins
+>dan scene 48517ef7426fc44e
+>dan tokens#9 8ab22850d735c119
+>dan lighting 708c04f5eadeffd6
+>dan fog#3 3cf78b05df57ca3f
+>dan sight#6 fc413c8133fe092e
+>dan explored 73d7077b1d42b171
+>dan grid db5746270505d164
+>dan liquids 2667d4a4d35bae35
+>dan annotations 13b18e9ff7f60a97
+>dan initiative 1062461c7176cdfe
+>dan pins 4ffc59ac27a0f1f6
+>dan doors aeed4de0abcde8f4
+>dan sensed f05a870606bd4ecd
+>dan widgets a6a2f9bfcbb6da67
+>dan rules 6e446b7566fd3b31
+>dan marks eec994112a2f3ce8
+>dan mine a573ac81e3df66d1
+# Shared vision off
+>ana tokens#1 f9ccbba1cc20f952
+>ana mine 8bbb8282730d7c28
+>ana fog#1 931352b0512d90b6
+>ana lighting 708c04f5eadeffd6
+>ana sight#1 1c13b92e42d08960
+>ana explored 89833fed42beffd6
+>ana widgets a6a2f9bfcbb6da67
+>ana grid db5746270505d164
+>ana liquids 19f61e1fea217ae6
+>ana annotations d6eb0f13cb5ce771
+>ana draw-mine d885d58c4c861ec3
+>ana initiative 2d209888bec078a7
+>ana pins 9c924f3963d70fa0
+>ana doors dfcee3e411c6c612
+>ana sensed f05a870606bd4ecd
+>cara tokens#1 800977d84bca37d7
+>cara mine a5e75cca454ae1ab
+>cara fog#1 d9fcd7da207ef3e0
+>cara lighting 708c04f5eadeffd6
+>cara sight#1 3e366e8b3372a3d4
+>cara explored 4fb9e8f51c7b9a44
+>cara widgets a6a2f9bfcbb6da67
+>cara grid db5746270505d164
+>cara liquids 90ba6dfb1953dc99
+>cara annotations 8b63d9615d7d7ac2
+>cara draw-mine 689fe0e6a6323bf7
+>cara initiative 3e1f6f29090101d9
+>cara pins 9c924f3963d70fa0
+>cara doors dfcee3e411c6c612
+>cara sensed f05a870606bd4ecd
+>dan tokens#1 062bd94f466c20fb
+>dan mine a573ac81e3df66d1
+>dan fog#1 893b8ac5c980f73e
+>dan lighting 708c04f5eadeffd6
+>dan sight#1 6b9e6e2a94fd1ece
+>dan explored 30bfc453ded9133e
+>dan widgets a6a2f9bfcbb6da67
+>dan grid db5746270505d164
+>dan liquids b75a07de03ae85e9
+>dan annotations 8b63d9615d7d7ac2
+>dan draw-mine 689fe0e6a6323bf7
+>dan initiative f56e720fbb41233c
+>dan pins 9c924f3963d70fa0
+>dan doors dfcee3e411c6c612
+>dan sensed f05a870606bd4ecd
+# another map
+>ana marks live:marks 1dfbb0867181f376
+>dan marks live:marks 1dfbb0867181f376
+* scene d0a827a2a749dcb2
+>ana tokens#2 47bf313372491779
+>ana mine 6fe3ed6e4a9cdbb4
+>ana fog#2 032ceb4022c6a8b0
+>ana lighting a9e8ad29dea8268a
+>ana sight#2 c3e390e90635561d
+>ana explored 83ddf55563a9b521
+>ana widgets ac938a035dcca13f
+>ana grid aa9aa026ff556181
+>ana liquids 2657d0d5fb756566
+>ana annotations af8b62eba695967c
+>ana draw-mine 764e9c6dd05b3cce
+>ana initiative d09865ea109b7d03
+>ana pins 772e3ead48bbe343
+>ana doors df6868075b8b8386
+>ana sensed 8feafd68756e5478
+>cara tokens#2 da1546235473e493
+>cara mine 80a9f24d1eb2d202
+>cara fog#2 3edcfe6f17fa70bf
+>cara lighting a9e8ad29dea8268a
+>cara sight#2 4aa267c68891c2c7
+>cara explored e1ffe34b5bb7616e
+>cara widgets ac938a035dcca13f
+>cara grid aa9aa026ff556181
+>cara liquids cfe35864dafb9ebc
+>cara annotations d8dd9b10d9a5a8a7
+>cara draw-mine 764e9c6dd05b3cce
+>cara initiative 3d97e86f52a363a4
+>cara pins 772e3ead48bbe343
+>cara doors df6868075b8b8386
+>cara sensed 8feafd68756e5478
+>dan tokens#2 c3188f9c916eb9d8
+>dan mine b94989fecb74fc11
+>dan fog#2 b3d7e7b00d802dba
+>dan lighting a9e8ad29dea8268a
+>dan sight#2 6145171ea355916f
+>dan explored 7d00a9e410c254ec
+>dan widgets ac938a035dcca13f
+>dan grid aa9aa026ff556181
+>dan liquids 16e0a8c577740ffc
+>dan annotations d8dd9b10d9a5a8a7
+>dan draw-mine 764e9c6dd05b3cce
+>dan initiative c5fd3085646b31bc
+>dan pins 772e3ead48bbe343
+>dan doors df6868075b8b8386
+>dan sensed 8feafd68756e5478
+* rules ec7652cd7b076033
+* marks live:marks 1f7634bfd1a1a2a4
+>cara marks live:marks 4b3afcdbcf27cca9
+# a burst on the other map
+>cara delta/tokens#3 939a7177c8520b16
+>cara delta/sight#3 0bff128f2f0f85d3
+# the burst settles
+# withdrawn
+* scene 109a619bb8c2ea8f

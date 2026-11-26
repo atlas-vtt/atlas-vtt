@@ -13,6 +13,7 @@ import { showNotice } from '../ui/notice';
 import { statblockImageAt } from './statblockImageTarget';
 import { playerWindowStore } from '../stores/playerWindowStore';
 import { isResourceUrl, resourceUrlToFilePath, resourceUrlToVaultPath } from '../utils/pathUtils';
+import { followEveryDocument } from '../platform/atlasDocuments';
 import { canCopyItems } from '../platform/clipboardWrites';
 import { desktopOnly, isDesktopApp } from '../platform/desktopOnly';
 import { vaultBasePath } from '../platform/vaultBasePath';
@@ -22,6 +23,18 @@ interface ImageDisplay {
   container: HTMLDivElement;
   stage: HTMLDivElement;
   imageUrl: string;
+}
+
+/** Atlas' own elements; the document's root and body carry Atlas classes too (hidden chrome, a preview shown), and are none. */
+const ATLAS_UI = ':not(body):not(html)[class*="atlas-"]';
+const NOTE_CONTENT = '.markdown-rendered, .markdown-source-view, .markdown-preview-view';
+
+/** Whether `target` lies in Atlas' own UI, whose images stay its own; a note Atlas shows (its note preview) is the GM's content. */
+function inAtlasUi(target: Element): boolean {
+  const atlas = target.closest(ATLAS_UI);
+  if (!atlas) return false;
+  const note = target.closest(NOTE_CONTENT);
+  return !(note && atlas.contains(note));
 }
 
 export class ImageDisplayService {
@@ -39,6 +52,7 @@ export class ImageDisplayService {
   private lastContextMenuTarget: HTMLElement | null = null;
   private contextMenuEventRefs: EventRef[] = [];
   private contextMenuRegistered = false;
+  private stopFollowingDocuments: (() => void) | null = null;
 
   constructor(app: App) {
     this.app = app;
@@ -78,9 +92,6 @@ export class ImageDisplayService {
     });
     this.contextMenuEventRefs.push(linkMenuRef);
 
-    // Capture-phase listener to track right-click target (runs before Obsidian's handlers)
-    document.addEventListener('contextmenu', this.boundStoreContextMenuTarget, true);
-
     // Register for editor context menu (fires on right-click in markdown views)
     // This adds our item to Obsidian's native menu for rendered image embeds (![[image.png]])
     const editorMenuRef = this.app.workspace.on('editor-menu', (menu: Menu) => {
@@ -105,8 +116,16 @@ export class ImageDisplayService {
     });
     this.contextMenuEventRefs.push(editorMenuRef);
 
-    // Fallback: listen for context menu events on direct image views (non-editor contexts)
-    document.addEventListener('contextmenu', this.boundHandleContextMenu, false);
+    // In every window: a capture-phase listener tracks the right-click target ahead of Obsidian's handlers, and a
+    // fallback answers context menus on direct image views (non-editor contexts).
+    this.stopFollowingDocuments = followEveryDocument(this.app.workspace, (doc) => {
+      doc.addEventListener('contextmenu', this.boundStoreContextMenuTarget, true);
+      doc.addEventListener('contextmenu', this.boundHandleContextMenu, false);
+      return () => {
+        doc.removeEventListener('contextmenu', this.boundStoreContextMenuTarget, true);
+        doc.removeEventListener('contextmenu', this.boundHandleContextMenu, false);
+      };
+    });
   }
 
 
@@ -114,11 +133,11 @@ export class ImageDisplayService {
    * Resolve a right-click target to an image file and its IMG element.
    * Handles rendered embeds (![[image.png]]) and direct IMG clicks.
    */
-  private resolveImageFromTarget(target: HTMLElement): { file: TFile; imgElement: HTMLImageElement } | null {
+  private resolveImageFromTarget(target: Element): { file: TFile; imgElement: HTMLImageElement } | null {
     if (target.closest('.modal-container')) return null;
     // Atlas' own UI keeps its images to itself, but a statblock's pictures are content.
     let imgElement = statblockImageAt(target);
-    if (!imgElement && target.closest('[class*="atlas-"]')) return null;
+    if (!imgElement && inAtlasUi(target)) return null;
 
     if (target.tagName === 'IMG') {
       imgElement = target as HTMLImageElement;
@@ -175,17 +194,23 @@ export class ImageDisplayService {
       return;
     }
 
+    const viewed = this.viewedImageAt(target);
+    if (viewed) this.openImageMenu(event, viewed.file, viewed.imgElement);
+  }
+
+  /** The image of an image file's own tab under `target` (not Atlas' UI); null anywhere else. */
+  private viewedImageAt(target: Element): { file: TFile; imgElement: HTMLImageElement } | null {
     // Atlas' own UI keeps its images to itself
-    if (target.closest('[class*="atlas-"]')) return;
+    if (inAtlasUi(target)) return null;
 
     // Only handle direct image viewing (e.g. clicking an image file in a tab)
     const viewContent = target.closest('.view-content');
-    if (!viewContent || target.closest('.atlas-vtt')) return;
+    if (!viewContent || target.closest('.atlas-vtt')) return null;
 
-    if (!viewContent.closest('.workspace-leaf')) return;
+    if (!viewContent.closest('.workspace-leaf')) return null;
 
     const imgElement = viewContent.querySelector('img');
-    if (!imgElement) return;
+    if (!imgElement) return null;
 
     // Try to resolve the image file
     let imageFile = this.imageFileOf(imgElement);
@@ -194,12 +219,22 @@ export class ImageDisplayService {
       const activeFile = this.app.workspace.getActiveFile();
       if (activeFile && this.isImageFile(activeFile)) {
         const leafEl = target.closest('.workspace-leaf');
-        const activeLeafEl = document.querySelector('.workspace-leaf.mod-active');
+        const activeLeafEl = target.doc.querySelector('.workspace-leaf.mod-active');
         if (leafEl === activeLeafEl) imageFile = activeFile;
       }
     }
 
-    if (imageFile) this.openImageMenu(event, imageFile, imgElement);
+    return imageFile ? { file: imageFile, imgElement } : null;
+  }
+
+  /**
+   * The vault image under `target` that the image menus offer to show to the players: a rendered
+   * embed or picture in a note, a statblock's picture, an image file's own tab. Null for anything
+   * else, Atlas' own UI and pictures from the web included.
+   */
+  public imageFileAt(target: Element): TFile | null {
+    if (target.closest('.modal-container')) return null;
+    return (this.resolveImageFromTarget(target) ?? this.viewedImageAt(target))?.file ?? null;
   }
 
   /**
@@ -234,9 +269,6 @@ export class ImageDisplayService {
     openContextMenuGlobal(entries, { x: event.clientX, y: event.clientY });
   }
   
-  /**
-   * Copy image to clipboard
-   */
   private async copyImageToClipboard(imgElement: HTMLImageElement): Promise<void> {
     try {
       // The clipboard is asked within the press, as WebKit demands, and takes the picture once it is drawn.
@@ -373,9 +405,6 @@ export class ImageDisplayService {
     return this.imageContainer !== null;
   }
 
-  /**
-   * Check if file is an image
-   */
   private isImageFile(file: TFile): boolean {
     const imageExtensions = ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'svg', 'webp'];
     return imageExtensions.includes(file.extension.toLowerCase());
@@ -447,8 +476,8 @@ export class ImageDisplayService {
   public destroy(): void {
     this.disposeImageDisplay();
 
-    document.removeEventListener('contextmenu', this.boundStoreContextMenuTarget, true);
-    document.removeEventListener('contextmenu', this.boundHandleContextMenu, false);
+    this.stopFollowingDocuments?.();
+    this.stopFollowingDocuments = null;
     this.lastContextMenuTarget = null;
 
     this.contextMenuEventRefs.forEach((eventRef) => {

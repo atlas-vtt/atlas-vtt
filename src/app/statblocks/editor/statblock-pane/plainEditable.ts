@@ -21,10 +21,10 @@ export function selectText(element: HTMLElement, start: number, end: number): vo
   if (!selection) return;
   const node = element.firstChild ?? element;
   const length = node.textContent?.length ?? 0;
-  const clamp = (offset: number): number => Math.max(0, Math.min(offset, length));
+  const clampOffset = (offset: number): number => Math.max(0, Math.min(offset, length));
   const range = doc.createRange();
-  range.setStart(node, clamp(start));
-  range.setEnd(node, clamp(Math.max(start, end)));
+  range.setStart(node, clampOffset(start));
+  range.setEnd(node, clampOffset(Math.max(start, end)));
   selection.removeAllRanges();
   selection.addRange(range);
 }

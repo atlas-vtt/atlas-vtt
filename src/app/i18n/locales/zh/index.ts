@@ -49,6 +49,8 @@ import { toolbar } from './toolbar';
 import { hotkey } from './hotkey';
 import { pin } from './pin';
 import { laser } from './laser';
+import { remote } from './remote';
+import { downloads } from './downloads';
 import { audio } from './audio';
 import { editToken } from './editToken';
 import { hex } from './hex';
@@ -73,6 +75,7 @@ import { validation } from './validation';
 import { issue } from './issue';
 import { changelog } from './changelog';
 import { tour } from './tour';
+import { appearance } from './appearance';
 import { creatureFilter } from './creatureFilter';
 import { encounter } from './encounter';
 import { migration } from './migration';
@@ -84,6 +87,7 @@ import { armarium } from './armarium';
 import { armariumFindings } from './armariumFindings';
 import { armariumListing } from './armariumListing';
 import { armariumShare } from './armariumShare';
+import { armariumMusic } from './armariumMusic';
 import { armariumUpload } from './armariumUpload';
 import { campaign } from './campaign';
 import { deviceFiles } from './deviceFiles';
@@ -171,6 +175,7 @@ export const zh: Translation = {
   ...transfer,
   ...view,
   ...widgets,
+  ...remote,
   ...sbImport,
   ...filters,
   ...search,
@@ -179,6 +184,7 @@ export const zh: Translation = {
   ...hotkey,
   ...pin,
   ...laser,
+  ...downloads,
   ...audio,
   ...editToken,
   ...hex,
@@ -206,6 +212,7 @@ export const zh: Translation = {
   ...issue,
   ...changelog,
   ...tour,
+  ...appearance,
   ...creatureFilter,
   ...encounter,
   ...migration,
@@ -217,6 +224,7 @@ export const zh: Translation = {
   ...armariumFindings,
   ...armariumListing,
   ...armariumShare,
+  ...armariumMusic,
   ...armariumUpload,
   ...campaign,
   ...deviceFiles,

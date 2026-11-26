@@ -182,14 +182,14 @@ export function StatblockHoverPreview({
   useEffect(() => (containerRef.current ? scrollOnCtrlWheel(containerRef.current) : undefined), [isVisible, isClosing, notePath]);
 
   const shown = (isVisible || isClosing) && notePath !== null;
-  useEffect(() => (shown ? holdPreviewShown(document) : undefined), [shown]);
+  useEffect(() => (shown ? holdPreviewShown(containerRef.current?.doc ?? activeDocument) : undefined), [shown]);
 
   const positionStyles = useMemo(() => {
     if (!isVisible && !isClosing) return {};
     // Fall back to rough defaults until the statblock has actually rendered.
     const height = measured.height > 0 ? measured.height : 400;
     const width = measured.width > 0 ? measured.width : 450;
-    const gaps = previewEdgeGaps(containerRef.current?.ownerDocument ?? document, VIEWPORT_PADDING);
+    const gaps = previewEdgeGaps(containerRef.current?.ownerDocument ?? activeDocument, VIEWPORT_PADDING);
     return calculatePreviewPosition(anchorRect, position, height, width, preferredSide, gaps);
   }, [anchorRect, position, preferredSide, isVisible, isClosing, measured]);
 
@@ -227,7 +227,6 @@ export interface StatblockHoverPreviewState<TEntry> {
   isClosing: boolean;
   /** Vault path of the statblock note to preview */
   notePath: string | null;
-  /** The statblock file */
   statblockFile: TFile | null;
   /** The current hovered entry (whatever the caller previews: a token, an initiative entry, ...) */
   hoveredEntry: TEntry | null;

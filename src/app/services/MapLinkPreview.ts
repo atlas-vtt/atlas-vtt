@@ -31,7 +31,7 @@ export class MapLinkPreview {
   private static readonly HIDE_DELAY = 150;
 
   /** `doc`: the document of the window the pin was hovered in, which may be a popout's. */
-  constructor(app: App, file: TFile, pin: PreviewAnchor, manager: NotePreviewUIManager, position: { x: number; y: number }, private readonly doc: Document = document) {
+  constructor(app: App, file: TFile, pin: PreviewAnchor, manager: NotePreviewUIManager, position: { x: number; y: number }, private readonly doc: Document) {
     this.app = app;
     this.file = file;
     this.notePath = file.path;

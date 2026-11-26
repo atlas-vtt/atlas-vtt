@@ -9,9 +9,10 @@ import { allLayouts, defaultLayout, findLayout } from '../../services/FantasySta
 import { cachedFrontmatter, frontmatterSource, type FrontmatterRecord } from '../notes/statblockSource';
 import { identityOf, type LayoutIdentity } from './fsImport';
 import type { FsLayout } from './fsLayoutTypes';
+import { getLocale } from '../../i18n';
 
 /** Notes in the order the lists show them: by path, numbers by value. */
-export const BY_PATH = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+export const BY_PATH = new Intl.Collator(getLocale(), { numeric: true, sensitivity: 'base' });
 
 /** The layout a frontmatter statblock names in `layout:`; null when it names none. */
 export function layoutKeyOf(frontmatter: FrontmatterRecord | null | undefined): string | null {

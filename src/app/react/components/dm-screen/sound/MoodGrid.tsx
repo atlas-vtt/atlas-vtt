@@ -16,6 +16,10 @@ import { useOptionalAtlasStore } from '../../../ViewStoreContext';
 import { MoodCard } from './MoodCard';
 import { MoodEditPopover } from './MoodEditPopover';
 import { moodForPlayers } from './PlayersRow';
+import { useKeptValues } from './keptValues';
+import { useStagedList } from './useStagedList';
+import { useStableCallback } from '../../../hooks/useStableCallback';
+import type { PlayersCopy } from '../../../../soundDirector/tableClock';
 import { moodsMatching } from './moodSearch';
 import { useMoodDrag } from './useMoodDrag';
 import { useMoodScenes } from './useMoodScenes';
@@ -34,6 +38,9 @@ interface MoodGridProps {
 }
 
 const NO_PROBLEMS: readonly MoodProblem[] = [];
+
+/** Tiles mounted at once: more than any screen shows above the fold; the rest follow in a transition (`useStagedList`). */
+const FIRST_TILES = 24;
 
 /** The moods in their fixed places, numbered as the keys that press them. */
 export function MoodGrid({ app, director, moods, search, moveMood, onNewMood }: MoodGridProps): React.JSX.Element {
@@ -62,7 +69,9 @@ export function MoodGrid({ app, director, moods, search, moveMood, onNewMood }: 
   const canMove = useCallback((mood: Mood) => !store.isReadOnly(mood.id), [store]);
   // A search shows a part of the moods, where a drop's place would not be the place in the whole order.
   const canDrag = useCallback((mood: Mood) => search === '' && canMove(mood), [canMove, search]);
-  const { shown, draggingId, start, consumeClick } = useMoodDrag(gridRef, moods, canDrag, moveMood);
+  // Stable, as the tiles are memoised on the drag's start: a new mood alone renders no other tile.
+  const dropMood = useStableCallback(moveMood);
+  const { shown, draggingId, start, consumeClick } = useMoodDrag(gridRef, moods, canDrag, dropMood);
 
   const press = useCallback((mood: Mood): void => {
     if (!consumeClick()) director.press(mood);
@@ -70,9 +79,10 @@ export function MoodGrid({ app, director, moods, search, moveMood, onNewMood }: 
 
   // A file gone from disk changes the library, not the shelf: both are read again for it.
   const libraryVersion = useLibraryVersion(SoundLibrary.forApp(app));
-  const problems = useMemo(() => new Map(moods.map((mood) => [mood.id, moodProblems(mood, director.shelf)])), [director, moods, shelfRevision, libraryVersion]);
+  const problems = useKeptValues(useMemo(() => new Map(moods.map((mood) => [mood.id, moodProblems(mood, director.shelf)])), [director, moods, shelfRevision, libraryVersion]), sameProblems);
 
-  const openMenu = useCallback((mood: Mood, anchor: HTMLElement): void => {
+  // One function for the life of the grid: every tile is memoised on it, and the menu reads what holds when it opens.
+  const openMenu = useStableCallback((mood: Mood, anchor: HTMLElement): void => {
     const box = anchor.getBoundingClientRect();
     const at = moods.findIndex((one) => one.id === mood.id);
     const readOnly = store.isReadOnly(mood.id);
@@ -87,20 +97,21 @@ export function MoodGrid({ app, director, moods, search, moveMood, onNewMood }: 
       ...relinkEntries(problems.get(mood.id) ?? NO_PROBLEMS, (record) => relinkSound(app, SoundLibrary.forApp(app), SoundRecordStore.forApp(app), record)),
       { type: 'item', label: t('audio.mood.delete'), destructive: true, disabled: readOnly, onClick: () => void confirmDelete(store, mood) },
     ], { x: box.left, y: box.bottom }, { returnFocus: anchor, label: t('audio.moodMenu', { name: mood.name }) });
-  }, [app, canMove, hasScene, menu, moods, moveMood, problems, sceneSound, setSceneSound, store]);
+  });
 
   // Copies a mood names are made before anyone presses it.
   useEffect(() => {
     director.shelf.request(moods.flatMap((mood) => director.shelf.recordsOf(mood)));
   }, [director, moods, shelfRevision]);
 
-  const forPlayers = useMemo(() => new Map(moods.map((mood) => [mood.id, moodForPlayers(mood, director)])), [director, moods, shelfRevision, playersRevision]);
+  const forPlayers = useKeptValues(useMemo(() => new Map(moods.map((mood) => [mood.id, moodForPlayers(mood, director)])), [director, moods, shelfRevision, playersRevision]), samePlayers);
   const musicNames = useMemo(() => new Map(moods.map((mood) => [mood.id, firstTrackName(mood, director)])), [director, moods, shelfRevision]);
   const activeAt = shown.findIndex((mood) => mood.id === activeId);
   const nextId = shown.length > 1 ? shown[(activeAt + 1) % shown.length]?.id : undefined;
   // Each tile keeps its number in the whole order, which is the key that presses it.
   const found = useMemo(() => (search === '' ? null : new Set(moodsMatching(moods, search, director).map((mood) => mood.id))), [director, moods, search, shelfRevision]);
   const tiles = shown.map((mood, index) => ({ mood, number: index + 1 })).filter(({ mood }) => found === null || found.has(mood.id));
+  const mounted = useStagedList(tiles, FIRST_TILES);
 
   return (
     <>
@@ -114,7 +125,7 @@ export function MoodGrid({ app, director, moods, search, moveMood, onNewMood }: 
     </div>
     {tiles.length === 0 && <p className="atlas-sound-moods__none">{t('audio.mood.noneFound')}</p>}
     <div className="atlas-sound-moods__grid" ref={gridRef}>
-      {tiles.map(({ mood, number }) => (
+      {mounted.map(({ mood, number }) => (
         <MoodCard
           key={mood.id}
           mood={mood}
@@ -144,6 +155,16 @@ export function MoodGrid({ app, director, moods, search, moveMood, onNewMood }: 
     </>
   );
 }
+
+/** Equal problems say the same on the tile and name the same records for its Relink. */
+const sameProblems = (a: readonly MoodProblem[], b: readonly MoodProblem[]): boolean =>
+  a.length === b.length && a.every((problem, index) => {
+    const other = b[index];
+    return other !== undefined && JSON.stringify({ ...problem, record: undefined }) === JSON.stringify({ ...other, record: undefined })
+      && (problem.kind !== 'missing' || (other.kind === 'missing' && problem.record === other.record));
+  });
+
+const samePlayers = (a: PlayersCopy | null, b: PlayersCopy | null): boolean => JSON.stringify(a) === JSON.stringify(b);
 
 const moodMix = ({ id: _id, order: _order, ...mix }: Mood): Omit<Mood, 'id' | 'order'> => mix;
 

@@ -9,6 +9,7 @@ export const toolbar = {
   'toolbar.cone': 'Cone',
   'toolbar.fogEraser': 'Fog Eraser',
   'toolbar.fogTool': 'Fog Tool',
+  'toolbar.lighting': 'Lighting',
   'toolbar.laser': 'Laser Pointer',
   'toolbar.lassoSelection': 'Lasso Selection',
   'toolbar.peek': 'Hold to see what the players see',
@@ -25,7 +26,7 @@ export const toolbar = {
   'toolbar.notePin': 'Note Pin Tool',
   'toolbar.pinOptions': 'Pin options',
   'toolbar.stairs': 'Stairs',
-  'toolbar.stairsNeedLevels': 'Stairs join the levels of a scene. Add a level in the command palette\'s Scene levels page first.',
+  'toolbar.stairsNeedLevels': 'Stairs need a second level. Add one in Scene levels',
   'toolbar.rollDice': 'Dice tray',
   'toolbar.optionsOf': '{label} Options',
   'toolbar.moveSelect': 'Move/Select',
@@ -66,5 +67,4 @@ export const toolbar = {
   'toolbar.ranges': 'Ranges',
   'toolbar.rangesTip': 'Click a token or a place to see its ranges',
   'toolbar.rangesNoRules': 'This game system has no ranges or movement steps',
-  'toolbar.rangesNeedGmView': 'Switch to GM view ({key}) to see ranges',
 } as const satisfies Record<string, Message>;

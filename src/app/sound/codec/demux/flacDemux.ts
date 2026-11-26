@@ -16,6 +16,30 @@ const CRC8 = Uint8Array.from({ length: 256 }, (_, index) => {
   return crc;
 });
 
+const CRC16 = Uint16Array.from({ length: 256 }, (_, index) => {
+  let crc = index << 8;
+  for (let bit = 0; bit < 8; bit++) crc = crc & 0x8000 ? ((crc << 1) ^ 0x8005) & 0xffff : (crc << 1) & 0xffff;
+  return crc;
+});
+
+/**
+ * The CRC-16 that closes a frame, kept as the scan for the next header goes on, so every byte is read once.
+ * A header's CRC-8 alone lets a false sync code inside the audio through about once in a few thousand
+ * frames, which cut a third of real music files in two.
+ */
+class FrameCrc {
+  private crc = 0;
+  private covered = 0;
+
+  constructor(private readonly bytes: Uint8Array) {}
+
+  /** Whether the frame that starts at 0 ends at `end`: a frame closes with the CRC-16 of everything before it. */
+  endsAt(end: number): boolean {
+    for (; this.covered < end - 2; this.covered++) this.crc = ((this.crc << 8) & 0xffff) ^ (CRC16[(this.crc >> 8) ^ (this.bytes[this.covered] ?? 0)] ?? 0);
+    return this.crc === (((this.bytes[end - 2] ?? 0) << 8) | (this.bytes[end - 1] ?? 0));
+  }
+}
+
 /** The block size of the frame whose header is valid at `at`, else 0. The header's CRC tells real from false. */
 function frameHeaderAt(bytes: Uint8Array, at: number, streamBlock: number): number {
   if (bytes[at] !== 0xff || ((bytes[at + 1] ?? 0) & 0xfe) !== 0xf8) return 0;
@@ -97,9 +121,11 @@ export async function demuxFlac(window: BlobWindow): Promise<EncodedSource> {
           position += 1;
           continue;
         }
+        const limit = bytes.length - MAX_FRAME_HEADER;
+        const frameCrc = new FrameCrc(bytes);
         let next = 2;
-        while (next < bytes.length - MAX_FRAME_HEADER && !frameHeaderAt(bytes, next, maxBlock)) next++;
-        const found = next < bytes.length - MAX_FRAME_HEADER;
+        while (next < limit && !(frameHeaderAt(bytes, next, maxBlock) && frameCrc.endsAt(next))) next++;
+        const found = next < limit;
         if (!found && !atEnd) throw new SoundImportError('unreadable', 'A FLAC frame longer than any should be.');
         const end = found ? next : bytes.length;
         const packet: EncodedPacket = { data: bytes.slice(0, end), frames: block };

@@ -30,7 +30,7 @@ interface GridSettings {
   opacity: number;
 }
 
-export function GridSettingsModal({ isOpen, onClose, view }: GridSettingsModalProps) {
+export function GridSettingsModal({ isOpen, onClose, view }: GridSettingsModalProps): React.JSX.Element | null {
   // Grid settings state - initialize from store when modal opens
   const [settings, setSettings] = useState<GridSettings>(() => {
     const currentGrid = view?.atlasStore?.getState()?.grid;
@@ -76,11 +76,11 @@ export function GridSettingsModal({ isOpen, onClose, view }: GridSettingsModalPr
     }
   }, [isOpen, view]);
 
-  const updateSetting = <K extends keyof GridSettings>(key: K, value: GridSettings[K]) => {
+  const updateSetting = <K extends keyof GridSettings>(key: K, value: GridSettings[K]): void => {
     setSettings(prev => ({ ...prev, [key]: value }));
   };
 
-  const applySettings = () => {
+  const applySettings = (): void => {
     const gridSystem = view?.renderer?.getGridSystem();
     if (gridSystem) {
       
@@ -140,21 +140,21 @@ export function GridSettingsModal({ isOpen, onClose, view }: GridSettingsModalPr
           <div className="atlas-grid-settings-section">
             <h3>{t('gridModal.type')}</h3>
             <div className="atlas-grid-type-options">
-              <button
+              <button type="button"
                 className={`atlas-grid-type-option ${settings.type === 'square' ? 'atlas-active' : ''}`}
                 onClick={() => updateSetting('type', 'square')}
               >
                 <Grid size={24} />
                 <span>{t('grid.type.square')}</span>
               </button>
-              <button
+              <button type="button"
                 className={`atlas-grid-type-option ${settings.type === 'hex-horizontal' ? 'atlas-active' : ''}`}
                 onClick={() => updateSetting('type', 'hex-horizontal')}
               >
                 <Hexagon size={24} />
                 <span>{t('grid.type.hexFlat')}</span>
               </button>
-              <button
+              <button type="button"
                 className={`atlas-grid-type-option ${settings.type === 'hex-vertical' ? 'atlas-active' : ''}`}
                 onClick={() => updateSetting('type', 'hex-vertical')}
               >
