@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { rejectEngineShaders } from '../engine/__tests__/gpuTestUtils';
 import { watchGl } from '../engine/__tests__/strictGl';
 import { LightingWorld } from '../engine/LightingWorld';
 import { SAVE_DELAY } from './rendererHarness';
-import { CAVE, breakLinking, createScene, darkness, engineLayer, litScene, type Scene, type SceneOptions } from './sceneLightingHarness';
+import { CAVE, createScene, darkness, engineLayer, litScene, type Scene, type SceneOptions } from './sceneLightingHarness';
 
 const notices = vi.hoisted(() => [] as string[]);
 vi.mock('obsidian', () => ({
@@ -44,7 +45,7 @@ describe('scene lighting on a graphics device that cannot run the engine', () =>
     const { renderer, viewport, host } = scene;
     const modeLayer = host.modeLayer;
     modeLayer.visible = true;
-    breakLinking(renderer);
+    rejectEngineShaders(renderer);
 
     expect(() => scene.switchLighting(true)).not.toThrow();
     vi.restoreAllMocks();
