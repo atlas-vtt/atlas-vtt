@@ -198,7 +198,7 @@ export class FloorShare {
     this.ports.send({ t: 'scene', scene: this.scene }, to);
     this.pictures.resend(to);
     this.rules.feed.resend(to);
-    this.marks.resend(to);
+    this.marks.feed.resend(to);
   }
 
   /** A player's map shows again: they are sent the marks as they are now, also where there are none, so none they held stays. */
@@ -353,11 +353,11 @@ export class FloorShare {
     this.drawings.setScene(scene?.id ?? null);
     this.cleared.reset();
     // Marks of the scene before must not follow the new one: the live lane would let them overtake it.
-    this.marks.setScene(null);
+    this.marks.feed.setScene(null);
     this.pictures.assign();
     this.resend();
     this.pictures.setScene(scene);
     this.rules.feed.setScene(scene);
-    this.marks.setScene(scene?.id ?? null);
+    this.marks.feed.setScene(scene);
   }
 }
