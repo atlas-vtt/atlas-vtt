@@ -61,6 +61,12 @@ export class MarksOut {
     if (sent) this.sentAt = now;
   }
 
+  /** When the cursors told last are due to go out again though nothing changed; undefined while none were told. */
+  keepAliveAt(): number | undefined {
+    const told = [this.all, ...this.each.values()];
+    return told.some((each) => (each?.body.cursors?.length ?? 0) > 0) ? this.sentAt + CURSOR_KEEPALIVE_MS : undefined;
+  }
+
   /** The last marks again, to one player or to all; nothing where they hold none. */
   resend(to?: string): void {
     if (to !== undefined) {

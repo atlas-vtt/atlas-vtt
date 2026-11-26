@@ -37,6 +37,12 @@ export class GmStrokes {
   private movedAt: number | null = null;
   private readonly meter = new SpanMeter();
 
+  /** When the made drawing players were told of stops being told as kept, while that is after `now`; undefined otherwise. */
+  endsAt(now: number): number | undefined {
+    const ends = this.told && this.madeAt !== null ? this.madeAt + STROKE_KEPT_MS : undefined;
+    return ends !== undefined && ends > now ? ends : undefined;
+  }
+
   /** The drawing under way changed at `now` (ms): a pen's stroke has a new end. */
   moved(now: number): void {
     this.movedAt = now;

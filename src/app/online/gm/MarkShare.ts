@@ -142,6 +142,8 @@ export class MarkShare {
   private source: GmMarkSource | null = null;
   private stopSource: (() => void) | null = null;
   private readonly out: MarksOut;
+  /** Looks again when the first mark ends by time alone (`rearm`). */
+  private wake: number | undefined;
 
   /** `map` is the shared map's size, which marks must stay near; null when it is unknown. */
   constructor(ports: MarkSharePorts, map: () => MapSize | null) {
@@ -249,6 +251,7 @@ export class MarkShare {
     if (this.playerStrokes.any && this.playerStrokes.drop((player) => scene !== null && this.ports.strokesTaken?.(player, scene) != null)) this.pacer.request();
     this.cursors.update();
     if (this.scene !== null) this.pacer.request();
+    this.rearm();
   }
 
   /** The last marks again, to one player or to all. */
@@ -264,6 +267,8 @@ export class MarkShare {
   stop(): void {
     this.follow(null);
     this.pacer.cancel();
+    if (this.wake !== undefined) this.ports.clearTimer(this.wake);
+    this.wake = undefined;
   }
 
   private follow(source: GmMarkSource | null): void {
@@ -327,6 +332,21 @@ export class MarkShare {
       body: { t: 'marks', scene, lasers, measures: [...entries, ...playerMeasures], ...(cursors !== undefined && { cursors }), ...(strokes.length > 0 && { strokes }) },
     }));
     this.out.tell(marks, now);
+    this.rearm();
+  }
+
+  /**
+   * Looks again when the first mark ends by time alone: a player's laser falls silent, a cursor comes to
+   * rest, a drawing's maker falls silent or its moment as kept passes, or the cursors are due to go out again.
+   */
+  private rearm(): void {
+    if (this.wake !== undefined) this.ports.clearTimer(this.wake);
+    this.wake = undefined;
+    const now = this.ports.now();
+    const lasers = [...this.lasers.values()].map(({ at }) => at + LASER_SILENCE_MS + 1);
+    const ends = [...lasers, this.cursors.restsAt(this.source?.cursor ?? null, now), this.out.keepAliveAt(), this.playerStrokes.endsAt(), this.strokes.endsAt(now)];
+    const next = Math.min(...ends.filter((at): at is number => at !== undefined && at > now));
+    if (this.scene !== null && Number.isFinite(next)) this.wake = this.ports.setTimer(() => this.update(), next - now);
   }
 
   /** Shows the GM the players' drawings under way; nothing where none are shown and none were. */

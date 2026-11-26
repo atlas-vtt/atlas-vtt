@@ -317,13 +317,13 @@ describe('MarkShare', () => {
     expect(harness.shown).toEqual({ lasers: [], measures: [] });
   });
 
-  it('takes a laser that went silent off the GM\'s map without waiting for the next marks', () => {
+  it('takes a laser that went silent off the GM\'s map by itself, without waiting for the next marks', () => {
     const harness = markHarness();
     harness.share.setScene('s1');
     harness.share.receive(ANA, laser());
-    harness.advance(LASER_SILENCE_MS + 10);
+    harness.advance(LASER_SILENCE_MS - 10);
     expect(harness.shown?.lasers.map((entry) => entry.who)).toEqual([ANA]);
-    harness.share.update();
+    harness.advance(20);
     expect(harness.shown?.lasers).toEqual([]);
   });
 

@@ -65,18 +65,14 @@ describe('everyone\'s cursors', () => {
     ]);
   });
 
-  it('leave out a cursor whose owner did nothing for long until they do again, and tell the GM\'s overlay', () => {
+  it('leave out a cursor whose owner did nothing for long, by itself, until they do again, and tell the GM\'s overlay', () => {
     const harness = shown();
     harness.share.receive(ANA, cursor());
     harness.advance(CURSOR_REST_MS - 1);
     // A page sends only while its owner is at work: the same place again (a scroll, a zoom) keeps the cursor.
     harness.share.receive(ANA, cursor({ pts: [] }));
     harness.advance(CURSOR_REST_MS - 1);
-    harness.share.update();
-    harness.advance(MARKS_INTERVAL_MS);
     expect(lastMarks(harness)?.cursors).toHaveLength(1);
-    harness.advance(2);
-    harness.share.update();
     harness.advance(MARKS_INTERVAL_MS);
     expect(lastMarks(harness)?.cursors).toEqual([]);
     expect(harness.cursorShows.at(-1)).toEqual([]);
