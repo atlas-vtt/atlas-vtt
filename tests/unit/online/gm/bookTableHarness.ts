@@ -6,8 +6,11 @@ import type { BookShelf, BookSource } from '../../../../src/app/online/gm/book/B
 import { isEmptyBook, type StoredBook } from '../../../../src/app/online/gm/book/bookStore.ts';
 import { OnlineControl } from '../../../../src/app/online/gm/OnlineControl.ts';
 import { boundOwnership, fakeCampaigns } from './fakeSeats.ts';
+import type { Ownership } from '../../../../src/app/online/gm/ownership.ts';
 import type { SavedTable } from '../../../../src/app/online/gm/savedTable.ts';
-import { app, atlasTab, FakeSocket, png, present, workspace, type FakeTab, storedAccount } from './fakeTable.ts';
+import { FakeRelay } from './fakeRelay.ts';
+import { app, atlasTab, png, present, workspace, type FakeTab, storedAccount } from './fakeTable.ts';
+import type { PageMessage, PlayerPages } from './playerPages.ts';
 import { fakeTokenSource } from './fakeTokenSource.ts';
 import { advanceSettled } from './settled.ts';
 import { sceneState } from './shareHarness.ts';
@@ -20,41 +23,8 @@ import { NO_STRETCH } from '../../../../src/app/grid/mapStretch';
  * books. Each test file mocks `obsidian` and the GM's marks itself.
  */
 
-/** A message the companion sent, as the player it went to reads it: a message sent in parts is put together. */
-export interface Delivered {
-  readonly to: string;
-  readonly body: Readonly<Record<string, unknown>>;
-}
-
-interface Part {
-  readonly id: string;
-  readonly index: number;
-  readonly count: number;
-  readonly data: string;
-}
-
-/** Every game message the socket was given, in order, with who it was for; parts as the one message they make. */
-export function delivered(socket: FakeSocket): Delivered[] {
-  const parts = new Map<string, string[]>();
-  return socket.frames().flatMap((frame): Delivered[] => {
-    if (frame.t !== 'send' || frame.body === undefined) return [];
-    const to = frame.to ?? '';
-    const body = frame.body as Readonly<Record<string, unknown>>;
-    if (body.t !== 'part') return [{ to, body }];
-    const part = body as unknown as Part;
-    const held = parts.get(`${to}\n${part.id}`) ?? [];
-    held[part.index] = part.data;
-    parts.set(`${to}\n${part.id}`, held);
-    if (held.filter((data) => typeof data === 'string').length < part.count) return [];
-    return [{ to, body: JSON.parse(Buffer.concat(held.map((data) => Buffer.from(data, 'base64'))).toString('utf8')) as Record<string, unknown> }];
-  });
-}
-
-/** The messages of these types among them. */
-export const ofType = (messages: readonly Delivered[], ...types: readonly string[]): Delivered[] => messages.filter(({ body }) => types.includes(String(body.t)));
-
-/** Everything sent as text, whoever it was for: what a secret is searched in. */
-export const traffic = (messages: readonly Delivered[]): string => messages.map(({ body }) => JSON.stringify(body)).join('\n');
+/** Messages as text: what a secret is searched in. */
+export const traffic = (messages: readonly PageMessage[]): string => messages.map((body) => JSON.stringify(body)).join('\n');
 
 export const ANA = 'anaanaanaanaanaanaan';
 export const BEN = 'benbenbenbenbenbenbe';
@@ -165,7 +135,9 @@ function answer(): WorldMapTree | null {
 export interface OpenTable {
   readonly online: OnlineControl;
   readonly ownership: Ownership;
-  readonly socket: FakeSocket;
+  readonly relay: FakeRelay;
+  /** The players' pages at the table (`relay.pages`). */
+  readonly pages: PlayerPages;
   readonly tab: FakeTab;
   /** A player's message, as the relay hands it on. */
   from(player: string, body: object): void;
@@ -200,12 +172,11 @@ export async function openTable(shelf: BookShelf, players: readonly PlayerInfo[]
   workspace.leaves = [tab.leaf];
   present(tab);
   const ownership = boundOwnership(campaign, { owners, playerTokens: {} });
-  const online = new OnlineControl(app, ownership, fakeCampaigns(campaign, { owners, playerTokens: {} }), undefined, storedAccount(), undefined, shelf);
+  const relay = new FakeRelay();
+  const online = new OnlineControl(app, ownership, fakeCampaigns(campaign, { owners, playerTokens: {} }), undefined, storedAccount(), undefined, shelf, relay.open);
   void online.resume(SAVED);
   await advanceSettled(0);
-  const socket = FakeSocket.all.at(-1);
-  if (socket === undefined) throw new Error('no socket');
-  socket.relay({ t: 'welcome', role: 'gm', players });
+  relay.outbox.welcome(players);
   await advanceSettled(1_000);
-  return { online, ownership, socket, tab, from: (player, body) => socket.relay({ t: 'game', from: player, body }) };
+  return { online, ownership, relay, pages: relay.pages, tab, from: (player, body) => relay.outbox.from(player, body) };
 }

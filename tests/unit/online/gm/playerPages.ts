@@ -4,6 +4,9 @@ import { ALL_PLAYERS, DeltaReader, isDeltaOf, parseGmMessage, type GmMessage, ty
 export type PageMessage = GmMessage | YourCodeMessage;
 type Of<T extends PageMessage['t']> = Extract<PageMessage, { t: T }>;
 
+/** What each page read, by player (`PlayerPages.since`, `PlayerPages.heard`). */
+export type Heard = Readonly<Record<string, readonly PageMessage[]>>;
+
 /** Where each page's reading stood at a moment, to read what came after it (`PlayerPages.since`). */
 export type Mark = ReadonlyMap<string, number>;
 
@@ -24,26 +27,28 @@ export class PlayerPage {
 
   constructor(readonly player: string) {}
 
-  receive(body: PageMessage): void {
+  receive(sent: PageMessage): void {
+    // As it came over the wire: what the GM changes in the object it sent afterwards never reaches the page.
+    const body = JSON.parse(JSON.stringify(sent)) as PageMessage;
     this.inbox.push(body);
     if (body.t !== 'delta' && !isDeltaOf(body.t)) return void this.read.push(body);
-    // As the player's browser takes it: parsed from the JSON that went over the wire.
-    const read = this.reader.read(parseGmMessage(JSON.parse(JSON.stringify(body))) ?? (body as GmMessage));
+    // As the player's browser reads it: parsed, then a delta applied to what the page holds.
+    const read = this.reader.read(parseGmMessage(body) ?? (body as GmMessage));
     if (read === null || read === 'gap') this.gaps.push(body);
     else this.read.push(read);
   }
 
   /** Every message of these kinds this page read (of any kind where none is named), in order. */
   all<T extends PageMessage['t']>(...kinds: readonly T[]): Of<T>[] {
-    return this.since(0, ...kinds);
+    return this.since(new Map(), ...kinds);
   }
 
-  /** The messages of these kinds this page read from its `from`th on (of any kind where none is named). */
-  since<T extends PageMessage['t']>(from: number, ...kinds: readonly T[]): Of<T>[] {
+  /** The messages of these kinds this page read after `mark` (all it read where it joined later), of any kind where none is named. */
+  since<T extends PageMessage['t']>(mark: Mark, ...kinds: readonly T[]): Of<T>[] {
     const named = (t: string): boolean => kinds.length === 0 || (kinds as readonly string[]).includes(t);
     const missed = this.gaps.find((gap) => named(gap.t === 'delta' ? gap.of : gap.t));
     if (missed !== undefined) throw new Error(`the page of ${this.player} missed a message before ${JSON.stringify(missed)}`);
-    return this.read.slice(from).filter((message): message is Of<T> => named(message.t));
+    return this.read.slice(mark.get(this.player) ?? 0).filter((message): message is Of<T> => named(message.t));
   }
 
   last<T extends PageMessage['t']>(t: T): Of<T> | undefined {
@@ -107,10 +112,15 @@ export class PlayerPages {
   since<T extends PageMessage['t']>(mark: Mark, ...kinds: readonly T[]): Record<string, Of<T>[]> {
     const heard: Record<string, Of<T>[]> = {};
     for (const [player, page] of this.pages) {
-      const read = page.since(mark.get(player) ?? 0, ...kinds);
+      const read = page.since(mark, ...kinds);
       if (read.length > 0) heard[player] = read;
     }
     return heard;
+  }
+
+  /** What each page read of these kinds, by player; a page that read none is left out. */
+  heard<T extends PageMessage['t']>(...kinds: readonly T[]): Record<string, Of<T>[]> {
+    return this.since(new Map(), ...kinds);
   }
 }
 

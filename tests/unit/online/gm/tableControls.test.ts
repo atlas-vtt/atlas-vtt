@@ -2,13 +2,14 @@ import type { TokenEntity } from '../../../../src/app/types';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SceneState } from '../../../../src/app/online/gm/atlasView.ts';
 import { OnlineControl } from '../../../../src/app/online/gm/OnlineControl.ts';
-import { Ownership } from '../../../../src/app/online/gm/ownership.ts';
 import { boundOwnership, fakeCampaigns } from './fakeSeats.ts';
 import type { SavedTable } from '../../../../src/app/online/gm/savedTable.ts';
-import { app, atlasTab, FakeSocket, png, present, switchScene, workspace, storedAccount } from './fakeTable.ts';
+import { app, atlasTab, png, present, switchScene, workspace, storedAccount } from './fakeTable.ts';
 import { tableControlsStore } from '../../../../src/app/stores/tableControlsStore';
 import { sceneState } from './shareHarness.ts';
 import { advanceSettled as advance } from './settled.ts';
+import type { PageMessage } from './playerPages.ts';
+import { FakeRelay } from './fakeRelay.ts';
 
 const seen = vi.hoisted(() => ({ notices: [] as string[] }));
 
@@ -50,31 +51,28 @@ const SAVED: SavedTable = { code: 'a'.repeat(26), secret: 's'.repeat(43), maxPla
 const character = (id: string, name: string, x: number): TokenEntity => ({ id, kind: 'character', name, imagePath: 'art/ogre.png', x, y: 140 });
 const cave = (x = 140): SceneState => sceneState({ mapPath: CAVE, background: 'maps/cave.png', objects: { ...sceneState().objects, tokens: { 'gm-ogre': character('gm-ogre', 'Ogre', x) } } });
 
-type Body = { readonly t: string; readonly scene?: unknown; readonly id?: string; readonly tokens?: readonly { readonly id: string; readonly x: number }[] };
-const bodies = (socket: FakeSocket, to?: string): Body[] => socket.frames().flatMap((frame) => (frame.t === 'send' && frame.body !== undefined && (to === undefined || frame.to === to) ? [frame.body as Body] : []));
-const scenes = (socket: FakeSocket, to?: string): unknown[] => bodies(socket, to).filter((body) => body.t === 'scene').map((body) => body.scene);
+/** The scenes a player's page was sent, in order. */
+const scenes = (relay: FakeRelay, player = ANA): unknown[] => relay.pages.of(player).all('scene').map(({ scene }) => scene);
 
 /** A running table restored from `SAVED`, welcomed by the relay with Ana at it. */
-async function running(): Promise<{ online: OnlineControl; socket: FakeSocket }> {
+async function running(): Promise<{ online: OnlineControl; relay: FakeRelay }> {
   const players = [{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }];
-  const online = new OnlineControl(app, boundOwnership(players), fakeCampaigns(players), undefined, storedAccount());
+  const relay = new FakeRelay();
+  const online = new OnlineControl(app, boundOwnership(players), fakeCampaigns(players), undefined, storedAccount(), undefined, undefined, relay.open);
   void online.resume(SAVED);
   await advance(0);
-  const socket = FakeSocket.all.at(-1);
-  if (socket === undefined) throw new Error('no socket');
-  socket.relay({ t: 'welcome', role: 'gm', players: [{ id: ANA, name: 'Ana' }] });
+  relay.outbox.welcome([{ id: ANA, name: 'Ana' }]);
   await advance(500);
-  return { online, socket };
+  return { online, relay };
 }
 
-const modes = (socket: FakeSocket, to?: string): Body[] => bodies(socket, to).filter((body) => body.t === 'table-mode');
+/** How the table plays, as a player's page was told it, in order. */
+const modes = (relay: FakeRelay, player = ANA): PageMessage[] => relay.pages.of(player).all('table-mode');
 
 describe('the GM\'s controls over the online table', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'performance', 'Date'] });
     vi.stubGlobal('window', globalThis);
-    vi.stubGlobal('WebSocket', FakeSocket);
-    FakeSocket.all = [];
     seen.notices.length = 0;
     workspace.leaves = [];
     workspace.presented = null;
@@ -91,19 +89,19 @@ describe('the GM\'s controls over the online table', () => {
     const tab = atlasTab(cave());
     workspace.leaves = [tab.leaf];
     present(tab);
-    const { online, socket } = await running();
+    const { online, relay } = await running();
     expect(tableControlsStore.getState().online).toBe(true);
-    const sent = bodies(socket);
+    const sent = relay.pages.of(ANA).inbox;
     expect(sent.findIndex((body) => body.t === 'table-mode')).toBeLessThan(sent.findIndex((body) => body.t === 'scene'));
-    expect(modes(socket).at(-1)).toEqual({ t: 'table-mode', mode: 'table', curtain: false, paused: false });
+    expect(modes(relay).at(-1)).toEqual({ t: 'table-mode', mode: 'table', curtain: false, paused: false });
 
     tableControlsStore.setState({ playMode: 'remote' });
     await advance(100);
-    expect(modes(socket).at(-1)).toEqual({ t: 'table-mode', mode: 'remote', curtain: false, paused: false });
+    expect(modes(relay).at(-1)).toEqual({ t: 'table-mode', mode: 'remote', curtain: false, paused: false });
 
-    socket.relay({ t: 'player-joined', id: BEN, name: 'Ben' });
+    relay.outbox.join({ id: BEN, name: 'Ben' });
     await advance(500);
-    expect(modes(socket, BEN)).toEqual([{ t: 'table-mode', mode: 'remote', curtain: false, paused: false }]);
+    expect(modes(relay, BEN)).toEqual([{ t: 'table-mode', mode: 'remote', curtain: false, paused: false }]);
     online.stop();
     expect(tableControlsStore.getState().online).toBe(false);
   });
@@ -112,28 +110,28 @@ describe('the GM\'s controls over the online table', () => {
     const tab = atlasTab(cave());
     workspace.leaves = [tab.leaf];
     present(tab);
-    const { online, socket } = await running();
-    const shown = scenes(socket).at(-1);
+    const { online, relay } = await running();
+    const shown = scenes(relay).at(-1);
     expect(shown).not.toBeNull();
 
     tableControlsStore.setState({ curtain: true });
     await advance(100);
-    expect(modes(socket).at(-1)).toMatchObject({ curtain: true });
-    expect(scenes(socket).at(-1)).toBeNull();
-    const before = socket.frames().length;
+    expect(modes(relay).at(-1)).toMatchObject({ curtain: true });
+    expect(scenes(relay).at(-1)).toBeNull();
+    const before = relay.outbox.told.length;
     switchScene(tab, cave(560));
     await advance(3_000);
-    expect(JSON.stringify(socket.frames().slice(before))).not.toContain('560');
-    socket.relay({ t: 'player-joined', id: BEN, name: 'Ben' });
+    expect(JSON.stringify(relay.outbox.told.slice(before))).not.toContain('560');
+    relay.outbox.join({ id: BEN, name: 'Ben' });
     await advance(500);
-    expect(scenes(socket, BEN)).toEqual([null]);
+    expect(scenes(relay, BEN)).toEqual([null]);
     expect(seen.notices).toEqual([]);
 
     tableControlsStore.setState({ curtain: false });
     await advance(1_500);
-    expect(modes(socket).at(-1)).toMatchObject({ curtain: false });
-    expect(scenes(socket).at(-1)).not.toBeNull();
-    expect(JSON.stringify(socket.frames().slice(before))).toContain('560');
+    expect(modes(relay).at(-1)).toMatchObject({ curtain: false });
+    expect(scenes(relay).at(-1)).not.toBeNull();
+    expect(JSON.stringify(relay.outbox.told.slice(before))).toContain('560');
     online.stop();
   });
 
@@ -141,26 +139,26 @@ describe('the GM\'s controls over the online table', () => {
     const tab = atlasTab(cave());
     workspace.leaves = [tab.leaf];
     present(tab);
-    const { online, socket } = await running();
+    const { online, relay } = await running();
     online.give(['gm-ogre'], ANA);
     await advance(500);
-    const ogre = bodies(socket).filter((body) => body.t === 'tokens').at(-1)?.tokens?.[0];
-    const scene = (scenes(socket).at(-1) as { id: string }).id;
+    const ogre = relay.pages.of(ANA).tokens[0];
+    const scene = (scenes(relay).at(-1) as { id: string }).id;
     if (ogre === undefined) throw new Error('no token list');
 
     tableControlsStore.setState({ paused: true });
     await advance(100);
-    expect(modes(socket).at(-1)).toMatchObject({ paused: true });
-    socket.relay({ t: 'game', from: ANA, body: { t: 'move', scene, id: ogre.id, x: 420, y: 140 } });
+    expect(modes(relay).at(-1)).toMatchObject({ paused: true });
+    relay.outbox.from(ANA, { t: 'move', scene, id: ogre.id, x: 420, y: 140 });
     await advance(500);
-    expect(bodies(socket, ANA).at(-1)).toMatchObject({ t: 'move-refused', x: 140, y: 140, reason: 'paused' });
+    expect(relay.pages.of(ANA).last('move-refused')).toMatchObject({ x: 140, y: 140, reason: 'paused' });
 
     // The fake store takes no writes: a move taken is one that is not refused
     tableControlsStore.setState({ paused: false });
     await advance(100);
-    const refusals = (): number => bodies(socket, ANA).filter((body) => body.t === 'move-refused').length;
+    const refusals = (): number => relay.pages.of(ANA).all('move-refused').length;
     const before = refusals();
-    socket.relay({ t: 'game', from: ANA, body: { t: 'move', scene, id: ogre.id, x: 420, y: 140 } });
+    relay.outbox.from(ANA, { t: 'move', scene, id: ogre.id, x: 420, y: 140 });
     await advance(500);
     expect(refusals()).toBe(before);
     online.stop();
