@@ -18,9 +18,9 @@ export interface TokenMoves {
   prepare(tokens: Iterable<TokenEntity>): void;
 }
 
-/** The movement of an Atlas tab's renderer, or null where it has none (another Atlas version, no renderer). */
-export function tokenMovesOf(renderer: unknown): TokenMoves | null {
-  const moves = call(call(renderer, 'getTokenRenderer'), 'tokenMovement');
+/** The movement of an Atlas tab's token renderer (`getTokenRenderer()`), or null where it has none (another Atlas version, no renderer). */
+export function tokenMovesOf(tokens: unknown): TokenMoves | null {
+  const moves = call(tokens, 'tokenMovement');
   if (typeof moves !== 'object' || moves === null) return null;
   const has = (method: string): boolean => method in moves && typeof (moves as Record<string, unknown>)[method] === 'function';
   return has('rules') && has('speedOf') && has('prepare') ? (moves as TokenMoves) : null;

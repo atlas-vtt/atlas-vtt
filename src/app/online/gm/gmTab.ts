@@ -1,7 +1,7 @@
 import { diceSourceOf } from './atlasDice.ts';
 import { lightingSourceOf } from './atlasLighting.ts';
 import { mapLayerSourceOf, pictureBasisOf, showsViewedLevel } from './atlasMapLayers.ts';
-import { asTokenSource, drawnTokenPlaces, tokenRulesOf } from './atlasView.ts';
+import { asTokenSource, call, drawnTokenPlaces, tokenRulesOf } from './atlasView.ts';
 import { bumpOnTab } from './doors/doorAskDesk.ts';
 import { dragRulerOf } from './dragRulers.ts';
 import { rendererShows, type GmTab } from './floorSource.ts';
@@ -16,23 +16,24 @@ import type { AtlasTab } from './sharedTab.ts';
  */
 export function gmTabOf(tab: AtlasTab, marks: Pick<GmMarks, 'source' | 'showPlayers' | 'showPlayerDrags' | 'showPlayerCursors' | 'showPlayerStrokes'>): GmTab {
   const { leaf, view, store, renderer } = tab;
+  const tokens = (): unknown => call(renderer, 'getTokenRenderer');
   const gm: GmTab = {
     tokenSource: () => asTokenSource(renderer),
     mapLayers: () => mapLayerSourceOf(renderer, view),
     basis: () => pictureBasisOf(renderer),
     followsSight: true,
     gmMarks: () => marks.source(),
-    gmDragRuler: () => dragRulerOf(renderer),
-    drawnPlaces: (tokenIds) => drawnTokenPlaces(renderer, tokenIds),
+    gmDragRuler: () => dragRulerOf(tokens()),
+    drawnPlaces: (tokenIds) => drawnTokenPlaces(tokens(), tokenIds),
     showPlayerMarks: (shown) => marks.showPlayers(shown),
     showPlayerDrags: (drags) => marks.showPlayerDrags(drags),
     showPlayerCursors: (cursors) => marks.showPlayerCursors(cursors),
     showPlayerStrokes: (strokes) => marks.showPlayerStrokes(strokes),
     lightingSource: () => lightingSourceOf(renderer),
-    tokenRules: () => tokenRulesOf(renderer),
-    tokenMoves: () => tokenMovesOf(renderer),
+    tokenRules: () => tokenRulesOf(tokens()),
+    tokenMoves: () => tokenMovesOf(tokens()),
     dice: () => diceSourceOf(leaf),
-    bumpToken: (tokenId, dx, dy) => bumpOnTab(renderer, tokenId, dx, dy),
+    bumpToken: (tokenId, dx, dy) => bumpOnTab(tokens(), tokenId, dx, dy),
     sourceOf: (floor, cpu) => (rendererShows(store.getState(), floor, () => showsViewedLevel(renderer, store.getState())) ? gm : cpu),
   };
   return gm;
