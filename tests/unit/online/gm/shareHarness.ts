@@ -45,6 +45,8 @@ export function token(id: string, changes: Partial<TokenEntity> = {}): TokenEnti
 export interface Sent {
   readonly body: GmMessage;
   readonly to: string | undefined;
+  /** The live lane's key it waited under, where it went through that lane. */
+  readonly live?: string;
 }
 
 export interface ShareHarness {
@@ -161,8 +163,8 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
     sourceOf: (floor, cpu) => (rendererShows(store.getState(), floor, () => harness.drawn) ? tab : cpu),
   };
   const signal = new SceneSignal({ store, sight: followed(sight), settings: { read: () => settings, follow: followed(settingsFollowers) }, accent: () => null, atlas: [followed(atlas)] });
-  const sent = (body: GmMessage, to: string | undefined): void => {
-    harness.sent.push({ body, to });
+  const sent = (body: GmMessage, to: string | undefined, live?: string): void => {
+    harness.sent.push({ body, to, ...(live !== undefined && { live }) });
     pages.deliver(body, to);
   };
   const harness: ShareHarness = {
@@ -219,7 +221,7 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
         return Promise.resolve(bytes === undefined || mime === null ? null : { bytes, mime });
       },
       send: (body, to) => sent(body, to),
-      sendLive: (body, _key, to) => sent(body, to),
+      sendLive: (body, key, to) => sent(body, to, key),
       notice: (text) => harness.notices.push(text),
       randomId: () => counterId((ids += 1)),
       now: () => now,

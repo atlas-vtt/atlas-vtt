@@ -1,15 +1,14 @@
-import { Pacer, type PacerClock } from '../marks/index.ts';
-import { LIVE_INTERVAL_MS, MAX_COORDINATE, MAX_LIVE_PATH, MAX_LIVE_TOKENS, type GmMessage, type LivePlace, type MarkPoint } from '../protocol/index.ts';
+import { LIVE_INTERVAL_MS, MAX_COORDINATE, MAX_LIVE_PATH, MAX_LIVE_TOKENS, type LivePlace, type MarkPoint } from '../protocol/index.ts';
 import { sightOnDropOn } from '../../lighting/sceneLightingOptions';
 import type { PlayerTokenSource, SceneStore } from './atlasView.ts';
 import type { RulerPaths } from './dragRulers.ts';
+import { Feed, type FeedPorts, type FeedScene } from './feed/Feed.ts';
+import type { FeedOut } from './feed/feedOutbox.ts';
 import { roundPlace } from './scenePicture.ts';
 import { levelObjects } from '../../levels/levelObjects';
 import { mapTokens } from '../../tokens/offMap';
 
-export interface LiveSharePorts extends PacerClock {
-  /** Sends a live message to all: it goes before other waiting frames, and a newer one replaces it while it waits. */
-  sendLive(body: GmMessage, key: string): void;
+export interface LiveSharePorts extends FeedPorts {
   /** The shared tab's renderer as it is now, or null while it has none. */
   tokenSource(): PlayerTokenSource | null;
   /** Where the GM's canvas draws these tokens now; without it places are read from the store. */
@@ -63,14 +62,9 @@ function sharedPath(points: readonly Place[] | undefined): MarkPoint[] | undefin
  * cursors, each token also names whose pointer holds it (`holder`), so pages draw it with that cursor.
  */
 export class LiveShare {
-  private readonly store: SceneStore;
-  private readonly ports: LiveSharePorts;
-  private readonly listed: () => ListedTokens;
-  private readonly pacer: Pacer;
+  readonly feed: Feed;
   /** The places players were last sent, by the id they know each token by, while its drag lasts. */
   private sent = new Map<string, SentPlace>();
-  private scene: string | null = null;
-  private lit = false;
   /** Messages with an end sent so far: each waits under its own key. */
   private ended = 0;
   /** When the lane last told of each token it carries moving, by the id players know it by. */
@@ -80,32 +74,24 @@ export class LiveShare {
   /** The next message holds the drags under way though none moved. */
   private keepAliveDue = false;
 
-  constructor(store: SceneStore, ports: LiveSharePorts, listed: () => ListedTokens) {
-    this.store = store;
-    this.ports = ports;
-    this.listed = listed;
-    this.pacer = new Pacer(ports, LIVE_INTERVAL_MS, () => this.flush());
-  }
-
-  /** The shared scene and whether it is lit; a new one forgets the drags of the last (players drop them with it). */
-  setScene(scene: { readonly id: string; readonly lit: boolean } | null): void {
-    this.lit = scene?.lit === true;
-    if ((scene?.id ?? null) === this.scene) return;
-    this.scene = scene?.id ?? null;
-    this.sent = new Map();
-    this.sentAt = new Map();
-    this.cancelKeepAlive();
-    this.pacer.cancel();
+  constructor(private readonly store: SceneStore, private readonly ports: LiveSharePorts, private readonly listed: () => ListedTokens) {
+    // A new scene forgets the drags of the last (players drop them with it), and sends nothing until a token is held.
+    this.feed = new Feed(ports, {
+      interval: LIVE_INTERVAL_MS,
+      build: (scene, out) => this.build(scene, out),
+      reset: () => {
+        this.sent = new Map();
+        this.sentAt = new Map();
+        this.cancelKeepAlive();
+      },
+      opened: () => undefined,
+    });
   }
 
   /** The store changed: while tokens are held, or a drag just ended, their places go out. */
   update(): void {
-    if (this.scene === null) return;
-    if (this.sent.size > 0 || Object.keys(this.store.getState().heldTokens).length > 0) this.pacer.request();
-  }
-
-  stop(): void {
-    this.setScene(null);
+    if (this.feed.scene === null) return;
+    if (this.sent.size > 0 || Object.keys(this.store.getState().heldTokens).length > 0) this.feed.update();
   }
 
   /**
@@ -118,19 +104,18 @@ export class LiveShare {
     return at === undefined ? undefined : at + CARRY_MS;
   }
 
-  private flush(): void {
-    const scene = this.scene;
+  private build({ id: scene, lit }: FeedScene, out: FeedOut): void {
     const state = this.store.getState();
     const listed = this.listed();
     const source = this.ports.tokenSource();
-    if (scene === null || listed.scene !== scene || source === null || !state.mapLoaded || state.isMapLoading || state.mapPath === null) return;
+    if (listed.scene !== scene || source === null || !state.mapLoaded || state.isMapLoading || state.mapPath === null) return;
     // At most half a message's room, so the ends that follow always fit.
     const held = Object.keys(state.heldTokens).slice(0, MAX_LIVE_TOKENS / 2);
     const shown = held.length === 0 ? new Map<string, never>() : source.playerRollTokens(state.mapPath, held);
     const sightFollows = !sightOnDropOn(state.lighting);
     const drawn = state.isDragging ? this.ports.drawnPlaces?.(held) : undefined;
     // Atlas writes the GM's own drag to the store every 50 ms: its canvas is read again on the lane's own beat.
-    if (drawn !== undefined && held.length > 0) this.pacer.request();
+    if (drawn !== undefined && held.length > 0) this.feed.update();
     const rulers = this.ports.rulers?.() ?? NO_RULERS;
     const places = new Map<string, SentPlace>();
     for (const id of held) {
@@ -141,7 +126,7 @@ export class LiveShare {
       // was asked about (fog is tested at the drawn place) only where the lighting's own place does not
       // matter: on an unlit scene, and for a token with vision, which the players always see unless
       // the scene's sight waits for the drop (then only within the sight left behind).
-      const drawnCounts = !this.lit || (sightFollows && token.vision?.enabled === true);
+      const drawnCounts = !lit || (sightFollows && token.vision?.enabled === true);
       const place = (drawnCounts ? drawn?.get(id) : undefined) ?? token;
       if (!onMap(place.x) || !onMap(place.y)) continue;
       const path = sharedPath(rulers.get(id));
@@ -171,12 +156,12 @@ export class LiveShare {
       this.keepAlive = this.ports.setTimer(() => {
         this.keepAlive = undefined;
         this.keepAliveDue = true;
-        this.pacer.request();
+        this.feed.update();
       }, CARRY_MS);
     }
     // An end is said once: its message waits under a key of its own, which no later message replaces.
     if (ending) this.ended += 1;
-    this.ports.sendLive({ t: 'live', scene, at: now, tokens }, ending ? `${scene}\n${this.ended}` : scene);
+    out.live({ t: 'live', scene, at: now, tokens }, ending ? `${scene}\n${this.ended}` : scene);
   }
 
   private cancelKeepAlive(): void {

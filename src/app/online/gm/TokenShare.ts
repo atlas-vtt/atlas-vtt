@@ -1,12 +1,13 @@
-import type { GmMessage, SharedToken, SnapGrid } from '../protocol/index.ts';
+import type { SharedToken, SnapGrid } from '../protocol/index.ts';
 import { ArtRefs } from './artRefs.ts';
 import type { AssetStoring } from './assets/assetUses.ts';
 import type { PlayerTokenSource, SceneStore } from './atlasView.ts';
+import { Feed, type FeedPorts, type FeedScene } from './feed/Feed.ts';
+import type { FeedOut } from './feed/feedOutbox.ts';
 import type { ListedTokens } from './mineShare.ts';
 import { sharedTokenMove, type TokenMoves } from './moveShare.ts';
 import type { SeatSource } from './seatSource.ts';
 import { sharedTokens, snapGridOf } from './scenePicture.ts';
-import { SequencedList } from './sequencedList.ts';
 import { NO_TOKEN_RULES, shownBadgeNumbers, type TokenRules } from './tokenUI.ts';
 import { levelObjects } from '../../levels/levelObjects';
 import type { AtlasInputs } from './sceneSignal.ts';
@@ -19,14 +20,13 @@ export interface VaultImage {
   readonly mime: string;
 }
 
-export interface TokenSharePorts {
+export interface TokenSharePorts extends FeedPorts {
   /** The shared tab's renderer as it is now, or null while it has none. */
   tokenSource(): PlayerTokenSource | null;
   /** The image at a vault path, or null when it is missing or of a type players cannot be sent. */
   readImage(path: string): Promise<VaultImage | null>;
   /** How players are handed assets the store keeps for them; without it they are handed none. */
   stored?: AssetStoring | undefined;
-  send(body: GmMessage, to?: string): void;
   /** Atlas as of its last change: whether players see token names (its nameplate setting for the player view), the initiative list and so the turn. */
   atlas(): Pick<AtlasInputs, 'settings'>;
   /** The map's resource and condition definitions as the GM's token renderer reads them, or null while they cannot be read: then no bar or condition is sent. */
@@ -40,9 +40,6 @@ export interface TokenSharePorts {
   /** Until when the live lane carries a held token's place, by the id players know it by (`LiveShare.carriedUntil`); without it every place goes in the list. */
   liveCarriedUntil?(alias: string): number | undefined;
   randomId(): string;
-  now(): number;
-  setTimer(run: () => void, ms: number): number;
-  clearTimer(timer: number): void;
   /** The random ids players know tokens by, by GM id, where several shares name tokens alike (the floors of one scene); else the share's own. */
   aliases?: Map<string, string>;
 }
@@ -55,22 +52,16 @@ export const TOKEN_INTERVAL_MS = 66;
 
 /**
  * The tokens the players see in the shared scene, sent to all whenever they change (as deltas from
- * the last list where those are smaller), at most every `TOKEN_INTERVAL_MS`. Only tokens the players' frame shows are read; players know them by
+ * the last list where those are smaller), at most every `TOKEN_INTERVAL_MS` counted from the last list sent. Only tokens the players' frame shows are read; players know them by
  * random ids. Artwork is named by the id the asset store keeps it under; none the store does not keep.
  */
 export class TokenShare {
-  private readonly store: SceneStore;
-  private readonly ports: TokenSharePorts;
-  private readonly listed: (listed: ListedTokens | null) => void;
-  private scene: string | null = null;
-  /** The lists sent: whole for a new scene, a joiner or a player who asks, else as deltas. */
-  private readonly list: SequencedList<'tokens'>;
-  private last: { readonly scene: string; readonly text: string } | null = null;
+  readonly feed: Feed;
+  /** The scene of the last list players were sent, or null while none is. */
+  private listedIn: string | null = null;
   /** The GM ids of the tokens in the last list, by the ids players know them by, and the other way round. */
   private listedIds = new Map<string, string>();
   private listedAliases: ReadonlyMap<string, string> = new Map();
-  private lastAt = Number.NEGATIVE_INFINITY;
-  private timer: number | undefined;
   private readonly aliases: Map<string, string>;
   private readonly art: ArtRefs;
   /** The GM's look-alike numbers of the tokens players see, as the last list read them. */
@@ -81,39 +72,13 @@ export class TokenShare {
   private kept: ReadonlySet<string> = new Set();
   /** Looks again once the lane stops carrying a kept token. */
   private recheck: number | undefined;
-  /** Looks again after the GM's sight changed, unless a list is worked out sooner (`sightChanged`). */
-  private sight: number | undefined;
-  /** When the list was last worked out, sent or not. */
-  private builtAt = Number.NEGATIVE_INFINITY;
 
   /** `listed` hears of each list sent with the ids players know its tokens by, and of null when none is shared. */
-  constructor(store: SceneStore, ports: TokenSharePorts, listed: (listed: ListedTokens | null) => void = () => undefined) {
-    this.store = store;
-    this.ports = ports;
-    this.listed = listed;
-    this.list = new SequencedList('tokens', ports);
+  constructor(private readonly store: SceneStore, private readonly ports: TokenSharePorts, private readonly listed: (listed: ListedTokens | null) => void = () => undefined) {
     this.aliases = ports.aliases ?? new Map<string, string>();
     this.art = new ArtRefs((path) => ports.readImage(path), () => this.update(), ports.stored);
-  }
-
-  /** The shared scene the tokens belong to; null sends none. A new scene reads its artwork afresh. */
-  setScene(scene: string | null): void {
-    if (scene === this.scene) return;
-    this.scene = scene;
-    this.last = null;
-    this.list.reset();
-    this.listedIds = new Map();
-    this.listedAliases = new Map();
-    this.listedPlaces = new Map();
-    this.kept = new Set();
-    this.numbers = new Map();
-    this.art.clear();
-    this.cancel();
-    this.cancelRecheck();
-    this.cancelSight();
-    this.listed(null);
-    if (scene === null) return;
-    this.update();
+    // The lists go whole for a new scene, a joiner or a player who asks, else as deltas.
+    this.feed = new Feed(ports, { interval: TOKEN_INTERVAL_MS, paceSends: true, sequenced: ['tokens'], build: (scene, out) => this.build(scene, out), reset: () => this.reset() });
   }
 
   /**
@@ -121,21 +86,8 @@ export class TokenShare {
    * A drop of a token the list kept where it was listed goes out at once: the lane ends that drag now.
    */
   update(): void {
-    if (this.scene === null) return;
-    if (this.dropped()) {
-      this.cancel();
-      return this.flush();
-    }
-    if (this.timer !== undefined) return;
-    const wait = this.lastAt + TOKEN_INTERVAL_MS - this.ports.now();
-    if (wait > 0) {
-      this.timer = this.ports.setTimer(() => {
-        this.timer = undefined;
-        this.flush();
-      }, wait);
-      return;
-    }
-    this.flush();
+    if (this.dropped()) this.feed.updateNow();
+    else this.feed.update();
   }
 
   /**
@@ -144,23 +96,7 @@ export class TokenShare {
    * change works it out before.
    */
   sightChanged(): void {
-    if (this.scene === null || this.timer !== undefined || this.sight !== undefined) return;
-    const wait = this.builtAt + TOKEN_INTERVAL_MS - this.ports.now();
-    if (wait <= 0) return this.update();
-    this.sight = this.ports.setTimer(() => {
-      this.sight = undefined;
-      this.update();
-    }, wait);
-  }
-
-  /** The last list again, whole, to one player or to all. */
-  resend(to?: string): void {
-    this.list.resend(this.scene, to);
-  }
-
-  /** A player's lists stopped following on: they get the last one whole (at most once a second). */
-  resync(player: string, scene: string): void {
-    if (scene === this.scene) this.list.resync(player, scene);
+    this.feed.soon(() => this.update());
   }
 
   /** The GM id of a token in the last list players were sent, by the id they know it by. */
@@ -175,7 +111,7 @@ export class TokenShare {
 
   /** The scene of the last list players were sent, or null while none is. */
   get listedScene(): string | null {
-    return this.last?.scene === this.scene ? this.scene : null;
+    return this.listedIn;
   }
 
   /** Reads every artwork again: its reference may go out another way now (without a stored id). */
@@ -211,33 +147,35 @@ export class TokenShare {
     return alias;
   }
 
-  stop(): void {
-    this.setScene(null);
+  private reset(): void {
+    this.listedIn = null;
+    this.listedIds = new Map();
+    this.listedAliases = new Map();
+    this.listedPlaces = new Map();
+    this.kept = new Set();
+    this.numbers = new Map();
+    this.art.clear();
+    this.cancelRecheck();
+    this.listed(null);
   }
 
-  private flush(): void {
-    this.cancelSight();
-    this.builtAt = this.ports.now();
-    const scene = this.scene;
-    const built = this.build();
-    if (scene === null || built === null) return;
+  private build(scene: FeedScene, out: FeedOut): void {
+    const built = this.read();
+    if (built === null) return;
     const { tokens, cell, snap, aliases } = built;
-    const text = JSON.stringify([tokens, cell, snap]);
-    if (this.last?.scene === scene && this.last.text === text) return;
-    this.last = { scene, text };
-    this.lastAt = this.ports.now();
+    if (!out.sequenced('tokens', { tokens, cell, snap })) return;
+    this.listedIn = scene.id;
     this.listedIds = new Map([...aliases].map(([id, alias]) => [alias, id]));
     this.listedAliases = aliases;
     this.listedPlaces = new Map(tokens.map((token) => [token.id, { x: token.x, y: token.y }]));
-    this.list.publish(scene, { tokens, cell, snap });
-    this.listed({ scene, aliases });
+    this.listed({ scene: scene.id, aliases });
   }
 
   /**
    * The list now with the players' ids of its tokens by GM id, or null while the scene loads or the
    * tab has no renderer.
    */
-  private build(): { readonly tokens: SharedToken[]; readonly cell: number; readonly snap: SnapGrid | null; readonly aliases: Map<string, string> } | null {
+  private read(): { readonly tokens: SharedToken[]; readonly cell: number; readonly snap: SnapGrid | null; readonly aliases: Map<string, string> } | null {
     const state = this.store.getState();
     const source = this.ports.tokenSource();
     if (!state.mapLoaded || state.isMapLoading || state.mapPath === null || source === null) return null;
@@ -330,18 +268,8 @@ export class TokenShare {
     return [...this.kept].some((id) => !Object.hasOwn(held, id));
   }
 
-  private cancelSight(): void {
-    if (this.sight !== undefined) this.ports.clearTimer(this.sight);
-    this.sight = undefined;
-  }
-
   private cancelRecheck(): void {
     if (this.recheck !== undefined) this.ports.clearTimer(this.recheck);
     this.recheck = undefined;
-  }
-
-  private cancel(): void {
-    if (this.timer !== undefined) this.ports.clearTimer(this.timer);
-    this.timer = undefined;
   }
 }
