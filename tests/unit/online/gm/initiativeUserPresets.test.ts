@@ -6,8 +6,9 @@ import type { CollectionLookup } from '../../../../src/app/gameSystems/mapRules'
 import { MAP_LAYER_INTERVAL_MS } from '../../../../src/app/online/gm/MapLayerShare.ts';
 import { TOKEN_INTERVAL_MS } from '../../../../src/app/online/gm/TokenShare.ts';
 import { AssetService } from '../../../../src/app/services/AssetService';
-import { mapInitiativeRules } from '../../../../src/app/services/mapInitiativeRules';
-import { playerInitiativeList, playersEntryToken, sideIdsOf } from '../../../../src/app/services/playerInitiativeList';
+import { systemPresetsOf } from '../../../../src/app/services/mapCollectionRules';
+import { rulesLookup } from '../../../../src/app/services/mapRules';
+import { playerInitiativeList } from '../../../../src/app/services/playerInitiativeList';
 import { SystemPresetService } from '../../../../src/app/services/SystemPresetService';
 import { SystemPresetFiles } from '../../../../src/app/services/systemPresets/SystemPresetFiles';
 import type { InitiativeRules } from '../../../../src/app/types/initiativeRulesTypes';
@@ -49,9 +50,8 @@ describe("the online players' list on a map whose collection plays by a user pre
     await harness.advance(MAP_LAYER_INTERVAL_MS);
     const online = last(harness.sent);
 
-    const windowRules = mapInitiativeRules(app, state.mapPath);
-    const sides = sideIdsOf(initiative, windowRules);
-    const window = playerInitiativeList(initiative, (shown) => playersEntryToken(shown, tokens, [], [], sides), windowRules);
+    // The player window reads the list with the vault's lookup
+    const window = playerInitiativeList({ initiative, mapPath: state.mapPath, objects: { tokens } }, { lookup: rulesLookup(app), presets: systemPresetsOf(app) });
 
     expect(window.bySides).toBe(true);
     expect(online?.bySides).toBe(window.bySides);

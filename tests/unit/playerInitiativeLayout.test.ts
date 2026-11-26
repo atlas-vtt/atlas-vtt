@@ -1,17 +1,20 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { entryTokenOf, playerInitiativeList, renderPlayerInitiative, type EntryToken, type PlayerInitiativeEntry } from '../../src/app/services/playerInitiativeList';
+import type { PlayerInitiativeEntry } from '../../src/app/services/playerInitiativeList';
+import { renderPlayerInitiative } from '../../src/app/services/playerInitiativeView';
 import type { InitiativeRules } from '../../src/app/types/initiativeRulesTypes';
 import type { ConditionDefinition } from '../../src/app/types/collectionSettingsTypes';
 import type { TokenEntity } from '../../src/app/types';
 import type { PlayersListEdge } from '../../src/app/initiative/initiativeLayout';
 import { layoutEdges } from '../../src/app/utils/scrollWithin';
+import { playersListOf } from '../helpers/playersInitiative';
 
 const scrolls = vi.hoisted(() => ({ calls: [] as unknown[][] }));
 vi.mock('../../src/app/utils/scrollWithin', () => ({ scrollWithin: (...args: unknown[]) => { scrolls.calls.push(args); }, layoutEdges: () => ({ left: 0, top: 0, right: 0, bottom: 0 }) }));
 
 const TURN_ORDER: InitiativeRules = { mode: 'turn-order', roll: '1d20', firstSide: 'players' };
-const VISIBLE: EntryToken = { hp: null, showRing: false, side: 'opponents', defeated: false };
+/** A combatant's token, framed by its own art and an opponent's. */
+const token = (id: string, extra: Partial<TokenEntity> = {}): TokenEntity => ({ id, kind: 'token', x: 0, y: 0, imagePath: '', showRing: false, ...extra });
 
 const entry = (name: string, order: number, extra: Partial<PlayerInitiativeEntry> = {}): PlayerInitiativeEntry =>
   ({ tokenId: name, name, initiative: 20 - order, imagePath: '', order, isActive: false, ...extra });
@@ -19,7 +22,8 @@ const entry = (name: string, order: number, extra: Partial<PlayerInitiativeEntry
 /** Draws the players' list of `entries` (those in `hidden` left out, as their tokens are) and reads it back as words. */
 function draw(entries: PlayerInitiativeEntry[], look: { fromTurn?: boolean; dock?: PlayersListEdge; faces?: boolean } = {}, hidden: string[] = []): { panel: HTMLElement; words: string[] } {
   document.body.empty();
-  const list = playerInitiativeList({ entries, isActive: true, round: 4 }, (listed) => (hidden.includes(listed.tokenId) ? null : VISIBLE), TURN_ORDER);
+  const tokens = Object.fromEntries(entries.map(({ name }) => [name, token(name, hidden.includes(name) ? { isHidden: true } : {})]));
+  const list = playersListOf({ entries, isActive: true, round: 4 }, tokens, { initiative: TURN_ORDER });
   renderPlayerInitiative(document.body, list, { showNames: true, mapShowsNameplates: true, portraitSrc: () => null, ...look });
   const panel = document.querySelector<HTMLElement>('.atlas-player-initiative')!;
   const words = [...panel.querySelectorAll('.atlas-initiative-card__name, .atlas-initiative-round')].map((element) =>
@@ -81,15 +85,15 @@ describe('conditions in the players\' list', () => {
 
   it('draws no badges on the card: the token shows them on the map', () => {
     document.body.empty();
-    const token = entryTokenOf(creature(), [], definitions);
-    const list = playerInitiativeList({ entries: [entry('a', 0)], isActive: false, round: 0 }, () => token, TURN_ORDER);
+    const list = playersListOf({ entries: [entry('a', 0)], isActive: false, round: 0 }, { a: creature() }, { conditions: definitions, initiative: TURN_ORDER });
     renderPlayerInitiative(document.body, list, { showNames: false, mapShowsNameplates: true, portraitSrc: () => null });
     expect(document.querySelector('.atlas-condition-badge')).toBeNull();
   });
 
   it('shows none on a token the map draws no conditions on, as on the map', () => {
-    expect(entryTokenOf(creature({ kind: 'token' }), [], definitions).conditions).toEqual([]);
-    expect(entryTokenOf(undefined, [], definitions).conditions).toEqual([]);
+    const byName: PlayerInitiativeEntry = { name: 'Enemy 1', initiative: 0, imagePath: '', order: 1, isActive: false };
+    const list = playersListOf({ entries: [entry('a', 0), byName], isActive: false, round: 0 }, { a: creature({ kind: 'token' }) }, { conditions: definitions });
+    expect(list.combatants.map(({ token: shown }) => shown.conditions)).toEqual([[], []]);
   });
 });
 
@@ -97,8 +101,8 @@ describe('the sides and the room on the players\' list', () => {
   it('frames the players\' own side, a colour an older file gave a card left out, and counts those the list leaves out', () => {
     document.body.empty();
     const entries = [entry('a', 0, { isActive: true }), entry('b', 1, { color: '#dc2626' } as never), entry('c', 2), entry('d', 3)];
-    const side = (id: string): EntryToken => ({ hp: null, showRing: true, side: id === 'a' || id === 'c' ? 'players' : 'opponents', defeated: false });
-    const list = playerInitiativeList({ entries, isActive: true, round: 1 }, (current) => side(current.tokenId!), TURN_ORDER);
+    const tokens = Object.fromEntries(['a', 'b', 'c', 'd'].map((id) => [id, token(id, { showRing: true, side: id === 'a' || id === 'c' ? 'players' : 'opponents' })]));
+    const list = playersListOf({ entries, isActive: true, round: 1 }, tokens, { initiative: TURN_ORDER });
     const panel = renderPlayerInitiative(document.body, list, { showNames: true, mapShowsNameplates: true, portraitSrc: () => null, maxCards: 2 })!;
     const cards = [...panel.querySelectorAll('.atlas-initiative-card')];
     expect(cards.map((card) => card.classList.contains('atlas-initiative-card--ally'))).toEqual([true, false]);

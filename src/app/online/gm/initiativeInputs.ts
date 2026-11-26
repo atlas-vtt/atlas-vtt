@@ -1,12 +1,9 @@
 import { MAX_COMBATANTS, MAX_INSTANCE_NUMBER, MAX_NAME, type AssetRef, type SharedCombatant, type SharedInitiative, type SharedSide, type SharedSideTurn } from '../protocol/index.ts';
 import { isBuiltInSide } from '../../gameSystems/initiativeSideRules';
-import { collectionInitiativeRules, DEFAULT_INITIATIVE_RULES } from '../../gameSystems/initiativeRules';
-import { mapConditions, rulesForMap, type RulesLookup } from '../../gameSystems/mapRules';
-import { mapResources } from '../../resources/collectionResources';
-import { playerInitiativeList, playerSegments, playersEntryToken, sideIdsOf, type PlayerInitiativeList } from '../../services/playerInitiativeList';
+import type { RulesLookup } from '../../gameSystems/mapRules';
+import { initiativeForPlayers, playerSegments, type PlayerInitiativeList } from '../../services/playerInitiativeList';
 import { sharedConditions } from './tokenUI.ts';
 import type { TokenEntity } from '../../types';
-import type { InitiativeRules } from '../../types/initiativeRulesTypes';
 import type { SystemPreset } from '../../types/systemPresetTypes';
 import type { ViewState } from '../../types/viewState';
 import { ringColour } from './scenePicture.ts';
@@ -73,33 +70,15 @@ function legacyActiveSide(list: PlayerInitiativeList): SharedSide | null {
   return active ? legacySide(active.id) : null;
 }
 
-/** The initiative rules the map plays by (`rulesForMap`): their own, else their preset's, else the default. */
-function initiativeRulesOf(rules: RulesLookup | null, presets: readonly SystemPreset[], mapPath: string | null): InitiativeRules {
-  const settings = rules !== null && mapPath !== null ? rulesForMap(rules, mapPath).settings : null;
-  return settings === null ? { ...DEFAULT_INITIATIVE_RULES } : collectionInitiativeRules(settings, presets);
-}
-
 /**
- * The players' initiative list as Atlas's player window shows it (`PlayerInitiativePanel`), but
- * for being sent before a fight too: only
- * while the GM's tracker is open and the player view shows it; every entry whose token is on the
- * map and not hidden, in turn order or by sides; names only where players see the nameplate, hit points only where
- * the map's rules show them to players on that token. Nothing of a hidden token's entry is read.
+ * The players' initiative list (`initiativeForPlayers`) as online players are sent it: also before a fight starts,
+ * while the GM's tracker is open and the player view shows it; names only where players see the nameplate. Nothing of
+ * a hidden token's entry is read.
  */
 export function sharedInitiative(inputs: InitiativeInputs): SharedInitiative | null {
-  const { state, rules } = inputs;
-  const initiative = state.initiative;
-  if (!inputs.shown || state.initiativeTrackerOpen !== true || initiative === undefined) return null;
-  const tokens = state.objects.tokens;
-  const definitions = rules !== null ? mapResources(rules, state.mapPath) : [];
-  const conditions = rules !== null ? mapConditions(rules, state.mapPath) : [];
-  const initiativeRules = initiativeRulesOf(rules, inputs.presets, state.mapPath);
-  const sides = sideIdsOf(initiative, initiativeRules);
-  const list = playerInitiativeList(
-    initiative,
-    (entry) => playersEntryToken(entry, tokens, definitions, conditions, sides),
-    initiativeRules,
-  );
+  const { state } = inputs;
+  const list = initiativeForPlayers(state, { lookup: inputs.rules, presets: inputs.presets }, { showInitiative: inputs.shown, beforeFight: true });
+  if (list === null) return null;
   const shownNumber = (entry: (typeof list.combatants)[number]['entry']): number => {
     // A dealt card stands where the number does, so older pages show it too
     const value = list.byCards ? entry.card ?? 0 : entry.initiative;
