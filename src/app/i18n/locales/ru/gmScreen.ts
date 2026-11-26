@@ -29,6 +29,7 @@ export const gmScreen: Translation = {
   'gmScreen.relayTooOld': 'Сервер пока не может запустить {name}. Попробуйте позже.',
   'gmScreen.tooMany': '{name} хранит не больше 16 устройств. Сначала удалите одно.',
   'gmScreen.full': 'Когда вы разрешили последнее устройство, все места {name} были заняты. Оно сможет попросить снова, когда уйдёт другое устройство.',
+  'gmScreen.knockNotice': '{device} просит подключиться к {name}. Откройте ширму мастера, чтобы разрешить.',
   'gmScreen.end.elsewhere': '{name} запущен в другом хранилище или на другом компьютере, поэтому здесь он остановлен.',
   'gmScreen.end.noAccess': '{name} остановлен. {reason}',
   'gmScreen.end.refused': 'Сервер завершил {name}.',

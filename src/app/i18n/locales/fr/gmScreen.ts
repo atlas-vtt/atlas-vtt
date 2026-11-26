@@ -29,6 +29,7 @@ export const gmScreen: Translation = {
   'gmScreen.relayTooOld': 'Le serveur ne peut pas encore faire fonctionner {name}. Réessayez plus tard.',
   'gmScreen.tooMany': '{name} garde au plus 16 appareils. Retirez-en un d’abord.',
   'gmScreen.full': 'Toutes les places de {name} étaient prises quand vous avez autorisé le dernier appareil. Il pourra redemander quand un autre appareil partira.',
+  'gmScreen.knockNotice': '{device} demande à rejoindre {name}. Ouvrez l’écran du MJ pour l’autoriser.',
   'gmScreen.end.elsewhere': '{name} a été démarré dans un autre coffre ou sur un autre ordinateur, il s’est donc arrêté ici.',
   'gmScreen.end.noAccess': '{name} s’est arrêté. {reason}',
   'gmScreen.end.refused': 'Le serveur a arrêté {name}.',

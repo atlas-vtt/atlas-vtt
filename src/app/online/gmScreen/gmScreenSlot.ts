@@ -17,3 +17,18 @@ export function onGmScreenSession(listener: () => void): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
 }
+
+let controls = 0;
+
+/** A DM screen shows the control, which asks the GM about every device that knocks; returns what says it no longer does. */
+export function showingGmScreenControl(): () => void {
+  controls += 1;
+  let shown = true;
+  return () => {
+    if (shown) controls -= 1;
+    shown = false;
+  };
+}
+
+/** Whether a DM screen shows the control now. */
+export const gmScreenControlShown = (): boolean => controls > 0;

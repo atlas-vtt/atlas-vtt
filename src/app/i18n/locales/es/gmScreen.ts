@@ -29,6 +29,7 @@ export const gmScreen: Translation = {
   'gmScreen.relayTooOld': 'El servidor aún no puede ejecutar {name}. Inténtalo más tarde.',
   'gmScreen.tooMany': '{name} guarda como máximo 16 dispositivos. Quita uno primero.',
   'gmScreen.full': 'Todas las plazas de {name} estaban ocupadas cuando permitiste el último dispositivo. Podrá volver a pedirlo cuando se vaya otro.',
+  'gmScreen.knockNotice': '{device} pide unirse a {name}. Abre la pantalla del DJ para permitirlo.',
   'gmScreen.end.elsewhere': '{name} se inició en otra bóveda o en otro ordenador, así que se detuvo aquí.',
   'gmScreen.end.noAccess': '{name} se detuvo. {reason}',
   'gmScreen.end.refused': 'El servidor terminó {name}.',

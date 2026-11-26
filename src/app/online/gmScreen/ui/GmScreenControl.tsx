@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Smartphone } from 'lucide-react';
 import { t } from '../../../i18n';
 import { Button } from '../../../packages/components/primitives/button';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
+import { showingGmScreenControl } from '../gmScreenSlot.ts';
 import { GmScreenPanel } from './GmScreenPanel';
 import { useGmScreen } from './useGmScreen';
 
@@ -19,6 +20,8 @@ export function GmScreenControl(): React.JSX.Element | null {
   const knock = handle?.view.knock?.id ?? null;
   // A device that asks to join opens the panel, once per knock: closed again, it stays closed.
   const [asked, setAsked] = useState<string | null>(null);
+  // While it shows, a knock needs no notice: the panel opens itself.
+  useEffect(() => showingGmScreenControl(), []);
   if (knock !== asked) {
     setAsked(knock);
     if (knock !== null) setOpen(true);

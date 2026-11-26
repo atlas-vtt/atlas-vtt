@@ -29,6 +29,7 @@ export const gmScreen: Translation = {
   'gmScreen.relayTooOld': '服务器暂时无法运行 {name}。请稍后再试。',
   'gmScreen.tooMany': '{name} 最多保留 16 台设备。请先移除一台。',
   'gmScreen.full': '你允许最后一台设备时，{name} 的所有位置都已占满。等其他设备离开后它可以再次请求。',
+  'gmScreen.knockNotice': '{device} 请求加入 {name}。打开 DM 屏即可允许。',
   'gmScreen.end.elsewhere': '{name} 已在另一个仓库或另一台电脑上启动，因此在此处停止。',
   'gmScreen.end.noAccess': '{name} 已停止。{reason}',
   'gmScreen.end.refused': '服务器结束了 {name}。',

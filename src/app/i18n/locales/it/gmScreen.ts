@@ -29,6 +29,7 @@ export const gmScreen: Translation = {
   'gmScreen.relayTooOld': 'Il server non può ancora eseguire {name}. Riprova più tardi.',
   'gmScreen.tooMany': '{name} tiene al massimo 16 dispositivi. Rimuovine prima uno.',
   'gmScreen.full': 'Tutti i posti di {name} erano occupati quando hai consentito l’ultimo dispositivo. Potrà chiedere di nuovo quando un altro dispositivo se ne va.',
+  'gmScreen.knockNotice': '{device} chiede di unirsi a {name}. Apri lo schermo del master per consentirlo.',
   'gmScreen.end.elsewhere': '{name} è stato avviato in un altro vault o su un altro computer, quindi qui si è fermato.',
   'gmScreen.end.noAccess': '{name} si è fermato. {reason}',
   'gmScreen.end.refused': 'Il server ha terminato {name}.',

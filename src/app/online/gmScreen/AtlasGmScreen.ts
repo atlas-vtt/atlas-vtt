@@ -1,3 +1,4 @@
+import type { App } from 'obsidian';
 import { obsidianHttp } from '../../account/obsidianHttp.ts';
 import { showNotice } from '../../ui/notice';
 import { companionTimers } from '../gm/companionTimers.ts';
@@ -7,7 +8,9 @@ import { channelCryptoOf } from './channel/index.ts';
 import type { GmScreenRecord } from './gmScreenRecord.ts';
 import { relayRooms, type RoomAccount } from './gmScreenRoom.ts';
 import { GmScreenSession } from './GmScreenSession.ts';
-import { setGmScreenSession } from './gmScreenSlot.ts';
+import { gmScreenControlShown, setGmScreenSession } from './gmScreenSlot.ts';
+import { plugKeysScreen } from './keys/atlasKeys.ts';
+import { noticeKnocks } from './knockNotice.ts';
 
 /**
  * The GM screen inside Atlas: the session on Atlas's relay, with the account's token and Obsidian's
@@ -18,9 +21,11 @@ export class AtlasGmScreen {
   readonly session: GmScreenSession;
   /** The record as last kept, for online play's data file. */
   saved: GmScreenRecord | null;
+  /** The plugged screens and the knock notice, stopped once the room is let go of. */
+  private readonly stops: Array<() => void>;
 
   /** `save` writes online play's data file, which holds `saved`. */
-  constructor(saved: GmScreenRecord | null, account: RoomAccount, save: () => void) {
+  constructor(app: App, saved: GmScreenRecord | null, account: RoomAccount, save: () => void) {
     this.saved = saved;
     this.session = new GmScreenSession({
       crypto: channelCryptoOf(crypto),
@@ -35,6 +40,7 @@ export class AtlasGmScreen {
       notice: (text) => showNotice(text),
       now: () => Date.now(),
     }, saved);
+    this.stops = [plugKeysScreen(app, this.session, companionTimers()), noticeKnocks(this.session, gmScreenControlShown, showNotice)];
     setGmScreenSession(this.session);
     void this.session.resume();
   }
@@ -43,5 +49,6 @@ export class AtlasGmScreen {
   dispose(): void {
     setGmScreenSession(null);
     this.session.close();
+    for (const stop of this.stops.splice(0)) stop();
   }
 }
