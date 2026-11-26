@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SettingsService } from '../../src/app/services/SettingsService';
-import { hotkeyFromEvent, formatHotkey, matchesHotkey, canRunMapHotkeys, canShareHotkey, availableHotkeys, MAP_HOTKEYS } from '../../src/app/keyboard/mapHotkeys';
+import { hotkeyFromEvent, formatHotkey, matchesHotkey, canRunMapHotkeys, canShareHotkey, availableHotkeys } from '../../src/app/keyboard/mapHotkeys';
 import { handledByAnotherControl, noteTooltipDismissal } from '../../src/app/keyboard/tooltipEscape';
 import { App } from 'obsidian';
 import { memoryPluginData } from '../mocks/pluginData';
@@ -51,6 +51,8 @@ describe('map hotkeys', () => {
   });
   it('allows bindings reserved only by disabled tools', () => {
     const { settings } = service();
+    expect(() => settings.setHotkey('assets', 's')).toThrow(/Sound page/);
+    settings.setHotkey('soundPage', '');
     expect(() => settings.setHotkey('assets', 's')).not.toThrow();
   });
   it('rejects collisions, allows clearing, and resets bindings', () => {
@@ -102,8 +104,10 @@ describe('map hotkeys', () => {
     expect(canRunMapHotkeys(byControl, 'map-one')).toBe(false);
     expect(handledByAnotherControl(escape())).toBe(false);
   });
-  it('has no conflicting default bindings', () => {
-    const clashes = MAP_HOTKEYS.flatMap((a, i) => MAP_HOTKEYS.slice(i + 1)
+  it('has no conflicting default bindings among the shortcuts on offer', () => {
+    // A tool the build switches off reserves no key (`setHotkey` checks only these), so it may share its default.
+    const offered = availableHotkeys();
+    const clashes = offered.flatMap((a, i) => offered.slice(i + 1)
       .filter(b => a.defaultKey === b.defaultKey && !canShareHotkey(a.id, b.id))
       .map(b => `${a.id}/${b.id}`));
     expect(clashes).toEqual([]);

@@ -4,6 +4,7 @@ import type { SystemPreset } from '../../types/systemPresetTypes';
 import { comparableSettings } from './bundleSettings';
 import { hashJson } from '../../utils/hashing';
 import type { CollectionField } from './installRecord';
+import { PROVENANCE_KEY } from '../itemBundle/itemProvenance';
 
 /** Bookkeeping Atlas changes on its own; a change there is not an edit. */
 const VOLATILE_ASSET_FIELDS: ReadonlySet<string> = new Set(['createdAt', 'modifiedAt', 'collection', 'thumbnailPath']);
@@ -25,9 +26,9 @@ export function fieldFingerprint(collection: CollectionMetadata, field: Collecti
 /**
  * Fingerprint of a statblock template's JSON without its id, so a copy under another id is the
  * same template, together with the note beside it (`body`) where it has one with text: the two
- * travel, update and diverge as one.
+ * travel, update and diverge as one. Where it came from (`armarium`) is no content.
  */
 export function templateFingerprint(json: Readonly<Record<string, unknown>>, body: string | null = null): Promise<string> {
-  const { id: _id, ...content } = json;
+  const { id: _id, [PROVENANCE_KEY]: _provenance, ...content } = json;
   return hashJson(body ? { template: content, body } : content);
 }

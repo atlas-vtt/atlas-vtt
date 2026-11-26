@@ -24,7 +24,6 @@
     border-radius: $radius-m;
     outline: none;
     transition: background-color 600ms ease;
-    @include atlas-corner-shape;
 
     &:focus-visible {
       box-shadow: $log-focus-ring;

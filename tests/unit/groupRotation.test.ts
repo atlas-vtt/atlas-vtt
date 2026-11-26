@@ -1,14 +1,14 @@
 // @vitest-environment jsdom
-import { EventEmitter } from 'events';
 import { describe, expect, it, vi } from 'vitest';
-import { Container, Sprite } from 'pixi.js';
+import { Container } from 'pixi.js';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import { getHistoryStore } from '../../src/app/stores/history';
 import { snapTokenCenter } from '../../src/app/grid/gridPlacement';
+import { annotationList } from '../../src/app/annotations/annotationList';
+import { AnnotationEdit, type EditLayer } from '../../src/app/pixi/annotations/AnnotationEdit';
 import { GroupRotation, type GroupTurnHost } from '../../src/app/pixi/selection/GroupRotation';
 import { gridPivot } from '../../src/app/pixi/selection/groupTurn';
 import type { DrawingStroke, TokenEntity } from '../../src/app/types';
-import { SelectionManager } from '../../src/app/pixi/SelectionManager';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 
 // jsdom draws no glyphs: the button's rotate glyph never arrives
@@ -31,6 +31,8 @@ vi.mock('../../src/app/pixi/utils/measureLabel', async () => {
 });
 
 const CELL = 70;
+/** A turn with tokens writes the store at every step: the layer shows nothing ahead of it. */
+const NO_PREVIEW: EditLayer = { preview: () => undefined, previewMove: () => undefined, endPreview: () => undefined };
 const squareCell = (point: { x: number; y: number }): { x: number; y: number } =>
   ({ x: (Math.floor(point.x / CELL) + 0.5) * CELL, y: (Math.floor(point.y / CELL) + 0.5) * CELL });
 
@@ -63,6 +65,11 @@ function setup(activeTool: 'select' | 'draw-pen' = 'select') {
   const turnFrame = vi.fn();
   const rotation = new GroupRotation({
     viewport: viewport as never, store, host: () => host, frame: () => frame, turnFrame, refresh: () => undefined,
+    // As the view's drawings and texts hand them out (`AnnotationInteraction.turnAlong`)
+    annotations: (ids) => {
+      const turning = annotationList(store.getState().objects).filter((annotation) => ids.includes(annotation.id));
+      return turning.length > 0 ? new AnnotationEdit(turning, NO_PREVIEW, undefined, (places) => store.getState().placeAnnotations(places)) : null;
+    },
     accent: () => 0x8a5cf5, reducedMotion: () => true,
   });
   rotation.follow(frame, ['a', 'b'], false);
@@ -101,6 +108,33 @@ describe('GroupRotation', () => {
     expect(tokens().a).toMatchObject({ x: 35, y: 35 });
     expect(tokens().a!.rotation).toBeUndefined();
     expect(store.getState().objects.drawings.pen!.points).toEqual([{ x: 105, y: 0 }]);
+  });
+
+  it('turns the anchors and the holes that lie with a drawing\'s points, keeps its other fields, and puts all of it back on Escape', () => {
+    const { store, rotation, press, move, release } = setup();
+    const path = {
+      id: 'pen', kind: 'drawing', timestamp: 0, type: 'line', color: '#000000', width: 2, opacity: 1, later: 'kept',
+      points: [{ x: 105, y: 0 }, { x: 115, y: 0 }],
+      anchors: [{ x: 105, y: 0 }, { x: 115, y: 0 }],
+      holes: [[{ x: 105, y: 10 }, { x: 110, y: 10 }, { x: 110, y: 20 }]],
+    } as DrawingStroke;
+    store.setState({ objects: { ...store.getState().objects, drawings: { pen: path } } });
+    const drawing = (): DrawingStroke => store.getState().objects.drawings.pen!;
+
+    press(105, -30);
+    move(170, 35);
+    rotation.cancel();
+    expect(drawing()).toEqual(path);
+
+    press(105, -30);
+    move(170, 35);
+    release();
+    expect(drawing()).toEqual({
+      ...path,
+      points: [{ x: 140, y: 35 }, { x: 140, y: 45 }],
+      anchors: [{ x: 140, y: 35 }, { x: 140, y: 45 }],
+      holes: [[{ x: 130, y: 35 }, { x: 130, y: 40 }, { x: 120, y: 40 }]],
+    });
   });
 
   it('puts the tokens down exactly where the last step of the turn showed them, off the grid at 45°', () => {
@@ -243,47 +277,5 @@ describe('GroupRotation', () => {
     const loading = store.getState().objects;
     release();
     expect(store.getState().objects).toBe(loading);
-  });
-});
-
-describe('turning a selection with fog in it', () => {
-  it('turns a frame that holds only the tokens and leaves the fog where it is', () => {
-    const store = createViewAtlasStore(createInMemoryApp().app, `group-rotation-fog-${Math.random()}`);
-    store.setState({
-      persistenceEnabled: false, activeTool: 'select', selectedIds: ['a', 'b', 'smoke'],
-      objects: { ...store.getState().objects, tokens: { a: token('a', 35, 35), b: token('b', 175, 35) } },
-    });
-    const group = (x: number, y: number): Container => {
-      const view = new Container();
-      const art = view.addChild(new Sprite());
-      art.label = 'tokenSprite';
-      art.width = 70;
-      art.height = 70;
-      view.position.set(x, y);
-      return view;
-    };
-    const sprites = { a: group(35, 35), b: group(175, 35) };
-    const viewport = Object.assign(new Container(), {
-      toWorld: (point: { x: number; y: number }) => ({ x: point.x, y: point.y }),
-      plugins: { pause: vi.fn(), resume: vi.fn() },
-      options: { events: { domElement: document.createElement('canvas') } },
-    });
-    const fog = viewport.addChild(new Sprite());
-    fog.position.set(600, 300);
-    fog.width = 100;
-    fog.height = 100;
-    const manager = new SelectionManager(viewport as never, () => sprites, () => ({ smoke: fog }), store, new EventEmitter());
-    manager.setGroupTurnHost({ pivot: (middle) => middle, showFacings: () => undefined });
-    const withoutFog = manager['highlights'].groupFrameBox();
-
-    const handle = viewport.getChildByLabel('groupRotateHandle', true)!;
-    handle.emit('pointerdown', { button: 0, global: { x: 105, y: -60 }, stopPropagation: vi.fn() } as never);
-    viewport.emit('pointermove', { button: 0, global: { x: 200, y: 35 }, shiftKey: false } as never);
-
-    expect(manager['highlights'].groupFrameBox()).toEqual(withoutFog);
-    expect(withoutFog!.x + withoutFog!.width).toBeLessThan(600);
-    expect(fog.position).toMatchObject({ x: 600, y: 300 });
-    expect(store.getState().objects.tokens.a).toMatchObject({ x: 105, y: -35 });
-    manager.destroy();
   });
 });

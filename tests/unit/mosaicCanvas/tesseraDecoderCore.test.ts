@@ -202,6 +202,26 @@ describe('TesseraDecoderCore', () => {
     expect(h.graphics.decodes).toHaveLength(0);
   });
 
+  it('refuses a source larger than its device decodes whole, and still opens one whose pyramid is cached', async () => {
+    const backend = new MemoryTesseraBackend();
+    const desktop = coreHarness({ backend });
+    const built = opened(await desktop.core.open(identity, fakePng(3000, 2000)));
+    await desktop.completed(built.hash);
+
+    const tablet = coreHarness({ backend, maxSourcePixels: 2000 * 2000 });
+    const other = { path: 'maps/other.png', size: 4321, mtime: 7 };
+    const refused = await tablet.core.open(other, fakePng(3000, 2001));
+    expect(refused).toMatchObject({ kind: 'failed', failure: { kind: 'too-large', width: 3000, height: 2001, maxPixels: 2000 * 2000 } });
+    expect(tablet.graphics.decodes).toHaveLength(0);
+
+    const cached = opened(await tablet.core.open(identity, fakePng(3000, 2000)));
+    expect(cached.pyramid).toEqual(pyramidOf(3000, 2000));
+    expect(tablet.graphics.decodes).toHaveLength(0);
+
+    const fits = opened(await tablet.core.open({ path: 'maps/small.png', size: 99, mtime: 1 }, fakePng(2000, 2000)));
+    expect(fits.pyramid).toEqual(pyramidOf(2000, 2000));
+  });
+
   it('opens a cached map by its identity alone, and asks for bytes otherwise', async () => {
     const h = coreHarness();
     expect(await h.core.open(identity, null)).toEqual({ kind: 'need-bytes' });

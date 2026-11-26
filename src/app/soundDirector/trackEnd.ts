@@ -35,7 +35,7 @@ export function applyDueListChange(mix: SoundMix, now: number, aheadMs: number, 
     // Just ahead of its fade: the card leaves with it.
     return startAt - now > leadMs * 2 ? mix : musicEnded(mix, stopMusic(table, startAt, at - startAt));
   }
-  if (!listChange && (crossfadeMs === 0 || position.next === null)) return mix;
+  if (!listChange && ((position.track.crossfadeMs ?? crossfadeMs) === 0 || position.next === null)) return mix;
   const span = musicSpanAt(play, playFrameAt(play.startAt, at - 1));
   if (!span) return mix;
   const listPlace = placeAfter(play, listChange, span);

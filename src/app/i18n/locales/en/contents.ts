@@ -5,4 +5,5 @@ export const contents = {
   'contents.includeAll': 'Include all {group}',
   'contents.none': 'None',
   'contents.orphaned': 'Only used by content you left out',
+  'contents.title': 'What’s included',
 } as const satisfies Record<string, Message>;

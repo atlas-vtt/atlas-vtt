@@ -7,8 +7,8 @@ import type { SceneStore } from '../../lighting/shownTokens';
 import type { ViewAtlasState } from '../../storeFactory';
 import type { SightRules } from '../../vision/sightRules';
 import type { MapBounds } from '../../vision/visibility';
-import { restingTokenUIScale } from '../token-renderer/tokenSizing';
 import { destroyTree } from '../utils/destroyTree';
+import { viewportDocument } from '../utils/viewportDocument';
 import type { TokenPerception } from '../../vision/tokenPerception';
 import { PlayerSightMarks } from './PlayerSightMarks';
 import { SenseRangeRings } from './SenseRangeRings';
@@ -40,7 +40,8 @@ export interface GmSightAidsDeps {
  * a picture.
  */
 export class GmSightAids {
-  readonly view = new Container({ label: 'gm-sight-aids', zIndex: SIGHT_AIDS_Z_INDEX, eventMode: 'none', interactiveChildren: false });
+  /** Its own render group: rings redrawn and marks added at every step of a drag would otherwise rebuild the viewport's whole group. */
+  readonly view = new Container({ label: 'gm-sight-aids', zIndex: SIGHT_AIDS_Z_INDEX, eventMode: 'none', interactiveChildren: false, isRenderGroup: true });
   readonly rings: SenseRangeRings;
   readonly marks = new PlayerSightMarks();
   private suppressed = false;
@@ -62,7 +63,7 @@ export class GmSightAids {
     }));
     // The badges take the theme's colours, like the pins.
     const theme = new MutationObserver(() => this.schedule());
-    theme.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    theme.observe(viewportDocument(viewport).body, { attributes: true, attributeFilter: ['class'] });
     this.cleanups.push(() => theme.disconnect());
     this.schedule();
   }
@@ -92,7 +93,8 @@ export class GmSightAids {
     const state = store.getState();
     const perceived = this.shown() ? perception() : undefined;
     const { cellSize } = unitScaleOf(measurement(), state.grid);
-    this.marks.sync(perceived ? sightMarks(mapTokens(levelObjects(state)), perceived, cellSize) : [], restingTokenUIScale(cellSize));
+    const tokens = mapTokens(levelObjects(state));
+    this.marks.sync(perceived ? sightMarks(tokens, perceived, cellSize) : [], (id) => id in tokens);
     this.rings.draw();
   }
 

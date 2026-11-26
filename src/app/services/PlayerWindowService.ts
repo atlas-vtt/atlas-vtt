@@ -1,8 +1,11 @@
 import { App } from 'obsidian';
+import { initiativeScaleOf } from './playerInitiativeList';
+import { turnBannerScaleFor } from '../initiative/banner/turnBannerElement';
 import type { ViewAtlasState } from '../storeFactory';
 import type { StoreApi } from 'zustand';
 import type { SettingsService } from './SettingsService';
 import { playerWindowStore, resetPlayerWindowStore } from '../stores/playerWindowStore';
+import { tableControlsStore } from '../stores/tableControlsStore';
 import './player-window.scss';
 import { PlayerInitiativePanel } from './PlayerInitiativePanel';
 import { PlayerTurnBanner } from './PlayerTurnBanner';
@@ -26,6 +29,8 @@ import { CURTAIN_DOWN_MS, removePlayerCurtain, showPlayerCurtain } from './playe
 import { PlayerSceneFade } from './playerSceneFade';
 import { watchPlayerWindowDisplay } from './playerWindowDisplay';
 import { keepPlayerWindowAwake } from './playerWindowThrottling';
+import { PlayerMirrorFallback } from './playerMirrorFallback';
+import { isDesktopApp } from '../platform/desktopOnly';
 
 /** Scopes the rules in `player-window.scss` to the popout document. */
 const PLAYER_WINDOW_BODY_CLASS = 'atlas-player-window';
@@ -75,6 +80,8 @@ export class PlayerWindowService {
   private isCleaningUp = false;
   /** Brings frames of the presented scene into the window; exists while frames are being mirrored. */
   private mirror: PlayerFrameMirror | null = null;
+  /** Steps the mirror from the main window while the player window gets no display frames (another virtual desktop). */
+  private mirrorFallback: PlayerMirrorFallback | null = null;
   /** Identifies the running frame loop; a newer loop ends older ones. */
   private mirrorLoopId = 0;
   /** Identifies the running glide of frozen players; any other change of their camera ends it. */
@@ -130,9 +137,17 @@ export class PlayerWindowService {
     this.setFrozenCamera(camera ?? this.cameraPlayersSee());
   }
 
-  /** Lets players follow the GM's camera again, without a word: the glass's pin. */
+  /**
+   * Lets players follow the GM's camera again, without a word: the glass's pin. Where that shows
+   * them another place, they dip through black to it, as to another scene, never jump.
+   */
   public unfreezeCamera(): void {
-    if (this.frozenCamera) this.setFrozenCamera(null);
+    const frozen = this.frozenCamera;
+    if (!frozen) return;
+    const following = this.streamSource?.getCamera?.();
+    const samePlace = following && following.centerX === frozen.centerX && following.centerY === frozen.centerY && following.scale === frozen.scale;
+    if (!samePlace && !this.heldFrame) this.dipToNextScene();
+    this.setFrozenCamera(null);
   }
 
   /**
@@ -160,6 +175,18 @@ export class PlayerWindowService {
   public isTrueScale(): boolean {
     const tv = this.tableTv();
     return !!tv?.trueScale && tv.setup !== null;
+  }
+
+  /**
+   * Moves players to the world point (x, y) of the scene shown in `tabId` at once, pinned there:
+   * each step of the glass being dragged. The step is neither remembered nor written to the
+   * window's session; the drop (`framePlayersOn`) does both. False where players see another scene.
+   */
+  public dragPlayersTo(tabId: string, x: number, y: number): boolean {
+    const camera = this.framingCamera(tabId);
+    if (!camera) return false;
+    this.setFrozenCamera({ ...camera, centerX: x, centerY: y }, false);
+    return true;
   }
 
   /** The glass on the map of `tabId`: what players see of it, pinned or following; null where they see another scene. */
@@ -251,14 +278,26 @@ export class PlayerWindowService {
   /** The camera players see the scene of `tabId` through, where they see it live. */
   private framingCamera(tabId: string): PlayerCameraState | null {
     if (!this.isWindowOpen() || this.heldFrame || playerWindowStore.getState().shownTabId !== tabId) return null;
-    return this.frozenCamera ?? this.cameraPlayersSee();
+    return this.outlinedCamera();
+  }
+
+  /**
+   * The camera the glass on the GM's map is placed through: pinned, the frozen one; following,
+   * the view's own, which the outline is drawn through and the next frame is rendered through
+   * (the last frame's would trail the GM's pans by a frame); else what players were shown last.
+   */
+  private outlinedCamera(): PlayerCameraState | null {
+    if (this.frozenCamera) return this.frozenCamera;
+    const source = this.streamSource;
+    const live = source && !this.heldFrame && !cannotRender(source) ? source.getCamera?.() : undefined;
+    return live ?? this.cameraPlayersSee();
   }
 
   /** The frame the mirror would render of `source` through the camera players are on: the same function, so the outline is what players get. */
   private playerFrameOf(source: PlayerFrameSource | null): PlayerFrame | null {
     const canvas = this.playerWindow?.document.getElementById('atlas-player-canvas');
     const window = canvas?.instanceOf(HTMLCanvasElement) ? this.windowScreen(canvas) : null;
-    const camera = this.isWindowOpen() ? this.frozenCamera ?? this.cameraPlayersSee() : null;
+    const camera = this.isWindowOpen() ? this.outlinedCamera() : null;
     if (!source || !window || !camera) return null;
     return tableTvPlayerFrame(window, camera, source.getScreen?.(), this.tableTv(), source.getGridSize?.(), this.pixelBudget());
   }
@@ -292,6 +331,8 @@ export class PlayerWindowService {
    */
   public setCurtain(down: boolean): void {
     const win = this.getWindow();
+    // The curtain is the table's: online players are curtained by the same press
+    if (tableControlsStore.getState().curtain !== down) tableControlsStore.setState({ curtain: down });
     if (!win || this.curtained === down) return;
     this.curtained = down;
     playerWindowStore.setState({ curtain: down });
@@ -342,7 +383,7 @@ export class PlayerWindowService {
 
   /**
    * Keep players on the last frame and let go of the map view that owns `store`,
-   * which is closing. Presenting another scene resumes live mirroring.
+   * which is closing. Presenting another scene, or a view loading the presented one, resumes live mirroring.
    */
   public releaseSource(store: StoreApi<ViewAtlasState>): void {
     if (!this.streamSource || this.streamSource.store !== store) return;
@@ -350,6 +391,11 @@ export class PlayerWindowService {
     this.sceneOverlays.forEach((overlay) => overlay.releaseSource?.());
     this.streamSource = CLOSED_SOURCE;
     this.followSource();
+  }
+
+  /** Whether the open window lost the map view it showed (`releaseSource`) and no view shows players a scene since. */
+  public awaitsSource(): boolean {
+    return this.isWindowOpen() && this.streamSource === CLOSED_SOURCE;
   }
 
   /**
@@ -410,6 +456,8 @@ export class PlayerWindowService {
       if (framing && !anotherScene) this.moveFrozenCamera(framing);
       else this.setFrozenCamera(framing);
     }
+    // The held frame is gone even where no freeze changed
+    this.updateFreezeIndicator();
     playerWindowStore.setState({ shownTabId: tabId });
     this.playerView?.updateSession({
       tabId, ...(filePath ? { filePath } : {}), levelId: levelId ?? undefined, frozen: this.isFrozen(), ...(anotherScene && !this.isFrozen() ? { camera: null } : {}),
@@ -425,9 +473,11 @@ export class PlayerWindowService {
 
   /**
    * Opens the player window's leaf in a popout (or reuses the one there is) on `scene`; the
-   * presenter then attaches it to the view that holds the scene. Null when Obsidian gave no player view.
+   * presenter then attaches it to the view that holds the scene. Null when Obsidian gave no player view,
+   * and on mobile, which has no second window to open.
    */
   public static async openLeaf(app: App, scene: PresentedScene): Promise<LocalPlayerView | null> {
+    if (!isDesktopApp()) return null;
     const leaf = app.workspace.getLeavesOfType(LOCAL_PLAYER_VIEW_TYPE)[0] ?? app.workspace.openPopoutLeaf();
     await leaf.setViewState({ type: LOCAL_PLAYER_VIEW_TYPE, state: { tabId: scene.tabId, filePath: scene.filePath, ...(scene.levelId ? { levelId: scene.levelId } : {}), frozen: false } });
     return leaf.view instanceof LocalPlayerView ? leaf.view : null;
@@ -443,7 +493,9 @@ export class PlayerWindowService {
     this.playerWindow = view.contentEl.win;
     this.streamSource = source;
     this.shownCamera = null;
-    this.curtained = view.getState().curtain === true;
+    // A curtain lowered for online players while the window was closed stays down here, and one a restored window had comes down for them too
+    this.curtained = view.getState().curtain === true || tableControlsStore.getState().curtain;
+    if (this.curtained) tableControlsStore.setState({ curtain: true });
     this.sceneFade.cancel();
     this.pinFrozenCamera();
     this.mirror?.markStale();
@@ -453,7 +505,7 @@ export class PlayerWindowService {
     this.destroySceneOverlays();
     this.sceneOverlays = [
       new PlayerWidgetBar(this.settingsService),
-      new PlayerInitiativePanel(this.app, this.settingsService),
+      new PlayerInitiativePanel(this.app, this.settingsService, () => this.isTrueScale()),
       new PlayerDiceRolls(this.app, this.settingsService),
       new PlayerTurnBanner(this.app, this.settingsService),
     ];
@@ -523,7 +575,7 @@ export class PlayerWindowService {
     const existing = new Set(
       Array.from(doc.head.querySelectorAll('link[rel="stylesheet"], style')).map(getStyleNodeKey),
     );
-    document.head.querySelectorAll('link[rel="stylesheet"], style').forEach((node) => {
+    this.app.workspace.containerEl.doc.head.querySelectorAll('link[rel="stylesheet"], style').forEach((node) => {
       if (existing.has(getStyleNodeKey(node))) return;
       doc.head.appendChild(doc.importNode(node, true));
     });
@@ -577,8 +629,15 @@ export class PlayerWindowService {
       const applyTurn = (): void => {
         const tv = this.tableTv();
         if (tv) applyTableTvLook(body, overlayLayer, tv);
+        // How large the initiative lists are drawn (the player view's setting), and the turn banner (the window's size)
+        const { initiativeScale } = this.settingsService.getLocalPlayerViewSettings();
+        overlayLayer.style.setProperty('--atlas-player-initiative-scale', String(initiativeScaleOf(initiativeScale)));
+        const win = this.playerWindow;
+        if (win) overlayLayer.style.setProperty('--atlas-player-turn-banner-scale', String(turnBannerScaleFor(win.innerWidth, win.innerHeight)));
       };
       applyTurn();
+      const playerWindow = this.playerWindow;
+      playerWindow.addEventListener('resize', applyTurn);
       this.sceneOverlays.forEach((overlay) => overlay.mount(overlayLayer));
       this.settingsUnsubscribe?.();
       // Player view settings decide which layers players see
@@ -594,6 +653,7 @@ export class PlayerWindowService {
       this.settingsUnsubscribe = () => {
         unsubscribeSettings();
         stopRules();
+        playerWindow.removeEventListener('resize', applyTurn);
       };
 
       // Create freeze indicator
@@ -609,9 +669,9 @@ export class PlayerWindowService {
         'stroke-linecap': 'round',
         'stroke-linejoin': 'round',
       } });
-      freezeIcon.createSvg('line', { attr: { x1: 2, y1: 12, x2: 22, y2: 12 } });
-      freezeIcon.createSvg('line', { attr: { x1: 12, y1: 2, x2: 12, y2: 22 } });
-      freezeIcon.createSvg('path', { attr: { d: 'M20 16l-4-4 4-4M4 8l4 4-4 4M16 4l-4 4-4-4M8 20l4-4 4 4' } });
+      // Lucide's pause
+      freezeIcon.createSvg('rect', { attr: { x: 14, y: 4, width: 4, height: 16, rx: 1 } });
+      freezeIcon.createSvg('rect', { attr: { x: 6, y: 4, width: 4, height: 16, rx: 1 } });
       freezeIndicator.createSpan({ text: t('player.paused') });
       freezeIndicator.style.display = this.frozenCamera || this.heldFrame ? 'flex' : 'none';
       
@@ -693,18 +753,32 @@ export class PlayerWindowService {
     });
     this.mirror = mirror;
 
-    const mirrorFrame = (): void => {
-      if (loopId !== this.mirrorLoopId) return;
+    /** The player window while this loop runs; ends the loop once the window or its scene is gone. */
+    const loopWindow = (): Window | null => {
+      if (loopId !== this.mirrorLoopId) return null;
       if (!this.playerWindow || this.playerWindow.closed || !this.streamSource) {
         this.cleanup();
-        return;
+        return null;
       }
-
-      this.animationFrame = this.playerWindow.requestAnimationFrame(mirrorFrame);
+      return this.playerWindow;
+    };
+    const step = (): void => {
       this.sceneFade.expire(performance.now());
       mirror.frame();
     };
+    this.mirrorFallback?.stop();
+    const fallback = new PlayerMirrorFallback(loopWindow, step);
+    this.mirrorFallback = fallback;
 
+    const mirrorFrame = (): void => {
+      const win = loopWindow();
+      if (!win) return;
+      this.animationFrame = win.requestAnimationFrame(mirrorFrame);
+      fallback.displayFrame();
+      step();
+    };
+
+    fallback.start();
     mirrorFrame();
   }
 
@@ -754,6 +828,8 @@ export class PlayerWindowService {
     this.mirrorLoopId++;
     this.mirror?.stop();
     this.mirror = null;
+    this.mirrorFallback?.stop();
+    this.mirrorFallback = null;
 
     if (this.animationFrame) {
       this.playerWindow?.cancelAnimationFrame(this.animationFrame);
@@ -785,6 +861,8 @@ export class PlayerWindowService {
     this.shownCamera = null;
     this.glass.showSetup(null);
     resetPlayerWindowStore();
+    // With no online table the curtain and the pause were this window's alone, and close with it
+    if (!tableControlsStore.getState().online) tableControlsStore.setState({ curtain: false, paused: false });
     this.glass.cameraChanged();
     // The window is gone: drop the singleton so the next present binds to the presenting view's store.
     if (PlayerWindowService.instance === this) {

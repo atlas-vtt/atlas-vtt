@@ -5,6 +5,7 @@ import type { ViewState } from '../types/viewState';
 import { LASER_FADE_TIME, type LaserPointerSettings } from '../tools/laserPointerSettings';
 import { setCanvasCursor } from './utils/canvasCursor';
 import { destroyTree } from './utils/destroyTree';
+import { isPrimaryPress } from './utils/pointerButtons';
 import { MAX_TRAIL_SAMPLES, type BeamPoint } from './laser/laserBeamGeometry';
 import { LaserBeam, beamWidth, type LaserBeamView } from './laser/LaserBeam';
 
@@ -39,7 +40,7 @@ export class LaserPointerRenderer {
   private beam: LaserBeamView;
 
   private trailPoints: TrailPoint[] = [];
-  /** Where the pointer is on the map, or null while it is off the canvas. */
+  /** Where the pointer is on the map, or null while it is off the canvas (a finger: while it is not down). */
   private pointer: WorldPoint | null = null;
   private isToolActive: boolean = false;
   private isPointing: boolean = false;
@@ -96,6 +97,8 @@ export class LaserPointerRenderer {
     viewport.on('pointermove', this.onPointerMove);
     viewport.on('pointerup', this.onPointerUp);
     viewport.on('pointerupoutside', this.onPointerUpOutside);
+    // A press the gesture layer takes back ends the beam as a release off the map does
+    viewport.on('pointercancel', this.onPointerUpOutside);
     // Scroll-pan, pinch and decelerate move the world under a stationary pointer
     viewport.on('moved', this.onViewportMoved);
 
@@ -104,7 +107,8 @@ export class LaserPointerRenderer {
       this.pointer = null;
       this.redraw();
     };
-    this.canvasEl.addEventListener('mouseleave', this.onCanvasLeave);
+    // A pointer leaves the canvas when it moves off it, and a finger whenever it lifts: no dot stays where it was.
+    this.canvasEl.addEventListener('pointerleave', this.onCanvasLeave);
   }
 
   private setActiveTool(tool: ViewState['activeTool']): void {
@@ -140,10 +144,9 @@ export class LaserPointerRenderer {
   }
 
   private handlePointerDown(e: FederatedPointerEvent): void {
-    const button: number = e.button;
     // Middle-click → quick mode regardless of active tool; left-click when the laser tool is active
-    const quick = button === 1;
-    if (!quick && !(button === 0 && this.isToolActive)) return;
+    const quick = e.button === 1;
+    if (!quick && !(isPrimaryPress(e) && this.isToolActive)) return;
     const world = this.getWorldFromPointerEvent(e);
     if (!world) {
       return;
@@ -192,30 +195,26 @@ export class LaserPointerRenderer {
   }
 
   private handlePointerUp(e: FederatedPointerEvent): void {
-    const button: number = e.button;
-
-    if (button === 1 && this.isQuickMode) {
-      this.endQuickMode();
-      e.stopPropagation();
-      return;
-    }
-
-    if (button === 0 && this.isToolActive && this.isPointing) {
-      this.isPointing = false;
-      this.redraw();
-      e.stopPropagation();
-    }
+    if (this.endPress()) e.stopPropagation();
   }
 
   private handlePointerUpOutside(): void {
+    this.endPress();
+  }
+
+  /**
+   * Ends the beam a press began, whichever button the release names: a release comes only once the
+   * last button is up, with that button. Returns whether a press was under way.
+   */
+  private endPress(): boolean {
     if (this.isQuickMode) {
       this.endQuickMode();
-      return;
+      return true;
     }
-    if (this.isPointing) {
-      this.isPointing = false;
-      this.redraw();
-    }
+    if (!this.isPointing) return false;
+    this.isPointing = false;
+    this.redraw();
+    return true;
   }
 
   private endQuickMode(): void {
@@ -306,8 +305,9 @@ export class LaserPointerRenderer {
     this.viewport.off('pointermove', this.onPointerMove);
     this.viewport.off('pointerup', this.onPointerUp);
     this.viewport.off('pointerupoutside', this.onPointerUpOutside);
+    this.viewport.off('pointercancel', this.onPointerUpOutside);
     this.viewport.off('moved', this.onViewportMoved);
-    this.canvasEl.removeEventListener('mouseleave', this.onCanvasLeave);
+    this.canvasEl.removeEventListener('pointerleave', this.onCanvasLeave);
 
     this.trailPoints = [];
     destroyTree(this.container);

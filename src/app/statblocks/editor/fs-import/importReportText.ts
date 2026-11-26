@@ -4,8 +4,10 @@
  * now, what of the look it cannot show, and what moving the statblocks does.
  */
 
+import { keyList } from '../../fs/fenceConversion';
 import type { LayoutStatblocks } from '../../fs/fsLayoutStatblocks';
 import type { FsImportReport } from '../../fs/fsLayoutTypes';
+import type { LeftStatblock } from './statblockMove';
 import { t } from '../../../i18n';
 
 /** "DaggerHeart Adversary is ready" */
@@ -67,4 +69,11 @@ export function movedLine(moved: number, total: number): string {
 /** "Show the statblock left as it was", "Show the 3 statblocks left as they were". */
 export function leftoversLabel(count: number): string {
   return t('statblockEditor.fs.leftovers', { count });
+}
+
+/** How many notes were left for holding other values than their statblocks, under which keys, and what can be done; null where none was. */
+export function otherValuesLine(notes: readonly LeftStatblock[]): string | null {
+  if (notes.length === 0) return null;
+  const keys = [...new Set(notes.flatMap((note) => note.conflicts ?? []))];
+  return t('statblockEditor.fs.otherValuesNotes', { count: notes.length, keys: keyList(keys) });
 }

@@ -31,13 +31,14 @@ export function concerns(wall: WallSegment, channel: WallChannel): boolean {
   return wall.blocks === undefined || wall.blocks === channel;
 }
 
-/** What the parts of a wall that is cut up keep of it (a door placed in it, and what is left on either side): its chain, its direction, what it blocks, limited or not. */
-export function keptByParts(wall: WallSegment): Pick<WallSegment, 'chainId' | 'direction' | 'blocks' | 'limited'> {
+/** What the parts of a wall that is cut up keep of it (a door placed in it, and what is left on either side): its chain, its direction, what it blocks, limited or not, and the side a room's floor lies on. */
+export function keptByParts(wall: WallSegment): Pick<WallSegment, 'chainId' | 'direction' | 'blocks' | 'limited' | 'floor'> {
   return {
     ...(wall.chainId !== undefined && { chainId: wall.chainId }),
     ...(wall.direction !== undefined && { direction: wall.direction }),
     ...(wall.blocks !== undefined && { blocks: wall.blocks }),
     ...(wall.limited === true && { limited: true }),
+    ...(wall.floor !== undefined && { floor: wall.floor }),
   };
 }
 
@@ -59,13 +60,24 @@ export interface BlockingWalls {
   limited: WallSegment[];
 }
 
+const split = new WeakMap<readonly WallSegment[], Map<WallChannel | undefined, BlockingWalls>>();
+
 /**
  * The walls that block `channel` (without one, every wall that blocks anything: whoever names
  * no channel is stopped by all of them): two-way ones as segments for the shared field, one-way
  * ones kept whole because whether they block depends on where the light is, and limited ones
- * apart, because they stop only what has crossed another already.
+ * apart, because they stop only what has crossed another already. Worked out once per walls
+ * array and channel, as `sealedWalls` is; the one-way list is a new array with every call.
  */
 export function splitBlocking(walls: readonly WallSegment[], channel?: WallChannel): BlockingWalls {
+  let byChannel = split.get(walls);
+  if (!byChannel) split.set(walls, (byChannel = new Map<WallChannel | undefined, BlockingWalls>()));
+  let blocking = byChannel.get(channel);
+  if (!blocking) byChannel.set(channel, (blocking = splitAnew(walls, channel)));
+  return { ...blocking, oneWay: [...blocking.oneWay] };
+}
+
+function splitAnew(walls: readonly WallSegment[], channel?: WallChannel): BlockingWalls {
   const twoWay: Seg[] = [];
   const oneWay: WallSegment[] = [];
   const limited: WallSegment[] = [];

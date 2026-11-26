@@ -1,7 +1,7 @@
 import { MAX_BOOK_QUESTS, MAX_MAP_TITLE, MAX_QUEST_REWARDS, MAX_TOKEN_VALUE } from '../../protocol/index.ts';
 import type { HashedRef } from '../assets/assetUses.ts';
 import type { HandedImage, HandedQuest } from './questGate.ts';
-import { isQuestOver, type Quest } from '../../../campaigns/quests/questTypes';
+import { isQuestForPlayers, isQuestOver, type Quest } from '../../../campaigns/quests/questTypes';
 import { questKind } from '../../../campaigns/quests/questProperties';
 import { clippedLine } from './bookTexts.ts';
 
@@ -15,9 +15,10 @@ export interface BookQuestText {
 /**
  * A quest note as players read it: its title (the note's name), its Markdown text and its
  * properties, each within the book's limits (longer titles are cut, rewards past the limit left
- * out). Null for a quest whose title shows nothing.
+ * out). Null for a quest whose title shows nothing, or that the GM hides from players.
  */
 export function bookQuestOf(quest: Quest, id: string, text: BookQuestText): HandedQuest | null {
+  if (!isQuestForPlayers(quest)) return null;
   const title = clippedLine(quest.title, MAX_MAP_TITLE);
   if (title === null) return null;
   const rewards = quest.rewards.flatMap((reward) => clippedLine(reward, MAX_MAP_TITLE) ?? []).slice(0, MAX_QUEST_REWARDS);
@@ -36,7 +37,8 @@ export function bookQuestOf(quest: Quest, id: string, text: BookQuestText): Hand
   };
 }
 
-/** The quests a book shows, in its order: those still before the party first, then those behind it; no more than a book holds. */
+/** The quests a book shows, in its order: those still before the party first, then those behind it; none the GM hides; no more than a book holds. */
 export function bookQuestOrder<T extends Pick<Quest, 'status'>>(quests: readonly T[]): T[] {
-  return [...quests.filter((quest) => !isQuestOver(quest)), ...quests.filter(isQuestOver)].slice(0, MAX_BOOK_QUESTS);
+  const shown = quests.filter(isQuestForPlayers);
+  return [...shown.filter((quest) => !isQuestOver(quest)), ...shown.filter(isQuestOver)].slice(0, MAX_BOOK_QUESTS);
 }

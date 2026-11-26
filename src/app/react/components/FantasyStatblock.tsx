@@ -8,7 +8,7 @@ import {
   type FantasyStatblocksCreature,
 } from '../../services/FantasyStatblocksService';
 import { frontmatterOfText, statblockSourceFromText } from '../../statblocks/notes/statblockSource';
-import { bestiaryLookup, frontmatterCreature, resolveLinkedCreature } from '../../creatures/linkedCreature';
+import { bestiaryLookup, resolveLinkedCreature, unparsedFrontmatterCreature } from '../../creatures/linkedCreature';
 import { boundedStatblock } from '../../creatures/statblockValues';
 import { syncStatblockVitals, type TokenVitals } from '../../services/statblockVitalsSync';
 import { StatblockRenderer } from './statblock/StatblockRenderer';
@@ -75,9 +75,9 @@ export function FantasyStatblock({
     [app, notePath, noteContent, revision],
   );
 
-  // A note the bestiary has not parsed is read from the note itself: its frontmatter (the
-  // bestiary may still be parsing the vault) or its ```statblock fence, which never enters it.
-  // A note with neither shows the bestiary creature of its name.
+  // A note the bestiary has not parsed is read from the note itself, as the plugin draws it: its
+  // ```statblock fence, which never enters the bestiary, else its frontmatter (the bestiary may
+  // still be parsing the vault). A note with neither shows the bestiary creature of its name.
   const [noteCreature, setNoteCreature] = useState<FantasyStatblocksCreature | null>(null);
   // The note whose statblock has been looked for with the whole bestiary to look in: until
   // then "no creature" is not known yet.
@@ -95,7 +95,7 @@ export function FantasyStatblock({
         const source = statblockSourceFromText(noteContent);
         const resolved = source?.kind === 'fs-fence'
           ? await resolveCreatureFromFence(app, source.params, notePath)
-          : source ? frontmatterCreature(frontmatterOfText(noteContent) ?? {}, notePath) : null;
+          : source ? await unparsedFrontmatterCreature(app, frontmatterOfText(noteContent) ?? {}, noteContent, notePath) : null;
         if (!cancelled) setNoteCreature(resolved);
         return;
       }

@@ -9,6 +9,7 @@ import type { AdvantageRule, AdvantageSide, RollingDice } from '../types/diceSet
 import { completeFormula } from './completeFormula';
 import type { DieLook } from './diceFormula';
 import { checkFormula } from './formulaChecks';
+import { writtenSide } from './writtenAdvantage';
 import type { DiceTerm, FormulaError, FormulaNode, FormulaTerm, ParsedFormula } from './formulaTypes';
 
 export const ADVANTAGE_SIDES: readonly AdvantageSide[] = ['advantage', 'disadvantage'];
@@ -45,9 +46,12 @@ export function setDiceTerm(terms: readonly FormulaTerm[], rules: RollingDice): 
   return index < 0 ? null : index;
 }
 
-/** The sides that change a roll of `formula` by `rules`: those the set has a rule for, where the roll holds the set's dice. */
+/**
+ * The sides that change a roll of `formula` by `rules`: those the set has a rule for, where the roll holds the
+ * set's dice. A side the formula writes (`adv`) leaves the other side to ask for, which cancels it.
+ */
 export function advantageSidesFor(formula: string, rules: RollingDice): AdvantageSide[] {
-  const complete = completeFormula(formula, rules);
+  const complete = completeFormula(writtenSide(formula).formula, rules);
   return complete.ok && setDiceTerm(complete.parsed.terms, rules) !== null ? ruledSides(rules) : [];
 }
 

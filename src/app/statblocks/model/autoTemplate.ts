@@ -6,15 +6,12 @@ import {
   TEMPLATE_FORMAT, TEMPLATE_VERSION,
   type FieldKey, type FieldMeaning, type HeaderPartId, type StatblockTemplate, type TemplateBlock, type TemplateField,
 } from './templateTypes';
+import { isPlainRecord } from '../values/fieldValueOf';
 
 export const AUTO_TEMPLATE_ID = 'auto';
 
 const MAX_DEPTH = 32;
 const NUMBER_TEXT = /^[+\-\u2212]?\d+(?:\.\d+)?$/;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Object.prototype.toString.call(value) === '[object Object]';
-}
 
 /** Missing, blank, or a list or record holding only such values; 0 and false are values. */
 function isEmpty(value: unknown, depth = 0): boolean {
@@ -23,7 +20,7 @@ function isEmpty(value: unknown, depth = 0): boolean {
   if (typeof value === 'number') return Number.isNaN(value);
   if (depth >= MAX_DEPTH) return false;
   if (Array.isArray(value)) return value.every((item) => isEmpty(item, depth + 1));
-  if (isRecord(value)) return Object.values(value).every((item) => isEmpty(item, depth + 1));
+  if (isPlainRecord(value)) return Object.values(value).every((item) => isEmpty(item, depth + 1));
   return false;
 }
 
@@ -32,23 +29,23 @@ const isNumberLike = (value: unknown): boolean => isNumber(value) || (typeof val
 
 /** The one value of a record with exactly one key, else undefined. */
 function soleValue(value: unknown): unknown {
-  if (!isRecord(value)) return undefined;
+  if (!isPlainRecord(value)) return undefined;
   const values = Object.values(value);
   return values.length === 1 ? values[0] : undefined;
 }
 
 function isEntry(value: unknown): boolean {
-  return isRecord(value) && 'name' in value && ('desc' in value || 'text' in value);
+  return isPlainRecord(value) && 'name' in value && ('desc' in value || 'text' in value);
 }
 
 function isPairs(value: unknown): boolean {
-  if (isRecord(value)) return Object.values(value).every(isNumberLike);
+  if (isPlainRecord(value)) return Object.values(value).every(isNumberLike);
   return Array.isArray(value) && value.every((item) => isNumberLike(soleValue(item)));
 }
 
 /** FS's spell shape: lines of text and `{ level: spells }` records, at least one of the latter. */
 function isSpells(items: readonly unknown[]): boolean {
-  return items.some(isRecord)
+  return items.some(isPlainRecord)
     && items.every((item) => typeof item === 'string' || typeof soleValue(item) === 'string');
 }
 
@@ -58,12 +55,12 @@ type Shown = Pick<TemplateField, 'type' | 'entry'>;
 function shapeOf(value: unknown): Shown | null {
   if (typeof value === 'string') return { type: value.includes('\n') ? 'markdown' : 'text' };
   if (isNumber(value)) return { type: 'number' };
-  if (isRecord(value)) return isPairs(value) ? { type: 'pairs' } : null;
+  if (isPlainRecord(value)) return isPairs(value) ? { type: 'pairs' } : null;
   if (!Array.isArray(value)) return null;
   if (value.every(isNumber)) return { type: 'scores' };
   if (value.every((item) => typeof item === 'string')) return { type: 'list' };
   if (value.every(isEntry)) {
-    const usesText = value.some((item) => isRecord(item) && 'text' in item && !('desc' in item));
+    const usesText = value.some((item) => isPlainRecord(item) && 'text' in item && !('desc' in item));
     return usesText ? { type: 'entries', entry: { textKey: 'text' } } : { type: 'entries' };
   }
   if (isPairs(value)) return { type: 'pairs' };

@@ -1,3 +1,5 @@
+import { getLocale } from '../i18n';
+
 /** A file below a root, with what browsing needs to know of it. */
 export interface SoundFileEntry {
   name: string;
@@ -26,8 +28,12 @@ export interface SoundLocation {
   /** Null where the folder is not there (the root's disk unplugged, the folder gone). */
   list(folder: string): Promise<SoundListing | null>;
   exists(path: string): Promise<boolean>;
+  /** What a file measures; null where no file lies there. */
+  stat(path: string): Promise<{ size: number; mtime: number } | null>;
   /** `onStep` hears a read that comes in parts getting somewhere. */
   read(path: string, onStep?: () => void): Promise<Blob>;
+  /** The bytes of a file from `start` up to `end` or its end, reading no more of it where the system allows. */
+  readRange(path: string, start: number, end: number): Promise<Uint8Array<ArrayBuffer>>;
   /** A URL a media element can load; null where there is none. */
   resourceUrl(path: string): string | null;
   makeFolder(path: string): Promise<void>;
@@ -35,8 +41,21 @@ export interface SoundLocation {
   move(from: string, to: string): Promise<void>;
   /** Writes a new file. Refused where something lies at `path`. */
   write(path: string, content: Blob): Promise<void>;
-  /** Moves a file or folder to the system's trash. Refused with `TrashUnavailableError` where there is none. */
+  /** Writes a file over the one at `path`: only for Atlas' own files, a copy left half written where the folder has no trash. */
+  replace(path: string, content: Blob): Promise<void>;
+  /** Whether `trash` can work here: false where this Obsidian has no system trash, or the vault deletes for good. */
+  canTrash(): boolean;
+  /** Whether Atlas may write into the folder now. */
+  canWrite(): Promise<boolean>;
+  /**
+   * Moves a file or folder to the system's trash. Refused with `TrashUnavailableError` where there is none, and with
+   * `TrashNotTakenError` where the trash answered but the file is still there.
+   */
   trash(path: string): Promise<void>;
+  /** Deletes for good a part (`isPart`): a file Atlas was writing, which never was anyone's, so no trash is needed. Refuses any other path. */
+  removePart(path: string): Promise<void>;
+  /** Removes a folder that holds nothing; refused where it holds anything. */
+  removeEmptyFolder(path: string): Promise<void>;
   /** Calls back with the path that changed, or null where anything may have. Returns the release. */
   watch(onChange: (path: string | null) => void): () => void;
 }
@@ -73,6 +92,14 @@ export class SoundPathTakenError extends Error {
   }
 }
 
+/** A path asked to be removed for good that is no part, or a folder asked to be removed that is not empty. */
+export class SoundPathNotRemovableError extends Error {
+  constructor(path: string) {
+    super(`${path} is not Atlas' own to remove.`);
+    this.name = 'SoundPathNotRemovableError';
+  }
+}
+
 /** This Obsidian offers no system trash, and Atlas deletes nothing for good. */
 export class TrashUnavailableError extends Error {
   constructor() {
@@ -81,7 +108,15 @@ export class TrashUnavailableError extends Error {
   }
 }
 
-const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+/** The trash answered, but the file is still where it was: some systems' trash does nothing without saying so. */
+export class TrashNotTakenError extends Error {
+  constructor(path: string) {
+    super(`The trash did not take ${path}.`);
+    this.name = 'TrashNotTakenError';
+  }
+}
+
+const collator = new Intl.Collator(getLocale(), { numeric: true, sensitivity: 'base' });
 
 /** A listing in reading order: `Track 2` before `Track 10`. */
 export function sortedListing(folders: SoundFolderEntry[], files: SoundFileEntry[]): SoundListing {

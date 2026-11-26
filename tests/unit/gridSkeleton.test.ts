@@ -8,20 +8,25 @@ const LAYOUT: CardLayout = { art: { x: 8, y: 8, size: 134, radius: 8 }, name: { 
 const svgOf = (mask: string): string => decodeURIComponent(mask.slice('url("data:image/svg+xml,'.length, -2));
 
 describe('unmountedRegions', () => {
-  it('covers the rows above and below the mounted ones', () => {
+  const row = (index: number): { row: number; top: number; height: number } => ({ row: index, top: index * 198, height: 198 - 8 });
+
+  it('covers the rows above and below the mounted ones, one region per row', () => {
     const regions = unmountedRegions({ ...GRID, firstRow: 3, lastRow: 9, assetCount: 8 * 14 });
-    expect(regions).toEqual([
-      { top: 0, height: 3 * 198 - 8 },
-      { top: 10 * 198, height: 4 * 198 - 8 },
-    ]);
+    expect(regions).toEqual([row(0), row(1), row(2), row(10), row(11), row(12), row(13)]);
+  });
+
+  it('keeps every row it still covers as it was when the grid scrolls by a row', () => {
+    const before = unmountedRegions({ ...GRID, firstRow: 3, lastRow: 9, assetCount: 8 * 30 });
+    const after = unmountedRegions({ ...GRID, firstRow: 4, lastRow: 10, assetCount: 8 * 30 });
+    const byRow = new Map(before.map((region) => [region.row, region]));
+    for (const region of after) if (byRow.has(region.row)) expect(region).toEqual(byRow.get(region.row));
+    expect(after.some((region) => region.row === 3)).toBe(true);
+    expect(after.some((region) => region.row === 10)).toBe(false);
   });
 
   it('gives a last row that is not full a region as wide as its cards', () => {
     const regions = unmountedRegions({ ...GRID, firstRow: 0, lastRow: 4, assetCount: 8 * 6 + 3 });
-    expect(regions).toEqual([
-      { top: 5 * 198, height: 198 - 8 },
-      { top: 6 * 198, height: 198 - 8, width: 3 * 158 - 8 },
-    ]);
+    expect(regions).toEqual([row(5), { ...row(6), width: 3 * 158 - 8 }]);
   });
 
   it('draws none over mounted rows, none past the last asset and none before a row is mounted', () => {
@@ -32,10 +37,12 @@ describe('unmountedRegions', () => {
 
   it('reaches only so far from the mounted rows, however long the list', () => {
     const regions = unmountedRegions({ ...GRID, firstRow: 500, lastRow: 506, assetCount: 8 * 5000 });
-    expect(regions).toHaveLength(2);
-    for (const region of regions) expect(region.height).toBeLessThan(2400 + 198);
-    expect(regions[0]!.top + regions[0]!.height + 8).toBe(500 * 198);
-    expect(regions[1]!.top).toBe(507 * 198);
+    const above = regions.filter((region) => region.row < 500);
+    const below = regions.filter((region) => region.row > 506);
+    expect(above.length * 198).toBeLessThan(2400 + 198);
+    expect(below.length * 198).toBeLessThan(2400 + 198);
+    expect(above.at(-1)!.row).toBe(499);
+    expect(below[0]!.row).toBe(507);
   });
 });
 

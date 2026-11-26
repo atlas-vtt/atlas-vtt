@@ -57,8 +57,8 @@ export function fenceParams(yaml: string): Record<string, unknown> | null {
   }
 }
 
-/** Every ```statblock fence of the text, in order. */
-export function findStatblockFences(text: string): StatblockFence[] {
+/** Every ```statblock fence of the text (or fence whose info string matches `info`), in order. */
+export function findStatblockFences(text: string, info: RegExp = STATBLOCK_INFO): StatblockFence[] {
   const lines = linesOf(text);
   const fences: StatblockFence[] = [];
   for (let index = 0; index < lines.length; index++) {
@@ -69,7 +69,7 @@ export function findStatblockFences(text: string): StatblockFence[] {
     if (marker.startsWith('`') && opening[2]!.includes('`')) continue;
     let end = index + 1;
     while (end < lines.length && !closes(lines[end]!.text, marker)) end++;
-    if (STATBLOCK_INFO.test(opening[2]!)) {
+    if (info.test(opening[2]!)) {
       const body = lines.slice(index + 1, end).map((line) => line.text).join('\n');
       const last = lines[Math.min(end, lines.length - 1)]!;
       fences.push({ from: lines[index]!.from, to: last.to, params: fenceParams(body) });

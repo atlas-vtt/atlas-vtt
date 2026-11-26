@@ -1,4 +1,4 @@
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../utils/typedEmitter';
 import { describe, expect, it } from 'vitest';
 import { DiceTool } from '../DiceTool';
 import { diceList, diceSum, dieLabel, dieStates } from '../diceLabels';

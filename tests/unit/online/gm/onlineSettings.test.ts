@@ -1,28 +1,34 @@
 // @vitest-environment jsdom
 import { Setting } from 'obsidian';
 import { describe, expect, it } from 'vitest';
+import { AtlasAccount } from '../../../../src/app/account/AtlasAccount';
 import { AccountControl } from '../../../../src/app/online/gm/account/AccountControl.ts';
-import type { HttpRequest, HttpResponse } from '../../../../src/app/online/gm/account/http.ts';
+import type { HttpRequest, HttpResponse } from '../../../../src/app/account/http.ts';
 import { DEFAULT_SETTINGS, onlineSettingsSections, readSettings, type OnlineSettings } from '../../../../src/app/online/gm/settings.ts';
 
 const MARA = { id: 'acc_mara', handle: 'mara', name: 'Mara' };
 
 describe('online play\'s settings data', () => {
   it('reports no errors until the GM switches it on', () => {
-    expect(DEFAULT_SETTINGS).toEqual({ reportErrors: false });
+    expect(DEFAULT_SETTINGS).toEqual({ reportErrors: false, playMode: 'table' });
     expect(readSettings(null)).toEqual(DEFAULT_SETTINGS);
     expect(readSettings({ reportErrors: 'yes' })).toEqual(DEFAULT_SETTINGS);
-    expect(readSettings({ reportErrors: true })).toEqual({ reportErrors: true });
+    expect(readSettings({ reportErrors: true })).toEqual({ reportErrors: true, playMode: 'table' });
+  });
+
+  it('keeps phones as remotes across a reload, and reads any other play mode as each on their own map', () => {
+    expect(readSettings({ playMode: 'remote' }).playMode).toBe('remote');
+    expect(readSettings({ playMode: 'hologram' }).playMode).toBe('table');
   });
 
   it('reads nothing of the switch that once deleted the players\' copies on sign-out', () => {
-    expect(readSettings({ deleteCopiesOnSignOut: true, reportErrors: true })).toEqual({ reportErrors: true });
+    expect(readSettings({ deleteCopiesOnSignOut: true, reportErrors: true })).toEqual({ reportErrors: true, playMode: 'table' });
   });
 
   it('keeps nothing of a key that made tables without an account', () => {
     const read = readSettings({ createKey: 'owner-key', reportErrors: false });
     expect(read).toEqual(DEFAULT_SETTINGS);
-    expect(Object.keys(read)).toEqual(['reportErrors']);
+    expect(Object.keys(read)).toEqual(['reportErrors', 'playMode']);
   });
 });
 
@@ -34,13 +40,17 @@ describe('online play\'s settings', () => {
     const saved: OnlineSettings[] = [];
     const requests: HttpRequest[] = [];
     let token: string | null = 'tok';
-    const account = new AccountControl({
-      http: (request) => (requests.push(request), Promise.resolve(me)),
-      timers: { now: () => 0, setTimer: () => 0, clearTimer: () => undefined },
+    const http = (request: HttpRequest): Promise<HttpResponse> => (requests.push(request), Promise.resolve(me));
+    const timers = { now: () => 0, setTimer: () => 0, clearTimer: () => undefined };
+    const atlasAccount = new AtlasAccount({
+      http,
+      timers,
       tokens: { get: () => token, set: (next) => (token = next), clear: () => (token = null) },
+      available: true,
       openUrl: (url) => void opened.push(url),
       notify: () => undefined,
     });
+    const account = new AccountControl({ http, timers, account: atlasAccount });
     return { settings, account, opened, saved, requests, saveSettings: () => Promise.resolve(void saved.push({ ...settings })) };
   }
 
@@ -72,27 +82,27 @@ describe('online play\'s settings', () => {
   it('have the account and error reports, and neither a key that creates tables nor the relay\'s account data', () => {
     const drawn = draw(host({ status: 200, json: { account: MARA, access: null, reason: 'no-access' } }));
     expect(drawn.headings).toEqual(['Online account', 'Online diagnostics']);
-    expect(drawn.names).toEqual(['Atlas account', 'Send error reports']);
+    expect(drawn.names).toEqual(['Hosting', 'Send error reports']);
   });
 
   it('say in the account row why the account may not host, with the way to the account page', async () => {
     const of = host({ status: 200, json: { account: MARA, access: null, reason: 'access-revoked' } });
-    const row = draw(of).row('Atlas account');
+    const row = draw(of).row('Hosting');
     expect(row.descEl.textContent).toBe('Checking your account…');
     await of.account.refresh(true);
     expect(row.descEl.textContent).toBe('Signed in as Mara (@mara). Your access to online play was withdrawn. See your account page.');
-    expect(buttonsOf(row)).toEqual(['Sign out', 'Open account page']);
-    row.controlEl.querySelectorAll('button')[1]?.click();
+    expect(buttonsOf(row)).toEqual(['Open account page']);
+    row.controlEl.querySelectorAll('button')[0]?.click();
     expect(of.opened).toEqual(['https://atlas-vtt.dev/account']);
     expect(row.controlEl.querySelector('input')).toBeNull();
   });
 
   it('say what an account that may host holds, asked of Atlas\'s table server', async () => {
     const of = host({ status: 200, json: { account: MARA, access: { plan: 'beta', maxPlayers: 12, endsAt: null } } });
-    const row = draw(of).row('Atlas account');
+    const row = draw(of).row('Hosting');
     await of.account.refresh(true);
     expect(row.descEl.textContent).toBe('Signed in as Mara (@mara) · Early access · up to 12 players');
-    expect(buttonsOf(row)).toEqual(['Sign out', 'Open account page']);
+    expect(buttonsOf(row)).toEqual(['Open account page']);
     expect(of.requests.map((request) => request.url)).toEqual(['https://play.atlas-vtt.dev/api/me']);
   });
 

@@ -1,5 +1,5 @@
 import { Container, Sprite, Ticker } from 'pixi.js';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TurnMarkers, type TurnMarkerState } from '../../src/app/pixi/token-renderer/turnMarker/TurnMarkers';
 import { MAP_LAYER_Z } from '../../src/app/pixi/mapLayerOrder';
 import { TOKEN_UI_Z_INDEX } from '../../src/app/pixi/TokenControlsUI';
@@ -201,6 +201,16 @@ describe('the turn flash', () => {
     full.pass(1100);
     expect(reduced.markers.tokenIds).toEqual([]);
     expect(full.markers.tokenIds).toEqual(['hero']);
+  });
+
+  it('rings unframed art at its own edge, the ring\'s outer edge it is drawn out to', () => {
+    const draw = vi.spyOn(TurnMarker.prototype, 'draw');
+    cleanups.push(() => draw.mockRestore());
+    const { markers, set } = setup(order('ogre'), { ...tokens, hero: token('hero', { showRing: false }) }, sprites);
+    cleanups.push(() => markers.destroy());
+    set({ initiative: order('hero') });
+    // A 62 px token on a 70 px grid: its art reaches 35 px out, as a ring would
+    expect(draw.mock.calls[0]?.[0]).toBe(35);
   });
 
   it('keeps the spotlight off the art with an inverse alpha mask', () => {

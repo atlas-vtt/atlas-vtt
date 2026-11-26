@@ -13,6 +13,8 @@ import { QueueCount } from './QueueCount';
 import { PlacementSession, type HeldToken } from './PlacementSession';
 import { bindPlacementInput, type PlacementInputDeps } from './placementInput';
 import { placementGridOf } from './placementGrid';
+import type { PlacementHand } from './placementHand';
+import { placesFreely, toolSwitch } from '../../types/toolSwitches';
 
 /** Tokens to put in the GM's hand, laid out as they should land, and how the scene takes them. */
 export interface PlacementRequest {
@@ -26,6 +28,8 @@ export interface TokenPlacerDeps extends PlacementInputDeps {
   grid(): GridSystem | null;
   /** The token drawn as it will be placed (`TokenRenderer.previewToken`). */
   previewToken(token: TokenInput): Promise<TokenPreview>;
+  /** Told how many tokens are in hand, for the hint that says how to place them. */
+  hand?: PlacementHand;
 }
 
 /**
@@ -115,10 +119,12 @@ export class TokenPlacer {
       this.ghostLayer.addChild(ghost.root);
       return { input, home: { x: input.x, y: input.y }, size: input.size || 1, ghost, rotation: undefined };
     });
+    this.deps.hand?.set(this.held.length);
     const session = new PlacementSession({
       toWorld: (screen) => viewport.toWorld(screen.x, screen.y),
       zoom: () => viewport.scale.x,
-      grid: () => placementGridOf(this.deps.grid(), this.deps.store.getState().grid?.snapToGrid ?? true),
+      grid: () => placementGridOf(this.deps.grid(), (this.deps.store.getState().grid?.snapToGrid ?? true) && toolSwitch(this.deps.store.getState(), 'selectSnap')),
+      turnsFreely: (held) => placesFreely(this.deps.store.getState(), 'selectSnap', held),
       marks: this.marks,
       count: (at, count) => {
         this.queueCount.show(at, count);
@@ -132,6 +138,11 @@ export class TokenPlacer {
       },
     }, this.held, { x: viewport.screenWidth / 2, y: viewport.screenHeight / 2 });
     this.session = session;
+    this.deps.hand?.bind({
+      keepQueue: (kept) => session.keepQueue(kept),
+      cycle: (steps) => session.cycle(steps),
+      cancel: () => session.cancel(),
+    });
     this.unbind = bindPlacementInput(this.deps, session);
     this.stopWatchingStore = this.deps.store.subscribe((state, previous) => {
       // Another tool, another map or a load ends the placement
@@ -144,6 +155,8 @@ export class TokenPlacer {
     if (this.session !== session) return;
     this.session = null;
     this.held = [];
+    this.deps.hand?.bind(null);
+    this.deps.hand?.set(0);
     this.unbind?.();
     this.unbind = null;
     this.stopWatchingStore?.();
@@ -159,6 +172,7 @@ export class TokenPlacer {
     for (const ghost of ghosts) this.leaving.add(ghost);
     const released = new Set(ghosts);
     this.held = this.held.filter(({ ghost }) => !released.has(ghost));
+    if (this.session) this.deps.hand?.set(this.held.length);
     this.setTicking(true);
   }
 

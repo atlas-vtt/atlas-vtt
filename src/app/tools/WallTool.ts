@@ -1,9 +1,11 @@
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../utils/typedEmitter';
+import { newId } from '../utils/ids';
 import type { WallType } from '../types/wallTypes';
 import { simplifyStroke } from '../pixi/lighting/wallEdits';
 
-export type WallToolMode = 'point-to-point' | 'freeform';
-export type WallToolSubMode = 'draw' | 'place-light' | 'light-zone' | 'level-surface' | 'explored-memory';
+import type { WallToolMode, WallToolSubMode } from '../lighting/lightingTool';
+
+export type { WallToolMode, WallToolSubMode };
 
 export interface WallToolSettings {
   mode: WallToolMode;
@@ -80,7 +82,7 @@ export class WallTool {
   addVertex(x: number, y: number, shiftHeld: boolean): void {
     if (!this.isDrawing) {
       // Start a new chain — this vertex is the first point
-      this.chainId = `chain_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+      this.chainId = newId('chain');
       this.chain = [{ x, y }];
       this.isDrawing = true;
       this.eventBus.emit('wall-chain-start', { x, y });
@@ -104,13 +106,20 @@ export class WallTool {
     }
   }
 
+  /** Takes the chain's last corner back, with the wall that led to it. Its first corner stays. */
+  removeLastVertex(): void {
+    if (!this.isDrawing || this.chain.length < 2) return;
+    this.chain.pop();
+    this.eventBus.emit('wall-segment-removed', this.chain[this.chain.length - 1]);
+  }
+
   /**
    * Continue drawing from an existing wall endpoint.
    * Starts a chain whose first vertex is the given position: the chain `chainId` when given, else a new one.
    */
   continueFromEndpoint(x: number, y: number, chainId?: string): void {
     this.finishChain();
-    this.chainId = chainId ?? `chain_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+    this.chainId = chainId ?? newId('chain');
     this.chain = [{ x, y }];
     this.isDrawing = true;
     this.eventBus.emit('wall-chain-start', { x, y });
@@ -129,7 +138,7 @@ export class WallTool {
 
   /** Start freeform drawing. */
   startFreeform(x: number, y: number): void {
-    this.chainId = `chain_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+    this.chainId = newId('chain');
     this.freeformPoints = [{ x, y }];
     this.isFreeformDrawing = true;
     this.eventBus.emit('wall-freeform-start', { x, y });

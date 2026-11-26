@@ -38,10 +38,12 @@ interface StepperProps {
   fewer: string;
   more: string;
   disabled?: boolean;
+  /** What stands for the value where its bare number says too little ("10ft"). */
+  text?: string;
 }
 
 /** A whole number from `min` to `max`, changed one at a time: − value +. */
-export function Stepper({ labelledBy, value, min, max, onChange, fewer, more, disabled = false }: StepperProps): React.JSX.Element {
+export function Stepper({ labelledBy, value, min, max, onChange, fewer, more, disabled = false, text }: StepperProps): React.JSX.Element {
   return (
     <div className="atlas-dungeon-stepper" role="group" aria-labelledby={labelledBy} aria-disabled={disabled || undefined}>
       <LabelTooltip label={fewer}>
@@ -49,7 +51,7 @@ export function Stepper({ labelledBy, value, min, max, onChange, fewer, more, di
           <Minus />
         </Button>
       </LabelTooltip>
-      <output className="atlas-dungeon-stepper__value" aria-live="polite">{value}</output>
+      <output className="atlas-dungeon-stepper__value" aria-live="polite">{text ?? value}</output>
       <LabelTooltip label={more}>
         <Button variant="ghost" size="icon" className="atlas-dungeon-stepper__button" disabled={disabled || value >= max} onClick={() => onChange(value + 1)}>
           <Plus />

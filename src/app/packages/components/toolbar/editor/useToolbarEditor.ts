@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { MapHotkeyId } from '../../../../keyboard/mapHotkeys'
 import {
-  isHideableToolbarControl, isToolbarControlId, toolbarUnit, UNDO_BAR_ID, type ToolbarControlId, type ToolbarUnitId,
+  isHideableToolbarControl, isToolbarControlId, toolbarUnit, type SideBarId, type ToolbarControlId, type ToolbarUnitId,
 } from '../../../../toolbar/toolbarCatalog'
 import { isDefaultToolbarLayout, withControlHidden, withControlShown, type StoredToolbarLayout, type ToolbarLayout } from '../../../../toolbar/toolbarLayout'
 import { useLayoutMotion, type ToolbarChangeCause, type ToolbarMotion } from '../useLayoutMotion'
 import type { ToolbarLayoutAccess } from '../useToolbarLayout'
 import {
   enteredMessage, finishedMessage, fixedPlaceMessage, hiddenMessage, movedMessage, positionMessage, refusedMessage, resetMessage,
-  keyEffect, shownInPlaceMessage, shownMessage,
+  keyEffect, shownInPlaceMessage, shownMessage, unitHotkey,
 } from './toolbarAnnouncements'
 import type { ToolbarEditApi, ToolbarFocusTarget, ToolbarHandleGroup } from './toolbarEditContext'
 import type { ToolbarAnnouncement } from './ToolbarLiveRegion'
@@ -28,6 +28,8 @@ interface ToolbarEditorOptions {
   items: readonly ResponsiveToolbarItem[]
   /** The controls this view offers, its gates applied. */
   available: ReadonlySet<ToolbarControlId>
+  /** The bars beside the toolbar this view has, left to right. */
+  sideBars: readonly SideBarId[]
   hotkeyLabel: (id: MapHotkeyId) => string
   editing: boolean
   /** Turns edit mode off in the view's store. */
@@ -57,7 +59,7 @@ function controlsOf(layout: ToolbarLayout, available: ReadonlySet<ToolbarControl
  * Changes apply to the latest stored layout, so a change another view made
  * meanwhile is kept.
  */
-export function useToolbarEditor({ access, store, items, available, hotkeyLabel, editing, stop }: ToolbarEditorOptions): ToolbarEditor {
+export function useToolbarEditor({ access, store, items, available, sideBars, hotkeyLabel, editing, stop }: ToolbarEditorOptions): ToolbarEditor {
   const { layout, stored, commit } = access
   const [announcement, setAnnouncement] = useState<ToolbarAnnouncement>({ text: '', serial: 0 })
   const [resetFrom, setResetFrom] = useState<StoredToolbarLayout | null>(null)
@@ -98,8 +100,9 @@ export function useToolbarEditor({ access, store, items, available, hotkeyLabel,
   }, [stop])
 
   const barIds = controlsOf(layout, available, false)
-  const trayIds: ToolbarUnitId[] = [...(layout.hidden.has(UNDO_BAR_ID) ? [UNDO_BAR_ID] : []), ...controlsOf(layout, available, true)]
+  const trayIds: ToolbarUnitId[] = [...sideBars.filter(id => layout.hidden.has(id)), ...controlsOf(layout, available, true)]
   const label = (id: ToolbarUnitId): string => toolbarUnit(id).label
+  const hotkeyOf = (id: ToolbarUnitId): string => unitHotkey(id, hotkeyLabel)
 
   const change = (cause: ToolbarChangeCause, update: (latest: ToolbarLayout) => ToolbarLayout, then: ToolbarFocusTarget | undefined): void => {
     focusRequest.current = then ?? null
@@ -116,7 +119,7 @@ export function useToolbarEditor({ access, store, items, available, hotkeyLabel,
     if (layout.hidden.has(id)) return
     change('hide', latest => withControlHidden(latest, id), then)
     flights.launch(id, 'bar')
-    announce(hiddenMessage(label(id), hotkeyLabel(toolbarUnit(id).hotkey), keyEffect(id)))
+    announce(hiddenMessage(label(id), hotkeyOf(id), keyEffect(id)))
   }
 
   const show = (id: ToolbarUnitId, then?: ToolbarFocusTarget): void => {
@@ -149,6 +152,7 @@ export function useToolbarEditor({ access, store, items, available, hotkeyLabel,
   const api: ToolbarEditApi = {
     barIds,
     trayIds,
+    sideBars,
     current,
     setCurrent: (group, id) => setCurrent(previous => previous[group] === id ? previous : { ...previous, [group]: id }),
     hide,

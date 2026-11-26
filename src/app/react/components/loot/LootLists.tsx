@@ -1,5 +1,5 @@
 import React from 'react';
-import { History, Map as MapIcon, Sparkles, X } from 'lucide-react';
+import { Map as MapIcon, X } from 'lucide-react';
 import type { LootDraw } from '../../../loot/lootRoller';
 import type { LootRoll, TableResult } from '../../../loot/lootHistory';
 import { formatRelativeTime } from '../../../utils/relativeTime';
@@ -81,7 +81,6 @@ export function LootResults({ roll, fresh, ...handlers }: LootResultsProps): Rea
   if (!roll) {
     return (
       <div className="atlas-loot-list__empty">
-        <Sparkles />
         <span>{t('loot.results.empty')}</span>
       </div>
     );
@@ -99,7 +98,6 @@ export function LootHistory({ rolls, onRemove, ...handlers }: LootHistoryProps):
   if (rolls.length === 0) {
     return (
       <div className="atlas-loot-list__empty">
-        <History />
         <span>{t('loot.history.empty')}</span>
       </div>
     );

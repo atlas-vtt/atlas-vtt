@@ -7,6 +7,8 @@ import type { RoleChoice } from '../../../../statblocks/editor/create/roleChoice
 import { useTemplateLibrary } from '../../../../statblocks/library/useTemplateLibrary';
 import { runInBackground } from '../../../../utils/backgroundTask';
 import { createTokenStatblocks, type SavedToken } from './tokenStatblocks';
+import { creatorSettings, keepCreatorSettings } from './creatorDraft';
+import type { CreatorMode } from './types';
 
 export interface StatblockRow {
   /** Shown: tokens are created (not edited) and the statblock editor is switched on. */
@@ -23,20 +25,25 @@ export interface StatblockRow {
 /**
  * The token creator's Statblocks row (§7.3, M6): a role of the collection,
  * or none. Behind the `statblockEditor` switch; while it is off the row is
- * not offered and saving makes no statblock.
+ * not offered and saving makes no statblock. The role chosen is kept with the
+ * creator's other choices of `draftOf` (`creatorDraft.ts`) while it is offered.
  */
-export function useStatblockRow(app: App | null | undefined, collectionId: string, creatingTokens: boolean): StatblockRow {
+export function useStatblockRow(app: App | null | undefined, collectionId: string, creatingTokens: boolean, draftOf?: CreatorMode): StatblockRow {
   const editorOn = useExperimentalFeature('statblockEditor', app ? SettingsService.forApp(app) : undefined);
   const offered = Boolean(app) && editorOn && creatingTokens;
   // The choices name the roles' templates, which the library reads.
   const library = useTemplateLibrary(offered && app ? app : null);
   const choices = useMemo(() => (offered && app ? roleChoicesFor(app, collectionId) : []), [offered, app, collectionId, library]);
-  const [roleId, setRoleId] = useState<string | null>(null);
+  const [roleId, setRoleId] = useState<string | null>(() => (draftOf ? creatorSettings(draftOf).statblockRoleId ?? null : null));
 
   // Another collection has other roles: a role it lacks is no choice there.
   useEffect(() => {
-    if (roleId !== null && !choices.some((choice) => choice.roleId === roleId)) setRoleId(null);
-  }, [choices, roleId]);
+    if (offered && roleId !== null && !choices.some((choice) => choice.roleId === roleId)) setRoleId(null);
+  }, [offered, choices, roleId]);
+
+  useEffect(() => {
+    if (offered && draftOf) keepCreatorSettings(draftOf, { statblockRoleId: roleId });
+  }, [offered, draftOf, roleId]);
 
   const createFor = useCallback((tokens: readonly SavedToken[]): void => {
     if (!offered || !app || roleId === null || tokens.length === 0) return;

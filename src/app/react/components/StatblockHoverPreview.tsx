@@ -1,10 +1,12 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo, useLayoutEffect } from 'react';
-import { createPortal } from 'react-dom';
+import { visibleViewport } from '../../host/visibleViewport';
+import { createPortal, flushSync } from 'react-dom';
 import { TFile, App } from 'obsidian';
 import { LinkedStatblock } from '../../statblocks/render/LinkedStatblock';
 import type { TokenVitals } from '../../services/statblockVitalsSync';
 import type { TokenRollContext } from '../../types/diceRollOrigin';
 import { isModHeld, isModKey } from '../../keyboard/modKey';
+import { watchPressOutside } from '../../services/previewByHand';
 import { previewEdgeGaps, type PreviewEdgeGaps } from './statblock/previewEdgeGap';
 import { scrollOnCtrlWheel } from '../../services/previewWheel';
 import { holdPreviewShown } from './statblock/previewShown';
@@ -67,14 +69,19 @@ function calculatePreviewPosition(
   preferredSide: 'left' | 'right' = 'left',
   gaps: PreviewEdgeGaps = { block: VIEWPORT_PADDING, inline: VIEWPORT_PADDING },
 ): React.CSSProperties {
-  const viewportHeight = window.innerHeight;
-  const viewportWidth = window.innerWidth;
+  const { right: viewportWidth, bottom: viewportHeight } = visibleViewport(window);
 
-  /** Vertical placement is the same whichever side the preview ends up on. */
+  // The window alone limits the height. A limit taken from the room under the preview's own top,
+  // which follows its measured height, held a preview placed against the lower edge at the height
+  // it had then (its skeleton's): the statblock that arrived scrolled inside it and never grew.
+  const maxHeight = Math.max(0, viewportHeight - 2 * gaps.block);
+  const height = Math.min(contentHeight, maxHeight);
+
+  /** Centred on `centerY` and moved as far as it takes to stand inside the window; the same on either side. */
   const verticalFor = (centerY: number): React.CSSProperties => {
-    const maxTop = viewportHeight - contentHeight - gaps.block;
-    const top = Math.max(gaps.block, Math.min(centerY - contentHeight / 2, maxTop));
-    return { top, maxHeight: viewportHeight - top - gaps.block };
+    const maxTop = viewportHeight - height - gaps.block;
+    const top = Math.max(gaps.block, Math.min(centerY - height / 2, maxTop));
+    return { top, maxHeight };
   };
 
   // If we have an anchor rect (e.g., initiative card), position relative to it
@@ -162,7 +169,9 @@ export function StatblockHoverPreview({
     measure();
 
     if (typeof ResizeObserver !== 'undefined') {
-      const observer = new ResizeObserver((entries) => measure(entries));
+      // Placed anew in the frame that changed its size, or a statblock taller than the skeleton
+      // it replaces is drawn once where the skeleton stood, over the window's edge.
+      const observer = new ResizeObserver((entries) => flushSync(() => measure(entries)));
       observer.observe(container);
       return () => observer.disconnect();
     }
@@ -173,14 +182,14 @@ export function StatblockHoverPreview({
   useEffect(() => (containerRef.current ? scrollOnCtrlWheel(containerRef.current) : undefined), [isVisible, isClosing, notePath]);
 
   const shown = (isVisible || isClosing) && notePath !== null;
-  useEffect(() => (shown ? holdPreviewShown(document) : undefined), [shown]);
+  useEffect(() => (shown ? holdPreviewShown(containerRef.current?.doc ?? activeDocument) : undefined), [shown]);
 
   const positionStyles = useMemo(() => {
     if (!isVisible && !isClosing) return {};
     // Fall back to rough defaults until the statblock has actually rendered.
     const height = measured.height > 0 ? measured.height : 400;
     const width = measured.width > 0 ? measured.width : 450;
-    const gaps = previewEdgeGaps(containerRef.current?.ownerDocument ?? document, VIEWPORT_PADDING);
+    const gaps = previewEdgeGaps(containerRef.current?.ownerDocument ?? activeDocument, VIEWPORT_PADDING);
     return calculatePreviewPosition(anchorRect, position, height, width, preferredSide, gaps);
   }, [anchorRect, position, preferredSide, isVisible, isClosing, measured]);
 
@@ -193,7 +202,7 @@ export function StatblockHoverPreview({
   return createPortal(
     <div ref={containerRef} className={className} style={positionStyles}>
       {app && (
-        <LinkedStatblock app={app} path={notePath} variant="hover" tokens={vitals ? [vitals] : []} originContext={originContext} />
+        <LinkedStatblock app={app} path={notePath} variant="hover" tokens={vitals ? [vitals] : []} originContext={originContext} pressableCounters />
       )}
     </div>,
     portalHost()
@@ -218,7 +227,6 @@ export interface StatblockHoverPreviewState<TEntry> {
   isClosing: boolean;
   /** Vault path of the statblock note to preview */
   notePath: string | null;
-  /** The statblock file */
   statblockFile: TFile | null;
   /** The current hovered entry (whatever the caller previews: a token, an initiative entry, ...) */
   hoveredEntry: TEntry | null;
@@ -234,7 +242,9 @@ export interface StatblockHoverPreviewState<TEntry> {
 export interface StatblockHoverPreviewActions<TEntry> {
   /** Show preview for an entry with a statblock path */
   showPreview: (entry: TEntry, statblockPath: string, anchorElement?: HTMLElement, position?: { x: number; y: number }) => void;
-  /** Close the preview with animation */
+  /** Show the preview a menu's row asked for: no key is held for it, so it stays until a press lands outside it. */
+  holdPreview: (entry: TEntry, statblockPath: string, anchorElement?: HTMLElement) => void;
+  /** Close the preview with animation; one that is held stays */
   closePreview: () => void;
   /** Clear all state immediately (no animation) */
   clearPreview: () => void;
@@ -257,8 +267,16 @@ export function useStatblockHoverPreview<TEntry>(
   const [isClosing, setIsClosing] = useState(false);
 
   const closeTimeoutRef = useRef<number | null>(null);
+  /** The preview was asked for by hand and stays without Mod; the ref answers callbacks made before the state arrived. */
+  const [held, setHeld] = useState(false);
+  const heldRef = useRef(false);
 
   const isVisible = hoveredEntry !== null && notePath !== null;
+
+  const letGo = useCallback((): void => {
+    heldRef.current = false;
+    setHeld(false);
+  }, []);
 
   const showPreview = useCallback((
     entry: TEntry,
@@ -266,6 +284,8 @@ export function useStatblockHoverPreview<TEntry>(
     anchorElement?: HTMLElement,
     positionPoint?: { x: number; y: number }
   ): void => {
+    // A hover takes the place of a preview held open by hand, and closes as hovers do.
+    letGo();
     if (closeTimeoutRef.current) {
       window.clearTimeout(closeTimeoutRef.current);
       closeTimeoutRef.current = null;
@@ -283,9 +303,9 @@ export function useStatblockHoverPreview<TEntry>(
     setNotePath(statblockPath);
     const file = app?.vault.getAbstractFileByPath(statblockPath);
     setStatblockFile(file instanceof TFile ? file : null);
-  }, [app]);
+  }, [app, letGo]);
 
-  const closePreview = useCallback((): void => {
+  const dismiss = useCallback((): void => {
     // Already closing: a pointer that goes on moving starts no second fade
     if (!hoveredEntry || closeTimeoutRef.current) return;
 
@@ -301,6 +321,17 @@ export function useStatblockHoverPreview<TEntry>(
     }, 150); // Match animation duration
   }, [hoveredEntry]);
 
+  // What ends a hover (Mod let go, the card left) leaves a held preview where it is.
+  const closePreview = useCallback((): void => {
+    if (!heldRef.current) dismiss();
+  }, [dismiss]);
+
+  const holdPreview = useCallback((entry: TEntry, statblockPath: string, anchorElement?: HTMLElement): void => {
+    showPreview(entry, statblockPath, anchorElement);
+    heldRef.current = true;
+    setHeld(true);
+  }, [showPreview]);
+
   const clearPreview = useCallback((): void => {
     if (closeTimeoutRef.current) {
       window.clearTimeout(closeTimeoutRef.current);
@@ -312,7 +343,8 @@ export function useStatblockHoverPreview<TEntry>(
     setAnchorRect(null);
     setPosition(null);
     setIsClosing(false);
-  }, []);
+    letGo();
+  }, [letGo]);
 
   useEffect(() => {
     return () => {
@@ -327,6 +359,13 @@ export function useStatblockHoverPreview<TEntry>(
   // Heard in the capture phase, since a pinned note preview keeps every key inside itself.
   useEffect(() => {
     if (!hoveredEntry) return undefined;
+    // A held preview has no key to let go of: a press outside it, or Escape, closes it.
+    if (held) {
+      return watchPressOutside(activeDocument, (target) => typeof target.instanceOf === 'function' && target.instanceOf(Element) && target.closest('.statblock-hover-preview') !== null, () => {
+        letGo();
+        dismiss();
+      });
+    }
     const handleKeyUp = (e: KeyboardEvent): void => {
       if (isModKey(e)) closePreview();
     };
@@ -340,7 +379,7 @@ export function useStatblockHoverPreview<TEntry>(
       window.removeEventListener('keyup', handleKeyUp, true);
       window.removeEventListener('pointermove', handlePointerMove, true);
     };
-  }, [hoveredEntry, closePreview]);
+  }, [hoveredEntry, held, closePreview, dismiss, letGo]);
 
   const state: StatblockHoverPreviewState<TEntry> = {
     isVisible,
@@ -354,6 +393,7 @@ export function useStatblockHoverPreview<TEntry>(
 
   const actions: StatblockHoverPreviewActions<TEntry> = {
     showPreview,
+    holdPreview,
     closePreview,
     clearPreview,
   };

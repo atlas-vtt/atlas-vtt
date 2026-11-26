@@ -6,6 +6,7 @@ import { AtlasUIContext } from '../react/root/AtlasUIContext';
 import { ContextMenuProvider } from '../react/root/ContextMenuContext';
 import type { Tab } from '../packages/components/asset-manager/types';
 import { portalHost } from '../host/portalHost';
+import type { ExternalImport } from './collectionBundle/externalImport';
 
 export class GlobalAssetManagerService {
   private app: App;
@@ -13,6 +14,11 @@ export class GlobalAssetManagerService {
   private container: HTMLDivElement | null = null;
   private isOpen: boolean = false;
   private initialTab: Tab | undefined;
+  private pendingImport: ExternalImport | undefined;
+  /** Raised by every request for the Armarium while open; 0 opens the library. */
+  private armariumRequest = 0;
+  /** The Armarium page the newest request asked for (a listing a share just published); the store's front where none. */
+  private armariumPage: string | undefined;
 
   constructor(app: App) {
     this.app = app;
@@ -39,6 +45,23 @@ export class GlobalAssetManagerService {
     this.render(this.root, true);
   }
 
+  /** Shows the Armarium in the open window, which stays mounted, or in one opened for it: its front, or `page`. */
+  openArmarium(page?: string): void {
+    if (!this.isOpen || !this.root) this.open();
+    this.armariumRequest += 1;
+    this.armariumPage = page;
+    if (this.root) this.render(this.root, true);
+  }
+
+  /**
+   * Shows the import review of an Armarium install over the Armarium: in the open window, or in one opened for it.
+   * Only for a bundle no open asset manager took (`ArmariumHosts`). Nothing is imported unless the GM confirms.
+   */
+  importBundle(pending: ExternalImport): void {
+    this.pendingImport = pending;
+    this.openArmarium();
+  }
+
   /** No ViewStoreProvider: there is no map view here, the asset manager reads the store optionally. */
   private render(root: Root, isOpen: boolean, onExitComplete?: () => void): void {
     const contextValue = {
@@ -57,7 +80,10 @@ export class GlobalAssetManagerService {
             isOpen,
             onClose: () => this.close(),
             ...(onExitComplete ? { onExitComplete } : {}),
-            ...(this.initialTab ? { initialTab: this.initialTab } : {})
+            ...(this.initialTab ? { initialTab: this.initialTab } : {}),
+            ...(this.pendingImport ? { pendingImport: this.pendingImport } : {}),
+            ...(this.armariumRequest > 0 ? { armariumRequest: this.armariumRequest } : {}),
+            ...(this.armariumPage ? { armariumPage: this.armariumPage } : {})
           })
         })
       })
@@ -72,6 +98,9 @@ export class GlobalAssetManagerService {
     this.container = null;
     this.isOpen = false;
     this.initialTab = undefined;
+    this.pendingImport = undefined;
+    this.armariumRequest = 0;
+    this.armariumPage = undefined;
     if (!root) {
       container?.remove();
       return;

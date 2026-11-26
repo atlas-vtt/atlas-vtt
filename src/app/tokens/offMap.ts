@@ -4,8 +4,8 @@
  * place that says which tokens the map holds: everything that draws, hit-tests, selects, sees,
  * lights, hears, measures, moves with the map or shares the map with players reads the scene's
  * tokens through `mapTokens`; what keeps a combatant (initiative, resources, statblock sync, the
- * DM screen) reads every token through `sceneTokens`. A lint rule (`MAP_TOKEN_READS` in
- * `eslint.config.mjs`) keeps raw `objects.tokens` reads out of the map's code.
+ * DM screen) reads every token through `sceneTokens`. A lint rule (`atlas/map-token-reads`,
+ * `scripts/eslint/conventions.mjs`) keeps raw `objects.tokens` reads out of the map's code.
  */
 
 /** What tells a token beside the map from one on it. */

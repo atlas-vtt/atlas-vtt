@@ -2,6 +2,7 @@ import { displayTooltip, type Setting } from 'obsidian';
 import { formatByteSize } from '../utils/fileSize';
 import type { AtlasSettingSection } from './settingSections';
 import { getLocale, t } from '../i18n';
+import { addSettingButton } from '../ui/atlasButton';
 
 /** The device's cache of map tiles, as `TileDecoderClient` offers it. */
 export interface MapImageCache {
@@ -36,21 +37,18 @@ function renderCacheRow(setting: Setting, cache: () => MapImageCache): () => voi
   // Held until the size arrives, so the row keeps its height.
   setting.setDesc('\u2026');
   const info = t('settings.storage.mapImageCacheInfo');
-  setting.addExtraButton((button) => {
-    button.setIcon('info').setTooltip(info).onClick(() => displayTooltip(button.extraSettingsEl, info));
-  });
-  setting.addButton((button) => {
-    button.setButtonText(t('settings.storage.clear')).onClick(async () => {
-      button.setDisabled(true);
-      try {
-        showSize(await cache().clearCache());
-      } catch (error) {
-        showFailure(error);
-      } finally {
-        button.setDisabled(false);
-      }
-    });
-  });
+  const infoButton = addSettingButton(setting, { icon: 'info', label: info, onClick: () => displayTooltip(infoButton, info) });
+  const clear = async (): Promise<void> => {
+    clearButton.disabled = true;
+    try {
+      showSize(await cache().clearCache());
+    } catch (error) {
+      showFailure(error);
+    } finally {
+      clearButton.disabled = false;
+    }
+  };
+  const clearButton = addSettingButton(setting, { text: t('settings.storage.clear'), onClick: () => void clear() });
   cache().cacheSize().then(showSize, showFailure);
   return () => {
     open = false;

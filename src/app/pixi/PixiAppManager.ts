@@ -5,7 +5,10 @@ import { RenderScheduler } from "./RenderScheduler";
 import { destroyTree } from "./utils/destroyTree";
 import { addRendererSystemsByEntry } from "./utils/rendererSystems";
 import { showNoGraphicsNotice } from './noGraphicsNotice';
+import { refitZoomRange } from './fitMapRect';
 import { MAX_ZOOM, MIN_ZOOM } from "./zoomRange";
+import { MouseDrag } from './input/MouseDrag';
+import { installTouchGestures, type MapGestures } from './input/installTouchGestures';
 
 
 export class PixiAppManager {
@@ -17,6 +20,8 @@ export class PixiAppManager {
   private height: number;
   private canvasEl: HTMLCanvasElement;
   private _canvasContextMenuPreventer: ((e: Event) => void) | null = null;
+  /** Fingers and pens on the canvas; a mouse never passes through it. */
+  private gestures: MapGestures | null = null;
   public onRecoverCallback?: () => void;
 
   constructor(initialWidth: number, initialHeight: number) {
@@ -77,6 +82,8 @@ export class PixiAppManager {
         userSelect: 'none'  // Prevent text selection
       });
       this.canvasEl.id = 'atlas-pixi-canvas-debug'; // For debugging
+      // No callout or magnifier under a finger that rests on the map (`styles/_touch.scss`)
+      this.canvasEl.classList.add('atlas-map-canvas');
 
       this.initViewport(); // Initialize viewport and add to stage
       
@@ -151,6 +158,10 @@ export class PixiAppManager {
       ticker: this.app.ticker,
     });
 
+    // A render group from the start: a pan or zoom then moves one matrix instead of updating and
+    // repacking every token, badge and marker below it. `renderer.render` makes it one for good at
+    // the first scene thumbnail anyway, so before this the camera behaved differently until then.
+    this.viewport.enableRenderGroup();
     this.app.stage.addChild(this.viewport);
     window.requestAnimationFrame(() => {
     });
@@ -159,14 +170,15 @@ export class PixiAppManager {
     this.viewport.interactiveChildren = true;
     this.viewport.sortableChildren = true; // Enable z-index sorting
 
-    this.viewport
-      .drag({ mouseButtons: 'right', pressDrag: true })
-      .clampZoom({
-        minScale: MIN_ZOOM,
-        maxScale: MAX_ZOOM,
-      });
+    // The right button pans, for a mouse alone: fingers navigate through the gesture layer.
+    this.viewport.plugins.add('drag', new MouseDrag(this.viewport, { mouseButtons: 'right', pressDrag: true }));
+    this.viewport.clampZoom({
+      minScale: MIN_ZOOM,
+      maxScale: MAX_ZOOM,
+    });
     this.viewport.plugins.add('decelerate', new SmoothDecelerate(this.viewport));
-    
+    this.gestures = installTouchGestures(this.app, this.viewport, this.canvasEl);
+
     this._canvasContextMenuPreventer = (e) => e.preventDefault();
     this.canvasEl.addEventListener('contextmenu', this._canvasContextMenuPreventer);
 
@@ -223,6 +235,8 @@ export class PixiAppManager {
     if (viewport.screenWidth === width && viewport.screenHeight === height) return;
     const { x, y } = viewport.center;
     viewport.resize(width, height);
+    // The zoom that shows the whole map depends on the screen: a smaller pane needs a lower least zoom.
+    refitZoomRange(viewport);
     const moved = viewport.center.x !== x || viewport.center.y !== y;
     viewport.moveCenter(x, y);
     // As after a pan: what follows the camera (the laser's dot, handles, what is drawn for the screen only) follows.
@@ -240,6 +254,9 @@ export class PixiAppManager {
       this._canvasContextMenuPreventer = null;
     }
     
+    this.gestures?.destroy();
+    this.gestures = null;
+
     if (this.viewport) {
       try {
         this.viewport.plugins.pause('drag');
@@ -289,5 +306,10 @@ export class PixiAppManager {
   
   getCanvasElement(): HTMLCanvasElement {
     return this.canvasEl;
+  }
+
+  /** The gesture layer of this view's canvas; null before the viewport exists. */
+  getGestures(): MapGestures | null {
+    return this.gestures;
   }
 } 

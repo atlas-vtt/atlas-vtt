@@ -1,19 +1,16 @@
 import { Container, Graphics, Text } from 'pixi.js';
 import { NAMEPLATE_TEXT, TOKEN_TEXT_RESOLUTION } from '../token-renderer/tokenSizing';
+import { mixColor } from '../../styles/designTokens';
 import { canvasBadgeColors, isDarkTheme } from './canvasBadgeColors';
 import { INK_SHADE } from './canvasInk';
 import { destroyTree } from './destroyTree';
 import { LABEL_LOOK, labelCenter, labelScale, labelTextResolution, pillSize, type LabelTarget, type Size } from './measureLabelLayout';
+import { uiCorner } from './squareCorners';
 
 /** The label's colours: the nameplate's, its rim mixed opaque from the nameplate's translucent border. */
 export function labelColors(): { readonly text: number; readonly background: number; readonly border: number } {
   const { background, stroke } = canvasBadgeColors();
-  return { text: stroke, background, border: mix(background, stroke, isDarkTheme() ? 0.4 : 0.3) };
-}
-
-function mix(from: number, to: number, share: number): number {
-  const channel = (shift: number): number => Math.round(((from >> shift) & 0xff) * (1 - share) + ((to >> shift) & 0xff) * share);
-  return (channel(16) << 16) | (channel(8) << 8) | channel(0);
+  return { text: stroke, background, border: mixColor(background, stroke, isDarkTheme() ? 0.4 : 0.3) };
 }
 
 /** The screen's pixels per CSS pixel, where there is a screen. */
@@ -25,7 +22,8 @@ function deviceRatio(): number {
  * A measurement's distance on a pill in the nameplate's look, laid out as token UI: in UI units, in a
  * container at the scale a selected token's UI has (`labelScale`), so a label and a nameplate side by
  * side are one family at every zoom. Its text is rasterised as the token UI's, more finely as it
- * grows on screen.
+ * grows on screen. A `relative` size below 1 makes a smaller label of the same look (a leg's length
+ * beside a ruler's total).
  */
 export class MeasureLabel {
   readonly view = new Container({ label: 'measure-label', eventMode: 'none', interactiveChildren: false });
@@ -38,8 +36,15 @@ export class MeasureLabel {
   private readonly pill = new Graphics();
   private target: LabelTarget | null = null;
   private gridSize = 70;
+  /** The pill as it was last drawn, in UI units. */
+  private size: Size = { width: 0, height: 0 };
+  /**
+   * What the pill was last drawn from: a pill drawn again the same is left alone, since any
+   * redrawn Graphics makes PIXI rebuild the whole render group it lies in (the viewport's).
+   */
+  private drawn = '';
 
-  constructor() {
+  constructor(private readonly relative = 1) {
     this.text.scale.set(NAMEPLATE_TEXT.textScale);
     this.text.alpha = NAMEPLATE_TEXT.alpha;
     this.view.addChild(this.pill, this.text);
@@ -56,7 +61,7 @@ export class MeasureLabel {
   /** Draws the label again where it stands: the zoom or the theme changed. */
   redraw(zoom: number): void {
     const viewZoom = Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
-    const uiScale = labelScale(this.gridSize, viewZoom);
+    const uiScale = labelScale(this.gridSize, viewZoom) * this.relative;
     const onScreen = uiScale * viewZoom;
     const resolution = labelTextResolution(uiScale, viewZoom, deviceRatio());
     // Every change of resolution rasterises the text again.
@@ -65,7 +70,12 @@ export class MeasureLabel {
     if (this.text.style.fill !== colors.text) this.text.style.fill = colors.text;
     const bounds = this.text.getLocalBounds();
     const size = pillSize({ width: bounds.width * NAMEPLATE_TEXT.textScale, height: bounds.height * NAMEPLATE_TEXT.textScale });
-    this.drawPill(size, colors, onScreen);
+    this.size = size;
+    const drawn = `${size.width}|${size.height}|${uiCorner(size.radius)}|${colors.border}|${colors.background}|${onScreen}`;
+    if (drawn !== this.drawn) {
+      this.drawn = drawn;
+      drawLabelPill(this.pill, size, colors, onScreen);
+    }
     const screenSize = { width: size.width * onScreen, height: size.height * onScreen };
     const center = this.target && labelCenter(this.target, screenSize, viewZoom, LABEL_LOOK.gap * onScreen);
     if (!center) return;
@@ -73,38 +83,32 @@ export class MeasureLabel {
     this.view.position.set(center.x / viewZoom, center.y / viewZoom);
   }
 
+  /** The pill's width and height as last drawn, in the label's UI units (its view's own scale). */
+  get pillSize(): Size {
+    return this.size;
+  }
+
   destroy(): void {
     destroyTree(this.view);
   }
-
-  /**
-   * The pill in UI units, opaque, with the ink's soft shade beside it in screen pixels (`onScreen`
-   * per UI unit): no translucent piece lies over another.
-   */
-  private drawPill({ width, height, radius }: Size & { radius: number }, colors: ReturnType<typeof labelColors>, onScreen: number): void {
-    const g = this.pill.clear();
-    let edge = 0;
-    for (const band of INK_SHADE) {
-      const bandWidth = band.width / onScreen;
-      const grow = edge + bandWidth / 2;
-      g.roundRect(-width / 2 - grow, -height / 2 - grow, width + 2 * grow, height + 2 * grow, radius + grow)
-        .stroke({ width: bandWidth, color: 0x000000, alpha: band.alpha });
-      edge += bandWidth;
-    }
-    const inset = LABEL_LOOK.border;
-    g.roundRect(-width / 2, -height / 2, width, height, radius).fill(colors.border);
-    g.roundRect(-width / 2 + inset, -height / 2 + inset, width - 2 * inset, height - 2 * inset, radius - inset).fill(colors.background);
-  }
 }
 
-/** Calls `redraw` whenever Obsidian switches between its light and dark theme; returns what stops it. */
-export function watchMeasureLabelTheme(redraw: () => void): () => void {
-  let dark = isDarkTheme();
-  const observer = new MutationObserver(() => {
-    if (isDarkTheme() === dark) return;
-    dark = isDarkTheme();
-    redraw();
-  });
-  observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
-  return () => observer.disconnect();
+/**
+ * Draws a label's pill on `g` in UI units, opaque, with the ink's soft shade beside it in screen
+ * pixels (`onScreen` per UI unit): no translucent piece lies over another.
+ */
+export function drawLabelPill(g: Graphics, { width, height, radius: rounded }: Size & { radius: number }, colors: ReturnType<typeof labelColors>, onScreen: number): void {
+  const radius = uiCorner(rounded);
+  g.clear();
+  let edge = 0;
+  for (const band of INK_SHADE) {
+    const bandWidth = band.width / onScreen;
+    const grow = edge + bandWidth / 2;
+    g.roundRect(-width / 2 - grow, -height / 2 - grow, width + 2 * grow, height + 2 * grow, radius > 0 ? radius + grow : 0)
+      .stroke({ width: bandWidth, color: 0x000000, alpha: band.alpha });
+    edge += bandWidth;
+  }
+  const inset = LABEL_LOOK.border;
+  g.roundRect(-width / 2, -height / 2, width, height, radius).fill(colors.border);
+  g.roundRect(-width / 2 + inset, -height / 2 + inset, width - 2 * inset, height - 2 * inset, Math.max(0, radius - inset)).fill(colors.background);
 }

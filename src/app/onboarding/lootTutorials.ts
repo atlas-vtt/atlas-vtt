@@ -2,7 +2,7 @@ import type { TutorialStep } from './Tutorial';
 import lootBaseImage from '../assets/tutorials/loot-base.webp';
 import lootItemNoteImage from '../assets/tutorials/loot-item-note.webp';
 import lootPlayerViewImage from '../assets/tutorials/loot-player-view.webp';
-import { t } from '../i18n';
+import { t, tPointer } from '../i18n';
 
 /**
  * The loot tours: the Loot tab of the collection settings, the loot roller the
@@ -50,7 +50,7 @@ export function lootRollerSteps(hotkey: string, hasRarities: boolean): TutorialS
     }] : []),
     {
       title: t('tour.loot.rollTitle'),
-      body: t('tour.loot.rollBody', { hotkey }),
+      body: tPointer('tour.loot.rollBody', { hotkey }),
       selector: '.atlas-loot-rollbar__actions',
     },
     {

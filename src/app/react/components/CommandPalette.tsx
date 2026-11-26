@@ -1,7 +1,7 @@
 import { Tutorial } from '../../onboarding/Tutorial';
 import { useHotkeyLabels } from '../../keyboard/useMapHotkeys';
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
-import { AnimatePresence, MotionConfig, motion } from 'framer-motion';
+import { AnimatePresence, MotionConfig, animate, motion, useMotionValue } from 'framer-motion';
 import {
   Search,
   ArrowUp,
@@ -16,7 +16,7 @@ import {
   FlaskConical,
   Grid,
   Settings,
-  Snowflake,
+  Pause,
   MonitorUp,
   MonitorPlay,
   AppWindow,
@@ -26,43 +26,64 @@ import {
   UserCheck,
   History,
   Layers,
-  Replace, Gauge } from 'lucide-react';
+  Replace, Gauge, SunMoon, LayoutDashboard, BoomBox, Tablet, Paintbrush } from 'lucide-react';
 import { runInBackground } from '../../utils/backgroundTask';
 import { viewedLevelId } from '../../levels/sceneLevels';
-import { collectionIdOfPath } from '../../services/assetPaths';
 import { CoinIcon } from './CoinIcon';
 
 import { useStore } from 'zustand';
 import { useAtlasStore, useViewStoreHook } from '../ViewStoreContext';
 import { useAtlasUI } from '../root/AtlasUIContext';
 import { PlayerWindowService } from '../../services/PlayerWindowService';
+import { toggleTablePause } from '../../services/tableControls';
+import { tableControlsStore } from '../../stores/tableControlsStore';
 import { openPlayerWindow, presentActiveTab } from '../../services/PlayerWindowPresenter';
+import { desktopOnly, isDesktopApp } from '../../platform/desktopOnly';
+import { toggleTableMode } from '../../tableMode/viewTableMode';
 import { playerWindowStore } from '../../stores/playerWindowStore';
 import { debounce } from '../../../utils/debounce';
 import { cn } from '../../../utils/cn';
 import { isShortcutScopeActive } from '../../utils/activeLeafGuard';
-import { EASE_OUT_CONTROL_POINTS as EASE_OUT } from '../../utils/motion';
+import { EASE_OUT_CONTROL_POINTS as EASE_OUT, prefersReducedMotion } from '../../utils/motion';
 import { Button } from '../../packages/components/primitives/button';
 import { CloseButton } from '../../packages/components/primitives/CloseButton';
-import { OverlayScroll } from '../../packages/components/primitives/OverlayScroll';
 import { CommandItem } from './command-palette/CommandItem';
 import { SettingsPanelHeader } from './command-palette/SettingsPanelHeader';
 import { GridSettingsPanel } from './command-palette/GridSettingsPanel';
 import { TokenSettingsPanel } from './command-palette/TokenSettingsPanel';
 import { WidgetSettingsPanel } from './command-palette/WidgetSettingsPanel';
-import { LocalPlayerViewSettingsPanel } from './command-palette/LocalPlayerViewSettingsPanel';
+import { PlayerViewSettingsPanel } from './command-palette/PlayerViewSettingsPanel';
+import { searchOptions } from './command-palette/paletteSearch';
 import { DiceSettingsPanel } from './command-palette/DiceSettingsPanel';
 import { ExperimentalFeaturesPanel } from './command-palette/ExperimentalFeaturesPanel';
+import { AppearancePanel } from './command-palette/AppearancePanel';
 import { GraphicsPanel } from './command-palette/GraphicsPanel';
+import { LightingSettingsPanel } from './command-palette/LightingSettingsPanel';
 import { SceneSnapshotsPanel } from './command-palette/SceneSnapshotsPanel';
 import { SceneLevelsPanel } from './command-palette/SceneLevelsPanel';
+import { PALETTE_MORPH, PalettePage, PaletteSurface } from './command-palette/PaletteMorph';
 import { replaceMapImage } from './levels/replaceMapImage';
-import { pickMapImage } from './levels/MapImagePickerModal';
-import { placePalette, type PalettePosition } from './command-palette/palettePlacement';
+import { startFloorPositioning } from './levels/levelEditing';
+import { pickMapImage } from './levels/mapImagePicker';
+import { scrollWithin } from '../../utils/scrollWithin';
+import { placePalette, placePaletteAtTop, type PalettePosition } from './command-palette/palettePlacement';
+import { restingToolbarBox, toolbarMoveDelay, toolbarWillBeHidden } from './command-palette/toolbarRest';
+import { useCoarsePointer } from '../../platform/useCoarsePointer';
+import { visibleViewport } from '../../host/visibleViewport';
 import { customizeToolbarCommand } from './command-palette/customizeToolbarCommand';
+import { AppearanceShortcuts } from './command-palette/AppearanceShortcuts';
+import { hotkeyHelpCommand } from './command-palette/hotkeyHelpCommand';
+import { mapTourCommand } from './command-palette/mapTourCommand';
+import { SettingsService } from '../../services/SettingsService';
+import { useDicePreviewWarmUp } from '../hooks/useDicePreviews';
+import { docsCommand } from './command-palette/docsCommand';
+import { armariumCommand } from './command-palette/armariumCommand';
 import { isSettingsPanelId, type CommandOption, type SettingsPanelId } from './command-palette/types';
-import { t } from '../../i18n';
+import { t, tPointer } from '../../i18n';
 import { showNotice } from '../../ui/notice';
+
+/** Where the palette stands, and the width of the frame it stands in (its centre is the settings pages' centre). */
+type PalettePlace = PalettePosition & { frameWidth: number };
 
 interface CommandPaletteProps {
   isOpen: boolean;
@@ -94,18 +115,24 @@ const SETTINGS_PANEL_META: Record<SettingsPanelId, { title: string; icon: React.
   'grid-settings': { title: t('palette.panel.grid'), icon: <Grid /> },
   'token-settings': { title: t('palette.panel.tokens'), icon: <Users /> },
   'widget-settings': { title: t('palette.panel.widgets'), icon: <Palette /> },
-  'local-player-view-settings': { title: t('palette.panel.localPlayerView'), icon: <MonitorUp /> },
+  'local-player-view-settings': { title: t('palette.panel.playerView'), icon: <MonitorUp /> },
   'dice-settings': { title: t('diceSettings.title'), icon: <Dices /> },
-  'experimental-features': { title: 'Experimental Features', icon: <FlaskConical /> },
+  'experimental-features': { title: t('palette.panel.experimental'), icon: <FlaskConical /> },
   'graphics-settings': { title: t('graphics.title'), icon: <Gauge /> },
+  'appearance': { title: t('appearance.title'), icon: <Paintbrush /> },
+  'lighting-settings': { title: t('sceneLight.settings'), icon: <SunMoon /> },
 };
 
 export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar }: CommandPaletteProps): React.ReactElement | null {
   const hotkeyLabel = useHotkeyLabels();
   const store = useViewStoreHook();
   const setActiveTool = useAtlasStore(state => state.setActiveTool);
-  const { app, view } = useAtlasUI();
-  const isPlayerWindowFrozen = useStore(playerWindowStore, (s) => s.isFrozen);
+  const ui = useAtlasUI();
+  const { app, view } = ui;
+  useDicePreviewWarmUp(app ?? undefined, isOpen);
+  const isWindowFrozen = useStore(playerWindowStore, (s) => s.isFrozen);
+  const isTablePaused = useStore(tableControlsStore, (s) => s.paused);
+  const isPlayerWindowFrozen = isWindowFrozen || isTablePaused;
   const isPlayerMode = view?.isInPlayerMode?.() ?? false;
   const setPlayerMode = (mode: boolean): void => view?.setPlayerMode?.(mode);
 
@@ -114,12 +141,11 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
   const updateWidget = useAtlasStore(state => state.updateWidget);
   const addWidget = useAtlasStore(state => state.addWidget);
   const removeWidget = useAtlasStore(state => state.removeWidget);
-  const initiative = useAtlasStore(state => state.initiative);
-  const setInitiativeConfig = useAtlasStore(state => state.setInitiativeConfig);
   const initiativeTrackerOpen = useAtlasStore(state => state.initiativeTrackerOpen);
   const setInitiativeTrackerOpen = useAtlasStore(state => state.setInitiativeTrackerOpen);
   const setDiceLogOpen = useAtlasStore(state => state.setDiceLogOpen);
   const setLootRollerOpen = useAtlasStore(state => state.setLootRollerOpen);
+  const setHotkeyHelpOpen = useAtlasStore(state => state.setHotkeyHelpOpen);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [focusedOptionIndex, setFocusedOptionIndex] = useState<number>(-1);
@@ -196,7 +222,9 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
   );
 
   // Position starts as null so the first paint already sits at the measured spot
-  const [position, setPosition] = useState<PalettePosition | null>(null);
+  const [position, setPosition] = useState<PalettePlace | null>(null);
+  // A finger opens the palette at the top of the view and types only once it taps the field.
+  const atTop = useCoarsePointer();
   const [hasCalculatedInitialPosition, setHasCalculatedInitialPosition] = useState(false);
 
   // Get sorted widgets for individual widget controls - memoized to prevent unnecessary re-renders
@@ -257,11 +285,37 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       id: "open-scene-browser",
       icon: <FolderOpen />,
       label: t('palette.openSceneBrowser'),
-      keywords: ["asset manager", "maps", "toggle"],
+      keywords: ["scenes", "scene browser", "maps", "tokens", "library", "toggle"],
       section: "tools",
       action: () => {
         onClose();
         view?.openSceneBrowser();
+      },
+    },
+    {
+      id: "open-dm-screen",
+      icon: <LayoutDashboard />,
+      label: t('palette.openDMScreen'),
+      keywords: ["dm", "screen"],
+      shortcut: hotkeyLabel('dashboard'),
+      section: "tools",
+      action: () => {
+        onClose();
+        store.getState().setDMScreenPage("statblocks");
+        store.getState().setDMScreenOpen(true);
+      },
+    },
+    {
+      id: "open-sound-page",
+      icon: <BoomBox />,
+      label: t('palette.openSoundPage'),
+      keywords: ["sound", "audio", "music", "ambience"],
+      shortcut: hotkeyLabel('soundPage'),
+      section: "tools",
+      action: () => {
+        onClose();
+        store.getState().setDMScreenPage("sound");
+        store.getState().setDMScreenOpen(true);
       },
     },
     {
@@ -282,6 +336,18 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       hasSubmenu: true,
       submenu: [],
     },
+    ...((store.getState().levels?.length ?? 0) > 1 ? [{
+      id: "position-floor",
+      icon: <Move />,
+      label: t('palette.positionFloor'),
+      keywords: ["align", "offset", "line up", "basement", "stairs", "move", "level", "floor"],
+      section: "tools" as const,
+      action: () => {
+        onClose();
+        const levelId = viewedLevelId(store.getState());
+        if (levelId) startFloorPositioning(store, levelId);
+      },
+    }] : []),
     {
       id: "replace-map-image",
       icon: <Replace />,
@@ -292,16 +358,16 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
         onClose();
         const state = store.getState();
         const levelId = viewedLevelId(state);
-        runInBackground(pickMapImage(app, collectionIdOfPath(state.mapPath), (path) => {
+        pickMapImage(ui, store, { title: t('levels.pickReplacement') }, (path) => {
           if (path) runInBackground(replaceMapImage(app, store, levelId, path), 'Replacing the map image');
-        }), 'Picking a map image');
+        });
       },
     },
     {
       id: "open-dice-log",
       icon: <Dices />,
       label: t('palette.openDiceLog'),
-      keywords: ["roll history", "toggle"],
+      keywords: ["roll history", "dice log", "toggle"],
       shortcut: hotkeyLabel('diceLog'),
       section: "tools",
       action: () => {
@@ -321,6 +387,8 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
         onClose();
       },
     },
+    hotkeyHelpCommand(() => setHotkeyHelpOpen(true), onClose, hotkeyLabel('help')),
+    mapTourCommand(() => SettingsService.forApp(app)?.replayTutorial('map'), onClose),
     // Mode commands
     {
       id: "toggle-player-mode",
@@ -334,15 +402,15 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       isToggle: true,
       isActive: isPlayerMode,
     },
-    {
+    // The player window needs a second window: desktop only
+    ...desktopOnly<CommandOption>({
       id: "freeze-player-camera",
-      icon: <Snowflake />,
+      icon: <Pause />,
       label: t('palette.freezePlayerCamera'),
       section: "mode",
       action: () => {
-        const service = PlayerWindowService.getInstance();
-        if (service?.isWindowOpen()) {
-          service.toggleCameraFreeze();
+        if (PlayerWindowService.getInstance()?.isWindowOpen() || tableControlsStore.getState().online) {
+          toggleTablePause();
         } else {
           showNotice(t('palette.noPlayerWindow'));
         }
@@ -361,6 +429,17 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       },
     },
     {
+      id: "show-map-in-player-window",
+      icon: <MonitorPlay />,
+      label: t('palette.showMapInPlayerWindow'),
+      section: "mode",
+      action: () => {
+        void presentActiveTab(app, { openWindow: true });
+        onClose();
+      },
+    }),
+    // Presents the map: in the player window on desktop, on this device (Table mode) or at the online table on mobile
+    {
       id: "transfer-player-view",
       icon: <MonitorUp />,
       label: t('palette.sendMapToPlayerView'),
@@ -370,16 +449,17 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
         onClose();
       },
     },
-    {
-      id: "show-map-in-player-window",
-      icon: <MonitorPlay />,
-      label: t('palette.showMapInPlayerWindow'),
+    // This view as the players' picture, under a finger: a desktop with a mouse has the player window, and Obsidian's command for Table mode
+    ...(view && (atTop || !isDesktopApp()) ? [{
+      id: "table-mode",
+      icon: <Tablet />,
+      label: t('table.mode'),
       section: "mode",
       action: () => {
-        void presentActiveTab(app, { openWindow: true });
         onClose();
+        toggleTableMode(view);
       },
-    },
+    } satisfies CommandOption] : []),
     // Settings
     {
       id: "grid-settings",
@@ -425,8 +505,9 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     {
       id: "local-player-view-settings",
       icon: <UserCheck />,
-      label: t('palette.localPlayerViewSettings'),
+      label: t('palette.playerViewSettings'),
       section: "settings",
+      keywords: ["players", "player window", "online", "cursors", "draw", "4k", "tv", "nameplates", "resources", "widgets", "initiative", "dice"],
       hasSubmenu: true,
       submenu: [
         {
@@ -456,6 +537,23 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       ],
     },
     {
+      id: "lighting-settings",
+      icon: <SunMoon />,
+      label: t('sceneLight.settings'),
+      keywords: ["lighting", "light", "vision", "sight", "explored", "memory", "fog of war", "darkvision", "dark", "tint"],
+      section: "settings",
+      hasSubmenu: true,
+      submenu: [
+        {
+          id: "lighting-all-settings",
+          icon: null,
+          label: t('sceneLight.settingsHint'),
+          section: "lighting",
+          hasSubmenu: false,
+        },
+      ],
+    },
+    {
       id: "graphics-settings",
       icon: <Gauge />,
       label: t('graphics.command'),
@@ -473,9 +571,26 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       ],
     },
     {
+      id: "appearance",
+      icon: <Paintbrush />,
+      label: t('appearance.title'),
+      keywords: ["theme", "look", "style", "sci-fi", "scifi", "mediaeval", "medieval", "fantasy", "modern", "accent", "colour", "color"],
+      section: "settings",
+      hasSubmenu: true,
+      submenu: [
+        {
+          id: "appearance-look",
+          icon: null,
+          label: t('appearance.commandHint'),
+          section: "appearance",
+          hasSubmenu: false,
+        },
+      ],
+    },
+    {
       id: "experimental-features",
       icon: <FlaskConical />,
-      label: "Experimental features",
+      label: t('settings.experimental.heading'),
       keywords: ["beta", "feature", "dynamic lighting", "walls", "lights", "vision"],
       section: "settings",
       hasSubmenu: true,
@@ -483,20 +598,22 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
         {
           id: "experimental-all-features",
           icon: null,
-          label: "Dynamic lighting",
+          label: t('palette.experimentalLighting'),
           section: "experimental",
           hasSubmenu: false,
         },
       ],
     },
     ...(onCustomizeToolbar ? [customizeToolbarCommand(() => onCustomizeToolbar(choosingByKeyboard.current), onClose)] : []),
+    docsCommand(() => store.getState().setDocsOpen(true), onClose),
+    armariumCommand(() => store.getState().openArmarium(), onClose),
   ];
 
   // Derive rows from current state so open-menu toggles stay in sync.
   const showingSubmenu = !!activeSubmenu && submenuOptions.length > 0;
-  const filteredOptions = (showingSubmenu ? submenuOptions : commandOptions).filter((option) =>
-    [option.label, ...(option.keywords ?? [])].some(text => text.toLowerCase().includes(searchQuery.toLowerCase())) &&
-    (showingSubmenu || activeTab === "all" || option.section === activeTab)
+  const filteredOptions = searchOptions(
+    (showingSubmenu ? submenuOptions : commandOptions).filter((option) => showingSubmenu || activeTab === "all" || option.section === activeTab),
+    searchQuery,
   );
 
   // Tab order for forward and backward keyboard cycling
@@ -515,18 +632,12 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     if (!overlay) return;
     const frame = overlay.getBoundingClientRect();
     const toolbar = toolbarRef?.current;
-
-    if (toolbar) {
-      setPosition(placePalette(toolbar.getBoundingClientRect(), frame));
-    } else {
-      setPosition({
-        width: DEFAULT_PALETTE_WIDTH,
-        left: (frame.width - DEFAULT_PALETTE_WIDTH) / 2,
-        bottom: 100,
-      });
-    }
-
-  }, [toolbarRef]);
+    const aboveToolbar: PalettePosition = toolbar
+      ? placePalette(restingToolbarBox(toolbar), frame, toolbarWillBeHidden(toolbar))
+      : { width: DEFAULT_PALETTE_WIDTH, left: (frame.width - DEFAULT_PALETTE_WIDTH) / 2, bottom: 100, reserved: 100 };
+    const placed = atTop ? placePaletteAtTop(aboveToolbar, frame, visibleViewport(overlay.win).bottom) : aboveToolbar;
+    setPosition({ ...placed, frameWidth: frame.width });
+  }, [toolbarRef, atTop]);
 
   // Measure before the first paint so the palette never flashes at a stale spot
   // The position is kept after closing so the palette leaves from where it was.
@@ -580,16 +691,19 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     }
   }, [searchQuery, activeTab, activeSubmenu, submenuOptions, showingSubmenu, filteredOptions.length]);
 
-  // Every delayed focus attempt belongs to this opening and its own window.
+  // Every delayed focus attempt belongs to this opening and its own window. Coming back from a
+  // page, the list's new field takes the keys again (a leaving list's field is inert).
   useEffect(() => {
     const input = inputRef.current;
     const win = input?.ownerDocument.defaultView;
-    if (!isOpen || isTemporarilyHidden || !input || !win) return;
+    if (!isOpen || isTemporarilyHidden || atTop || !input || !win) return;
     const timers: number[] = [];
     const focusInput = (): void => {
-      input.focus();
+      // Without scrolling: the palette is still moving into place, and a focus that scrolled to it
+      // scrolled Obsidian's containers around the view, shifting the whole map aside.
+      input.focus({ preventScroll: true });
       timers.push(win.setTimeout(() => {
-        if (input.ownerDocument.activeElement !== input) input.focus();
+        if (input.ownerDocument.activeElement !== input) input.focus({ preventScroll: true });
       }, 10));
     };
     focusInput();
@@ -599,12 +713,12 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       win.cancelAnimationFrame(frame);
       timers.forEach(timer => win.clearTimeout(timer));
     };
-  }, [isOpen, isTemporarilyHidden]);
+  }, [isOpen, isTemporarilyHidden, atTop, activeSubmenu]);
 
   const clearSearch = (): void => {
     setSearchQuery("");
     setActiveTab("all");
-    inputRef.current?.focus();
+    inputRef.current?.focus({ preventScroll: true });
   };
 
   // Handle entering submenu
@@ -627,8 +741,10 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
 
   // Handle keyboard navigation
   useEffect(() => {
+    const doc = overlayRef.current?.doc ?? activeDocument;
     const handleKeyDown = (e: KeyboardEvent): void => {
-      if (!isOpen || document.querySelector('.atlas-onboarding-overlay')) return;
+      // The map picker a page opened over the palette (`pickMapImage`) takes every key, Escape first, while it stands.
+      if (!isOpen || doc.querySelector('.atlas-onboarding-overlay, .atlas-map-picker-container')) return;
       // Keys pressed in a dialog or context menu opened from a page belong to it.
       if ((e.target as Element | null)?.closest?.('.atlas-text-dialog-backdrop, .atlas-ctx-menu')) return;
       if (!isShortcutScopeActive(containerRef.current, view?.viewId)) return;
@@ -701,6 +817,9 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
         case "Enter":
           if (focusedOptionIndex >= 0 && focusedOptionIndex < filteredOptions.length) {
             const option = filteredOptions[focusedOptionIndex]!;
+            // A dialog the action opens takes focus before the key's default runs,
+            // which would then press the dialog's first button (its Close).
+            e.preventDefault();
             if (option.hasSubmenu) {
               enterSubmenu(option);
             } else if (option.action) {
@@ -716,23 +835,18 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       }
     };
 
-    document.addEventListener("keydown", handleKeyDown);
+    doc.addEventListener("keydown", handleKeyDown);
     return () => {
-      document.removeEventListener("keydown", handleKeyDown);
+      doc.removeEventListener("keydown", handleKeyDown);
     };
   }, [isOpen, onClose, filteredOptions, focusedOptionIndex, searchQuery, tabs]);
 
-  // Scroll focused option into view
+  // Scroll the focused option into view within the list alone: `scrollIntoView` also scrolled
+  // Obsidian's containers around the map while the palette rose into place, shifting the map aside.
   useEffect(() => {
-    if (focusedOptionIndex >= 0 && optionsContainerRef.current) {
-      const options = optionsContainerRef.current.querySelectorAll(".atlas-command-item");
-      if (options[focusedOptionIndex]) {
-        options[focusedOptionIndex].scrollIntoView({
-          behavior: "smooth",
-          block: "nearest",
-        });
-      }
-    }
+    const list = optionsContainerRef.current;
+    const option = focusedOptionIndex >= 0 ? list?.querySelectorAll(".atlas-command-item")[focusedOptionIndex] : undefined;
+    if (list && option) scrollWithin(list, option, 'nearest');
   }, [focusedOptionIndex]);
 
   // Close on click outside
@@ -741,8 +855,8 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
 
     const isOutsidePress = (target: Element | null): boolean => {
       if (target?.closest?.('.atlas-onboarding-overlay')) return false;
-      // Dialogs opened from a page (naming or deleting a snapshot) sit outside the palette.
-      if (target?.closest?.('.atlas-text-dialog-backdrop')) return false;
+      // Dialogs opened from a page (naming or deleting a snapshot) and the map picker sit outside the palette.
+      if (target?.closest?.('.atlas-text-dialog-backdrop, .atlas-map-picker-container')) return false;
 
       // Don't close if clicking on Obsidian menu elements
       if (target?.closest?.('.menu') ||
@@ -780,9 +894,10 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       timers.add(timer);
     };
 
-    document.addEventListener("mousedown", handleMouseDown);
+    const doc = overlayRef.current?.doc ?? activeDocument;
+    doc.addEventListener("pointerdown", handleMouseDown);
     return () => {
-      document.removeEventListener("mousedown", handleMouseDown);
+      doc.removeEventListener("pointerdown", handleMouseDown);
       timers.forEach(timer => window.clearTimeout(timer));
     };
   }, [isOpen, isTemporarilyHidden, onClose, toolbarRef, activeSubmenu]);
@@ -803,11 +918,20 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     window.addEventListener("scroll", handleScroll);
 
     const positionInterval = window.setInterval(updatePosition, 200);
+    // The toolbar starting to show or hide moves the palette now, not at the next poll.
+    const toolbar = toolbarRef?.current;
+    const watch = new MutationObserver(updatePosition);
+    if (toolbar) {
+      watch.observe(toolbar, { attributes: true, attributeFilter: ['data-near', 'data-peek'] });
+      const ui = toolbar.closest('.atlas-ui');
+      if (ui) watch.observe(ui, { attributes: true, attributeFilter: ['data-chrome-auto-hide'] });
+    }
 
     return () => {
       window.removeEventListener("resize", handleResize);
       window.removeEventListener("scroll", handleScroll);
       window.clearInterval(positionInterval);
+      watch.disconnect();
     };
   }, [isOpen, isTemporarilyHidden, toolbarRef, hasCalculatedInitialPosition, updatePosition]);
 
@@ -820,6 +944,36 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
 
   const activePanel: SettingsPanelId | null = isSettingsPanelId(activeSubmenu) ? activeSubmenu : null;
 
+  // The list stands above the toolbar, a page at the frame's centre. The anchor moves between the
+  // two on the surface's spring, and follows the toolbar and the frame at once otherwise, as it
+  // does while the palette opens (straight into a page, too).
+  const anchorShift = useMotionValue(0);
+  const shiftedFor = useRef<string | null>(null);
+  const pageKey = activePanel ?? 'list';
+  const shift = position && !activePanel ? position.left + (position.width - position.frameWidth) / 2 : 0;
+  useLayoutEffect(() => {
+    const overlay = overlayRef.current;
+    const morph = hasCalculatedInitialPosition && shiftedFor.current !== pageKey && !!overlay && !prefersReducedMotion(overlay);
+    shiftedFor.current = pageKey;
+    if (morph) animate(anchorShift, shift, PALETTE_MORPH);
+    else anchorShift.jump(shift);
+  }, [anchorShift, shift, pageKey, hasCalculatedInitialPosition]);
+
+  // The toolbar showing or hiding (Show toolbar on hover) gives the palette a new place: it stands there at once and
+  // is lifted back from where it stood, gliding on the surface's spring as the toolbar starts to move.
+  const anchorLift = useMotionValue(0);
+  const liftedFrom = useRef<number | null>(null);
+  const bottom = position?.top === undefined ? position?.bottom : undefined;
+  useLayoutEffect(() => {
+    const from = liftedFrom.current;
+    liftedFrom.current = bottom ?? null;
+    const overlay = overlayRef.current;
+    const toolbar = toolbarRef?.current;
+    if (bottom === undefined || from === null || from === bottom || !hasCalculatedInitialPosition || !overlay || prefersReducedMotion(overlay)) return;
+    anchorLift.jump(anchorLift.get() + bottom - from);
+    animate(anchorLift, 0, { ...PALETTE_MORPH, delay: toolbar ? toolbarMoveDelay(toolbar) : 0 });
+  }, [anchorLift, bottom, hasCalculatedInitialPosition, toolbarRef]);
+
   const sections = [
     { id: 'tools', title: t('palette.tab.tools') },
     { id: 'mode', title: t('palette.tab.mode') },
@@ -827,7 +981,9 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
   ].map((section) => ({
     ...section,
     options: filteredOptions.filter((option) => option.section === section.id),
-  }));
+  }))
+    // In the order the results hold them: the section of the best match first
+    .sort((a, b) => filteredOptions.indexOf(a.options[0]!) - filteredOptions.indexOf(b.options[0]!));
 
   // Render command item wrapper that handles submenu clicks
   const renderCommandItem = (option: CommandOption): React.ReactElement => {
@@ -880,31 +1036,34 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
             addWidget={addWidget}
             removeWidget={removeWidget}
             sortedWidgets={sortedWidgets}
-            initiative={initiative}
-            setInitiativeConfig={setInitiativeConfig}
             initiativeTrackerOpen={initiativeTrackerOpen}
             setInitiativeTrackerOpen={setInitiativeTrackerOpen}
           />
         );
       case 'local-player-view-settings':
-        return <LocalPlayerViewSettingsPanel />;
+        return <PlayerViewSettingsPanel />;
       case 'dice-settings':
         return <DiceSettingsPanel />;
       case 'experimental-features':
         return <ExperimentalFeaturesPanel />;
       case 'graphics-settings':
         return <GraphicsPanel />;
+      case 'appearance':
+        return <AppearancePanel />;
+      case 'lighting-settings':
+        return <LightingSettingsPanel />;
     }
   };
 
-  // The anchor places the palette and slides between list and panel; the
-  // window inside carries the open / close animation, and the container sizes it.
-  const anchorStyle: React.CSSProperties = !position
-    ? {}
-    : activePanel
-      ? { left: '50%', transform: 'translateX(-50%)', bottom: `${position.bottom}px`, '--atlas-palette-bottom': `${position.bottom}px` } as React.CSSProperties
-      : { left: `${position.left}px`, transform: 'none', bottom: `${position.bottom}px`, '--atlas-palette-bottom': `${position.bottom}px` } as React.CSSProperties;
-  const containerStyle = position && !activePanel ? { width: `${position.width}px` } : {};
+  // The anchor stands at the frame's centre and is shifted onto the list's place above the
+  // toolbar; a settings page stands at the centre. The window inside carries the open / close
+  // animation, the surface the size of the page it shows.
+  const anchorStyle: Record<string, string> = {};
+  if (position) {
+    if (position.top === undefined) anchorStyle.bottom = `${position.bottom}px`;
+    else anchorStyle.top = `${position.top}px`;
+    anchorStyle['--atlas-palette-bottom'] = `${position.reserved}px`;
+  }
 
   return (
     <MotionConfig reducedMotion="user">
@@ -921,141 +1080,156 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
           >
             {!isTemporarilyHidden && position && <Tutorial id="palette" steps={[
               { title: t('palette.tour.findTitle'), body: t('palette.tour.findBody'), selector: '.atlas-command-palette-search' },
-              { title: t('palette.tour.ownTitle'), body: t('palette.tour.ownBody', { key: hotkeyLabel('help') }), selector: '.atlas-command-palette-tabs' },
+              { title: t('palette.tour.ownTitle'), body: tPointer('palette.tour.ownBody', { key: hotkeyLabel('help') }), selector: '.atlas-command-palette-tabs' },
             ]} />}
             <div className="atlas-command-palette-backdrop" onClick={onClose} />
 
-            <div
+            <motion.div
               className={cn(
                 'atlas-command-palette-anchor',
-                !hasCalculatedInitialPosition && 'atlas-no-transition',
+                position?.top !== undefined && 'atlas-command-palette-anchor--top',
                 (isTemporarilyHidden || !position) && 'atlas-command-palette-anchor--hidden',
               )}
-              style={anchorStyle}
+              style={{ ...anchorStyle, x: anchorShift, y: anchorLift }}
             >
               <motion.div className="atlas-command-palette-window" variants={paletteVariants}>
-                <div
-                  ref={containerRef}
-                  className={cn(
-                    'atlas-command-palette-container',
-                    activePanel && 'atlas-command-palette-container--expanded',
-                    activePanel && `atlas-command-palette-container--${activePanel}`,
-                  )}
-                  style={containerStyle}
-                >
-                  {activePanel ? (
-                    <SettingsPanelHeader
-                      icon={SETTINGS_PANEL_META[activePanel].icon}
-                      title={SETTINGS_PANEL_META[activePanel].title}
-                      onBack={exitSubmenu}
-                      actions={
-                        activePanel === 'grid-settings' ? (
-                          <Button variant="secondary" size="sm" onClick={() => store.getState().setGridAlignmentOpen(true)}>
-                            <Move />
-                            {t('palette.enterAlignment')}
-                          </Button>
-                        ) : undefined
-                      }
-                    />
-                  ) : (
-                    <>
-                      <div className="atlas-command-palette-search">
-                        <div className="atlas-command-palette-search-inner">
-                          <Search className="atlas-command-palette-search-icon" />
-                          <input
-                            ref={inputRef}
-                            type="text"
-                            placeholder={t('palette.searchPlaceholder')}
-                            className="atlas-command-palette-input"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            autoFocus
-                            tabIndex={0}
-                            autoComplete="off"
-                            spellCheck={false}
-                          />
-                          {searchQuery && (
-                            <CloseButton placement="inline" onClick={clearSearch} aria-label={t('common.clearSearch')} />
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="atlas-command-palette-tabs">
-                        {tabs.map((tab) => (
-                          <Button
-                            key={tab.id}
-                            variant="ghost"
-                            size="sm"
-                            className={cn(
-                              'atlas-command-palette-tab',
-                              activeTab === tab.id && 'atlas-active',
-                            )}
-                            onClick={() => setActiveTab(tab.id)}
-                          >
-                            <span className="atlas-command-palette-tab-label">{tab.label}</span>
-                          </Button>
-                        ))}
-                      </div>
-                    </>
-                  )}
-
-                  <OverlayScroll
-                    ref={optionsContainerRef}
-                    frameClassName="atlas-command-palette-options-frame"
-                    className="atlas-command-palette-options"
-                    onMouseMove={handleMouseMove}
+                <PaletteSurface depth={activePanel ? 1 : -1} surfaceRef={containerRef}>
+                  <PalettePage
+                    key={pageKey}
+                    className={cn(
+                      'atlas-command-palette-container',
+                      activePanel && 'atlas-command-palette-container--expanded',
+                      activePanel && `atlas-command-palette-container--${activePanel}`,
+                    )}
+                    width={activePanel ? undefined : position?.width}
                   >
                     {activePanel ? (
-                      renderSettingsPanel(activePanel)
+                      <SettingsPanelHeader
+                        icon={SETTINGS_PANEL_META[activePanel].icon}
+                        title={SETTINGS_PANEL_META[activePanel].title}
+                        onBack={exitSubmenu}
+                        actions={
+                          activePanel === 'grid-settings' ? (
+                            <Button variant="secondary" size="sm" onClick={() => store.getState().setGridAlignmentOpen(true)}>
+                              <Move />
+                              {t('palette.enterAlignment')}
+                            </Button>
+                          ) : activePanel === 'appearance' ? (
+                            <AppearanceShortcuts
+                              onCustomizeToolbar={onCustomizeToolbar && (() => {
+                                onCustomizeToolbar(choosingByKeyboard.current);
+                                onClose();
+                              })}
+                              onDiceSettings={() => setActiveSubmenu('dice-settings')}
+                            />
+                          ) : activePanel === 'lighting-settings' ? (
+                            // How much the picture may cost this device is the Graphics page's.
+                            <Button variant="ghost" size="sm" onClick={() => setActiveSubmenu('graphics-settings')}>
+                              <Gauge />
+                              {t('graphics.command')}
+                            </Button>
+                          ) : undefined
+                        }
+                      />
                     ) : (
-                      <div className="atlas-command-palette-options-inner">
-                        {sections.map((section) =>
-                          section.options.length > 0 ? (
-                            <div key={section.id} className="atlas-command-palette-section">
-                              <div className="atlas-command-palette-section-header">{section.title}</div>
-                              {section.options.map((option) => renderCommandItem(option))}
-                            </div>
-                          ) : null,
-                        )}
-
-                        {filteredOptions.length === 0 && (
-                          <div className="atlas-command-palette-empty">
-                            <div className="atlas-command-palette-empty-text">{t('palette.noResults')}</div>
-                            <div className="atlas-command-palette-empty-hint">{t('palette.noResultsHint')}</div>
+                      <>
+                        <div className="atlas-command-palette-search">
+                          <div className="atlas-command-palette-search-inner">
+                            <Search className="atlas-command-palette-search-icon" />
+                            <input
+                              ref={inputRef}
+                              type="text"
+                              placeholder={t('palette.searchPlaceholder')}
+                              className="atlas-command-palette-input"
+                              value={searchQuery}
+                              onChange={(e) => setSearchQuery(e.target.value)}
+                              tabIndex={0}
+                              autoComplete="off"
+                              spellCheck={false}
+                            />
+                            {searchQuery && (
+                              <CloseButton placement="inline" onClick={clearSearch} aria-label={t('common.clearSearch')} />
+                            )}
                           </div>
-                        )}
+                        </div>
+
+                        <div className="atlas-command-palette-tabs">
+                          {tabs.map((tab) => (
+                            <Button
+                              key={tab.id}
+                              variant="ghost"
+                              size="sm"
+                              className={cn(
+                                'atlas-command-palette-tab',
+                                activeTab === tab.id && 'atlas-active',
+                              )}
+                              onClick={() => setActiveTab(tab.id)}
+                            >
+                              <span className="atlas-command-palette-tab-label">{tab.label}</span>
+                            </Button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+
+                    <div
+                      // The list's alone: a leaving page would let go of it after the list took it.
+                      ref={activePanel ? undefined : optionsContainerRef}
+                      className="atlas-command-palette-options"
+                      onMouseMove={handleMouseMove}
+                    >
+                      {activePanel ? (
+                        renderSettingsPanel(activePanel)
+                      ) : (
+                        <div className="atlas-command-palette-options-inner">
+                          {sections.map((section) =>
+                            section.options.length > 0 ? (
+                              <div key={section.id} className="atlas-command-palette-section">
+                                <div className="atlas-command-palette-section-header">{section.title}</div>
+                                {section.options.map((option) => renderCommandItem(option))}
+                              </div>
+                            ) : null,
+                          )}
+
+                          {filteredOptions.length === 0 && (
+                            <div className="atlas-command-palette-empty">
+                              <div className="atlas-command-palette-empty-text">{t('palette.noResults')}</div>
+                              <div className="atlas-command-palette-empty-hint">{t('palette.noResultsHint')}</div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {!activePanel && (
+                      <div className="atlas-command-palette-footer">
+                        <div className="atlas-command-palette-footer-left">
+                          <div className="atlas-command-palette-footer-item">
+                            <kbd className="atlas-command-palette-kbd">Tab / Shift+Tab</kbd>
+                            <span>{t('palette.footer.switchTabs')}</span>
+                          </div>
+                          <div className="atlas-command-palette-footer-item">
+                            <span className="atlas-command-palette-footer-arrows">
+                              <ArrowUp className="atlas-command-palette-arrow" />
+                              <ArrowUp className="atlas-command-palette-arrow atlas-down" />
+                            </span>
+                            <span>{t('palette.footer.navigate')}</span>
+                          </div>
+                          <div className="atlas-command-palette-footer-item">
+                            <kbd className="atlas-command-palette-kbd">↵</kbd>
+                            <span>{t('palette.footer.select')}</span>
+                          </div>
+                        </div>
+                        <div className="atlas-command-palette-footer-right">
+                          <kbd className="atlas-command-palette-kbd">Esc</kbd>
+                          <span>{searchQuery ? t('palette.footer.clear') : t('palette.footer.close')}</span>
+                        </div>
                       </div>
                     )}
-                  </OverlayScroll>
-
-                  {!activePanel && (
-                    <div className="atlas-command-palette-footer">
-                      <div className="atlas-command-palette-footer-left">
-                        <div className="atlas-command-palette-footer-item">
-                          <kbd className="atlas-command-palette-kbd">Tab / Shift+Tab</kbd>
-                          <span>{t('palette.footer.switchTabs')}</span>
-                        </div>
-                        <div className="atlas-command-palette-footer-item">
-                          <span className="atlas-command-palette-footer-arrows">
-                            <ArrowUp className="atlas-command-palette-arrow" />
-                            <ArrowUp className="atlas-command-palette-arrow atlas-down" />
-                          </span>
-                          <span>{t('palette.footer.navigate')}</span>
-                        </div>
-                        <div className="atlas-command-palette-footer-item">
-                          <kbd className="atlas-command-palette-kbd">↵</kbd>
-                          <span>{t('palette.footer.select')}</span>
-                        </div>
-                      </div>
-                      <div className="atlas-command-palette-footer-right">
-                        <kbd className="atlas-command-palette-kbd">Esc</kbd>
-                        <span>{searchQuery ? t('palette.footer.clear') : t('palette.footer.close')}</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                  </PalettePage>
+                </PaletteSurface>
               </motion.div>
-            </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

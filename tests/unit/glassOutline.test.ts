@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import type { Application, Container, Graphics, Text } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import { GlassOutline } from '../../src/app/pixi/glassOutline';

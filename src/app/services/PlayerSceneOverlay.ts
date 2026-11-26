@@ -1,4 +1,4 @@
-import type { EventEmitter } from 'events';
+import type { EventEmitter } from '../utils/typedEmitter';
 import type { StoreApi } from 'zustand';
 import { shallow } from 'zustand/vanilla/shallow';
 import type { ViewAtlasState } from '../storeFactory';
@@ -36,6 +36,8 @@ export abstract class PlayerSceneOverlay<Scene extends object> implements Player
   private scene: Scene | undefined;
   private playerSettings: PlayerSettings;
   private unsubscribeStore: (() => void) | undefined;
+  /** Picks the scene again from the presented store; none while nothing is presented or the scene is held. */
+  private selectAgain: (() => void) | undefined;
   private readonly unsubscribeSettings: () => void;
 
   protected constructor(private readonly containerInfo: DomElementInfo, settings: SettingsService) {
@@ -62,12 +64,19 @@ export abstract class PlayerSceneOverlay<Scene extends object> implements Player
     this.unsubscribeStore?.();
     this.scene = this.select(store.getState());
     this.refresh();
-    this.unsubscribeStore = store.subscribe((state) => {
+    const take = (state: ViewAtlasState): void => {
       const scene = this.select(state);
       if (shallow(this.scene, scene)) return;
       this.scene = scene;
       this.refresh();
-    });
+    };
+    this.unsubscribeStore = store.subscribe(take);
+    this.selectAgain = () => take(store.getState());
+  }
+
+  /** Picks the scene again for what `select` reads besides the store (the map's rules): drawn anew where it changed. */
+  protected reselect(): void {
+    this.selectAgain?.();
   }
 
   /**
@@ -77,11 +86,17 @@ export abstract class PlayerSceneOverlay<Scene extends object> implements Player
   hold(): void {
     this.unsubscribeStore?.();
     this.unsubscribeStore = undefined;
+    this.selectAgain = undefined;
   }
 
   destroy(): void {
     this.hold();
     this.unsubscribeSettings();
+  }
+
+  /** The container drawings go into, once mounted. */
+  protected containerOf(): HTMLElement | undefined {
+    return this.container;
   }
 
   /** Picks the store values this overlay shows; a shallow change triggers a re-render. */

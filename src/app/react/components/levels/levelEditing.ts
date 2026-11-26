@@ -1,11 +1,11 @@
 import { t } from '../../../i18n';
-import { withLevelAdded, withLevelChanged, withLevelDeleted, withLevelRoof, withLevelSight, withLevelsReordered, type LevelScene } from '../../../levels/levelEdits';
+import { levelsOrFirst, withLevelAdded, withLevelChanged, withLevelDeleted, withLevelRoof, withLevelSight, withLevelsReordered, type LevelScene } from '../../../levels/levelEdits';
 import { firstLevelId, viewedLevelId } from '../../../levels/sceneLevels';
 import type { ViewAtlasStore } from '../../../storeFactory';
 import { getHistoryStore, runUntracked } from '../../../stores/history';
 import type { LevelElevation, SceneLevel } from '../../../types/sceneLevelTypes';
 import { chooseAction } from '../../../ui/confirmDialog';
-import { showNotice } from '../../../ui/notice';
+import { showNotice, showNoticeWithAction } from '../../../ui/notice';
 
 /**
  * Edits of a scene's levels from its settings. Levels are scene settings, like its lighting:
@@ -50,15 +50,36 @@ export function addLevel(store: ViewAtlasStore, background: string | null): void
   editLevels(name, () => {
     const levels = withLevelAdded(state, { name, background }, t('levels.firstName'));
     runUntracked(store, () => state.setLevels(levels));
-    store.getState().setViewedLevel(levels.at(-1)?.id ?? null);
+    const added = levels.at(-1)?.id ?? null;
+    store.getState().setViewedLevel(added);
+    // A floor's map rarely begins where the one below begins: lining it up is offered at once.
+    if (added && background) showNoticeWithAction(t('levels.positionAdded', { name }), t('levels.positionAddedAction'), () => startFloorPositioning(store, added), POSITION_OFFER_MS);
   });
 }
 
-/** Renames level `id`, or changes its elevation. */
-export function changeLevel(store: ViewAtlasStore, id: string, changes: { name?: string; elevation?: LevelElevation }): void {
-  const { levels, setLevels } = store.getState();
-  if (!levels) return;
-  editLevels(labelOf(store, id), () => runUntracked(store, () => setLevels(withLevelChanged(levels, id, changes))));
+/** How long the offer to line a new floor up stays. */
+const POSITION_OFFER_MS = 10_000;
+
+/** Shows level `id` and lets the GM place it by hand over another floor (Position floor); the command palette steps aside. */
+export function startFloorPositioning(store: ViewAtlasStore, id: string): void {
+  const state = store.getState();
+  if ((state.levels?.length ?? 0) < 2) return;
+  state.setViewedLevel(id);
+  state.setCommandPaletteOpen(false);
+  state.setGridAlignmentOpen(false);
+  state.setFloorPositioning(true);
+}
+
+/**
+ * Renames level `id`, or changes its elevation (null: the scene's only level, made where the scene
+ * has none, as its roof makes it).
+ */
+export function changeLevel(store: ViewAtlasStore, id: string | null, changes: { name?: string; elevation?: LevelElevation }): void {
+  const state = store.getState();
+  const levels = id === null ? levelsOrFirst(state, t('levels.firstName')) : state.levels;
+  const level = levels?.find((entry) => id === null || entry.id === id);
+  if (!levels || !level) return;
+  editLevels(levelLabel(levels, level), () => runUntracked(store, () => state.setLevels(withLevelChanged(levels, level.id, changes))));
 }
 
 /**
@@ -92,12 +113,15 @@ export function setLevelRoof(store: ViewAtlasStore, id: string | null, foregroun
   if (levels) runUntracked(store, () => state.setLevels(levels));
 }
 
-/** Shows `background` on level `id`; the first level's is the scene's own background, an edit like any other of it. */
-export function changeLevelBackground(store: ViewAtlasStore, id: string, background: string | null): void {
+/**
+ * Shows `background` on level `id` (null: a scene without levels); the first level's is the scene's
+ * own background, an edit like any other of it.
+ */
+export function changeLevelBackground(store: ViewAtlasStore, id: string | null, background: string | null): void {
   const state = store.getState();
-  if (!state.levels) return;
-  editLevels(labelOf(store, id), () => {
-    if (id === firstLevelId(state.levels)) state.setBackground(background);
+  if (id !== null && !state.levels) return;
+  editLevels(id === null ? t('levels.firstName') : labelOf(store, id), () => {
+    if (id === null || id === firstLevelId(state.levels)) state.setBackground(background);
     else runUntracked(store, () => state.setLevels(withLevelChanged(state.levels!, id, { background })));
   });
 }

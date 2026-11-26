@@ -12,11 +12,12 @@ import { destroyTree } from '../utils/destroyTree';
 import { createGlyphTexture } from '../utils/pinIconTexture';
 import { ValueTransition } from '../utils/ValueTransition';
 import { levelObjects } from '../../levels/levelObjects';
+import { FINGER_TARGET_RADIUS, fingerReaches, ReachPick } from '../utils/pointerReach';
 
 /** Above the lighting layer and token UI, so the GM finds doors in the dark. */
 export const DOOR_ICONS_Z_INDEX = 1150;
 /** Badge radius as a share of a grid cell. */
-const BADGE_SHARE = 0.2;
+export const BADGE_SHARE = 0.2;
 /** The door glyph's edge as a share of the badge's radius: its corners stay inside the ring. */
 const GLYPH_SHARE = 1.35;
 /** Both glyphs stand on the bottom of their canvas: lifted, so they sit in the badge's middle. */
@@ -37,6 +38,18 @@ function isDoor(wall: WallSegment): boolean {
 }
 
 const NO_DOORS: ReadonlySet<string> = new Set();
+
+const doorLists = new WeakMap<readonly WallSegment[], readonly WallSegment[]>();
+
+/** The doors of a wall list (`wallList`), the same array while the list stays: a pointer move asks for badges among thousands of walls. */
+function doorsOf(walls: readonly WallSegment[]): readonly WallSegment[] {
+  let doors = doorLists.get(walls);
+  if (!doors) {
+    doors = walls.filter(isDoor);
+    doorLists.set(walls, doors);
+  }
+  return doors;
+}
 
 /** What the badges read of their view's state: the doors, the cell size they are sized by, what moves the players' sight, and the door switch. */
 export type DoorIconsState = Pick<ViewState, 'grid' | 'lighting' | 'mapPath'> & {
@@ -70,6 +83,7 @@ export function badgeLook(wall: Pick<WallSegment, 'type' | 'locked'>, forPlayers
  * no drawing.
  */
 export class DoorIcons {
+  private readonly reached = new ReachPick<string>();
   /** The GM's badges: one of the `GmOverlays`. */
   readonly view = new Container({ label: 'door-icons' });
   /** The players' badges: shown by `playerLightingLayers`, hidden in GM view. */
@@ -128,13 +142,17 @@ export class DoorIcons {
 
   private badgeAt(x: number, y: number, shown: (wall: WallSegment) => boolean): string | null {
     const state = this.store.getState();
-    const radius = this.radius(state);
-    for (const wall of wallList(levelObjects(state).walls)) {
+    // A badge grows and shrinks with the map; under a finger it is never a smaller target than a finger needs
+    const zoom = this.view.parent?.scale.x ?? 1;
+    const reach = fingerReaches() ? Math.max(this.radius(state), FINGER_TARGET_RADIUS / (zoom > 0 ? zoom : 1)) : this.radius(state);
+    const pick = this.reached.begin(reach);
+    // Both sets badge doors alone: the players' are the doors they see (`doorsInSight`)
+    for (const wall of doorsOf(wallList(levelObjects(state).walls))) {
       if (!shown(wall)) continue;
       const centre = doorMiddle(wall);
-      if (Math.hypot(x - centre.x, y - centre.y) <= radius) return wall.id;
+      if (pick.offer(wall.id, Math.hypot(x - centre.x, y - centre.y)) && pick.over) break;
     }
-    return null;
+    return pick.taken;
   }
 
   /** Opens or closes the door; a locked one stays shut and its badge says no. */
@@ -178,8 +196,8 @@ export class DoorIcons {
     const r = this.radius(state);
     const withGlyph = new Set<string>();
     const refusal = this.refusal();
-    for (const wall of wallList(levelObjects(state).walls)) {
-      if (forPlayers ? !this.seen.has(wall.id) : !isDoor(wall)) continue;
+    for (const wall of doorsOf(wallList(levelObjects(state).walls))) {
+      if (forPlayers && !this.seen.has(wall.id)) continue;
       const refusing = refusal?.doorId === wall.id ? refusal : null;
       const centre = doorMiddle(wall);
       const x = centre.x + (refusing?.offset ?? 0);

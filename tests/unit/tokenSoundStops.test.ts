@@ -11,7 +11,7 @@ async function playingRig(): Promise<{ rig: DirectorRig; stop: ReturnType<typeof
   rig.director.press(mood('tavern', ['rain']));
   await vi.advanceTimersByTimeAsync(5000);
   const stop = vi.fn();
-  const release = fadeTokenSoundsWithTable(rig.director, stop, () => rig.settings.fadeSeconds);
+  const release = fadeTokenSoundsWithTable(rig.director, stop);
   return { rig, stop, release };
 }
 
@@ -80,30 +80,6 @@ describe('token sounds and the table', () => {
     rig.director.stop();
 
     expect(wired.stop).not.toHaveBeenCalled();
-  });
-
-  it('fades token sounds when Sound is switched off', async () => {
-    const wired = await playingRig();
-    rig = wired.rig;
-
-    rig.settings.on = false;
-    rig.fireSettings();
-
-    // Switching off fades the mix over the GM's fade, at most two seconds: token sounds take the same.
-    expect(rig.director.isOn).toBe(false);
-    expect(wired.stop).toHaveBeenCalledOnce();
-    expect(wired.stop).toHaveBeenCalledWith(2);
-  });
-
-  it('fades over the GM\'s fade when Sound is switched off and that fade is shorter', async () => {
-    const wired = await playingRig();
-    rig = wired.rig;
-    rig.settings.fadeSeconds = 1;
-
-    rig.settings.on = false;
-    rig.fireSettings();
-
-    expect(wired.stop).toHaveBeenCalledWith(1);
   });
 
   it('listens no more once released', async () => {

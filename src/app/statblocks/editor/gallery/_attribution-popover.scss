@@ -20,7 +20,7 @@
 
   .atlas-te-attribution__panel {
     @include atlas-elevated-surface;
-    @include atlas-panel-radius($radius-2xl);
+    @include atlas-panel-radius($surface-radius);
     @include atlas-flex-col($spacing-m);
     align-items: stretch;
     width: 340px;

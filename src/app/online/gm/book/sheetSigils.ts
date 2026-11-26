@@ -7,8 +7,8 @@ import type { BlockDisplay } from '../../../statblocks/render/blockDisplay';
 import { valueText } from '../../../statblocks/values/valueText';
 import { clippedLine } from './bookTexts.ts';
 import { blockAccess } from './playerAccess.ts';
-import type { SheetBuild } from './sheetFields.ts';
-import { displayText, leafNode, promptOf, sheetValue, shownFieldOf } from './sheetLeaves.ts';
+import { sheetFieldOf, type SheetBuild } from './sheetFields.ts';
+import { displayText, leafNode, promptOf, sheetValue } from './sheetLeaves.ts';
 import { rollableBlock } from './sheetRolls.ts';
 import { frameOf, sheetDisplay } from './sheetNodes.ts';
 
@@ -36,7 +36,8 @@ function partSigil(build: SheetBuild, part: HeaderPart): SheetValue | null {
   if (!display) return null;
   const text = part.block.type === 'track' && display.state === 'value' ? valueText(build.shown.reader(part.key)) : displayText(display);
   const resource = part.id === 'hp' ? hitPointsResource(build, part.key) : undefined;
-  return sheetValue(build, part.label, text, 'plain', shownFieldOf(build, part.key, part.block, display), promptOf(display), { rollable: rollableBlock(part.block), ...(resource && { resource }) });
+  const field = sheetFieldOf(build, part.key, part.block);
+  return sheetValue(build, part.label, text, 'plain', field, promptOf(display, field), { rollable: rollableBlock(part.block), ...(resource && { resource }) });
 }
 
 /** A part of the header as a node of the sheet, with the frame the card gives its block. */

@@ -13,6 +13,7 @@ const torch: TimerWidget = {
 
 const settings = {
   getLocalPlayerViewSettings: () => ({ showWidgets: true }),
+  initiativeLayout: () => ({ fromTurn: true, dock: 'right', edges: ['right'], facesPlayers: false }),
   onChange: () => () => undefined,
 } as unknown as SettingsService;
 

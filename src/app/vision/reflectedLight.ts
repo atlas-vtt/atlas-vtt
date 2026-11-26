@@ -8,6 +8,8 @@ import type { WallSegment } from '../types/wallTypes';
 import { nearbySegments, twoWayWalls, type LightReachPart } from './areaReach';
 import { inBox, polygonBox } from './polygonBounds';
 import { computeVisibility, pointInPolygon, type Polygon } from './visibility';
+import { insidePolygon } from './polygonIndex';
+import type { VisionCone } from './visionCone';
 
 /**
  * Reflected light (`REFLECTION`), for the rules: the floor a light lights gives some of it back
@@ -48,6 +50,8 @@ export interface ReflectingReach {
   polygon: Polygon;
   /** An area light's reaches beyond its area: its lit floor is their union. */
   parts?: readonly LightReachPart[];
+  /** A beam's cone: its sides end the light where nothing stands, so its floor gives nothing back there. */
+  cone?: VisionCone;
 }
 
 /** Edges whose ends lie this far apart around their source, at most (sine), are along a ray from it: the sweep casts its rays 1e-5 apart. */
@@ -63,17 +67,28 @@ interface Sample {
   travelled: number;
 }
 
-/** The edges of `polygon` that run along a ray from `source`: a shadow's edges, and a beam's sides. */
-function shadowEdges(polygon: Polygon, source: Point): [Point, Point][] {
+/**
+ * The edges of `polygon` that run along a ray from `source`: a shadow's edges. A beam's sides
+ * (`cone`) run along rays too, but no wall stands there: the dark beside a beam is no shadow, and
+ * its floor gives nothing back into it.
+ */
+function shadowEdges(polygon: Polygon, source: Point, cone?: VisionCone): [Point, Point][] {
+  const sides = cone ? [cone.facing - cone.angle / 2, cone.facing + cone.angle / 2].map((bearing) => ({ x: Math.cos(bearing), y: Math.sin(bearing) })) : [];
   const edges: [Point, Point][] = [];
   for (let i = 0; i < polygon.length; i++) {
     const a = polygon[i]!, b = polygon[(i + 1) % polygon.length]!;
     const ax = a.x - source.x, ay = a.y - source.y, bx = b.x - source.x, by = b.y - source.y;
     const ra = Math.hypot(ax, ay), rb = Math.hypot(bx, by);
     if (Math.abs(ra - rb) < MIN_EDGE) continue;
+    if (sides.some((side) => alongRay(side, ax, ay, ra) && alongRay(side, bx, by, rb))) continue;
     if (ra < 1e-6 || rb < 1e-6 || (ax * bx + ay * by > 0 && Math.abs(ax * by - ay * bx) <= RADIAL * ra * rb)) edges.push([a, b]);
   }
   return edges;
+}
+
+/** Whether the point `(x, y)`, `r` from the source, lies on the ray from it in the unit direction `ray`. */
+function alongRay(ray: Point, x: number, y: number, r: number): boolean {
+  return r < 1e-6 || (ray.x * x + ray.y * y > 0 && Math.abs(ray.x * y - ray.y * x) <= RADIAL * r);
 }
 
 /** Points along `edges` about `spacing` apart, at least one per edge. */
@@ -95,9 +110,9 @@ function totalLength(edges: readonly [Point, Point][]): number {
 
 /** The points a light's reflection is traced from, with how far its light travelled to each. */
 function samples(reach: ReflectingReach, spacing: number): Sample[] {
-  const { origin, polygon, parts } = reach;
+  const { origin, polygon, parts, cone } = reach;
   if (!parts) {
-    const edges = shadowEdges(polygon, origin);
+    const edges = shadowEdges(polygon, origin, cone);
     const step = Math.max(spacing, totalLength(edges) / MAX_REFLECTION_SAMPLES);
     return along(edges, step).map((point) => ({ point, travelled: Math.hypot(point.x - origin.x, point.y - origin.y) }));
   }
@@ -109,7 +124,7 @@ function samples(reach: ReflectingReach, spacing: number): Sample[] {
   edgesOf.forEach((edges, i) => {
     const source = parts[i]!.origin;
     for (const point of along(edges, step)) {
-      if (pointInPolygon(point, polygon) || withinAnother(point, parts, i, reach.dim)) continue;
+      if (insidePolygon(point, polygon) || withinAnother(point, parts, i, reach.dim)) continue;
       found.push({ point, travelled: Math.hypot(point.x - source.x, point.y - source.y) });
     }
   });
@@ -121,7 +136,7 @@ function withinAnother(point: Point, parts: readonly LightReachPart[], own: numb
   for (let k = 1; k < parts.length; k++) {
     const j = (own + (k % 2 === 1 ? (k + 1) / 2 : parts.length - k / 2)) % parts.length;
     const part = parts[j]!;
-    if (Math.hypot(point.x - part.origin.x, point.y - part.origin.y) <= dim && pointInPolygon(point, part.polygon)) return true;
+    if (Math.hypot(point.x - part.origin.x, point.y - part.origin.y) <= dim && insidePolygon(point, part.polygon)) return true;
   }
   return false;
 }
@@ -194,6 +209,11 @@ export function reflectedArea(parts: readonly ReflectionPart[]): Polygon[] {
     areas.set(parts, area);
   }
   return area;
+}
+
+/** Notes `area` as the `reflectedArea` of `parts`, worked out elsewhere with the same code (a worker's). */
+export function knownReflectedArea(parts: readonly ReflectionPart[], area: Polygon[]): void {
+  areas.set(parts, area);
 }
 
 function signedArea(ring: Polygon): number {

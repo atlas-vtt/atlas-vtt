@@ -10,7 +10,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 999999;
+    z-index: $z-atlas-map-loading;
     // Timing comes from MapLoadingOverlay. Transitions (not keyframes) so a load that ends
     // during the reveal delay never shows the overlay at all.
     opacity: 0;

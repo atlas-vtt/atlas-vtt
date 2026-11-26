@@ -16,7 +16,15 @@ interface RangeFilterProps {
 /** Histogram bars at most; more values share a bar. */
 const MAX_BARS = 24;
 
+/** The smallest share a bar with any token shows, so it can still be seen. */
+const MIN_BAR_SCALE = 0.08;
+
 type Thumbs = [number, number];
+
+/** A bar's height as a share of the histogram's: its count against the tallest, never less than visible. */
+function barScale(count: number, tallest: number): number {
+  return count > 0 ? Math.max(MIN_BAR_SCALE, count / tallest) : 0;
+}
 
 /** Index of the first value at or above `bound` (for the lower thumb) or the last at or below it (upper thumb). */
 function indexOf(values: readonly number[], bound: number, edge: 'min' | 'max'): number {
@@ -85,7 +93,7 @@ export function RangeFilter({ facet, onChange }: RangeFilterProps): React.JSX.El
             <span
               key={bar.from}
               className={`atlas-filter-range__bar${bar.to >= low && bar.from <= high ? ' atlas-in-range' : ''}`}
-              style={{ '--atlas-bar-height': `${Math.max(bar.count > 0 ? 8 : 0, (bar.count / tallest) * 100)}%` } as React.CSSProperties}
+              style={{ '--atlas-bar-scale': barScale(bar.count, tallest) } as React.CSSProperties}
             />
           ))}
         </div>

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { borrowStage, releaseStagePool, releaseStagePools, returnStage, warmStages } from '../../../src/app/dice3d/stagePool';
+import { borrowStage, holdStageWarmUp, releaseStagePool, releaseStagePools, returnStage, warmStages } from '../../../src/app/dice3d/stagePool';
 
 describe('stagePool', () => {
   beforeEach(() => {
@@ -90,6 +90,20 @@ describe('stagePool', () => {
 
       returnStage(lease);
       await vi.runAllTimersAsync();
+      expect(built()).toBe(4);
+    });
+
+    it('builds nothing while a map loads, nor in the two seconds after', async () => {
+      const release = holdStageWarmUp(document);
+      warmStages(document, Promise.resolve());
+      await vi.advanceTimersByTimeAsync(10_000);
+      expect(built()).toBe(0);
+
+      release();
+      release();
+      await vi.advanceTimersByTimeAsync(1500);
+      expect(built()).toBe(0);
+      await vi.advanceTimersByTimeAsync(10_000);
       expect(built()).toBe(4);
     });
 

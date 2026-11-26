@@ -39,7 +39,7 @@ describe('LightPopover: darkness and beams', () => {
 
   it('names a level that is no time of day, and offers it only while the light has it', () => {
     const { store, torch } = renderPopover();
-    act(() => store.getState().updateLight(torch, { activeBelowAmbient: 0.3 }));
+    act(() => { store.getState().updateLight(torch, { activeBelowAmbient: 0.3 }); });
     const shines = screen.getByRole('combobox', { name: 'Shines' });
     expect(shines.textContent).toBe('Below 30 % light');
     fireEvent.click(shines);
@@ -90,12 +90,12 @@ describe('LightPopover: darkness and beams', () => {
     const direction = screen.getByRole('slider', { name: 'Direction' });
     expect(screen.getByText('All')).toBeTruthy();
     expect(direction.hasAttribute('data-disabled')).toBe(true);
-    act(() => beam.focus());
+    act(() => { beam.focus(); });
     fireEvent.keyDown(beam, { key: 'ArrowLeft' });
     expect(light().emission.angle).toBe(355);
     expect(screen.getByText('355°')).toBeTruthy();
     expect(direction.hasAttribute('data-disabled')).toBe(false);
-    act(() => direction.focus());
+    act(() => { direction.focus(); });
     fireEvent.keyDown(direction, { key: 'ArrowRight' });
     expect(light().rotation).toBe(5);
     expect(steps()).toBe(2);
@@ -108,7 +108,7 @@ describe('LightPopover: darkness and beams', () => {
 
   it('shows the beam of a light that has one, as the map changes it', () => {
     const { store, torch, light } = renderPopover();
-    act(() => store.getState().updateLight(torch, { rotation: 135, emission: { ...light().emission, angle: 53 } }));
+    act(() => { store.getState().updateLight(torch, { rotation: 135, emission: { ...light().emission, angle: 53 } }); });
     expect(screen.getByRole('slider', { name: 'Beam' }).getAttribute('aria-valuenow')).toBe('53');
     expect(screen.getByRole('slider', { name: 'Direction' }).getAttribute('aria-valuenow')).toBe('135');
     expect(screen.getByText('53°')).toBeTruthy();

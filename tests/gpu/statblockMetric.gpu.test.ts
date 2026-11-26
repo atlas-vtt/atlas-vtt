@@ -73,7 +73,7 @@ describe('a Metric in the real stylesheet', () => {
     const cells = numbers('strip000');
     const rects = cells.map((cell) => cell.getBoundingClientRect());
     expect(getComputedStyle(box('strip000')).borderTopWidth).toBe('1px');
-    expect(getComputedStyle(box('strip000')).borderTopLeftRadius).toBe('8px');
+    expect(getComputedStyle(box('strip000')).borderTopLeftRadius).toBe('10px');
     expect(rects[0]!.left).toBeCloseTo(outer.left + 1 + 8, 0);
     expect(rects[3]!.right).toBeCloseTo(outer.right - 1 - 8, 0);
     for (let index = 1; index < rects.length; index++) {

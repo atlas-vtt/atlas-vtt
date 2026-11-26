@@ -1,0 +1,13 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// The fog tool's bars (`FogToolBar`): what the shared bars (`tool-options-bar.scss`) do not have
+// ═══════════════════════════════════════════════════════════════════════════
+// Imported inside the `.atlas-vtt-plugin` scope of styles/main.scss.
+
+// The brush's size as the icon of the button that opens its slider: a dot that grows with the
+// brush, in the button's own ink. Its width and height are set by the bar.
+.atlas-fog-size-dot {
+  display: block;
+  flex: none;
+  border-radius: 50%;
+  background: currentColor;
+}

@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import { RenderTexture } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
-import { LIGHT_REACH, REFLECTION, sealTolerance, wallCore, wallRadius, worldTexel } from '../../../../lighting/lightingConstants';
+import { BASE_TEXEL, LIGHT_REACH, REFLECTION, sealTolerance, wallCore, wallRadius, worldTexel } from '../../../../lighting/lightingConstants';
 import { DEFAULT_LIGHTING_QUALITY, LIGHTING_QUALITY, type LightingQuality } from '../../../../lighting/lightingQuality';
 import { sealWalls } from '../../../../lighting/sealWalls';
 import { distToSeg, segOf } from '../../../../lighting/segments';
@@ -116,7 +116,9 @@ async function fuzz({ seed, trials, bounds = { width: 2048, height: 2048 }, qual
       const nearWall = (p: P): boolean => walls.some((wall) => distToSeg(p[0], p[1], segOf(wall)) < 2 * wallRadius(texel) + wallCore(texel));
       // How far the blur carries light past a shadow's edge, at most.
       const blur = (REFLECTION_BLUR_TEXELS + 2) * texel;
-      for (let t = 0; t < map.length; t += 4 * 3) {
+      // Coarse texels hold few the rule counts lit by reflection alone off the walls: each is looked at.
+      const stride = texel > BASE_TEXEL ? 1 : 3;
+      for (let t = 0; t < map.length; t += 4 * stride) {
         const p: P = [(((t / 4) % width) + 0.5) * texel, (Math.floor(t / 4 / width) + 0.5) * texel];
         if (!insidePolygon(p, outline) || distToOutline(p, outline) < 2 * wallRadius(texel) || nearWall(p)) continue;
         const point = { x: p[0], y: p[1] };
@@ -142,18 +144,17 @@ async function fuzz({ seed, trials, bounds = { width: 2048, height: 2048 }, qual
 /**
  * `stray` is the share of texels past every reach the picture may light: a flame's own
  * penumbra reaches round a wall's end past what the rule traces from its middle (0.3 % at the
- * default). The polygon picture (`saver`) draws no reflected light at all: what the rule counts
- * lit by reflection alone is dark there (`missing` is all of it), which is darker, never lighter.
+ * default). Both pictures, the polygon one (`saver`) too, light what the rule counts lit by the
+ * reflection alone: the rule is the same at every quality.
  */
-function holds(report: Report, trials: number, stray = 0.01, reflected = true): void {
+function holds(report: Report, trials: number, counted = trials * 20): void {
   expect(report.rooms).toBeGreaterThan(trials * 0.6);
   expect(report.reflecting).toBeGreaterThan(trials * 0.5);
   expect(report.checked).toBeGreaterThan(trials * 1000);
-  expect(report.counted).toBeGreaterThan(trials * 20);
+  expect(report.counted).toBeGreaterThan(counted);
   expect(report.leaks).toBe(0);
-  if (reflected) expect(report.missing / report.counted).toBeLessThan(0.01);
-  else expect(report.missing).toBe(report.counted);
-  expect(report.stray / Math.max(1, report.beyond)).toBeLessThan(stray);
+  expect(report.missing / report.counted).toBeLessThan(0.01);
+  expect(report.stray / Math.max(1, report.beyond)).toBeLessThan(0.01);
 }
 
 describe('leak fuzz: reflected light', () => {
@@ -168,6 +169,7 @@ describe('leak fuzz: reflected light', () => {
     const quality = LIGHTING_QUALITY[name];
     const report = await fuzz({ seed: 5, trials: SIDE_TRIALS, bounds, quality });
     console.info(`leak fuzz (reflected light, ${name}): ${JSON.stringify({ trials: SIDE_TRIALS, ...report })}`);
-    holds(report, SIDE_TRIALS, 0.01, quality.picture !== 'polygons');
+    // A coarse texel leaves most of a small room's reflected floor within the band along its walls, which is not looked at.
+    holds(report, SIDE_TRIALS, SIDE_TRIALS);
   });
 });

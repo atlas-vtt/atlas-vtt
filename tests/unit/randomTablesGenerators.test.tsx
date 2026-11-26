@@ -98,7 +98,7 @@ describe('a generator in the Random tables window', () => {
     expect(within(card).getByText('+901 Mace')).toBeTruthy();
 
     // The history keeps what the card shows; it offers no rerolls of its own.
-    act(() => store.getState().updateLootRoller({ pane: 'history' }));
+    act(() => { store.getState().updateLootRoller({ pane: 'history' }); });
     await waitFor(() => expect(document.querySelectorAll('.atlas-loot-history__roll')).toHaveLength(1));
     expect(screen.queryByRole('button', { name: 'Reroll unlocked' })).toBeNull();
     expect(document.querySelector('.atlas-loot-history__count')?.textContent).toBe('1 result');

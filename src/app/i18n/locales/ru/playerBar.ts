@@ -1,0 +1,25 @@
+import type { Translation } from '../../types';
+
+export const playerBar: Translation = {
+  'playerBar.bar': 'Окно игроков',
+  'playerBar.fullScreen': 'Во весь экран на ТВ',
+  'playerBar.fullScreenHint': 'Разворачивает окно игроков на весь второй экран',
+  'playerBar.leaveFullScreen': 'Выйти из полноэкранного режима',
+  'playerBar.connectScreen': 'Подключите второй экран',
+  'playerBar.curtainDown': 'Скрыть карту',
+  'playerBar.curtainUp': 'Открыть карту',
+  'playerBar.toggleCurtain': 'Скрыть или открыть карту в окне игроков',
+  'playerBar.playersSee': 'Настройки стола',
+  'playerBar.close': 'Закрыть окно игроков',
+  'playerBar.freeze': 'Приостановить вид игроков',
+  'playerBar.unfreeze': 'Продолжить: вид игроков снова следует за вами',
+  'playerBar.freezeTrueScale': 'С включённым TrueScale закрепить игроков на кадре на вашей карте',
+  'playerBar.takeBack': 'Забрать раздаточный материал',
+  'playerBar.openHint': 'Показывать представленную сцену и на экране за столом',
+  'playerBar.freezeOnline': 'Онлайн-игроки не могут двигать фишки во время паузы',
+  'playerBar.playMode': 'Режим игры',
+  'playerBar.modeTable': 'Управление фишками',
+  'playerBar.modeRemote': 'Пульт',
+  'playerBar.modeTableHint': 'Каждый игрок двигает свои фишки на своей карте',
+  'playerBar.modeRemoteHint': 'Телефоны служат пультами для общего экрана',
+};

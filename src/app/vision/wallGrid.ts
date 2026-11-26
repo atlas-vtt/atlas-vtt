@@ -67,7 +67,7 @@ export interface WallGrid {
 export function forCellRows(grid: Pick<WallGrid, 'minX' | 'minY' | 'cell' | 'cols' | 'rows'>, x1: number, y1: number, x2: number, y2: number, margin: number, each: (row: number, first: number, last: number) => void): void {
   const { minX, minY, cell, cols, rows } = grid;
   const lo = Math.min(y1, y2), hi = Math.max(y1, y2);
-  const firstRow = clamp(Math.floor((lo - margin - minY) / cell), rows), lastRow = clamp(Math.floor((hi + margin - minY) / cell), rows);
+  const firstRow = clampIndex(Math.floor((lo - margin - minY) / cell), rows), lastRow = clampIndex(Math.floor((hi + margin - minY) / cell), rows);
   for (let r = firstRow; r <= lastRow; r++) {
     const top = minY + r * cell;
     const ya = Math.min(hi, Math.max(lo, top - margin)), yb = Math.max(lo, Math.min(hi, top + cell + margin));
@@ -79,11 +79,11 @@ export function forCellRows(grid: Pick<WallGrid, 'minX' | 'minY' | 'cell' | 'col
       xa = x1 + (x2 - x1) * Math.min(1, Math.max(0, (ya - y1) / (y2 - y1)));
       xb = x1 + (x2 - x1) * Math.min(1, Math.max(0, (yb - y1) / (y2 - y1)));
     }
-    each(r, clamp(Math.floor((Math.min(xa, xb) - margin - minX) / cell), cols), clamp(Math.floor((Math.max(xa, xb) + margin - minX) / cell), cols));
+    each(r, clampIndex(Math.floor((Math.min(xa, xb) - margin - minX) / cell), cols), clampIndex(Math.floor((Math.max(xa, xb) + margin - minX) / cell), cols));
   }
 }
 
-function clamp(index: number, size: number): number {
+function clampIndex(index: number, size: number): number {
   return index < 0 ? 0 : index >= size ? size - 1 : index;
 }
 
@@ -188,6 +188,23 @@ function placeable(walls: readonly WallSegment[]): boolean {
 
 const grids: WallGrid[] = [];
 
+/** The wall arrays checked once while `withWallsHeld` runs, or null outside it. */
+let held: Set<readonly WallSegment[]> | null = null;
+
+/**
+ * Runs `work`, during which every wall array is checked against its grid once: for code that
+ * sweeps the same walls many times and writes no wall meanwhile (a scene's lights and sight).
+ */
+export function withWallsHeld<T>(work: () => T): T {
+  if (held) return work();
+  held = new Set();
+  try {
+    return work();
+  } finally {
+    held = null;
+  }
+}
+
 /**
  * The grid over `walls`, kept for the arrays used last: built again whenever a wall of the array
  * was replaced or moved since, so it never answers for walls that are no longer there. Null for
@@ -197,13 +214,15 @@ export function wallGridOf(walls: readonly WallSegment[]): WallGrid | null {
   const at = grids.findIndex((grid) => grid.walls === walls);
   if (at >= 0) {
     const [grid] = grids.splice(at, 1);
-    if (unchanged(grid!, walls)) {
+    if (held?.has(walls) || unchanged(grid!, walls)) {
+      held?.add(walls);
       grids.unshift(grid!);
       return grid!;
     }
   }
   if (!placeable(walls)) return null;
   const grid = buildWallGrid(walls);
+  held?.add(walls);
   grids.unshift(grid);
   grids.length = Math.min(grids.length, KEPT);
   return grid;

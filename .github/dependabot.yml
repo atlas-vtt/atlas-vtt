@@ -19,6 +19,8 @@ updates:
     groups:
       minor-and-patch:
         update-types: [minor, patch]
+        # Its new rules fail the lint until the code follows them: a pull request of its own, not the whole group.
+        exclude-patterns: [eslint-plugin-obsidianmd]
     ignore:
       # TypeScript 7 is the native compiler: typescript-eslint (the lint and
       # Obsidian's directory review) supports TypeScript below 6.1 only.
@@ -29,3 +31,7 @@ updates:
       # new use. Tailwind 3's postcss-selector-parser is overridden in package.json.
       - dependency-name: tailwindcss
         versions: [">=4"]
+      # The obsidian package names exact versions of these as peers (its API types are built on them):
+      # they move with obsidian, by hand.
+      - dependency-name: "@codemirror/state"
+      - dependency-name: "@codemirror/view"

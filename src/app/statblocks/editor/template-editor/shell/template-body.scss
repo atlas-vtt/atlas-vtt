@@ -171,7 +171,6 @@
   // Nested: it outweighs the button's own padding and height (`.btn`).
   .atlas-te-note__empty .atlas-te-note__from-note {
     @include atlas-ghost-button;
-    @include atlas-corner-shape;
     pointer-events: auto;
     height: auto;
     gap: $spacing-xs;

@@ -40,7 +40,7 @@ export class OggOpusWriter {
   private preSkip: number;
   private head: Uint8Array;
   private readonly pieces: Blob[] = [];
-  private pending: Uint8Array[] = [];
+  private pending: Uint8Array<ArrayBuffer>[] = [];
   private pendingBytes = 0;
   private written = 0;
   private sequence = 2;
@@ -116,7 +116,7 @@ export class OggOpusWriter {
     this.page = newPage(granule);
   }
 
-  private headerPages(frames: number): Uint8Array[] {
+  private headerPages(frames: number): Uint8Array<ArrayBuffer>[] {
     const comments = frames > WHOLE_DECODE_FRAMES ? [`${SEEK_COMMENT}=${encodeSeekTable(fittingSeekTable(this.seek))}`] : [];
     return oggOpusHeader(this.head, comments, STREAM_SERIAL);
   }
@@ -130,7 +130,7 @@ function fittingSeekTable(entries: readonly SeekEntry[]): readonly SeekEntry[] {
 }
 
 /** The two header pages, each holding one packet. */
-function oggOpusHeader(head: Uint8Array, comments: readonly string[], serial: number): Uint8Array[] {
+function oggOpusHeader(head: Uint8Array, comments: readonly string[], serial: number): Uint8Array<ArrayBuffer>[] {
   const tags = writeOpusTags(comments);
   return [
     writePage({ flags: FLAG_FIRST, granule: 0, serial, sequence: 0, segments: lacingOf(head.length), body: [head] }),

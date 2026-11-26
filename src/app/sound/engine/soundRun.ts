@@ -196,6 +196,18 @@ export class BufferRun extends RunBase {
     this.source?.stop(this.secondsOf(ctxFrame));
   }
 
+  /** Loop points the GM moves while it plays reach the source that already goes round, as later windows of a long sound read them. */
+  override follow(span: TimelineSpan, soundGain: number): void {
+    super.follow(span, soundGain);
+    const { source } = this;
+    const loop = span.loop;
+    if (!source?.loop || !loop) return;
+    const start = loop.startFrame / SOUND_RATE;
+    const end = loop.endFrame / SOUND_RATE;
+    if (source.loopStart !== start) source.loopStart = start;
+    if (source.loopEnd !== end) source.loopEnd = end;
+  }
+
   override dispose(): void {
     if (this.retained) this.deps.sources.release(this.span.sound.key);
     this.retained = false;

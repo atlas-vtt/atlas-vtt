@@ -8,24 +8,25 @@
 @use '../../../../../styles/mixins' as *;
 
 // Controls of different kinds, spaced like the menu's padding rather than like its rows.
-.atlas-dropdown-section.atlas-scene-lighting,
-.atlas-dropdown-section.atlas-explored-brush {
+.atlas-dropdown-section.atlas-scene-lighting {
   gap: $spacing-s;
 }
 
+// The slider and its colour share the text edge: the row stands on it, the slider inside it
+// does not add its own.
 .atlas-scene-lighting__ambient {
   display: flex;
   align-items: flex-end;
   gap: $spacing-s;
+  padding-inline: var(--atlas-menu-text-inset, 0px);
 
   > :first-child {
     flex: 1;
     min-width: 0;
   }
 
-  // The swatch ends the row, so the value beside it needs no inset of its own.
-  .atlas-dropdown-slider-row__value {
-    padding-inline-end: 0;
+  .atlas-dropdown-slider-row {
+    padding-inline: 0;
   }
 
   // Level with the slider's track: the slider row keeps 0.75rem below it.

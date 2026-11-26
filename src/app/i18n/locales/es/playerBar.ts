@@ -1,0 +1,25 @@
+import type { Translation } from '../../types';
+
+export const playerBar: Translation = {
+  'playerBar.bar': 'Ventana de jugadores',
+  'playerBar.fullScreen': 'Pantalla completa en la TV',
+  'playerBar.fullScreenHint': 'Llena tu segunda pantalla con la ventana de jugadores',
+  'playerBar.leaveFullScreen': 'Salir de pantalla completa',
+  'playerBar.connectScreen': 'Conectar una segunda pantalla',
+  'playerBar.curtainDown': 'Ocultar el mapa',
+  'playerBar.curtainUp': 'Revelar el mapa',
+  'playerBar.toggleCurtain': 'Ocultar o revelar el mapa en la ventana de jugadores',
+  'playerBar.playersSee': 'Ajustes de la mesa',
+  'playerBar.close': 'Cerrar ventana de jugadores',
+  'playerBar.freeze': 'Pausar la vista de jugadores',
+  'playerBar.unfreeze': 'Reanudar: la vista de jugadores vuelve a seguirte',
+  'playerBar.freezeTrueScale': 'Con TrueScale activado, fija a los jugadores en el encuadre de tu mapa',
+  'playerBar.takeBack': 'Retirar el documento',
+  'playerBar.openHint': 'Mostrar también la escena presentada en una pantalla de la mesa',
+  'playerBar.freezeOnline': 'Los jugadores en línea no pueden mover sus fichas mientras está en pausa',
+  'playerBar.playMode': 'Modo de juego',
+  'playerBar.modeTable': 'Control de fichas',
+  'playerBar.modeRemote': 'Mando a distancia',
+  'playerBar.modeTableHint': 'Cada jugador mueve sus fichas en su propio mapa',
+  'playerBar.modeRemoteHint': 'Los móviles son mandos para la pantalla compartida',
+};

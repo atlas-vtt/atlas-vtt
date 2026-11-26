@@ -69,12 +69,16 @@
 }
 
 .atlas-dm-notes-content {
-  @include atlas-scrollbar;
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+}
+
+// The note rendered, where the workspace gave it no leaf of its own (`NoteContent`)
+.atlas-dm-note-rendered {
+  padding: $spacing-m;
 }
 
 // ── Picker ──────────────────────────────────────────────────────────────────
@@ -125,7 +129,6 @@
 
 // Rows never animate in: the list re-renders on every keystroke.
 .atlas-linked-note-list {
-  @include atlas-scrollbar;
   @include atlas-flex-col(2px);
   flex: 1;
   min-height: 0;
@@ -140,7 +143,7 @@
   padding: $spacing-s;
   background: transparent;
   border: none;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   box-shadow: none;
   appearance: none;
   flex-shrink: 0;

@@ -25,13 +25,13 @@ $composer-control: 28px;
     color: var(--text-error);
   }
 
-  // Its lower corners face the panel's and run concentric with them.
+  // A field: a control's corner. It stands $spacing-s inside the panel, deeper than a surface's
+  // corner controls, so it is not concentric with the panel; Send is with it.
   .atlas-online-log__composer-box {
     display: flex;
     flex-direction: column;
     border: $border-width-s solid var(--background-modifier-border);
     border-radius: $radius-m;
-    @include atlas-panel-inset-radius($spacing-s, bottom-left, bottom-right);
     background: var(--background-modifier-form-field);
     transition: border-color $transition-fast $transition-ease, box-shadow $transition-fast $transition-ease;
 
@@ -68,7 +68,8 @@ $composer-control: 28px;
     place-items: center;
     width: $button-height-s;
     height: $button-height-s;
-    border-radius: $radius-s;
+    // At the strip's end, $spacing-xs inside it: concentric with the box's corner it stands in.
+    border-radius: $control-inset-radius;
     color: var(--text-muted);
     transition: background-color $transition-fast $transition-ease, color $transition-fast $transition-ease;
     @include log-button-states;
@@ -90,11 +91,13 @@ $composer-control: 28px;
     }
   }
 
+  // Send stands $surface-inset inside the box (this padding and the box's border), in its corner,
+  // concentric with it; the text keeps its own room inside the field.
   .atlas-online-log__field {
     display: flex;
     align-items: flex-end;
-    gap: $spacing-s;
-    padding: $spacing-s;
+    gap: $surface-inset;
+    padding: $surface-inset - $border-width-s;
   }
 
   // The field itself has no frame: the box around it has. One line tall, it stands level with
@@ -112,7 +115,7 @@ $composer-control: 28px;
       min-height: $composer-control;
       max-height: calc(5 * 1.5em + #{$spacing-s});
       margin: 0;
-      padding: $spacing-xs 0;
+      padding: $spacing-xs;
       border: none;
       border-radius: 0;
       background: transparent;
@@ -139,7 +142,7 @@ $composer-control: 28px;
     #{$log-coarse} & {
       min-height: $log-target;
       max-height: calc(5 * 1.5em + 2 * 10px);
-      padding: 10px 0;
+      padding: 10px $spacing-xs;
       font-size: 16px;
     }
   }
@@ -159,7 +162,7 @@ $composer-control: 28px;
     place-items: center;
     width: $composer-control;
     height: $composer-control;
-    border-radius: $radius-m;
+    border-radius: $control-inset-radius;
     color: $log-on-accent;
     transition: background-color $transition-fast $transition-ease, color $transition-fast $transition-ease, transform $transition-press $transition-ease-out;
     @include log-button-states(var(--interactive-accent));

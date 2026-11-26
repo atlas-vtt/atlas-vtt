@@ -2,6 +2,7 @@ import type { Renderer, Texture } from 'pixi.js';
 import type { StoreApi } from 'zustand/vanilla';
 import type { HistorySnapshot } from '../../stores/history';
 import type { ViewState } from '../../types/viewState';
+import type { ForgottenFloors } from './ForgottenFloors';
 
 /** What the memory reads of its view's state and the two actions it calls; the tracked records let it trim the undo history (`forgetExploredEdits`). */
 export type ExploredMemoryState = HistorySnapshot & Pick<ViewState, 'mapPath' | 'isMapLoading' | 'exploredEdits'> & {
@@ -39,4 +40,6 @@ export interface ExploredMemoryDeps {
    * an area a dragged token saw for less than this may go unremembered.
    */
   stampEveryMs?: number;
+  /** The scene's other floors, whose memories a Forget takes along, with its undo step (the view's memory only). */
+  floors?: ForgottenFloors;
 }

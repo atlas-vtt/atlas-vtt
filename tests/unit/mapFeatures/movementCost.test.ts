@@ -39,6 +39,19 @@ describe('the cost of a move on a square grid', () => {
     expect(movementCostInCells(SQUARE, diagonal, rules('euclidean', cells('1,1', '2,2', '3,3')))).toBeCloseTo(2 * 3 * Math.SQRT2);
   });
 
+  it('prices the Manhattan rule step by step: a diagonal into difficult terrain 2 more, a straight step 1 more', () => {
+    const diagonal = [cell(0, 0), cell(3, 3)];
+    expect(movementCostInCells(SQUARE, diagonal, rules('manhattan', null))).toBe(6);
+    expect(movementCostInCells(SQUARE, diagonal, rules('manhattan', cells('2,2')))).toBe(8);
+    expect(movementCostInCells(SQUARE, [cell(0, 0), cell(4, 0)], rules('manhattan', cells('2,0')))).toBe(5);
+    // Two right, one down: one diagonal (into 1,1) and one straight step (into 2,1)
+    const bent = [cell(0, 0), cell(2, 1)];
+    expect(movementCostInCells(SQUARE, bent, rules('manhattan', cells('1,1')))).toBe(3 + 2);
+    expect(movementCostInCells(SQUARE, bent, rules('manhattan', cells('2,1')))).toBe(3 + 1);
+    // Wholly in difficult terrain every step costs double
+    expect(movementCostInCells(SQUARE, bent, rules('manhattan', () => true))).toBe(6);
+  });
+
   it('walks a line with as many diagonal steps as the distance counts', () => {
     // Two right, one down: one diagonal and one straight step, the diagonal half-way
     const path = [cell(0, 0), cell(2, 1)];

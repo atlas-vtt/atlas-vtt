@@ -1,4 +1,5 @@
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../utils/typedEmitter';
+import { visibleViewport } from '../host/visibleViewport';
 import type { NotePin } from '../types';
 import type { ViewAtlasState } from '../storeFactory';
 import { App, type WorkspaceLeaf } from 'obsidian';
@@ -25,6 +26,10 @@ import { linkedEncounterFolder } from '../encounters/encounterFolders';
 import { rollEncounterFolder } from '../encounters/encounterFolderRoll';
 import { atlasViewOfStore } from '../plugin/atlasLeaves';
 import { portalHost } from '../host/portalHost';
+import { isTextEntryTarget } from '../keyboard/textEntry';
+import { DEFAULT_MAP_HOTKEYS, formatHotkey } from '../keyboard/mapHotkeys';
+import { SettingsService } from '../services/SettingsService';
+import { OPEN_PREVIEW_EVENT } from '../services/previewByHand';
 
 interface NotePinDropdownResult {
   accepted: boolean;
@@ -42,9 +47,12 @@ export class NotePinTool {
   private obsidianApp: App;
   private isActive = false;
   private pinDropdown: HTMLElement | null = null;
+  /** Tells whoever opened the picker how it closed. */
+  private settlePick: ((result: NotePinDropdownResult) => void) | null = null;
   private iconPalette: PinIconPalette | null = null;
   private store: StoreApi<ViewAtlasState>;
   private currentPreviewIcon: string = 'pin';
+  /** Whether new pins show their name: the last choice, so a map of place names needs it once. */
   private storeUnsubscribe: (() => void) | null = null;
   private pinActionHandler: ((e: CustomEvent<PinActionEventDetail>) => void) | null = null;
   private outsideClickHandler: ((e: MouseEvent) => void) | null = null;
@@ -92,14 +100,22 @@ export class NotePinTool {
         return;
       }
 
-      // Shift links the note to the clicked hex instead of pinning it to the point
-      const hexLayout = e.shiftKey ? this.preview.hexLayout() : null;
+      // Pins are the GM's: the players' view shows none, so one placed there could not be seen
+      if (!this.store.getState().isGMView) {
+        const hotkeys = SettingsService.forApp(this.app)?.getHotkeys() ?? DEFAULT_MAP_HOTKEYS;
+        showNotice(t('pin.needsGmView', { key: formatHotkey(hotkeys.gmView) }));
+        return;
+      }
+
+      // With the tool's cell switch on (Shift turns it around) the note is linked to the clicked hex instead of pinned to the point
+      const toCell = this.preview.toCell(e.shiftKey);
+      const hexLayout = toCell ? this.preview.hexLayout() : null;
       if (hexLayout) {
         runInBackground(this.linkHexAt(e.worldX, e.worldY, hexLayout), 'Linking a note to a hex', 'Could not link the note to the hex');
         return;
       }
-      // On a square grid Shift puts a plain pin in the centre of the square: square grids link no cells
-      const centre = e.shiftKey ? this.preview.cellCentre({ x: e.worldX, y: e.worldY }) : null;
+      // On a square grid the switch puts a plain pin in the centre of the square: square grids link no cells
+      const centre = toCell ? this.preview.cellCentre({ x: e.worldX, y: e.worldY }) : null;
       if (centre) this.preview.showCell(centre);
       runInBackground(this.placePinAt(centre?.x ?? e.worldX, centre?.y ?? e.worldY), 'Placing a note pin', 'Could not place the note pin');
     });
@@ -111,9 +127,13 @@ export class NotePinTool {
       if (source !== this.store) return;
 
       if (action === 'open') {
-        // Explicitly tell NotePreviewUIManager to hide any preview for this pin's notePath
+        // The note's hover preview makes way for the note itself; NotePreviewUIManager keeps a pinned one
         this.eventBus.emit('close-active-preview', pin.notePath);
         this.openLinkedNote(pin);
+      } else if (action === 'preview') {
+        // The preview a held Mod opens over the pin, from its menu
+        const at = e.detail.at ?? { x: activeWindow.innerWidth / 2, y: activeWindow.innerHeight / 2 };
+        this.eventBus.emit(OPEN_PREVIEW_EVENT, { pin, screenX: at.x, screenY: at.y });
       } else if (action === 'edit') {
         // Show the note selection dropdown at the pin's position
         runInBackground(this.showNotePinDropdownForExistingPin(pin), 'Opening the note pin editor');
@@ -162,6 +182,7 @@ export class NotePinTool {
     return new Promise<NotePinDropdownResult>((resolve) => {
       try {
         this.closeDropdown();
+        this.settlePick = resolve;
 
       // New pins default to the last used icon so a numbered run needs no re-selection
       let selectedIcon = resolvePinIcon(editedPin?.icon || this.currentPreviewIcon);
@@ -176,8 +197,7 @@ export class NotePinTool {
         selected: selectedIcon,
         onSelect: (icon) => {
           if (editedPin) {
-            this.closeDropdown();
-            resolve({ accepted: true, notePath: editedPin.notePath, icon });
+            this.closeDropdown({ accepted: true, notePath: editedPin.notePath, icon });
             return;
           }
           selectedIcon = icon;
@@ -193,13 +213,20 @@ export class NotePinTool {
         mapPath,
         createEntries: this.createEntries(mapPath),
         onPick: (notePath, sceneLevel) => {
-          this.closeDropdown();
-          resolve({ accepted: true, notePath, icon: selectedIcon, ...(sceneLevel && { sceneLevel }) });
+          this.closeDropdown({ accepted: true, notePath, icon: selectedIcon, ...(sceneLevel && { sceneLevel }) });
         },
-        onCancel: () => {
+        onCancel: () => this.closeDropdown(),
+      });
+
+      // Keys pressed on the picker's buttons are the picker's: Escape closes it, and a name typed there is meant for the search
+      dropdown.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          e.stopPropagation();
           this.closeDropdown();
-          resolve({ accepted: false });
-        },
+          return;
+        }
+        const typesCharacter = e.key.length === 1 && e.key !== ' ' && !e.ctrlKey && !e.metaKey && !e.altKey;
+        if (typesCharacter && !isTextEntryTarget(e.target)) noteSearch.focus();
       });
 
       // ── Position & mount ──
@@ -214,7 +241,8 @@ export class NotePinTool {
             const rect = dropdown.getBoundingClientRect();
             const gap = 12;
             const margin = 8;
-            const spaceRight = window.innerWidth - clientX;
+            const seen = visibleViewport(window);
+            const spaceRight = seen.right - clientX;
             const spaceLeft = clientX;
 
             // Open to whichever side has more room
@@ -226,13 +254,13 @@ export class NotePinTool {
             } else {
               // Fallback: whichever side has more space
               left = spaceRight > spaceLeft
-                ? Math.min(clientX + gap, window.innerWidth - rect.width - margin)
+                ? Math.min(clientX + gap, seen.right - rect.width - margin)
                 : Math.max(margin, clientX - rect.width - gap);
             }
 
             // Vertically center on click point, clamped to viewport
             let top = clientY - rect.height / 2;
-            top = Math.max(margin, Math.min(top, window.innerHeight - rect.height - margin));
+            top = Math.max(margin, Math.min(top, seen.bottom - rect.height - margin));
 
             dropdown.style.left = `${left}px`;
             dropdown.style.top = `${top}px`;
@@ -248,16 +276,13 @@ export class NotePinTool {
 
       // Outside click handler
       const handleOutsideClick = (e: MouseEvent): void => {
-        if (dropdown && !dropdown.contains(e.target as Node) && !noteSearch.isCreating()) {
-          this.closeDropdown();
-          resolve({ accepted: false });
-        }
+        if (dropdown && !dropdown.contains(e.target as Node) && !noteSearch.isCreating()) this.closeDropdown();
       };
       this.outsideClickHandler = handleOutsideClick;
       // The click that opened the dropdown must not close it. Closing cancels the wait, or the
       // listener would be added after the dropdown is gone and never removed.
       this.outsideClickTimer = window.setTimeout(() => {
-        document.addEventListener('mousedown', handleOutsideClick, true);
+        dropdown.doc.addEventListener('pointerdown', handleOutsideClick, true);
         this.outsideClickTimer = null;
       }, 100);
 
@@ -276,16 +301,20 @@ export class NotePinTool {
   }
 
   /**
-   * Closes the note pin dropdown if it's open
+   * Closes the note pin dropdown if it's open, and tells whoever opened it how it closed: with
+   * `result`, or as not accepted when a tool change, another picker or the view's end closed it.
    */
-  private closeDropdown(): void {
+  private closeDropdown(result: NotePinDropdownResult = { accepted: false }): void {
+    const settle = this.settlePick;
+    this.settlePick = null;
+    settle?.(result);
     if (this.pinDropdown) {
       if (this.outsideClickTimer !== null) {
         window.clearTimeout(this.outsideClickTimer);
         this.outsideClickTimer = null;
       }
       if (this.outsideClickHandler) {
-        document.removeEventListener('mousedown', this.outsideClickHandler, true);
+        this.pinDropdown.doc.removeEventListener('pointerdown', this.outsideClickHandler, true);
         this.outsideClickHandler = null;
       }
 

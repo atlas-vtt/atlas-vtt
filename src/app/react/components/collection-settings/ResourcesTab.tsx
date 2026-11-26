@@ -5,7 +5,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, MotionConfig, motion } from 'framer-motion';
 import { cn } from '../../../../utils/cn';
-import { t } from '../../../i18n';
+import { t, tPointer } from '../../../i18n';
 import fighterArt from '../../../assets/starter-tokens/fighter.webp?inline';
 import { TokenPortrait } from '../../../packages/components/shared/TokenPortrait';
 import { EASE_OUT_CONTROL_POINTS } from '../../../utils/motion';
@@ -69,8 +69,10 @@ export function ResourcesTab({ resources, onChange, fieldSuggestions }: Resource
     setSelected(slot);
   };
 
-  const change = (partial: Partial<ResourceDefinition>): void => {
-    onChange(withSockets(resources).map((resource) => (resource.slot === selected ? { ...resource, ...partial } : resource)));
+  /** Changes the selected resource: the fields given, or what `edit` makes of it (which may also remove fields). */
+  const change = (edit: Partial<ResourceDefinition> | ((resource: ResourceDefinition) => ResourceDefinition)): void => {
+    const edited = (resource: ResourceDefinition): ResourceDefinition => (typeof edit === 'function' ? edit(resource) : { ...resource, ...edit });
+    onChange(withSockets(resources).map((resource) => (resource.slot === selected ? edited(resource) : resource)));
   };
 
   const remove = (): void => {
@@ -118,8 +120,8 @@ export function ResourcesTab({ resources, onChange, fieldSuggestions }: Resource
           <span className="atlas-csm-token-art" aria-hidden="true"><TokenPortrait src={fighterArt} alt="" /></span>
           <span className="atlas-csm-token-nameplate" aria-hidden="true">{t('resource.tab.nameplate')}</span>
           <span className="atlas-csm-token-caption atlas-csm-token-caption--bars" aria-hidden="true">{t('resource.tab.alwaysShown')}</span>
-          <span className="atlas-csm-token-caption atlas-csm-token-caption--right" aria-hidden="true">{t('resource.tab.onHover')}</span>
-          <span className="atlas-csm-token-caption atlas-csm-token-caption--left" aria-hidden="true">{t('resource.tab.onHover')}</span>
+          <span className="atlas-csm-token-caption atlas-csm-token-caption--right" aria-hidden="true">{tPointer('resource.tab.onHover')}</span>
+          <span className="atlas-csm-token-caption atlas-csm-token-caption--left" aria-hidden="true">{tPointer('resource.tab.onHover')}</span>
           {SOCKETS.map((socket) => (
             <ResourceSocket
               key={socket.slot}

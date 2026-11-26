@@ -1,6 +1,6 @@
 import { BufferImageSource, Container, Graphics, Matrix, RenderTexture, Sprite, Texture, type WebGLRenderer } from 'pixi.js';
 import { afterEach, describe, expect, it } from 'vitest';
-import { levelStack, shownAt, stackGrid, VIEWED } from '../../../../levels/levelStack';
+import { levelStack, shownAt, stackGrid, VIEWED, type LevelStack } from '../../../../levels/levelStack';
 import type { LevelSurface } from '../../../../types/sceneLevelTypes';
 import { SEES_ALL, computeSight } from '../../../../vision/sight';
 import { LevelStackTexture } from '../../levels/LevelStackTexture';
@@ -34,14 +34,30 @@ function patternSnapshot(grid: SnapshotGrid): { texture: Texture; pixels: Uint8A
   return { texture: new Texture({ source }), pixels };
 }
 
-/** The snapshot texel that holds world point `w` (`snapshotTexel` in the composite), from the stack texel holding it. */
-function snapshotTexelAt(grid: SnapshotGrid, stackTexel: number, w: { x: number; y: number }): { x: number; y: number } {
-  const of = (value: number, origin: number): number => {
-    const cell = Math.floor(value / stackTexel);
-    const inside = Math.min(grid.sub - 1, Math.max(0, Math.floor(((value - cell * stackTexel) * grid.sub) / stackTexel)));
-    return (cell - origin) * grid.sub + inside;
-  };
-  return { x: of(w.x, grid.x), y: of(w.y, grid.y) };
+/**
+ * What the composite shows of the level below at world point `w` (`snapshotAt`): the four snapshot
+ * texels around `w` blended bilinearly, each only where its own stack texel shows that level.
+ */
+function expectedBelow(grid: SnapshotGrid, stack: LevelStack, pixels: Uint8Array, w: { x: number; y: number }): number[] {
+  const shown = shownAt(stack, w);
+  const p = { x: w.x / grid.texel - 0.5, y: w.y / grid.texel - 0.5 };
+  const base = { x: Math.floor(p.x), y: Math.floor(p.y) };
+  const f = { x: p.x - base.x, y: p.y - base.y };
+  const sum = [0, 0, 0];
+  let total = 0;
+  for (let j = 0; j < 2; j++) {
+    for (let i = 0; i < 2; i++) {
+      const g = { x: base.x + i, y: base.y + j };
+      if (shownAt(stack, { x: (g.x + 0.5) * grid.texel, y: (g.y + 0.5) * grid.texel }) !== shown) continue;
+      const weight = (i ? f.x : 1 - f.x) * (j ? f.y : 1 - f.y);
+      const tx = Math.min(grid.width - 1, Math.max(0, g.x - grid.x * grid.sub));
+      const ty = Math.min(grid.height - 1, Math.max(0, g.y - grid.y * grid.sub));
+      const e = (ty * grid.width + tx) * 4;
+      for (let c = 0; c < 3; c++) sum[c] = sum[c]! + pixels[e + c]! * weight;
+      total += weight;
+    }
+  }
+  return sum.map((v) => v / total);
 }
 
 /** Renders a white map, the eraser and the engine's layer through a camera at `scale`, offset (x, y). */
@@ -72,7 +88,7 @@ describe('the composite over openings', () => {
     while (cleanup.length) cleanup.pop()!();
   });
 
-  it.each([[1, MAP], [2, MAP], [1, 8192], [2, 8192]])('shows the snapshot below where the stack shows it, each pixel from the snapshot texel in its own stack texel, and the viewed level as before everywhere else (resolution %i, stack over %i px)', async (resolution, stackSide) => {
+  it.each([[1, MAP], [2, MAP], [1, 8192], [2, 8192]])('shows the snapshot below where the stack shows it, each pixel blended only from snapshot texels whose stack texels show it, and the viewed level as before everywhere else (resolution %i, stack over %i px)', async (resolution, stackSide) => {
     const renderer = await createTestRenderer(SIZE, resolution);
     cleanup.push(() => renderer.destroy());
     const watch = watchGl(renderer.gl);
@@ -115,9 +131,8 @@ describe('the composite over openings', () => {
           if (Math.abs(after[o]! - before[o]!) + Math.abs(after[o + 1]! - before[o + 1]!) + Math.abs(after[o + 2]! - before[o + 2]!) > 0) moved++;
         } else {
           holes++;
-          const t = snapshotTexelAt(grid, stack.grid.texel, world);
-          const e = (t.y * grid.width + t.x) * 4;
-          if ([0, 1, 2].some((c) => Math.abs(after[o + c]! - snapshot.pixels[e + c]!) > 1)) wrong++;
+          const expected = expectedBelow(grid, stack, snapshot.pixels, world);
+          if ([0, 1, 2].some((c) => Math.abs(after[o + c]! - expected[c]!) > 1.5)) wrong++;
         }
       }
     }

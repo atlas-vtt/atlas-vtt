@@ -5,10 +5,10 @@
 
 // The world map card of a campaign's page (WorldMapCard.tsx): the map large, pressed to open it
 // for its pins, its name with Change and Remove below it. Without a world map the whole card
-// offers to choose one. The card is a panel: its controls sit `$spacing-s` inside the border,
-// concentric with its corners.
+// offers to choose one. The card is a panel: its footer's controls sit `$surface-inset` inside the
+// border, concentric with its corners.
 
-$world-map-inset: $spacing-s;
+$world-map-inset: $surface-inset;
 
 .world-map-card {
   @include atlas-flex-col($spacing-s);
@@ -23,7 +23,7 @@ $world-map-inset: $spacing-s;
   align-items: stretch;
   background: var(--background-secondary);
   border: $border-width-s solid var(--background-modifier-border);
-  @include atlas-panel-radius($radius-2xl, $border-width-s);
+  @include atlas-panel-radius($surface-radius, $border-width-s);
 }
 
 .world-map-card__art {
@@ -37,7 +37,6 @@ $world-map-inset: $spacing-s;
 
   border-start-start-radius: var(--atlas-panel-inner-radius);
   border-start-end-radius: var(--atlas-panel-inner-radius);
-  @include atlas-corner-shape;
 }
 
 .world-map-card__emblem {
@@ -63,7 +62,6 @@ $world-map-inset: $spacing-s;
   display: block;
   border-start-start-radius: var(--atlas-panel-inner-radius);
   border-start-end-radius: var(--atlas-panel-inner-radius);
-  @include atlas-corner-shape;
   transition: transform $transition-press $transition-ease-out;
 
   // The accent ring over the picture: a hairline on hover, firm on press and on keyboard focus.
@@ -104,14 +102,13 @@ $world-map-inset: $spacing-s;
 // What a press does, on the picture: frosted at rest, the accent on hover.
 .world-map-card__action {
   position: absolute;
-  inset-inline-start: $world-map-inset;
-  inset-block-end: $world-map-inset;
+  inset-inline-start: $spacing-s;
+  inset-block-end: $spacing-s;
   @include atlas-flex-row($spacing-xs);
   height: var(--input-height);
   box-sizing: border-box;
   padding: 0 $spacing-m 0 $spacing-s;
   border-radius: $radius-m;
-  @include atlas-corner-shape;
   font-size: $font-ui-small;
   font-weight: $font-weight-medium;
   color: var(--text-normal);
@@ -195,7 +192,7 @@ $world-map-inset: $spacing-s;
 .world-map-card__choose {
   @include dashboard-button-reset;
   @include dashboard-card-surface;
-  @include atlas-panel-radius($radius-2xl, $border-width-s);
+  @include atlas-panel-radius($surface-radius, $border-width-s);
   overflow: hidden;
   width: 100%;
 

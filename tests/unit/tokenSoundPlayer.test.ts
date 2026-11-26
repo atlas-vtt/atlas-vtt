@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { App } from 'obsidian';
 import { TokenSoundPlayer } from '../../src/app/audio/TokenSoundPlayer';
+import { resetAudioUnlock, watchForGesture } from '../../src/app/sound/engine/audioUnlock';
 import { followOutputDevice, forgetOutputFollower } from '../../src/app/sound/engine/outputDevice';
 import { readAudioSecondsAt } from '../../src/app/soundLibrary/audioDuration';
 import { FakeTokenSoundContext } from '../helpers/fakeTokenSoundContext';
@@ -277,11 +278,15 @@ describe('TokenSoundPlayer', () => {
     expect(context().decodeCalls).toBe(3);
   });
 
-  it('wakes an audio context the browser started suspended', async () => {
+  it('wakes an audio context the browser started suspended, with the press that plays', async () => {
     FakeTokenSoundContext.initialState = 'suspended';
     const { player, context } = setup();
+    const unwatch = watchForGesture(document);
+    document.dispatchEvent(new Event('pointerdown'));
 
     await player.play({ path: 'Sounds/roar.mp3', volume: 1 });
+    unwatch();
+    resetAudioUnlock();
 
     expect(context().state).toBe('running');
     expect(context().playing()).toHaveLength(1);

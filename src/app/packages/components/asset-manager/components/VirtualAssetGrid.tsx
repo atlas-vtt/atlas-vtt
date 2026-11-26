@@ -1,10 +1,12 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { startTransition, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { AnimatePresence, motion } from 'framer-motion';
-import type { AnyAsset } from '../types';
+import { useReducedMotion } from 'framer-motion';
+import type { AnyAsset, SelectionEvent } from '../types';
 import { useGridMetrics } from './useGridMetrics';
-import { cellTransform, cellVariants, enterTransition, hiddenCell, moveTransition } from './gridMotion';
+import { CELL_CLASS, GridCells, type CardSlot, type PlacedAsset } from './GridCells';
 import { cardMask, measureCard, sameCardLayout, unmountedRegions, type CardLayout } from './gridSkeleton';
+import { useGridKeyboard } from '../hooks/useGridKeyboard';
+import type { GridReveal } from '../hooks/useRevealMoved';
 
 /** Name row, paddings and inner gap below the square artwork, until a card has been measured. */
 const CARD_EXTRA_HEIGHT = 44;
@@ -14,8 +16,29 @@ const CARD_EXTRA_HEIGHT = 44;
  * its first frame instead of shifting them once a card is measured.
  */
 const cardExtraHeights = new Map<AnyAsset['type'], number>();
+/** The card layout last measured per asset type, so a grid's placeholders show before its own cards are measured. */
+const cardLayouts = new Map<AnyAsset['type'], CardLayout>();
 const OVERSCAN_ROWS = 2;
-const CELL_CLASS = 'atlas-asset-grid-cell';
+
+/** How far a grid has mounted its cards: none, the rows in view, then the rows around them as well. */
+type MountStage = 'frame' | 'inView' | 'all';
+const NEXT_STAGE: Record<MountStage, MountStage> = { frame: 'inView', inView: 'all', all: 'all' };
+
+/**
+ * A grid mounts in steps, each in a transition of its own after the one before has been committed, which React
+ * renders in slices between frames: first without cards (it measures itself and its scroller, which renders it again
+ * within the same commit), then the cards in view, then the rows around them. Mounted at once, the cards and that
+ * measuring made the window's open hold one frame of 30 to 40 ms.
+ */
+function useMountStage(): MountStage {
+  const [stage, setStage] = useState<MountStage>('frame');
+  useEffect(() => {
+    if (stage !== 'all') startTransition(() => setStage(NEXT_STAGE[stage]));
+  }, [stage]);
+  return stage;
+}
+
+export type { CardSlot } from './GridCells';
 
 export interface VirtualAssetGridProps {
   assets: AnyAsset[];
@@ -25,10 +48,16 @@ export interface VirtualAssetGridProps {
    * only after this component's layout effects have run.
    */
   scrollElement: HTMLElement | null;
-  renderCard: (asset: AnyAsset) => React.ReactNode;
+  renderCard: (asset: AnyAsset, slot: CardSlot) => React.ReactNode;
   onBackgroundClick: (event: React.MouseEvent) => void;
+  /** The listbox's name for assistive tech: what the cards are (the tab's name). */
+  label: string;
+  /** Selects as a click with these keys would (Shift+arrows). */
+  onSelect: (assetId: string, event?: SelectionEvent) => void;
   /** Animates the first cards in, for a grid that mounts into content already on screen. */
   appear?: boolean;
+  /** A card to bring into view and focus once (`useGridKeyboard`). */
+  reveal?: GridReveal | null | undefined;
 }
 
 /**
@@ -42,16 +71,23 @@ export interface VirtualAssetGridProps {
  *
  * Scrolling is drawn before the grid renders again, so the rows around the
  * mounted ones show placeholders: one masked element per stretch, tiled with a
- * card's shape, which costs nothing while it scrolls.
+ * card's shape, which costs nothing while it scrolls. The rows that come into
+ * reach mount in a deferred render (`useDeferredValue`), which React does in
+ * slices between frames and drops for a newer one while the scroll goes on;
+ * rendered in the scroll event (the virtualizer's `flushSync`), each new row
+ * cost the frame it arrived in (round 8, `grid-scroll-fast`).
  */
 export function VirtualAssetGrid({
-  assets, scrollElement, renderCard, onBackgroundClick, appear = false,
+  assets, scrollElement, renderCard, onBackgroundClick, label, onSelect, appear = false, reveal,
 }: VirtualAssetGridProps): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null);
+  const still = useReducedMotion() === true;
   const { columns, gap, cardWidth } = useGridMetrics(containerRef);
   const assetType = assets[0]?.type;
   const [extraHeight, setExtraHeight] = useState(() => (assetType && cardExtraHeights.get(assetType)) ?? CARD_EXTRA_HEIGHT);
-  const [cardLayout, setCardLayout] = useState<CardLayout | null>(null);
+  const [cardLayout, setCardLayout] = useState<CardLayout | null>(() => (assetType && cardLayouts.get(assetType)) ?? null);
+  const stage = useMountStage();
+  const cardsMounted = stage !== 'frame';
   const rowHeight = cardWidth + extraHeight;
   const rowPitch = rowHeight + gap;
 
@@ -59,9 +95,10 @@ export function VirtualAssetGrid({
     count: Math.ceil(assets.length / columns),
     getScrollElement: () => scrollElement,
     estimateSize: () => rowHeight,
-    overscan: OVERSCAN_ROWS,
+    overscan: stage === 'all' ? OVERSCAN_ROWS : 0,
     gap,
     scrollMargin: containerRef.current?.offsetTop ?? 0,
+    useFlushSync: false,
   });
 
   // Every row is as tall as a card; drop the sizes computed for the previous height.
@@ -69,8 +106,17 @@ export function VirtualAssetGrid({
     virtualizer.measure();
   }, [rowHeight, virtualizer]);
 
+  const pageRows = Math.max(1, Math.floor((scrollElement?.clientHeight ?? 0) / Math.max(1, rowHeight + gap)));
+  const keyboard = useGridKeyboard({
+    assets, columns, container: containerRef, onSelect, reveal, pageRows,
+    scrollToRow: (row) => virtualizer.scrollToIndex(row, { align: 'auto' }),
+  });
+
   const rows = virtualizer.getVirtualItems();
   const scrollMargin = virtualizer.options.scrollMargin;
+  // The rows mounted: those in reach as of the last render React finished; the placeholders stand in the others.
+  const firstRow = useDeferredValue(rows[0]?.index ?? null);
+  const lastRow = useDeferredValue(rows[rows.length - 1]?.index ?? null);
 
   const listKey = useMemo(() => assets.map((asset) => asset.id).join('\n'), [assets]);
   const settledListKey = useRef<string | null>(appear ? null : listKey);
@@ -78,11 +124,14 @@ export function VirtualAssetGrid({
   const listChanged = settledListKey.current !== listKey;
   const firstVisibleRow = rowPitch > 0 ? Math.floor(((virtualizer.scrollOffset ?? 0) - scrollMargin) / rowPitch) : 0;
 
-  const visibleAssets = rows.flatMap((row) =>
-    assets.slice(row.index * columns, (row.index + 1) * columns).map((asset, column) => ({
-      asset, column, row: row.index, y: row.start - scrollMargin,
-    })),
-  );
+  const visibleAssets = useMemo((): PlacedAsset[] => {
+    if (!cardsMounted || firstRow === null || lastRow === null) return [];
+    const placed: PlacedAsset[] = [];
+    for (let row = firstRow; row <= lastRow; row++) {
+      assets.slice(row * columns, (row + 1) * columns).forEach((asset, column) => placed.push({ asset, column, row, y: row * rowPitch }));
+    }
+    return placed;
+  }, [cardsMounted, firstRow, lastRow, assets, columns, rowPitch]);
 
   useEffect(() => {
     shownIds.current = new Set(visibleAssets.map(({ asset }) => asset.id));
@@ -99,15 +148,17 @@ export function VirtualAssetGrid({
     cardExtraHeights.set(assetType, measured);
     setExtraHeight(measured);
     const layout = measureCard(card);
+    if (layout) cardLayouts.set(assetType, layout);
     setCardLayout((previous) => (sameCardLayout(previous, layout) ? previous : layout));
   }, [cardWidth, hasCards, assetType]);
 
   const pitchX = cardWidth + gap;
   const mask = cardLayout && assetType ? cardMask(assetType, cardLayout, cardWidth, pitchX, rowPitch) : undefined;
   const maskSize = `${pitchX}px ${rowPitch}px`;
+  // Until the cards mount, the rows they will fill show placeholders as well: no row counts as mounted.
   const rest = mask ? unmountedRegions({
-    firstRow: rows[0]?.index ?? null,
-    lastRow: rows[rows.length - 1]?.index ?? null,
+    firstRow,
+    lastRow: cardsMounted || firstRow === null ? lastRow : firstRow - 1,
     assetCount: assets.length, columns, pitchX, pitchY: rowPitch, gap,
   }) : [];
 
@@ -117,36 +168,35 @@ export function VirtualAssetGrid({
       className="atlas-asset-grid-virtual"
       style={{ height: virtualizer.getTotalSize() }}
       onClick={onBackgroundClick}
+      role="listbox"
+      aria-label={label}
+      aria-multiselectable="true"
+      aria-orientation="vertical"
+      onKeyDown={keyboard.onKeyDown}
+      onFocus={keyboard.onFocus}
     >
-      {rest.map((region) => (
+      {rest.map(({ row, ...box }) => (
         <div
-          key={region.top}
+          key={row}
           className="atlas-asset-grid-rest"
-          style={{ ...region, WebkitMaskImage: mask, maskImage: mask, WebkitMaskSize: maskSize, maskSize }}
+          style={{ ...box, WebkitMaskImage: mask, maskImage: mask, WebkitMaskSize: maskSize, maskSize }}
           aria-hidden="true"
         />
       ))}
-      {/* Without `presenceAffectsLayout` a render tells only the cards that leave, not the subtree of every card. */}
-      <AnimatePresence custom={listChanged} presenceAffectsLayout={false}>
-        {visibleAssets.map(({ asset, column, row, y }) => {
-          const x = column * pitchX;
-          const entering = listChanged && !shownIds.current.has(asset.id);
-          return (
-            <motion.div
-              key={asset.id}
-              className={CELL_CLASS}
-              style={{ width: cardWidth }}
-              initial={entering ? hiddenCell(x, y) : false}
-              animate={{ opacity: 1, transform: cellTransform(x, y) }}
-              variants={cellVariants(x, y)}
-              exit="exit"
-              transition={entering ? enterTransition(row - firstVisibleRow + column) : moveTransition(listChanged)}
-            >
-              {renderCard(asset)}
-            </motion.div>
-          );
-        })}
-      </AnimatePresence>
+      <GridCells
+        placed={visibleAssets}
+        renderCard={renderCard}
+        tabbableId={keyboard.tabbableId}
+        setSize={assets.length}
+        columns={columns}
+        cardWidth={cardWidth}
+        pitchX={pitchX}
+        listChanged={listChanged}
+        shownIds={shownIds}
+        // Read only for cards that enter with a new list; a constant otherwise, so scrolling passes the cards by.
+        firstVisibleRow={listChanged ? firstVisibleRow : 0}
+        still={still}
+      />
     </div>
   );
 }

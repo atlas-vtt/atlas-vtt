@@ -64,19 +64,20 @@ describe('a turn change on the GM\'s map', () => {
     expect(banner()).toBe('ghost on the map');
   });
 
-  it('follows the turn only where the GM chose so, and only to a token the canvas shows', () => {
+  it('always follows the turn, and only to a token the canvas shows', () => {
     const { settings, turnTo } = setup();
+    settings.setInitiativeTurnOptions({ banner: false });
     turnTo('ghost');
-    expect(pans.calls).toEqual([]);
-    settings.setInitiativeTurnOptions({ followTurn: true, banner: false });
     turnTo('hero');
     turnTo('away');
-    expect(pans.calls).toEqual(['hero']);
+    // Every turn change pans, the banner switched off or not; a token the canvas does not show is never followed
+    expect(pans.calls).toContain('hero');
+    expect(pans.calls).not.toContain('away');
   });
 
   it('follows the turn to another floor in the GM\'s view, and leaves it there in the players\' view', () => {
     const gm = setup({ isGMView: true });
-    gm.settings.setInitiativeTurnOptions({ followTurn: true, banner: false });
+    gm.settings.setInitiativeTurnOptions({ banner: false });
     gm.turnTo('ghost');
     gm.turnTo('hero');
     expect(gm.viewStore.getState().viewedLevel).toBe('cellar');
@@ -84,7 +85,7 @@ describe('a turn change on the GM\'s map', () => {
 
     pans.calls.length = 0;
     const players = setup({ isGMView: false });
-    players.settings.setInitiativeTurnOptions({ followTurn: true, banner: false });
+    players.settings.setInitiativeTurnOptions({ banner: false });
     players.turnTo('ghost');
     players.turnTo('hero');
     expect(players.viewStore.getState().viewedLevel).toBe('ground');

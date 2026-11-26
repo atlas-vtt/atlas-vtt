@@ -35,7 +35,7 @@ export interface PageInput {
   body: readonly Uint8Array[];
 }
 
-export function writePage(page: PageInput): Uint8Array {
+export function writePage(page: PageInput): Uint8Array<ArrayBuffer> {
   const bodyLength = page.body.reduce((sum, part) => sum + part.length, 0);
   const headerLength = PAGE_HEADER_BYTES + page.segments.length;
   const bytes = new Uint8Array(headerLength + bodyLength);

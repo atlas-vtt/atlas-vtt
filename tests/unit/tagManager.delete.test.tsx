@@ -43,6 +43,12 @@ const checkbox = (name: string): HTMLElement => screen.getByText(name).closest('
 const deleteMenuEntry = (): Extract<ContextMenuEntry, { type: 'item' }> =>
   menu.entries.find((entry): entry is Extract<ContextMenuEntry, { type: 'item' }> => entry.type === 'item' && entry.icon === 'trash')!;
 
+it('names its search field for what it searches', () => {
+  expect(screen.getByRole('textbox', { name: 'Search or create tags' })).toBeTruthy();
+  fireEvent.click(screen.getByText('Collections'));
+  expect(screen.getByRole('textbox', { name: 'Search or create collections' })).toBeTruthy();
+});
+
 it('deletes the selected tags by id', async () => {
   fireEvent.click(checkbox('Dragon'));
   fireEvent.click(checkbox('testTag'));
@@ -87,12 +93,12 @@ it('renames by id', () => {
   expect(handlers.onUpdateTag).toHaveBeenCalledWith('tokens', 'dragon', 'Wyrm');
 });
 
-it('keeps map tags and character tags on their own tabs, without shortcut hints', () => {
-  expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Map Tags', 'Character Tags', 'Collections']);
-  expect(screen.getByRole('tab', { name: 'Character Tags' }).getAttribute('aria-selected')).toBe('true');
+it('keeps map tags and token tags on their own tabs, without shortcut hints', () => {
+  expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Map tags', 'Token tags', 'Collections']);
+  expect(screen.getByRole('tab', { name: 'Token tags' }).getAttribute('aria-selected')).toBe('true');
   expect(screen.queryByText('Forest')).toBeNull();
 
-  fireEvent.click(screen.getByRole('tab', { name: 'Map Tags' }));
+  fireEvent.click(screen.getByRole('tab', { name: 'Map tags' }));
   expect(screen.queryByText('Dragon')).toBeNull();
   const search = screen.getByPlaceholderText('Search or create tags…');
   fireEvent.change(search, { target: { value: 'Swamp' } });
@@ -103,6 +109,6 @@ it('keeps map tags and character tags on their own tabs, without shortcut hints'
 it('ignores the old tab and select-all shortcuts', () => {
   fireEvent.keyDown(document, { key: '2', metaKey: true });
   fireEvent.keyDown(document, { key: 'a', metaKey: true });
-  expect(screen.getByRole('tab', { name: 'Character Tags' }).getAttribute('aria-selected')).toBe('true');
+  expect(screen.getByRole('tab', { name: 'Token tags' }).getAttribute('aria-selected')).toBe('true');
   expect(screen.queryByText('Delete selected')).toBeNull();
 });

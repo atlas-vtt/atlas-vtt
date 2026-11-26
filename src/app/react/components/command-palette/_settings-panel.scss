@@ -8,7 +8,6 @@
   @include atlas-flex-row($spacing-l);
   @include atlas-close-header;
   justify-content: space-between;
-  border-bottom: $border-width-s solid var(--divider-color);
 }
 
 .atlas-command-palette-panel-title {
@@ -39,9 +38,12 @@
   flex-shrink: 0;
 }
 
+// Two columns where both have the room for a translated name beside its control, else one.
+$panel-column-min: 360px;
+
 .atlas-command-palette-panel {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, $panel-column-min), 1fr));
   gap: $spacing-xl;
   padding: $spacing-l;
 }
@@ -63,7 +65,7 @@
 
 .atlas-setting-row-info {
   @include atlas-flex-col(2px);
-  min-width: 0;
+  @include atlas-row-label;
 }
 
 .atlas-setting-row-control {
@@ -128,6 +130,20 @@
   color: var(--text-muted);
 }
 
+// A hint with the one its row shows in its other state: both lie in one cell and the other is
+// hidden, so the row is as tall as the longer of the two and never changes size with its switch.
+.atlas-setting-hints {
+  display: grid;
+
+  > .atlas-setting-hint {
+    grid-area: 1 / 1;
+
+    &[aria-hidden] {
+      visibility: hidden;
+    }
+  }
+}
+
 .atlas-setting-value {
   min-width: 40px;
   text-align: right;
@@ -146,9 +162,8 @@
   flex: 1;
 }
 
-// Native Obsidian input styling applies; only sizing lives here
-.atlas-setting-input {
-  width: 100%;
+input.atlas-setting-input {
+  @include atlas-text-input;
 
   &--sm {
     width: 80px;
@@ -249,6 +264,12 @@
     min-width: 0;
     padding-inline: $spacing-xs;
   }
+}
+
+// A row of actions that belong to the rows above them, at the controls' edge.
+.atlas-setting-actions {
+  @include atlas-flex-row($spacing-s);
+  justify-content: flex-end;
 }
 
 // The Graphics page: the line under the presets' tabs.

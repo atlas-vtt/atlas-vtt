@@ -2,16 +2,30 @@ import React, { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '../../../primitives/button';
 import type { FilterChipGroup } from '../../search/activeFilterChips';
+import { filterGlyph } from '../../search/filterGlyphs';
 import { t } from '../../../../../i18n';
+import { lastInputWasTouch } from '../../../primitives/lastInput';
 
 /** How long the pointer may leave a grouped chip before it folds, so moving into its list does not close it. */
 const CLOSE_DELAY_MS = 120;
+
+/** A chip's filter name, after its glyph where the filter has one (`filterGlyph`). */
+function ChipCategory({ group }: { group: FilterChipGroup }): React.JSX.Element {
+  const Glyph = filterGlyph(group.key);
+  return (
+    <>
+      {Glyph && <Glyph className="atlas-active-filter__glyph" aria-hidden="true" />}
+      <span className="atlas-active-filter__category">{group.category}</span>
+    </>
+  );
+}
 
 function SingleChip({ group }: { group: FilterChipGroup }): React.JSX.Element {
   const item = group.items[0]!;
   return (
     <Button variant="ghost" className="atlas-active-filter" onClick={item.remove} aria-label={t('filters.removeChip', { category: group.category, label: item.label })}>
-      <span className="atlas-active-filter__category">{group.category}</span>
+      {/* The space is not drawn in the flex row; it keeps the visible text "Tag Beast" within the name. */}
+      <ChipCategory group={group} />{' '}
       <span className={`atlas-active-filter__value${item.excluded ? ' atlas-excluded' : ''}`}>{item.label}</span>
       <X />
     </Button>
@@ -22,6 +36,7 @@ function SingleChip({ group }: { group: FilterChipGroup }): React.JSX.Element {
 function GroupedChip({ group }: { group: FilterChipGroup }): React.JSX.Element {
   const [open, setOpen] = useState(false);
   const closeTimer = useRef<number | null>(null);
+  const groupRef = useRef<HTMLDivElement>(null);
   const cancelClose = (): void => {
     if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
     closeTimer.current = null;
@@ -32,17 +47,30 @@ function GroupedChip({ group }: { group: FilterChipGroup }): React.JSX.Element {
     closeTimer.current = window.setTimeout(() => setOpen(false), CLOSE_DELAY_MS);
   };
   useEffect(() => cancelClose, []);
+  // A finger has no hover to take away: a press outside the chip folds it.
+  useEffect(() => {
+    const group = groupRef.current;
+    if (!open || !group) return undefined;
+    const doc = group.ownerDocument;
+    const onPress = (event: PointerEvent): void => {
+      if (event.pointerType === 'touch' && !group.contains(event.target as Node | null)) setOpen(false);
+    };
+    doc.addEventListener('pointerdown', onPress, true);
+    return () => doc.removeEventListener('pointerdown', onPress, true);
+  }, [open]);
 
   return (
     <div
+      ref={groupRef}
       className={`atlas-active-filter-group${open ? ' atlas-open' : ''}`}
-      onMouseEnter={show}
-      onMouseLeave={hide}
-      onFocus={show}
+      // A finger's tap brings a hover and a focus of its own before its click, which then closed what they had opened: a finger never hovers, and only a key's focus opens.
+      onPointerEnter={(event) => { if (event.pointerType !== 'touch') show(); }}
+      onPointerLeave={(event) => { if (event.pointerType !== 'touch') hide(); }}
+      onFocus={() => { if (!lastInputWasTouch()) show(); }}
       onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) hide(); }}
     >
       <Button variant="ghost" className="atlas-active-filter" aria-expanded={open} onClick={() => setOpen(!open)}>
-        <span className="atlas-active-filter__category">{group.category}</span>
+        <ChipCategory group={group} />
         <span className="atlas-active-filter__value">{group.items.length}</span>
       </Button>
       {open && (
@@ -68,7 +96,7 @@ interface ActiveFilterBarProps {
   onReset: () => void;
 }
 
-/** Every active filter under the header as a chip that removes it, and Reset for all of them. */
+/** Every active filter under the header as a chip that removes it, and Clear filters for all of them. */
 export function ActiveFilterBar({ groups, onReset }: ActiveFilterBarProps): React.JSX.Element | null {
   if (groups.length === 0) return null;
   return (
@@ -76,7 +104,7 @@ export function ActiveFilterBar({ groups, onReset }: ActiveFilterBarProps): Reac
       {groups.map((group) => (group.items.length === 1
         ? <SingleChip key={group.key} group={group} />
         : <GroupedChip key={group.key} group={group} />))}
-      <Button variant="ghost" className="atlas-active-filters__reset" onClick={onReset}>{t('common.reset')}</Button>
+      <Button variant="ghost" className="atlas-active-filters__reset" onClick={onReset}>{t('am.empty.clearFilters')}</Button>
     </div>
   );
 }

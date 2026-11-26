@@ -201,6 +201,26 @@ describe('placing spawned tokens by hand', () => {
     await shot('single-landed');
   });
 
+  it.each([
+    { name: 'Small', size: 0.875, x: 200, y: 180, expected: [175, 175] },
+    { name: 'Tiny top-left', size: 0.75, x: 150, y: 150, expected: [157.5, 157.5] },
+    { name: 'Tiny top-right', size: 0.75, x: 200, y: 150, expected: [192.5, 157.5] },
+    { name: 'Tiny bottom-left', size: 0.75, x: 150, y: 200, expected: [157.5, 192.5] },
+    { name: 'Tiny bottom-right', size: 0.75, x: 200, y: 200, expected: [192.5, 192.5] },
+  ])('previews and commits $name at its own snapped position', async ({ name, size, x, y, expected }) => {
+    const { store, placer, run, move, press, shot } = await bench();
+    const placing = placer.place({ tokens: tokens(1, size), commit: commitTo(store) });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    move(x, y);
+    run(400);
+    expect(Object.keys(store.getState().objects.tokens)).toHaveLength(0);
+    await shot(name.toLowerCase().replaceAll(' ', '-'));
+    press(x, y);
+    run(100);
+    const [id] = await placing;
+    expect(store.getState().objects.tokens[id!]).toMatchObject({ size, x: expected[0], y: expected[1] });
+  });
+
   it('lays several tokens out as a formation, then queues them while Shift is held', async () => {
     const { store, placer, run, move, press, shot } = await bench();
     const placing = placer.place({ tokens: tokens(6), commit: commitTo(store) });

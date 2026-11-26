@@ -23,7 +23,7 @@ afterEach(() => {
   Reflect.deleteProperty(window, 'FantasyStatblocks');
 });
 
-/** Edit Token for a token linked to the Iron Guard, whose HP resource reads the field `hp`. */
+/** Edit token for a token linked to the Iron Guard, whose HP resource reads the field `hp`. */
 function open(token: Partial<Character>): { saved: () => Character; maxHp: () => HTMLInputElement } {
   current = creatureVault();
   addNote(current, GUARD, IRON_GUARD);
@@ -37,7 +37,7 @@ function open(token: Partial<Character>): { saved: () => Character; maxHp: () =>
   };
 }
 
-describe('Edit Token reads its statblock defaults through the resolver', () => {
+describe('Edit token reads its statblock defaults through the resolver', () => {
   it('offers the hit points a native template keeps under another key', async () => {
     const { maxHp } = open({ resources: { hp: { current: 30, max: 30 } } });
     await waitFor(() => expect(maxHp().placeholder).toBe('Statblock default: 30'));

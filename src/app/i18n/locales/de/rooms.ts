@@ -1,0 +1,25 @@
+import type { Translation } from '../../types';
+
+export const rooms: Translation = {
+  'rooms.carve': 'Aushöhlen',
+  'rooms.fill': 'Auffüllen',
+  'rooms.door': 'Tür',
+  'rooms.rectangle': 'Rechteck',
+  'rooms.points': 'Punkte',
+  'rooms.lasso': 'Lasso',
+  'rooms.brush': 'Pinsel',
+  'rooms.brushSize': 'Pinselgröße',
+  'rooms.bucket': 'Eimer',
+  'rooms.bucketTip': 'Klicke oder ziehe in einen Raum, um seinen Boden bis zu den gezeichneten Wänden auszuhöhlen',
+  'rooms.bucketRadius': 'Eimerradius',
+  'rooms.bucketSensitivity': 'Kantenempfindlichkeit',
+  'rooms.stabilize': 'Stabilisierung',
+  'rooms.experimental.label': 'Raum-Eimer',
+  'rooms.experimental.hint': 'Der Eimer im Räume-Modus des Lichtwerkzeugs: Klicke oder ziehe über eine gemalte Karte, und der Boden wird bis zu den gezeichneten Wänden gefunden und ausgehöhlt. Ausgeschaltet ist der Eimer verborgen.',
+  'rooms.bucketFoundNothing': 'Der Eimer hat hier keinen Boden gefunden. Versuche eine andere Stelle oder eine andere Empfindlichkeit',
+  'rooms.carveTip': 'Höhle einen Raum aus dem Fels. Halte Alt zum Auffüllen',
+  'rooms.fillTip': 'Fülle Fels wieder auf. Halte Alt zum Aushöhlen',
+  'rooms.rectangleTip': 'Halte Shift, um am Raster einzurasten',
+  'rooms.pointsTip': 'Klicke Ecken, dann erneut die erste zum Schließen. Shift rastet am Raster ein',
+  'rooms.doorHint': 'Ziehe quer über eine Öffnung. Halte Alt für eine Geheimtür',
+};

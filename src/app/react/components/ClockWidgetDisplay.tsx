@@ -14,6 +14,7 @@ import {
 import { WidgetIconGlyph } from './WidgetIconGlyph';
 import { LabelTooltip } from '../../packages/components/primitives/tooltip';
 import { t } from '../../i18n';
+import { widgetMotionMark } from '../../initiative/motion/turnMotion';
 
 interface ClockWidgetDisplayProps {
   widget: ClockWidget;
@@ -74,6 +75,7 @@ export function ClockWidgetDisplay({
   return (
     <div
       className={widgetClasses}
+      {...widgetMotionMark(widget.id)}
       style={{ '--widget-color': widget.color || DEFAULT_CLOCK_COLOR, '--pulse-intensity': pulseIntensity } as React.CSSProperties}
     >
       <div className="atlas-widget-icon-wrapper">
@@ -82,7 +84,7 @@ export function ClockWidgetDisplay({
       <div className="atlas-widget-content">
         <div className="atlas-widget-value-row">
           <LabelTooltip label={t('clock.clear')}>
-            <button onClick={() => step(-1)} className="atlas-widget-btn">
+            <button type="button" onClick={() => step(-1)} className="atlas-widget-btn">
               <Minus />
             </button>
           </LabelTooltip>
@@ -107,7 +109,7 @@ export function ClockWidgetDisplay({
             )}
           </svg>
           <LabelTooltip label={t('clock.fill')}>
-            <button onClick={() => step(1)} className="atlas-widget-btn">
+            <button type="button" onClick={() => step(1)} className="atlas-widget-btn">
               <Plus />
             </button>
           </LabelTooltip>

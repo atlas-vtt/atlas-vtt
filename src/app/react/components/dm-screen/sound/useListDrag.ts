@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from 'react';
+import { pressBecameDrag } from '../../../../input/pressBecameDrag';
 
 /** A press becomes a drag after this many pixels; before that it is a press of what lies under it. */
 const DRAG_THRESHOLD = 4;
+/**
+ * Where a finger presses the item itself and the list scrolls (`restBeforeDrag`): the press is a
+ * drag once the finger has rested this long within this many pixels, the statblock editor's own
+ * numbers for a finger's drag (`dndConfig.ts`). One that moves first scrolls the list.
+ */
+export const TOUCH_REST_MS = 250;
+export const TOUCH_REST_SLOP = 5;
 /** Pixels from a scroller's edge at which a drag scrolls it, and how far each move then goes. */
 const SCROLL_EDGE = 24;
 const SCROLL_STEP = 12;
@@ -38,6 +46,13 @@ export interface ListDragOptions<T> {
   onDrop: (item: T, index: number) => void;
   /** Scrolls while the pointer holds near its edge. */
   scrollerRef?: RefObject<HTMLElement | null>;
+  /**
+   * The items are pressed themselves, in a list a finger scrolls by them: a finger's press (and a
+   * pen's, which scrolls as a finger does) drags only once it has rested (`TOUCH_REST_MS`), and
+   * scrolls where it moves first. A mouse drags as ever. The items must let the browser pan
+   * (`touch-action: pan-y`), which the drag stops for as long as it lasts.
+   */
+  restBeforeDrag?: boolean;
 }
 
 function scrollNear(scroller: HTMLElement | null | undefined, y: number): void {
@@ -48,12 +63,26 @@ function scrollNear(scroller: HTMLElement | null | undefined, y: number): void {
 }
 
 /** Moves an item among the others under the pointer; Escape, a lost pointer, a blur or the list leaving the screen put it back. */
-export function useListDrag<T>(gridRef: RefObject<HTMLElement | null>, items: readonly T[], { idOf, selector, canMove, onDrop, scrollerRef }: ListDragOptions<T>): ListDrag<T> {
+export function useListDrag<T>(gridRef: RefObject<HTMLElement | null>, items: readonly T[], { idOf, selector, canMove, onDrop, scrollerRef, restBeforeDrag = false }: ListDragOptions<T>): ListDrag<T> {
   const [drag, setDrag] = useState<{ id: string; index: number } | null>(null);
   const draggedRef = useRef(false);
   const endRef = useRef<(() => void) | null>(null);
+  /** A finger's drag is under way: the browser must not scroll the list with it. */
+  const fingerDragsRef = useRef(false);
 
   useEffect(() => () => endRef.current?.(), []);
+
+  // A browser decides at the touch's start whether its moves can be refused, so the listener
+  // stands for as long as the list does and refuses only the moves of a drag.
+  useEffect(() => {
+    const grid = gridRef.current;
+    if (!restBeforeDrag || !grid) return undefined;
+    const holdStill = (event: TouchEvent): void => {
+      if (fingerDragsRef.current && event.cancelable) event.preventDefault();
+    };
+    grid.addEventListener('touchmove', holdStill, { passive: false });
+    return () => grid.removeEventListener('touchmove', holdStill);
+  }, [gridRef, restBeforeDrag]);
 
   const start = useCallback((item: T, event: ReactPointerEvent<HTMLElement>): void => {
     const grid = gridRef.current;
@@ -65,11 +94,25 @@ export function useListDrag<T>(gridRef: RefObject<HTMLElement | null>, items: re
     let index: number | null = null;
     draggedRef.current = false;
     endRef.current?.();
+    // A finger on the item itself may be scrolling the list: it drags once it has rested.
+    let resting = restBeforeDrag && (event.pointerType === 'touch' || event.pointerType === 'pen');
+    const rest = resting ? win.setTimeout(() => {
+      resting = false;
+      if (gridGone()) return;
+      fingerDragsRef.current = true;
+      draggedRef.current = true;
+      // The finger rests on: its long press, due a little later, opens no menu on what it drags.
+      pressBecameDrag();
+      index = indexAt(grid, selector, from.x, from.y);
+      if (index !== null) setDrag({ id: idOf(item), index });
+    }, TOUCH_REST_MS) : null;
     // A hidden grid has no places: every card measures 0×0 and the nearest is always the first.
     const gridGone = (): boolean => grid.getClientRects().length === 0;
 
     const end = (): void => {
       endRef.current = null;
+      if (rest !== null) win.clearTimeout(rest);
+      fingerDragsRef.current = false;
       doc.removeEventListener('pointermove', move, true);
       doc.removeEventListener('pointerup', up, true);
       doc.removeEventListener('pointercancel', end, true);
@@ -83,6 +126,11 @@ export function useListDrag<T>(gridRef: RefObject<HTMLElement | null>, items: re
       if (moved.pointerId !== pointerId) return;
       if (gridGone()) {
         end();
+        return;
+      }
+      if (resting) {
+        // It moved before it rested: the list scrolls, and nothing is dragged.
+        if (Math.hypot(moved.clientX - from.x, moved.clientY - from.y) > TOUCH_REST_SLOP) end();
         return;
       }
       if (index === null && Math.hypot(moved.clientX - from.x, moved.clientY - from.y) < DRAG_THRESHOLD) return;
@@ -112,7 +160,7 @@ export function useListDrag<T>(gridRef: RefObject<HTMLElement | null>, items: re
     doc.addEventListener('pointercancel', end, true);
     doc.addEventListener('keydown', key, true);
     win.addEventListener('blur', end);
-  }, [gridRef, canMove, onDrop, idOf, selector, scrollerRef]);
+  }, [gridRef, canMove, onDrop, idOf, selector, scrollerRef, restBeforeDrag]);
 
   const consumeClick = useCallback((): boolean => {
     const dragged = draggedRef.current;

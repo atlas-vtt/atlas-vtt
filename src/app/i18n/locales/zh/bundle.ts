@@ -12,8 +12,8 @@ export const bundle: Translation = {
   'bundle.group.maps': '地图',
   'bundle.group.notes': '笔记',
   'bundle.group.scenes': '场景',
-  'bundle.group.statblocks': '属性块',
-  'bundle.group.tokens': '棋子',
+  'bundle.group.statblocks': '数据卡',
+  'bundle.group.tokens': '指示物',
   'bundle.importFailed': '导入失败',
   'bundle.imported': '已导入 {name}。',
   'bundle.importedTitle': '合集已导入',
@@ -43,4 +43,6 @@ export const bundle: Translation = {
   'bundle.damaged': '此合集导出文件已损坏。',
   'bundle.unsafe': '此合集导出文件含有 Atlas 不会写入的文件：{path}',
   'bundle.checksum': { other: '此合集导出文件已损坏：{count} 个文件与校验和不符（{names}）。没有导入任何内容。' },
+  'bundle.switchedNotes': { other: '{count} 张数据卡现在使用模板副本。' },
+  'bundle.group.templates': '数据卡模板',
 };

@@ -1,4 +1,4 @@
-import { useEffect, type RefObject } from 'react';
+import { useLayoutEffect, type RefObject } from 'react';
 import { scrollWithin } from '../../utils/scrollWithin';
 
 interface TurnInView {
@@ -13,10 +13,11 @@ interface TurnInView {
 /**
  * Keeps the turn in view when it moves: the top of the side whose turn it is, else the
  * combatant's card with the next two below it where they fit, or the card at the top of a
- * list that starts at the turn. `scrollWithin` scrolls the list alone.
+ * list that starts at the turn. `scrollWithin` scrolls the list alone. A layout effect, called before the cards' glide
+ * (`useTurnMotion`), so it measures the cards where they come to rest rather than where the glide starts them.
  */
 export function useTurnInView(contentRef: RefObject<HTMLElement | null>, { fightRuns, turnOf, round, fromTurn }: TurnInView): void {
-  useEffect(() => {
+  useLayoutEffect(() => {
     const content = contentRef.current;
     if (!fightRuns || !content) return;
     const side = content.querySelector('.atlas-initiative-side--active');

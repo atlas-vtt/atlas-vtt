@@ -12,6 +12,8 @@ import type { PartyValues } from './partyTypes';
 import type { LevelAlignment, LevelLink, LevelSurface, SceneLevel } from './sceneLevelTypes';
 import type { LiquidSurface } from './liquidTypes';
 import type { MapFeature } from './mapFeatureTypes';
+import type { KeptMeasure } from '../measure/measureTypes';
+import type { TurnMove } from '../measure/turnMoves';
 import type { SavedPlayerFrame } from './playerCamera';
 import type { SceneSound } from '../sound/soundTypes';
 
@@ -80,9 +82,10 @@ export interface ViewState extends ViewUIState {
     mapFeatures?: Record<string, MapFeature>;
     /** Water, lava and acid that move while maps are animated; absent until the first is added. Read with `liquidList`. */
     liquids?: Record<string, LiquidSurface>;
+    /** Measurements that stay on the map; absent until the first is kept. Read with `measureList`. */
+    measures?: Record<string, KeptMeasure>;
   };
 
-  // Camera state
   camera: CameraState;
 
   /** Dynamic lighting of the scene; saved with the map, never undo-tracked. */
@@ -103,28 +106,50 @@ export interface ViewState extends ViewUIState {
    */
   exploredEdits: number;
   /**
+   * How many times the GM forgot the explored memory of every level at once (Forget explored areas):
+   * online players drop what they remember of a floor whose saved memory was none already. Never
+   * saved, never undo-tracked; unset reads as none.
+   */
+  exploredForgotten?: number | undefined;
+  /**
    * The values of the played campaign's player characters, one per character and resource
    * (`campaigns/partyValues/partyKeys.ts`). Mirrored from the campaign's file, undo-tracked value by
    * value, never saved with the scene: a character's tokens show them (`PartyReconciler`).
    */
   partyValues: PartyValues;
+  /**
+   * What each token has moved in the turn it was last moved in, by token id (`measure/turnMoves.ts`),
+   * for rules that count movement per turn. Added in the step that moves the token
+   * (`countTurnMove`), so undo gives the distance back; read with `movedThisTurn`. Undo-tracked
+   * token by token, never saved; a state built without it has counted nothing.
+   */
+  turnMoves?: Record<string, TurnMove> | undefined;
+  /**
+   * How many fights this view has started: it tells the turns of one fight from the next one's
+   * (`movementTurn`). Never saved, never undo-tracked; unset reads as none.
+   */
+  fightsStarted?: number | undefined;
 
   // Audio dirty flag (non-persisted)
   _audioDirty: boolean;
 
   // Tool and selection state
-  activeTool: 'move' | 'select' | 'fog' | 'text' | 'measure' | 'measure-circle' | 'measure-cone' | 'eraser' | 'asset' | 'note-pin' | 'laser-pointer' | 'draw-pen' | 'draw-eraser' | 'draw-icon' | 'draw-line' | 'draw-rectangle' | 'draw-circle' | 'wall' | 'audio' | 'stairs';
+  activeTool: 'move' | 'select' | 'fog' | 'draw' | 'measure' | 'eraser' | 'asset' | 'note-pin' | 'laser-pointer' | 'wall' | 'audio' | 'stairs';
+  /**
+   * The tool in use when a press with the measure key held took the map (`holdRuler`): until it
+   * is let go, `activeTool` is the measure tool, which measures with a ruler and keeps nothing,
+   * and the toolbar goes on showing this tool (`measure/heldRuler.ts`). Never saved.
+   */
+  heldRulerFrom?: ViewState['activeTool'] | undefined;
   selectionMode: 'box' | 'lasso';
   selectedIds: string[];
 
-  // Drag state
   isDragging: boolean;
 
   // Widget settings
   widgetSettings: WidgetSettings;
   widgetValues: Record<string, number>; // Widget values separate from definitions
 
-  // Player view state
   isPlayerView: boolean;
 
   // GM view toggle (semi-transparent fog vs fully opaque)
@@ -133,10 +158,6 @@ export interface ViewState extends ViewUIState {
   // DM screen state
   dmNotePath: string | null;
 
-  // Collection management
-  currentCollectionId?: string;
-
-  // Token settings
   tokenSettings: {
     showNameplates: boolean;
     /** Keys of the collection's resources this map does not show to the GM; see `resources/sceneVisibility.ts`. */

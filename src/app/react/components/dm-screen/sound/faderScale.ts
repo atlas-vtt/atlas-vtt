@@ -1,4 +1,5 @@
 import { CHANNEL_DB_RANGE } from '../../../../services/soundSettings';
+import { clamp } from '../../../../utils/math';
 
 /**
  * Where a level lies on a fader, from its foot (0) to its top (1), as a mixing desk's scale: the top third of the travel
@@ -13,8 +14,6 @@ const KNOTS: readonly (readonly [db: number, position: number])[] = [
   [0, 0.86],
   [CHANNEL_DB_RANGE.max, 1],
 ];
-
-const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
 
 /** Maps `value` through the knots from one column to the other: piecewise straight between neighbours. */
 function through(value: number, from: 0 | 1): number {

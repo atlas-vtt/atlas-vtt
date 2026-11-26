@@ -9,7 +9,8 @@ import { TFile, type App } from 'obsidian';
 import { NOTE_FILE_ROLES, TEMPLATE_BODY_ROLE, TEMPLATE_ROLE, type BundleFile } from '../../services/collectionBundle/bundleFormat';
 import { templateFingerprint } from '../../services/collectionBundle/fingerprints';
 import type { InstalledTemplate } from '../../services/collectionBundle/installRecord';
-import { isRecord, parseJsonText } from '../format/jsonValues';
+import { parseJsonText } from '../format/jsonValues';
+import { isRecord } from '../../utils/guards';
 import { migrateTemplate } from '../format/migrateTemplate';
 import { withHeader } from '../model/headerDuplicates';
 import { parseTemplate } from '../format/parseTemplate';
@@ -19,6 +20,7 @@ import { findCode, stripCode } from '../model/fsCodeKeys';
 import type { LibraryTemplate } from '../model/resolvedTypes';
 import { isBuiltInTemplateId, type TemplateId } from '../model/templateTypes';
 import { cachedTemplateId } from '../notes/statblockSource';
+import { withoutProvenance } from '../../services/itemBundle/itemProvenance';
 
 /** A template as a bundle carries it: without code, read and fingerprinted. */
 export interface PackedTemplate {
@@ -76,14 +78,16 @@ export function withTemplateDiceSet(text: string, ids: ReadonlyMap<string, strin
 
 /**
  * A template file's text without code: every `script` block and code-bearing key is removed
- * (§6.5). Null for text that is no template a vault may hold: not JSON, unreadable as a
- * template, or claiming a built-in's id.
+ * (§6.5), and where it came from in the Armarium (`armarium`), which is the vault's own. Null
+ * for text that is no template a vault may hold: not JSON, unreadable as a template, or
+ * claiming a built-in's id.
  */
 export async function cleanTemplate(path: string, text: string, body: string | null = null): Promise<PackedTemplate | null> {
   const value = parseJson(text);
   if (!isRecord(value)) return null;
-  const hasCode = findCode(value).length > 0;
-  const json = hasCode ? stripCode(value) : value;
+  const own = withoutProvenance(value);
+  const hasCode = findCode(own).length > 0;
+  const json = hasCode ? stripCode(own) : own;
   if (!isRecord(json)) return null;
   const result = parseTemplate(json);
   if (!result.template || (result.status !== 'ok' && result.status !== 'newer')) return null;
@@ -92,7 +96,7 @@ export async function cleanTemplate(path: string, text: string, body: string | n
     path,
     name,
     id: result.template.id,
-    text: hasCode ? `${JSON.stringify(json, null, 2)}\n` : text,
+    text: hasCode || own !== value ? `${JSON.stringify(json, null, 2)}\n` : text,
     json,
     body: bodyText(body),
     fingerprint: await templateFingerprint(json, bodyText(body)),

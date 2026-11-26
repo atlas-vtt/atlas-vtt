@@ -1,6 +1,6 @@
-import { playerName, shownJoinCode } from '../../protocol/index.ts';
-import { copyRow, textButton } from './controls.ts';
-import { copyText } from './dockDom.ts';
+import { playerName } from '../../protocol/index.ts';
+import { textButton } from './controls.ts';
+import { secretCode } from './secretCode.ts';
 import type { MenuEntry } from './dockMenu.ts';
 import type { AddedPlayer } from './panelModel.ts';
 import { t } from '../../../i18n';
@@ -171,7 +171,7 @@ function nameRow(parent: HTMLElement, prompt: NamePrompt, close: () => void, inR
   });
 }
 
-/** A new player's code, shown once, with the way to copy it. */
+/** A new player's code, hidden like every code, with the way to show and copy it. */
 function codeRows(layer: HTMLElement, player: AddedPlayer, close: () => void): void {
   const block = layer.createDiv({ cls: 'atlas-online-prompt atlas-online-prompt--code', attr: { role: 'group', 'aria-label': t('online.newPlayerCode') } });
   const label = block.createDiv({ cls: 'atlas-online-group-label' });
@@ -179,8 +179,7 @@ function codeRows(layer: HTMLElement, player: AddedPlayer, close: () => void): v
   label.appendText(before);
   label.createEl('bdi', { text: player.name });
   label.appendText(after);
-  const shown = shownJoinCode(player.code);
-  copyRow(block, { icon: 'key-round', text: t('online.codeShown', { code: shown }), copied: t('online.codeCopied'), focusKey: 'prompt-copy' }, () => copyText(layer, shown)).addClass('atlas-online-code-row');
+  secretCode(block, { code: player.code, focusKey: 'prompt-copy', owner: player.name, labelled: true }, ['atlas-online-invite', 'atlas-online-code-row']);
   const done = textButton(block, t('online.done'), close, 'cta');
   done.dataset.focusKey = 'prompt-done';
   done.addClass('atlas-online-corner-button');

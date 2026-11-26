@@ -11,6 +11,7 @@
 
 import type { InstalledRecord } from '../collectionBundle/installRecord';
 import { hashJson } from '../../utils/hashing';
+import { PROVENANCE_KEY } from '../itemBundle/itemProvenance';
 import type { StoredRecord } from './recordFolder';
 
 /** A record as a bundle carries it, read and fingerprinted. */
@@ -65,9 +66,12 @@ export interface RecordPlanRules {
 
 type InstalledRecords = Readonly<Record<string, InstalledRecord>> | undefined;
 
-/** Fingerprint of a record without its id and file format, so a copy under another id is the same record. */
+/**
+ * Fingerprint of a record without its id and file format, so a copy under another id is the same
+ * record. Where it came from (`armarium`) is no content.
+ */
 export function recordFingerprint(entry: Readonly<Record<string, unknown>>): Promise<string> {
-  const { id: _id, format: _format, ...content } = entry;
+  const { id: _id, format: _format, [PROVENANCE_KEY]: _provenance, ...content } = entry;
   return hashJson(content);
 }
 

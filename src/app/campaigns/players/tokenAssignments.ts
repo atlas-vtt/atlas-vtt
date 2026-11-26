@@ -7,7 +7,7 @@
  */
 
 import { PLAYER_ID_PATTERN } from '../../online/protocol/index';
-import { isRecord } from '../campaignValues';
+import { isRecord } from '../../utils/guards';
 import { isWritable, type StoredPlayers } from './playersFile';
 
 /** The tokens a campaign assigns: owners of tokens placed from no library token, and the GM's marks per scene. */

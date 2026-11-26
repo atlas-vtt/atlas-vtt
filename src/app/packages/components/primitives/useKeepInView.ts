@@ -1,25 +1,31 @@
 import { getDomHost } from '../../../host/dom';
+import { visiblePartOf, visibleViewport } from '../../../host/visibleViewport';
 import type React from 'react'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { observeResize } from '../../../utils/observeResize'
-import { POPOVER_FITS, fitPopover, type PopoverFit, type PopoverPlacement, type ViewFrame } from './popoverFit'
+import { POPOVER_FITS, POPOVER_VIEW_MARGIN, fitPopover, type PopoverFit, type PopoverPlacement, type ViewFrame } from './popoverFit'
 
 export interface KeepInView {
-  /** CSS variables the `atlas-keep-in-view` mixin reads. */
+  /**
+   * CSS variables the `atlas-keep-in-view` mixin reads, and `--atlas-keep-in-view-max-width`, the widest
+   * the popover can be inside its view, for a popover that lays itself out by the room it has.
+   */
   style: React.CSSProperties
   /** A height cap is applied; shorter content still sizes naturally. */
   capped: boolean
+  /** The widest the popover can be inside its view, in px, once measured. */
+  maxWidth: number | null
 }
 
 /**
  * The view a popover must stay inside: Obsidian clips a leaf's content
- * (`contain: strict` on `.workspace-leaf`), so the closest leaf, else the window.
+ * (`contain: strict` on `.workspace-leaf`), so the closest leaf, else the window;
+ * of either, the part an on-screen keyboard leaves in sight.
  */
 export function viewFrame(element: HTMLElement): ViewFrame {
-  const leaf = element.closest('.workspace-leaf')
-  if (leaf) return leaf.getBoundingClientRect()
   const win = getDomHost().ownerWindow(element)
-  return { left: 0, top: 0, right: win.innerWidth, bottom: win.innerHeight }
+  const leaf = element.closest('.workspace-leaf')
+  return leaf ? visiblePartOf(leaf.getBoundingClientRect(), win) : visibleViewport(win)
 }
 
 /** Whether an `overflow` value cuts what lies outside the box (an unset one does not). */
@@ -60,6 +66,7 @@ export function useKeepInView(
   anchor?: string,
 ): KeepInView {
   const [fit, setFit] = useState<PopoverFit>(POPOVER_FITS)
+  const [maxWidth, setMaxWidth] = useState<number | null>(null)
   const applied = useRef(fit)
   applied.current = fit
 
@@ -67,6 +74,7 @@ export function useKeepInView(
     const element = ref.current
     if (!open || !element) {
       setFit(POPOVER_FITS)
+      setMaxWidth(null)
       return undefined
     }
 
@@ -85,8 +93,10 @@ export function useKeepInView(
         // max-height still lets smaller content shrink and a larger view reveal more.
         contentHeight: current.maxHeight === null ? Math.max(rect.height, element.scrollHeight) : Infinity,
       }
-      const next = fitPopover(box, viewFrame(element), placement)
+      const frame = viewFrame(element)
+      const next = fitPopover(box, frame, placement)
       if (next.shiftX !== current.shiftX || next.maxHeight !== current.maxHeight) setFit(next)
+      setMaxWidth(Math.max(0, Math.floor(frame.right - frame.left - 2 * POPOVER_VIEW_MARGIN)))
     }
 
     update()
@@ -103,5 +113,6 @@ export function useKeepInView(
   const style: Record<string, string> = {}
   if (fit.shiftX !== 0) style['--atlas-keep-in-view-x'] = `${fit.shiftX}px`
   if (fit.maxHeight !== null) style['--atlas-keep-in-view-max-height'] = `${fit.maxHeight}px`
-  return { style, capped: fit.maxHeight !== null }
+  if (maxWidth !== null) style['--atlas-keep-in-view-max-width'] = `${maxWidth}px`
+  return { style, capped: fit.maxHeight !== null, maxWidth }
 }

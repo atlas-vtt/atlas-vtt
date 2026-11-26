@@ -10,7 +10,7 @@ import { withControlAfter, withControlHidden, withControlShown, type ToolbarLayo
 import { ToolbarSpaceContext } from '../toolbarSpace'
 import type { ToolbarChangeCause } from '../useLayoutMotion'
 import type { ResponsiveToolbarItem } from '../toolbarTypes'
-import { cancelledMessage, hiddenMessage, keyEffect, movedMessage, refusedMessage, shownInPlaceMessage, shownMessage } from './toolbarAnnouncements'
+import { cancelledMessage, hiddenMessage, keyEffect, movedMessage, refusedMessage, shownInPlaceMessage, shownMessage, unitHotkey } from './toolbarAnnouncements'
 import { settledBar, shownBarIds, zonesOf } from './toolbarDragGeometry'
 import { dropIndex, leftNeighbour, zoneAt, type BarGrowth, type FrozenZones } from './toolbarDropIndex'
 import { editorRowOf, mainToolbarOf } from './toolbarEditDom'
@@ -202,7 +202,7 @@ export function useToolbarDrag(options: ToolbarDragOptions): ToolbarDragControls
     const now = barPositions(update(layout), offered)
     change(cause, update)
     if (zone === 'tray') {
-      if (from === 'bar') announce(hiddenMessage(label, hotkeyLabel(toolbarUnit(id).hotkey), keyEffect(id)))
+      if (from === 'bar') announce(hiddenMessage(label, unitHotkey(id, hotkeyLabel), keyEffect(id)))
     } else if (!isToolbarControlId(id)) {
       announce(shownInPlaceMessage(label))
     } else {

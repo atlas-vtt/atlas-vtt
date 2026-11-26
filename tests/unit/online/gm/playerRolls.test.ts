@@ -72,6 +72,22 @@ describe('players\' rolls', () => {
     expect(JSON.stringify(sent)).not.toMatch(/hero|Hero|Player|art\//);
   });
 
+  it('are named by what they roll for, on every screen, with or without a token', async () => {
+    const gm = await table({ defaultRoll: '1d20', crit: 'natural' }, () => 0.5);
+    gm.share.receive(ANA, { t: 'roll', scene: gm.scene, formula: '1d20 + 4', token: gm.alias(1), flavor: 'Longsword' });
+    gm.share.receive(ANA, { t: 'roll', scene: gm.scene, formula: '1d20 + 2', token: null, flavor: 'Strength' });
+    gm.share.receive(ANA, { t: 'roll', scene: gm.scene, formula: '1d20 + 1', token: gm.alias(1), mode: 'gm', flavor: 'Insight' });
+    expect(gm.rolled.map((roll) => roll.source)).toEqual([
+      { type: 'toolbar', tokenId: 'hero', tokenName: 'Hero', abilityName: 'Longsword' },
+      { type: 'toolbar', abilityName: 'Strength' },
+    ]);
+    expect(rollsSent(gm.sent).map(({ result }) => result.source)).toEqual([
+      { type: 'toolbar', abilityName: 'Longsword' },
+      { type: 'toolbar', abilityName: 'Strength' },
+      { type: 'toolbar', abilityName: 'Insight' },
+    ]);
+  });
+
   it('roll for nobody when the token is someone else\'s or unknown', async () => {
     const gm = await table({ defaultRoll: '1d20', crit: 'natural' }, () => 0.5);
     gm.share.receive(BEN, { t: 'roll', scene: gm.scene, formula: '1d8', token: gm.alias(1) });
@@ -91,6 +107,30 @@ describe('players\' rolls', () => {
     expect(gm.errors).toEqual([]);
     expect(rollsSent(gm.sent)).toEqual([]);
     expect(refusals(gm.sent)).toEqual(Array.from({ length: 8 }, () => ({ reason: 'formula', to: ANA })));
+  });
+
+  it('take a side the player wrote, publicly and privately, cancelled by the other side asked for', async () => {
+    const rules: RollingDice = { dice: [{ count: 1, sides: 20 }], crit: 'natural', advantage: { kind: 'keep' }, disadvantage: { kind: 'keep' } };
+    const gm = await table(rules, () => 0.5);
+    gm.share.receive(ANA, { t: 'roll', scene: gm.scene, formula: '+4 adv', token: gm.alias(1) });
+    gm.share.receive(ANA, { t: 'roll', scene: gm.scene, formula: '+4 adv', token: null, advantage: 'disadvantage' });
+    gm.share.receive(ANA, { t: 'roll', scene: gm.scene, formula: '1d20+2 dis', token: null, mode: 'gm' });
+    expect(gm.rolled.map((roll) => [roll.formula, roll.rolls.length, roll.advantage])).toEqual([['1d20+4', 2, 'advantage'], ['1d20+4', 1, undefined]]);
+    const priv = gm.logged.find(({ mode }) => mode === 'gm')?.roll;
+    expect([priv?.formula, priv?.rolls.length, priv?.advantage]).toEqual(['1d20+2', 2, 'disadvantage']);
+    expect(refusals(gm.sent)).toEqual([]);
+    expect(gm.errors).toEqual([]);
+  });
+
+  it('refuse a written side the dice cannot take, with no notice', async () => {
+    const gm = await table({ defaultRoll: '1d20', crit: 'natural' }, () => 0.5);
+    gm.share.receive(ANA, { t: 'roll', scene: gm.scene, formula: '1d6 adv', token: null });
+    await gm.advance(1000);
+    gm.share.receive(ANA, { t: 'roll', scene: gm.scene, formula: '1d6 dis', token: null, mode: 'gm' });
+    expect(gm.rolled).toEqual([]);
+    expect(gm.logged).toEqual([]);
+    expect(gm.errors).toEqual([]);
+    expect(refusals(gm.sent)).toEqual([{ reason: 'formula', to: ANA }, { reason: 'formula', to: ANA }]);
   });
 
   it('refuse another scene and a GM tab without dice', async () => {
@@ -285,5 +325,12 @@ describe('rollable formulas', () => {
     expect(['3', '4+1', '+ 3', '+12345', '*2', '+3+', '', '1d0'].some(playerFormula)).toBe(false);
     expect(['+4+3[Str mod]', '-1[Bane]'].every(playerFormula)).toBe(true);
     expect(['+4 +3[Str mod]', '+3[Str mod] '].some(playerFormula)).toBe(false);
+  });
+
+  it('may end with a side written after one space', () => {
+    expect(['1d20+5 adv', '2d6 dis'].every(rollableFormula)).toBe(true);
+    expect(['+4 adv', '-1 dis', '+4+3[Str mod] adv', '1d20 + 5 ADV'].every(playerFormula)).toBe(true);
+    expect(['adv', '+4adv', '4 adv', '+4 +3 adv', '+4 adv dis'].some(playerFormula)).toBe(false);
+    expect(rolledFormula('+4 adv', { defaultRoll: '1d20', crit: 'natural' })).toBe('+4 adv');
   });
 });

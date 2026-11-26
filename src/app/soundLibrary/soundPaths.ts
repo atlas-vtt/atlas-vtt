@@ -1,5 +1,6 @@
 import { INVALID_NAME_CHARACTERS } from '../services/assetPaths';
 import type { SoundKind } from '../sound/soundTypes';
+import { AUDIO_EXTENSIONS } from './soundFiles';
 
 /**
  * Where a record of a file in an external root says its file lies: the root's kind and the path below
@@ -57,6 +58,22 @@ export const stemOf = (name: string): string => {
   const dot = name.lastIndexOf('.');
   return dot > 0 ? name.slice(0, dot) : name;
 };
+
+/**
+ * The names one sound has beside `path`, converted or not: a source's Opus copy takes its stem (`a/Tavern.mp3` is
+ * `a/Tavern.opus`), and an Opus file may still be its source on a device that has not converted it yet, under any
+ * other audio extension. Devices link their own folders, so a record names the file one of them has. Empty for
+ * what is no audio.
+ */
+export function twinCandidates(path: string): string[] {
+  const name = nameOfRelative(path);
+  const stem = stemOf(name);
+  const extension = name.slice(stem.length + 1).toLowerCase();
+  if (stem === name || !AUDIO_EXTENSIONS.has(extension)) return [];
+  const base = path.slice(0, path.length - name.length + stem.length);
+  if (extension !== 'opus') return [`${base}.opus`];
+  return [...AUDIO_EXTENSIONS].filter((other) => other !== 'opus').map((other) => `${base}.${other}`);
+}
 
 /** `name`, or the first of `name 2`, `name 3`… nothing has; files never replace each other. */
 export async function freeName(name: string, isTaken: (candidate: string) => boolean | Promise<boolean>): Promise<string> {

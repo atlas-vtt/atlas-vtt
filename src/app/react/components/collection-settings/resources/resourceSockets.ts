@@ -1,4 +1,4 @@
-import { t } from '../../../../i18n';
+import { t, tPointer } from '../../../../i18n';
 import { RESOURCE_COLORS } from '../../../../resources/resourceColors';
 import { draftResourceKey, isDraftResourceKey } from '../../../../resources/resourceDefinitions';
 import { slottedResources } from '../../../../resources/resourceSlots';
@@ -28,8 +28,8 @@ const FAN_RADIUS = 66;
 const FAN_SPREAD_DEG = 34;
 
 const BAR_TEXT = { where: t('resource.socket.bar'), heading: t('resource.socket.barHeading') };
-const RIGHT_TEXT = { where: t('resource.socket.wheelRight'), heading: t('resource.socket.wheelRightHeading') };
-const LEFT_TEXT = { where: t('resource.socket.wheelLeft'), heading: t('resource.socket.wheelLeftHeading') };
+const RIGHT_TEXT = { where: t('resource.socket.wheelRight'), heading: tPointer('resource.socket.wheelRightHeading') };
+const LEFT_TEXT = { where: t('resource.socket.wheelLeft'), heading: tPointer('resource.socket.wheelLeftHeading') };
 
 /** The six sockets, in slot order: two bars below the token, two wheels on its right, two on its left; the upper one first. */
 export const SOCKETS: readonly SocketPlace[] = [

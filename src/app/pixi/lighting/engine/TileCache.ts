@@ -1,7 +1,8 @@
 import type { Renderer, RenderTexture } from 'pixi.js';
 import type { WallSegment } from '../../../types/wallTypes';
 import { LIGHT_REACH, wallRadius } from '../../../lighting/lightingConstants';
-import { placeLight } from '../../../lighting/lightPlacement';
+import { placeLight, type SegmentsNear } from '../../../lighting/lightPlacement';
+import { lightSegmentsNear } from '../../../lighting/lightSegmentsNear';
 import { areaBounds } from '../../../lighting/lightArea';
 import { segOf, solidSegments, splitBlocking, type BlockingWalls, type Rect } from '../../../lighting/segments';
 import { blocksFrom, type MapBounds } from '../../../vision/visibility';
@@ -105,6 +106,7 @@ export class TileCache {
       dirty = true;
     }
     const blocking = splitBlocking(walls, 'light');
+    let near: SegmentsNear | undefined | null = null;
     for (const light of lights) {
       let entry = this.entries.get(light.key);
       const pending = entry?.build;
@@ -124,7 +126,8 @@ export class TileCache {
         dirty = true;
       }
       this.cancel(entry);
-      const build = this.begin(light, blocking, walls);
+      if (near === null) near = lightSegmentsNear(walls);
+      const build = this.begin(light, blocking, walls, near);
       entry.build = build;
       if (build) started = true;
       if (build?.job.moving) {
@@ -175,10 +178,10 @@ export class TileCache {
     this.movingOneWay = null;
   }
 
-  private begin(light: EngineLight, blocking: BlockingWalls, walls: readonly WallSegment[]): Build | null {
+  private begin(light: EngineLight, blocking: BlockingWalls, walls: readonly WallSegment[], near: SegmentsNear | undefined): Build | null {
     if (light.surface) return this.beginArea(light, light.surface, blocking, walls);
     const { texel } = this.field;
-    const placed = placeLight(light.x, light.y, light.flame, solidSegments(blocking), texel);
+    const placed = placeLight(light.x, light.y, light.flame, solidSegments(blocking), texel, near);
     if (!placed) return null;
     const rect = this.tileRect(placed.x, placed.y, light.dim * LIGHT_REACH);
     if (!rect) return null;

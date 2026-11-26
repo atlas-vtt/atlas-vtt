@@ -2,10 +2,14 @@ import { useEffect } from 'react';
 import { useAtlasStore, useViewStoreHook } from '../react/ViewStoreContext';
 import type { TokenEntity } from '../types';
 import type { InitiativeEntry } from '../types/initiativeTypes';
+import { entryToken } from './party';
 import { initiativeEntryForToken } from '../stores/initiativeEntries';
 import { offMapWithoutEntry } from './offMapCombatants';
 
-/** Keeps the tracker's entries in step with their tokens while the tracker is mounted. */
+/**
+ * Keeps the tracker's entries in step with their tokens while the tracker is mounted. A token on
+ * the map is never given an entry here: the GM chooses the combatants.
+ */
 export function useInitiativeTokenSync(tokens: Record<string, TokenEntity>, entries: InitiativeEntry[]): void {
   const removeFromInitiative = useAtlasStore((s) => s.removeFromInitiative);
   const updateInitiativeEntry = useAtlasStore((s) => s.updateInitiativeEntry);
@@ -13,10 +17,10 @@ export function useInitiativeTokenSync(tokens: Record<string, TokenEntity>, entr
   const store = useViewStoreHook();
   const isMapLoading = useAtlasStore((s) => s.isMapLoading);
 
-  // The entry of a deleted token goes with it
+  // The entry of a deleted token goes with it; a party member's has none
   useEffect(() => {
     entries.forEach((entry) => {
-      if (!tokens[entry.tokenId]) {
+      if (entry.tokenId !== undefined && !tokens[entry.tokenId]) {
         removeFromInitiative(entry.id);
       }
     });
@@ -32,7 +36,7 @@ export function useInitiativeTokenSync(tokens: Record<string, TokenEntity>, entr
   // Entries follow their token's name, image and statblock; resources are read from the token itself
   useEffect(() => {
     entries.forEach((entry) => {
-      const token = tokens[entry.tokenId];
+      const token = entryToken(tokens, entry);
       if (!token) return;
 
       const updates: Partial<InitiativeEntry> = {};
@@ -58,4 +62,14 @@ export function useInitiativeTokenSync(tokens: Record<string, TokenEntity>, entr
       }
     });
   }, [tokens, entries, updateInitiativeEntry]);
+}
+
+const NO_TOKENS: Record<string, TokenEntity> = {};
+
+/** Keeps the entries in step with their tokens, drawn or not: the tracker itself reads tokens only while it is drawn. */
+export function InitiativeTokenSync(): null {
+  const tokens = useAtlasStore((s) => s.objects?.tokens) ?? NO_TOKENS;
+  const entries = useAtlasStore((s) => s.initiative.entries);
+  useInitiativeTokenSync(tokens, entries);
+  return null;
 }

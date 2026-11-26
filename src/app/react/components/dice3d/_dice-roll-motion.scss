@@ -1,0 +1,72 @@
+// ──────────────────────────────────────────────
+// Dice roll panel motion: CSS animations of opacity, translate and scale, which run off the main
+// thread beside the dice and hold their end state themselves (a panel that faded out stays faded
+// until its timer removes it). framer-motion's projection owns `transform` for the column's places,
+// so these use the separate `translate` and `scale` properties. Imported by dice-roll.scss.
+// ──────────────────────────────────────────────
+@use '../../../../../styles/tokens' as *;
+
+@keyframes atlas-dice-roll-in {
+  from {
+    opacity: 0;
+    translate: 0 -28px;
+    scale: 0.92;
+  }
+}
+
+// From wherever the panel stands, so a close during its arrival does not jump.
+@keyframes atlas-dice-roll-out {
+  to {
+    opacity: 0;
+    translate: 0 -14px;
+    scale: 0.96;
+  }
+}
+
+@keyframes atlas-dice-roll-total-in {
+  from {
+    opacity: 0;
+    translate: 0 10px;
+    scale: 0.8;
+  }
+}
+
+@keyframes atlas-dice-roll-bump {
+  from {
+    scale: 1.22;
+  }
+}
+
+@keyframes atlas-dice-roll-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes atlas-dice-roll-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+// Reduced motion: the panel fades in and out where it stands; nothing slides, pops or bumps.
+@media (prefers-reduced-motion: reduce) {
+  .atlas-dice-roll {
+    animation: atlas-dice-roll-fade 120ms $transition-ease-out both;
+
+    &--leaving {
+      animation: atlas-dice-roll-fade-out 120ms $transition-ease-out forwards;
+    }
+  }
+
+  .atlas-dice-roll__clip {
+    transition: none;
+  }
+
+  .atlas-dice-roll__slot .atlas-dice-roll__total,
+  .atlas-dice-roll__count--bump,
+  .atlas-dice-roll__breakdown,
+  .atlas-dice-roll__formula {
+    animation: none;
+  }
+}

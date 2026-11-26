@@ -1,7 +1,8 @@
 import type { Message } from '../../types';
 
 export const preview = {
-  'preview.loading': 'Loading...',
+  'preview.loading': 'Loading…',
+  'preview.show': 'Preview',
   'preview.pin': 'Pin window',
   'preview.unpin': 'Unpin window',
   'preview.openFile': 'Open file',

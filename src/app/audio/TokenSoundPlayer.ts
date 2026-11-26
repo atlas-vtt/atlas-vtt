@@ -1,6 +1,7 @@
 import type { App, TFile, Vault } from 'obsidian';
 import type { TokenSound } from '../types/audioTypes';
 import type { SoundBuffer, SoundContext, SoundGainNode, SoundSourceNode } from '../sound/engine/audioNodes';
+import { resumeOnGesture, type ResumableContext } from '../sound/engine/audioUnlock';
 import { GainTrack } from '../sound/engine/gainTrack';
 import { followOutputDevice, forgetOutputFollower } from '../sound/engine/outputDevice';
 import { tokenSoundProblem, tokenSoundSeconds } from './tokenSoundLength';
@@ -9,11 +10,7 @@ import { tokenSoundProblem, tokenSoundSeconds } from './tokenSoundLength';
 export type PlayOutcome = 'played' | 'stopped' | 'missing' | 'too-large' | 'too-long' | 'unreadable' | 'unavailable';
 
 /** What the player asks of an audio context beyond what the sound engine does: waking it, and closing it. */
-export type TokenSoundContext = SoundContext & {
-  readonly state: AudioContextState;
-  resume(): Promise<void>;
-  close(): Promise<void>;
-};
+export type TokenSoundContext = SoundContext & ResumableContext & { close(): Promise<void> };
 
 /** What the player is made with: the vault it reads sounds from, how it gets an audio context, and how it reads a file's length. */
 export interface TokenSoundDeps {
@@ -133,14 +130,14 @@ export class TokenSoundPlayer {
     return this.voices.size > 0;
   }
 
-  /** The app's audio context, woken if the browser holds it suspended; null where there is no Web Audio. */
+  /** The app's audio context; null where there is no Web Audio. */
   private audio(): TokenSoundContext | null {
     if (!this.context) {
       this.context = this.deps.createContext();
       if (!this.context) return null;
+      resumeOnGesture(this.context);
       followOutputDevice(this.context);
     }
-    if (this.context.state === 'suspended') void this.context.resume().catch(() => undefined);
     return this.context;
   }
 

@@ -1,0 +1,25 @@
+import type { Translation } from '../../types';
+
+export const rooms: Translation = {
+  'rooms.carve': 'Scava',
+  'rooms.fill': 'Riempi',
+  'rooms.door': 'Porta',
+  'rooms.rectangle': 'Rettangolo',
+  'rooms.points': 'Punti',
+  'rooms.lasso': 'Lazo',
+  'rooms.brush': 'Pennello',
+  'rooms.brushSize': 'Dimensione del pennello',
+  'rooms.bucket': 'Secchio',
+  'rooms.bucketTip': 'Fai clic o trascina dentro una stanza per scavarne il pavimento fino ai muri disegnati',
+  'rooms.bucketRadius': 'Raggio del secchio',
+  'rooms.bucketSensitivity': 'Sensibilità dei bordi',
+  'rooms.stabilize': 'Stabilizzazione',
+  'rooms.experimental.label': 'Secchio delle stanze',
+  'rooms.experimental.hint': 'Il Secchio della modalità stanze dello strumento luci: fai clic o trascina su una mappa dipinta e il pavimento viene trovato fino ai muri che disegna, e scavato. Se disattivato, il secchio è nascosto.',
+  'rooms.bucketFoundNothing': 'Il secchio non ha trovato pavimento qui. Prova un altro punto o un\'altra sensibilità',
+  'rooms.carveTip': 'Scava una stanza nella roccia. Tieni premuto Alt per riempire',
+  'rooms.fillTip': 'Riempi di nuovo con la roccia. Tieni premuto Alt per scavare',
+  'rooms.rectangleTip': 'Tieni premuto Maiusc per agganciare alla griglia',
+  'rooms.pointsTip': 'Fai clic sui vertici, poi di nuovo sul primo per chiudere. Maiusc aggancia alla griglia',
+  'rooms.doorHint': 'Trascina attraverso un’apertura. Tieni premuto Alt per una porta segreta',
+};

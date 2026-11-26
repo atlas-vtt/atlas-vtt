@@ -79,6 +79,11 @@ export class View {
   async setState(_state: unknown, _result: unknown): Promise<void> {}
 
   setEphemeralState(_state: unknown): void {}
+
+  /** As Obsidian's views (Components) listen: on any event target, the listener taken off when the view unloads. */
+  registerDomEvent(el: EventTarget, type: string, callback: (event: Event) => unknown, options?: AddEventListenerOptions): void {
+    el.addEventListener(type, callback, options);
+  }
 }
 
 export class ItemView extends View {
@@ -251,6 +256,34 @@ export function resolveSubpath(cache: { headings?: CachedHeading[] }, subpath: s
     if (matched === parts.length) return { type: 'heading', current: heading, start: heading.position.start };
   }
   return null;
+}
+
+/** Obsidian's debounce: calls `callback` with the latest arguments `timeout` ms after the first call, or after the latest with `resetTimer`. */
+export function debounce<T extends unknown[]>(callback: (...args: T) => unknown, timeout = 0, resetTimer = false): ((...args: T) => void) & { cancel(): void; run(): void } {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let latest: T | undefined;
+  const fire = (): void => {
+    timer = undefined;
+    const args = latest;
+    latest = undefined;
+    if (args) callback(...args);
+  };
+  const debounced = (...args: T): void => {
+    latest = args;
+    if (timer !== undefined && !resetTimer) return;
+    clearTimeout(timer);
+    timer = setTimeout(fire, timeout);
+  };
+  const cancel = (): void => {
+    clearTimeout(timer);
+    timer = undefined;
+    latest = undefined;
+  };
+  const run = (): void => {
+    clearTimeout(timer);
+    fire();
+  };
+  return Object.assign(debounced, { cancel, run });
 }
 
 export function normalizePath(path: string): string {
@@ -550,6 +583,27 @@ export class ToggleComponent extends ValueComponent<boolean> {
   }
 }
 
+/** Obsidian's slider: a release reports the value (each step with `setInstant`), and `setValue` reports a change too. */
+export class SliderComponent extends ValueComponent<number> {
+  private instant = false;
+  constructor(public sliderEl: HTMLInputElement) {
+    super();
+    sliderEl.type = 'range';
+    sliderEl.addEventListener('input', () => { if (this.instant) this.changed?.(this.getValue()); });
+    sliderEl.addEventListener('change', () => { if (!this.instant) this.changed?.(this.getValue()); });
+  }
+  setInstant(instant: boolean): this { this.instant = instant; return this; }
+  setLimits(min: number, max: number, step: number): this {
+    Object.assign(this.sliderEl, { min: String(min), max: String(max), step: String(step) });
+    return this;
+  }
+  getValue(): number { return Number(this.sliderEl.value); }
+  setValue(value: number): this {
+    if (this.getValue() !== value) { this.sliderEl.value = String(value); this.changed?.(value); }
+    return this;
+  }
+}
+
 export class ButtonComponent {
   constructor(public buttonEl: HTMLButtonElement) {}
   setButtonText(text: string): this { this.buttonEl.textContent = text; return this; }
@@ -603,6 +657,7 @@ export class Setting {
   addTextArea(callback: (component: TextAreaComponent) => void): this { callback(new TextAreaComponent(this.create('textarea'))); return this; }
   addDropdown(callback: (component: DropdownComponent) => void): this { callback(new DropdownComponent(this.create('select'))); return this; }
   addToggle(callback: (component: ToggleComponent) => void): this { callback(new ToggleComponent(this.create('div'))); return this; }
+  addSlider(callback: (component: SliderComponent) => void): this { callback(new SliderComponent(this.create('input'))); return this; }
   addButton(callback: (component: ButtonComponent) => void): this { callback(new ButtonComponent(this.create('button'))); return this; }
   addExtraButton(callback: (component: ExtraButtonComponent) => void): this { callback(new ExtraButtonComponent(this.create('div'))); return this; }
 }
@@ -664,3 +719,11 @@ export class Menu {
 export async function loadPdfJs(): Promise<unknown> {
   throw new Error('PDF.js must be supplied by PDF reader tests');
 }
+
+// Whether an editor shows Live Preview; tests set it per state with `editorLivePreviewField.init`.
+import { StateField } from '@codemirror/state';
+
+export const editorLivePreviewField = StateField.define<boolean>({
+  create: () => true,
+  update: (value) => value,
+});

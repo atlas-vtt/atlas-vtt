@@ -1,0 +1,153 @@
+// ──────────────────────────────────────────────
+// A saved roll's editor: a floating card above the saved rolls (DicePresetEditor), the Dice Lab's tray inside it
+// ──────────────────────────────────────────────
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+$editor-width: 440px;
+$editor-gap: $spacing-s;
+$editor-stage: 260px;
+$editor-control: $button-height-l;
+
+@keyframes atlas-dice-preset-editor-in {
+  from {
+    opacity: 0;
+    scale: 0.97;
+  }
+}
+
+// Above the saved rolls, centred on them, its own card in their look (`__card`), so it needs no room beside the tray
+// on a small screen. It grows upward (more as its rules unfold); `useKeepInView` moves it back off a side of the view
+// and caps its height to the room above, where it scrolls. It arrives from its foot, by `scale`, which leaves
+// `translate` to that sideways move.
+.atlas-dice-preset-editor {
+  position: absolute;
+  bottom: calc(100% + #{$editor-gap});
+  left: calc(50% - #{$editor-width * 0.5});
+  display: flex;
+  flex-direction: column;
+  gap: $surface-inset;
+  width: $editor-width;
+  font-size: $font-ui-small;
+  transform-origin: 50% 100%;
+  animation: atlas-dice-preset-editor-in 220ms $transition-ease-out backwards;
+  @include atlas-keep-in-view;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation-name: atlas-dice-fade-in;
+  }
+}
+
+// The name, as a field the card's head is: one edge with hover and focus, as the save card's; Done at its end, a
+// control of its own: under the pointer it alone lights up.
+.atlas-dice-preset-editor__head {
+  display: flex;
+  align-items: center;
+  border: $border-width-s solid transparent;
+  border-radius: var(--atlas-bar-control-radius);
+  transition: border-color $transition-fast $transition-ease, background-color $transition-fast $transition-ease;
+
+  @include atlas-hover('&:hover:not(:focus-within):not(:has(.atlas-dice-preset-editor__done:hover))') {
+    background: var(--background-modifier-hover);
+  }
+
+  &:focus-within {
+    border-color: $field-edge-focus;
+    box-shadow: $field-focus-ring;
+  }
+
+  &:has([aria-invalid='true']) {
+    border-color: var(--text-error);
+  }
+}
+
+.atlas-dice-preset-editor__name.atlas-dice-presets__field {
+  flex: 1 1 auto;
+  height: calc(#{$editor-control} - 2 * #{$border-width-s});
+  font-size: $font-ui-medium;
+  font-weight: $font-weight-medium;
+}
+
+.atlas-dice-preset-editor .atlas-dice-preset-editor__done.atlas-dice-presets__icon {
+  height: calc(#{$editor-control} - 2 * #{$border-width-s});
+  opacity: 1;
+  color: var(--text-accent);
+}
+
+// The Dice Lab's tray, at a height of its own, without its felt: the dice lie on the card itself. Its dice fan out
+// over it, so it keeps room around them. It cuts nothing off: a die's step panel opens over the whole card.
+.atlas-dice-preset-editor__stage {
+  display: flex;
+  height: $editor-stage;
+  border-radius: var(--atlas-bar-control-radius);
+
+  .atlas-dice-lab__tray,
+  .atlas-dice-lab__field {
+    border-radius: inherit;
+  }
+
+  .atlas-dice-lab__field {
+    background: none;
+    box-shadow: none;
+  }
+}
+
+// The bonus and the rules' switch side by side.
+.atlas-dice-preset-editor__row {
+  display: flex;
+  align-items: center;
+  gap: $surface-inset;
+}
+
+// The bonus as the tray's formula bar: its name where the formula stands, the steps at its end.
+.atlas-dice-preset-editor__bonus.atlas-dice-tray__entry {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-inline: 0;
+  border-radius: var(--atlas-bar-control-radius);
+}
+
+.atlas-dice-preset-editor__bonus-label {
+  flex: 1 1 auto;
+  align-self: center;
+  padding-inline: $spacing-s;
+  color: var(--text-muted);
+}
+
+// "Rules" folds the Dice Lab's options open under it, as the tray's history unfolds.
+.atlas-dice-preset-editor__rules-toggle.atlas-dice-tray__history-toggle {
+  flex: 0 0 auto;
+  width: auto;
+  padding-inline: $spacing-m $spacing-s;
+  border-radius: var(--atlas-bar-control-radius);
+}
+
+.atlas-dice-preset-editor__rules.atlas-dice-tray__history {
+  @include atlas-flex-col($spacing-m);
+  max-height: none;
+  overflow: visible;
+  padding-inline: $spacing-s;
+}
+
+// Folded, the rules take no room, not even the card's gap above them, so the row is the card's foot and its corners
+// are concentric with the card's; unfolding opens the gap with them. Unfolded, they let their choices' lists hang
+// past them (the lists open in place, inside the tray).
+.atlas-dice-preset-editor .atlas-dice-tray__history-reveal {
+  margin-top: calc(-1 * #{$surface-inset});
+  transition-property: grid-template-rows, padding, margin-top;
+
+  &[data-open] {
+    margin-top: 0;
+    padding-block: $spacing-xs $spacing-s;
+    overflow: visible;
+  }
+}
+
+.atlas-dice-preset-editor__formula.atlas-dice-presets__field {
+  border: $border-width-s solid $field-edge;
+
+  &:focus {
+    border-color: $field-edge-focus;
+    box-shadow: $field-focus-ring;
+  }
+}

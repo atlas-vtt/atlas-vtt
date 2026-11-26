@@ -46,6 +46,9 @@ interface DocumentDice {
   lent: number;
   /** Whether its stages are being built ahead. */
   warming: boolean;
+  /** Map loads under way in the document (`holdStageWarmUp`), and when the last one let go. */
+  holds: number;
+  heldUntil: number;
   /**
    * Whether its context is lost. The browser blocks WebGL for a page whose
    * contexts keep getting lost, so the stages would stay blank (white on some
@@ -59,7 +62,7 @@ const documents = new Map<Document, DocumentDice>();
 function diceOf(doc: Document): DocumentDice {
   let dice = documents.get(doc);
   if (dice === undefined) {
-    dice = { gpu: undefined, idle: [], lent: 0, warming: false, lost: false };
+    dice = { gpu: undefined, idle: [], lent: 0, warming: false, lost: false, holds: 0, heldUntil: 0 };
     documents.set(doc, dice);
   }
   return dice;
@@ -109,6 +112,11 @@ export function borrowStage(doc: Document): StageLease {
   return dice.idle.pop() ?? buildStage(doc, dice);
 }
 
+/** Whether a stage of `doc` waits for a roll: borrowing one then builds nothing. */
+export function hasIdleStage(doc: Document): boolean {
+  return (documents.get(doc)?.idle.length ?? 0) > 0;
+}
+
 export function returnStage(lease: StageLease): void {
   lease.canvas.remove();
   // A stage of a pool that was given back has nothing to return to.
@@ -143,7 +151,7 @@ export function releaseStagePools(): void {
  * document gets its stages while nothing rolls: as many as rolls stand at once
  * (`rollStackState`) and one for the roll that fades out as the next arrives.
  */
-const WARM_STAGES = 4;
+export const WARM_STAGES = 4;
 /** The pause before a stage is built, and between two: the map opening has the frames first. */
 const WARM_PAUSE_MS = 500;
 /** How long a build waits for an idle moment before it takes one. */
@@ -174,22 +182,44 @@ function whenQuiet(doc: Document, run: () => void): void {
 function warmUp(renderer: DiceRenderer, win: Window): void {
   const rem = parseFloat(win.getComputedStyle(win.document.documentElement).fontSize) || 16;
   renderer.setSize(Math.ceil(WARM_REM[0] * rem), Math.ceil(WARM_REM[1] * rem), stagePixelRatio(win));
-  renderer.setPlan(DIE_BODIES.map((sides) => ({ sides })));
-  renderer.render(DIE_BODIES.map((sides) => ({ sides, anim: { ...makeDie(Math.random), w: [...WARM_SPIN] } })), 0);
+  // The percentile roll's tens die too: its faces read in tens, an atlas of their own.
+  const bodies = [...DIE_BODIES.map((sides) => ({ sides })), { sides: 10 as const, role: 'tens' as const }];
+  renderer.setPlan(bodies);
+  renderer.render(bodies.map(({ sides }) => ({ sides, anim: { ...makeDie(Math.random), w: [...WARM_SPIN] } })), 0);
   renderer.reset();
 }
 
-function warmNext(doc: Document, dice: DocumentDice): void {
+/** How long a stage build waits after a map load let go: the reveal's fade and what follows it have the frames first. */
+const AFTER_LOAD_MS = 2000;
+
+/**
+ * Holds the warm-up of `doc` while a map loads there; the returned function lets go. Building
+ * the document's first stage is a long task (its context, the mirror world, the shaders) that
+ * an idle moment between a load's reads would otherwise put in front of the map.
+ */
+export function holdStageWarmUp(doc: Document): () => void {
+  const dice = diceOf(doc);
+  dice.holds++;
+  let held = true;
+  return (): void => {
+    if (!held) return;
+    held = false;
+    dice.holds--;
+    dice.heldUntil = Date.now() + AFTER_LOAD_MS;
+  };
+}
+
+function warmNext(doc: Document, dice: DocumentDice, count: number): void {
   // The pool was given back meanwhile: nothing is built for it any more.
   if (documents.get(doc) !== dice) return;
-  if (dice.idle.length + dice.lent >= WARM_STAGES) return;
-  // Dice are on a stage: building now would be the freeze this is here to avoid.
-  if (dice.lent === 0) {
+  if (dice.idle.length + dice.lent >= count) return;
+  // Dice are on a stage, or a map is loading: building now would be the freeze this is here to avoid.
+  if (dice.lent === 0 && dice.holds === 0 && Date.now() >= dice.heldUntil) {
     const stage = buildStage(doc, dice);
     if (stage.renderer && doc.defaultView) warmUp(stage.renderer, doc.defaultView);
     dice.idle.push(stage);
   }
-  whenQuiet(doc, () => warmNext(doc, dice));
+  whenQuiet(doc, () => warmNext(doc, dice, count));
 }
 
 /**
@@ -197,9 +227,9 @@ function warmNext(doc: Document, dice: DocumentDice): void {
  * are rolling. `artwork` is what the warm-up frame draws: without the numerals
  * and the card it would put blank faces on the graphics card.
  */
-export function warmStages(doc: Document, artwork: Promise<void> = loadDiceArtwork()): void {
+export function warmStages(doc: Document, artwork: Promise<void> = loadDiceArtwork(), count: number = WARM_STAGES): void {
   const dice = diceOf(doc);
   if (dice.warming) return;
   dice.warming = true;
-  void artwork.then(() => whenQuiet(doc, () => warmNext(doc, dice)));
+  void artwork.then(() => whenQuiet(doc, () => warmNext(doc, dice, count)));
 }

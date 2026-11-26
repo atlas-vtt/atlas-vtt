@@ -1,0 +1,153 @@
+@use '../../../styles/tokens' as *;
+@use '../../../styles/mixins' as *;
+@use '../services/player-overlays' as *;
+
+// Table mode: a map view as the players' picture, on a tablet laid on the table (`TableMode.ts`).
+// The canvas draws that picture (session view); these rules take everything else away.
+
+$table-chip-inset: $spacing-m;
+$table-chip-ring: 2.5px;
+
+// The GM's whole UI in the view (bars, panels, dialogs, note previews): only the map and the table's surface stay.
+.atlas-vtt-view.atlas-table-mode > :not(canvas, .atlas-table-surface) {
+  display: none !important;
+}
+
+// The map fills the window: Obsidian's chrome, the other panes and what floats over them wait
+// until Table mode ends. Atlas' own floating UI (menus, dialogs, the asset manager, hover
+// previews, the GM's dice rolls) lives in its portal host, and the notices in Obsidian's.
+body.atlas-table-mode-on {
+  .workspace-ribbon,
+  .workspace-drawer,
+  .workspace-drawer-backdrop,
+  .workspace-split.mod-left-split,
+  .workspace-split.mod-right-split,
+  .workspace-tab-header-container,
+  .workspace-leaf-resize-handle,
+  .view-header,
+  .status-bar,
+  .mobile-navbar,
+  .mobile-toolbar,
+  .notice-container,
+  .mod-root :is(.workspace-tabs, .workspace-split):not(.atlas-table-mode-path),
+  > .atlas-portal-host {
+    display: none !important;
+  }
+}
+
+.atlas-table-surface {
+  position: absolute;
+  inset: 0;
+  // Above the view's UI layer, whatever it holds
+  z-index: 1001;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+
+  &--covered {
+    background: #000;
+  }
+
+  // The players' overlays place themselves as in the player window: its edges are this box's
+  & &__overlays {
+    position: absolute;
+    inset: 0;
+    contain: layout;
+
+    @include player-dice-rolls;
+  }
+}
+
+// The way back to the GM's view: it names nobody but the GM, is quiet enough to be overlooked,
+// and does nothing until it is held (`holdToLeave.ts`).
+.atlas-table-surface .atlas-table-chip {
+  @include atlas-elevated-surface;
+  position: absolute;
+  left: calc(#{$table-chip-inset} + env(safe-area-inset-left, 0px));
+  bottom: calc(#{$table-chip-inset} + env(safe-area-inset-bottom, 0px));
+  width: $touch-target;
+  height: $touch-target;
+  padding: 0;
+  border-radius: $radius-full;
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+  font-size: $font-ui-smaller;
+  font-weight: $font-weight-semibold;
+  letter-spacing: 0.04em;
+  opacity: 0.45;
+  pointer-events: auto;
+  touch-action: none;
+  -webkit-touch-callout: none;
+  cursor: default;
+  transition: opacity $transition-normal $transition-ease;
+
+  &.is-held {
+    opacity: 1;
+
+    .atlas-table-chip__track {
+      opacity: 0.25;
+    }
+
+    .atlas-table-chip__progress {
+      opacity: 1;
+      stroke-dashoffset: 0;
+      transition: stroke-dashoffset var(--atlas-table-hold, 600ms) linear;
+
+      @media (prefers-reduced-motion: reduce) {
+        transition: none;
+      }
+    }
+  }
+
+  &__label {
+    grid-area: 1 / 1;
+  }
+
+  &__ring {
+    grid-area: 1 / 1;
+    width: 100%;
+    height: 100%;
+    // The ring starts at the top and closes clockwise, as the long press's ring on the map does
+    transform: rotate(-90deg);
+    fill: none;
+    stroke: var(--interactive-accent);
+    stroke-width: $table-chip-ring;
+    stroke-linecap: round;
+  }
+
+  &__track {
+    opacity: 0;
+  }
+
+  &__progress {
+    stroke-dashoffset: 1;
+    opacity: 0;
+  }
+}
+
+// Beside the chip as Table mode begins, for the GM who has just laid the tablet down.
+.atlas-table-surface .atlas-table-hint {
+  position: absolute;
+  left: calc(#{$table-chip-inset} + #{$touch-target} + #{$spacing-s} + env(safe-area-inset-left, 0px));
+  bottom: calc(#{$table-chip-inset} + env(safe-area-inset-bottom, 0px));
+  height: $touch-target;
+  display: flex;
+  align-items: center;
+  color: var(--text-on-accent, #fff);
+  font-size: $font-ui-small;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 0.8);
+  opacity: 0;
+  animation: atlas-table-hint 4s $transition-ease 1 both;
+}
+
+@keyframes atlas-table-hint {
+  0%,
+  75% {
+    opacity: 0.9;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}

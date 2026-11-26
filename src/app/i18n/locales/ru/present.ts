@@ -9,4 +9,5 @@ export const present: Translation = {
   'present.loadFailed': 'Показываемую сцену не удалось загрузить. Отправьте сцену заново.',
   'present.chosen': 'Игроки увидят {name}, когда вы откроете окно игроков',
   'present.sceneLevel': '{scene}: {level}',
+  'present.shownElsewhere.mobile': 'Игроки видят «{name}»',
 };

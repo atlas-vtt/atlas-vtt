@@ -1,0 +1,51 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// Door ask — a player asks to open a door; the GM answers beside its badge
+// ═══════════════════════════════════════════════════════════════════════════
+// Imported inside the `.atlas-vtt-plugin` scope of styles/main.scss, after the light popover,
+// whose surface, placement and motion it takes.
+
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+$gap: $spacing-s;
+
+.atlas-door-ask {
+  width: auto;
+  max-width: 300px;
+}
+
+.atlas-door-ask__heading {
+  display: flex;
+  align-items: center;
+  gap: $gap;
+  font-size: $font-ui-small;
+  font-weight: var(--font-semibold);
+  color: var(--text-normal);
+
+  svg {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    color: var(--interactive-accent);
+  }
+}
+
+.atlas-door-ask__choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $gap;
+
+  .btn {
+    @include atlas-panel-inset-radius($gap);
+    justify-content: center;
+  }
+
+  .atlas-door-ask__open {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+
+    &:hover {
+      background: var(--interactive-accent-hover);
+    }
+  }
+}

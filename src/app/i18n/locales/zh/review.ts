@@ -1,10 +1,10 @@
 import type { Translation } from '../../types';
 
 export const review: Translation = {
-  'review.kind.token': '棋子',
+  'review.kind.token': '指示物',
   'review.kind.map': '地图',
   'review.kind.note': '笔记',
-  'review.kind.statblock': '属性块',
+  'review.kind.statblock': '数据卡',
   'review.kind.character': '角色',
   'review.kind.scene': '场景',
   'review.kind.encounter': '遭遇',

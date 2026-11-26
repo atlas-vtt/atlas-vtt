@@ -1,6 +1,7 @@
 import { setIcon } from 'obsidian';
 import { createTokenPortrait } from '../../../packages/components/shared/tokenPortraitElement';
 import { openMenuBelow, type MenuEntry } from './dockMenu.ts';
+import { secretCode } from './secretCode.ts';
 import type { GroupPlayer, OnlinePlayer, PlayerGroup, TokenRow } from './panelModel.ts';
 import { t } from '../../../i18n';
 
@@ -13,8 +14,12 @@ export interface ListActions {
   unmark(tokenIds: readonly string[]): void;
   /** Takes the player off this table; their code still lets them back. */
   kick(playerId: string): void;
-  /** Copies the player's code as people read it; false while there is none or the clipboard refused. */
-  copyPlayerCode(playerId: string): Promise<boolean>;
+  /** How many drawings and texts the player has on the level the shared scene shows. */
+  drawingsOf(playerId: string): number;
+  /** Removes them, in one undo step. */
+  clearDrawings(playerId: string): void;
+  /** The player's own code; null while the table knows none. */
+  playerCode(playerId: string): string | null;
   newPlayerCode(playerId: string): void;
   /** Asks the GM for the player's new name. */
   askRename(player: OnlinePlayer): void;
@@ -57,10 +62,11 @@ function releaseEntries(face: TokenRow | null, tokens: readonly TokenRow[], acti
 }
 
 /**
- * A player's row: their picture (its dot says whether they are here), the name they chose, and their
- * menu, a ghost button that shows while the pointer is over the row or focus is in it. A player who
- * plays a token is shown by it (`face`) and has no row for it besides: pressing the picture or the
- * name selects that token on the map, as its own row did, and their menu releases it alone.
+ * A player's row: their picture (its dot says whether they are here), the name they chose, their
+ * code (hidden until pressed, `secretCode`), and their menu, a ghost button that shows while the
+ * pointer is over the row or focus is in it. A player who plays a token is shown by it (`face`) and
+ * has no row for it besides: pressing the picture or the name selects that token on the map, as its
+ * own row did, and their menu releases it alone.
  */
 function playerRow(list: HTMLElement, player: GroupPlayer, face: TokenRow | null, tokens: readonly TokenRow[], actions: ListActions): void {
   if (actions.playerPrompt(list, player.id)) return;
@@ -73,6 +79,8 @@ function playerRow(list: HTMLElement, player: GroupPlayer, face: TokenRow | null
   if (face?.hidden) hiddenMark(main);
   main.createSpan({ cls: 'atlas-online-sr-only', text: `${player.online ? 'Online' : 'Away'}${face === null ? '' : `, plays ${face.label}`}` });
   if (face !== null) main.addEventListener('click', () => actions.selectToken(face.tokenId));
+  const code = actions.playerCode(player.id);
+  if (code !== null) secretCode(row, { code, focusKey: `code:${player.id}`, owner: player.name }, ['atlas-online-player__code']);
   const more = row.createEl('button', { cls: 'atlas-online-icon-button atlas-online-player__more', attr: { type: 'button', 'aria-label': `${player.name}: options`, 'aria-haspopup': 'menu', 'data-focus-key': `player:${player.id}` } });
   setIcon(more, 'more-horizontal');
   more.addEventListener('click', () => {
@@ -80,8 +88,9 @@ function playerRow(list: HTMLElement, player: GroupPlayer, face: TokenRow | null
     openMenuBelow([
       { title: t('online.assignHere'), icon: 'user-plus', disabled: selected.length === 0, run: () => actions.assign(selected, player.id) },
       ...releaseEntries(face, tokens, actions),
-      { title: t('online.copyCode'), icon: 'copy', apart: true, run: () => void actions.copyPlayerCode(player.id) },
-      { title: t('online.newCode'), icon: 'refresh-cw', run: () => actions.newPlayerCode(player.id) },
+      // Stays in its place with nothing drawn, disabled: the menu keeps its shape.
+      { title: t('online.clearDrawings'), icon: 'eraser', apart: true, disabled: actions.drawingsOf(player.id) === 0, run: () => actions.clearDrawings(player.id) },
+      { title: t('online.newCode'), icon: 'refresh-cw', apart: true, run: () => actions.newPlayerCode(player.id) },
       { title: t('online.renameMenu'), icon: 'pencil', run: () => actions.askRename(player) },
       { title: t('online.kick'), icon: 'user-x', warning: true, apart: true, run: () => actions.kick(player.id) },
       { title: t('online.removeFromCampaign'), icon: 'user-minus', warning: true, run: () => actions.askRemoveFromCampaign(player) },

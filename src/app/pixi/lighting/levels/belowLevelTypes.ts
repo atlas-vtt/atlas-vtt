@@ -40,6 +40,8 @@ export interface BelowLevelDeps {
   renderer: Renderer;
   store: LightingStore;
   quality: LightingQuality;
+  /** Whether the scene is lit. A level below an unlit scene is drawn as it is, all of it seen: no lighting of its own, no memory. */
+  lit: boolean;
   /** Makes the level's map image, read through the snapshot's camera. */
   image: (camera: SnapshotView) => BelowMapImage;
   art: TokenArt;
@@ -49,6 +51,8 @@ export interface BelowLevelDeps {
   liquids?: (changed: () => void) => BelowLiquids;
   /** How long a piece of the roof takes to fade. */
   fadeMs: number;
+  /** The longest side of the canvas the level's fog is composed on (`BelowLevelsHost.fogCanvasSide`). */
+  fogCanvasSide?: number;
   requestRender: () => void;
   /** The level's picture became ready, or stopped being: the stack must be worked out again. */
   onReady: () => void;

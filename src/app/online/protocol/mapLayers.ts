@@ -3,15 +3,8 @@ import { COLOUR_PATTERN, MAX_COORDINATE, MAX_TOKEN_SIZE, MAX_TOKENS } from './to
 
 /** Door badges one message may carry. */
 export const MAX_DOOR_BADGES = 2_000;
-/** Drawings and texts one message may carry, and the points of all its drawings together. */
-export const MAX_DRAWINGS = 2_000;
-export const MAX_TEXTS = 500;
-export const MAX_DRAWING_POINTS = 200_000;
 /** Readable pins one message may carry. */
 export const MAX_SHARED_PINS = 500;
-/** The longest text on the map, and its font's name. */
-export const MAX_TEXT_LENGTH = 2_000;
-export const MAX_FONT_NAME = 100;
 /** A stamp's icon: the key Atlas names it by. */
 const ICON_PATTERN = /^[a-z0-9-]{1,40}$/;
 /** A numbered or lettered pin's label, as Atlas gives one: digits, or capitals. */
@@ -20,15 +13,15 @@ const PIN_LABEL_PATTERN = /^(?:[0-9]{1,6}|[A-Z]{1,6})$/;
 /** A GM's pin's icon as Atlas names it, as a field to spread; none where there is none or it cannot be read. */
 export const pinIconField = (value: unknown): { icon?: string } => (typeof value === 'string' && ICON_PATTERN.test(value) ? { icon: value } : {});
 
+/** Whether a value is an icon's key: what a stamp and a pin name their icon by. */
+export const isIconKey = (value: unknown): value is string => typeof value === 'string' && ICON_PATTERN.test(value);
+
 /** A numbered or lettered pin's label, as a field to spread; none where there is none or it cannot be read. */
 export const pinLabelField = (value: unknown): { label?: string } => (typeof value === 'string' && PIN_LABEL_PATTERN.test(value) ? { label: value } : {});
-/** A font family as a text names it: names, quotes, commas and spaces only. */
-const FONT_PATTERN = /^[\p{L}\p{N} ,'"_-]*$/u;
 
 export const GRID_TYPES = ['square', 'hex-horizontal', 'hex-vertical'] as const;
 export const GRID_LINE_TYPES = ['solid', 'dashed', 'dotted'] as const;
 export const CELL_NUMBER_FORMATS = ['column-row', 'sequential', 'letter-number'] as const;
-const ALIGNS = ['left', 'center', 'right'] as const;
 
 /** The grid as the players' picture draws it: Atlas's grid options. */
 export interface SharedGrid {
@@ -57,35 +50,6 @@ export interface SensedMark {
   readonly size: number;
 }
 
-/** A drawing on the map: a stroke through its points (flat `[x0, y0, …]`) or an icon stamp at its one point. */
-export interface SharedDrawing {
-  readonly type: 'pen' | 'icon';
-  readonly points: readonly number[];
-  readonly colour: string;
-  readonly width: number;
-  readonly opacity: number;
-  readonly icon?: string;
-}
-
-/** A text on the map, as Atlas's text tool stores it. */
-export interface SharedText {
-  readonly x: number;
-  readonly y: number;
-  readonly text: string;
-  readonly fontSize: number;
-  readonly fontFamily: string;
-  readonly colour: string;
-  readonly background: string | null;
-  readonly padding: number;
-  readonly radius: number;
-  readonly opacity: number;
-  readonly align: (typeof ALIGNS)[number];
-  readonly bold: boolean;
-  readonly italic: boolean;
-  readonly rotation: number;
-  readonly scale: number;
-}
-
 /**
  * A pin the GM made readable, where the players see the map now: its place, its icon (the key Atlas
  * names it by), the label of a numbered or lettered pin, and the log entry that tells who found it
@@ -106,11 +70,6 @@ export interface PlayerPinFound {
   readonly t: 'pin-found';
   readonly scene: string;
   readonly pin: string;
-}
-
-export interface SharedAnnotations {
-  readonly drawings: readonly SharedDrawing[];
-  readonly texts: readonly SharedText[];
 }
 
 const isIn = (value: unknown, min: number, max: number): value is number => typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max;
@@ -160,51 +119,6 @@ export function parseSensed(value: unknown): SensedMark[] | null {
     marks.push({ x: mark.x, y: mark.y, size: mark.size });
   }
   return marks;
-}
-
-function parseDrawing(value: unknown): SharedDrawing | null {
-  if (!isRecord(value) || (value.type !== 'pen' && value.type !== 'icon') || !isColour(value.colour)) return null;
-  if (!isIn(value.width, 0, MAX_TOKEN_SIZE) || !isIn(value.opacity, 0, 1)) return null;
-  if (value.type === 'icon') {
-    if (!isPoints(value.points, 1) || value.points.length !== 2 || typeof value.icon !== 'string' || !ICON_PATTERN.test(value.icon)) return null;
-    return { type: 'icon', points: value.points, colour: value.colour, width: value.width, opacity: value.opacity, icon: value.icon };
-  }
-  if (!isPoints(value.points, MAX_DRAWING_POINTS) || value.points.length === 0) return null;
-  return { type: 'pen', points: value.points, colour: value.colour, width: value.width, opacity: value.opacity };
-}
-
-function parseText(value: unknown): SharedText | null {
-  if (!isRecord(value) || !isPlace(value.x) || !isPlace(value.y) || typeof value.text !== 'string' || value.text.length > MAX_TEXT_LENGTH) return null;
-  const { fontFamily, background } = value;
-  if (typeof fontFamily !== 'string' || fontFamily.length > MAX_FONT_NAME || !FONT_PATTERN.test(fontFamily)) return null;
-  if (!isIn(value.fontSize, 1, 10_000) || !isColour(value.colour) || (background !== null && !isColour(background))) return null;
-  if (!isIn(value.padding, 0, 10_000) || !isIn(value.radius, 0, 10_000) || !isIn(value.opacity, 0, 1) || !oneOf(ALIGNS, value.align)) return null;
-  if (typeof value.bold !== 'boolean' || typeof value.italic !== 'boolean' || !isIn(value.rotation, -360, 360) || !isIn(value.scale, 0.001, 1_000)) return null;
-  return {
-    x: value.x, y: value.y, text: value.text, fontSize: value.fontSize, fontFamily, colour: value.colour, background,
-    padding: value.padding, radius: value.radius, opacity: value.opacity, align: value.align, bold: value.bold, italic: value.italic, rotation: value.rotation, scale: value.scale,
-  };
-}
-
-/** The drawings and texts of an `annotations` message, or null when any is malformed or there are too many. */
-export function parseAnnotations(value: Record<string, unknown>): SharedAnnotations | null {
-  if (!Array.isArray(value.drawings) || value.drawings.length > MAX_DRAWINGS || !Array.isArray(value.texts) || value.texts.length > MAX_TEXTS) return null;
-  const drawings: SharedDrawing[] = [];
-  let points = 0;
-  for (const entry of value.drawings) {
-    const drawing = parseDrawing(entry);
-    if (drawing === null) return null;
-    points += drawing.points.length / 2;
-    if (points > MAX_DRAWING_POINTS) return null;
-    drawings.push(drawing);
-  }
-  const texts: SharedText[] = [];
-  for (const entry of value.texts) {
-    const text = parseText(entry);
-    if (text === null) return null;
-    texts.push(text);
-  }
-  return { drawings, texts };
 }
 
 /** A pin's id as players know it, and a log entry's id: 96 random bits in hex. */

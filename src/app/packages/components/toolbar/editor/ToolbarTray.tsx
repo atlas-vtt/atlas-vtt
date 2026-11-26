@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { RotateCcw, Undo2 } from 'lucide-react'
 import { cn } from 'src/utils/cn'
 import { t } from '../../../../i18n'
-import { isHideableToolbarControl, isToolbarControlId, UNDO_BAR_ID, type ToolbarUnitId } from '../../../../toolbar/toolbarCatalog'
+import { isHideableToolbarControl, isToolbarControlId, type ToolbarUnitId } from '../../../../toolbar/toolbarCatalog'
 import { Button } from '../../primitives/button'
 import { ToolButton } from '../../primitives/ToolButton'
 import { useKeepInView } from '../../primitives/useKeepInView'
@@ -14,7 +14,7 @@ import type { ToolbarEditApi } from './toolbarEditContext'
 import { trayShows } from './toolbarDragPreview'
 import { useToolbarEditState } from './toolbarEditStore'
 import type { SlotDrag } from './useBarDragView'
-import { ToolbarFace, UNDO_BAR_FACE, type ToolbarFaceItem } from './ToolbarFace'
+import { SIDE_BAR_FACES, ToolbarFace, type ToolbarFaceItem } from './ToolbarFace'
 import { ToolbarItemHandle } from './ToolbarItemHandle'
 import { stopMapShortcuts } from './useToolbarKeyboard'
 
@@ -66,7 +66,8 @@ interface ToolbarTrayProps {
 /**
  * The slim capsule above the bar while the toolbar editor is open: the
  * undo/redo bar while it is hidden, the tools that are not on the bar, then
- * Reset (Undo reset right after one) and Done.
+ * Reset (Undo reset right after one) and Done. Showing the bars only on hover
+ * is an Appearance setting (`ToolbarOnHoverRow`).
  * It is no dialog, so hidden tools keep their hotkeys meanwhile. While the
  * Command palette is dragged, which it refuses, it dims.
  */
@@ -90,7 +91,7 @@ export function ToolbarTray({ edit, items, motion: layoutMotion }: ToolbarTrayPr
       revealing: landing && !settle.travel,
     }
   }
-  const anyOpen = opens(UNDO_BAR_ID) || items.some(item => opens(item.id))
+  const anyOpen = edit.sideBars.some(opens) || items.some(item => opens(item.id))
   const slot = (id: ToolbarUnitId, item: ToolbarFaceItem): React.ReactElement => (
     <ToolbarTraySlot
       key={id}
@@ -115,7 +116,7 @@ export function ToolbarTray({ edit, items, motion: layoutMotion }: ToolbarTrayPr
       onKeyDown={stopMapShortcuts}
     >
       <span id={labelId} hidden>{t('toolbarEdit.hiddenTools')}</span>
-      {slot(UNDO_BAR_ID, UNDO_BAR_FACE)}
+      {edit.sideBars.map(id => slot(id, SIDE_BAR_FACES[id]))}
       {items.map(item => isToolbarControlId(item.id) && slot(item.id, item))}
       {anyOpen
         ? <div className="atlas-toolbar-tray__divider" />

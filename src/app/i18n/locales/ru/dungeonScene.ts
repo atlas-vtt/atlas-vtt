@@ -119,4 +119,8 @@ export const dungeonScene: Translation = {
   'dungeonScene.terrain.deep': '{name}, глубина {depth} фт',
   'dungeonScene.terrain.toFloor': '{name} до этажа {floor}',
   'dungeonScene.terrain.bottomless': '{name}, без дна',
+  'dungeonScene.feature.tree': 'Дерево',
+  'dungeonScene.feature.river': 'Река',
+  'dungeonScene.feature.lake': 'Озеро',
+  'dungeonScene.feature.riverBridge': 'Мост',
 };

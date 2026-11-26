@@ -4,55 +4,124 @@
 // ── Dice colour strip ─────────────────────────
 // A d20 per colour, rendered by the dice renderer, to click.
 
-$dice-preview: 72px;
+// A die's slot; the preview image is a third larger, its empty border reaching into the neighbours' room, so the die's
+// body (about two thirds of the image) and the chosen die's ring fill the slot.
+$dice-slot: 72px;
+$dice-gap: $spacing-xs;
 
+// `--atlas-dice-columns` dice to a line, each slot shrinking below $dice-slot where the line is narrower, centred.
 .atlas-dice-colour-strip {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: $spacing-s;
+  --atlas-dice-columns: 6;
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: $spacing-s $dice-gap;
 }
 
 // Obsidian styles every <button>; the options start from nothing.
 .atlas-dice-colour-strip__option {
-  @include atlas-flex-col($spacing-s);
-  align-items: center;
+  position: relative;
+  display: block;
+  flex: 0 0 min(#{$dice-slot}, calc((100% - (var(--atlas-dice-columns) - 1) * #{$dice-gap}) / var(--atlas-dice-columns)));
+  aspect-ratio: 1;
   height: auto;
   margin: 0;
-  padding: $spacing-s;
+  padding: 0;
   background: transparent;
-  border: $border-width-m solid transparent;
-  border-radius: $radius-l;
+  border: none;
   box-shadow: none;
   cursor: pointer;
-  @include atlas-corner-shape;
-  transition: background-color $transition-fast $transition-ease, border-color $transition-fast $transition-ease;
+  transition: transform $transition-fast $transition-ease;
 
   &:hover {
-    background: var(--background-modifier-hover);
+    background: transparent;
   }
 
-  &.atlas-active {
-    border-color: var(--interactive-accent);
-    background: color-mix(in oklch, var(--interactive-accent) 10%, transparent);
+  // Pressed in, as the colour swatches are, instead of tinted.
+  &:active {
+    transform: scale(0.94);
   }
 }
 
 .atlas-dice-colour-strip__die {
   display: block;
-  width: $dice-preview;
-  height: $dice-preview;
+  width: 133.333%;
+  aspect-ratio: 1;
+  height: auto;
+  // A percentage margin is of the slot's width: a sixth of the slot each side.
+  margin: -16.667%;
+  pointer-events: none;
+  transition: filter $transition-fast $transition-ease;
 
   &--pending {
+    width: 100%;
+    margin: 0;
     border-radius: $radius-full;
     background: var(--background-modifier-hover);
   }
 }
 
-.atlas-dice-colour-strip__label {
-  font-size: $font-ui-smaller;
-  color: var(--text-muted);
+// Obsidian caps images in a leaf at their box's width (`.workspace-leaf-content img:not([width])`), which here is the
+// slot inside the image: the option in the selector outranks it.
+.atlas-dice-colour-strip__option > .atlas-dice-colour-strip__die {
+  max-width: none;
 }
 
-.atlas-dice-colour-strip__option.atlas-active > .atlas-dice-colour-strip__label {
-  color: var(--text-normal);
+.atlas-dice-colour-strip__option:hover > .atlas-dice-colour-strip__die {
+  filter: brightness(1.12);
+}
+
+// A set that arrives while the strip is open comes in as one, every die and the ring together, settling into place.
+.atlas-dice-colour-strip--arriving .atlas-dice-colour-strip__die,
+.atlas-dice-colour-strip--arriving .atlas-dice-colour-strip__ring {
+  animation: atlas-dice-arrive $transition-normal $transition-ease-out both;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation-name: atlas-dice-arrive-fade;
+  }
+}
+
+@keyframes atlas-dice-arrive {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+}
+
+@keyframes atlas-dice-arrive-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+// The chosen die's ring (`dicePreviews`), laid over its image in the page's ink, as the chosen swatch's outline.
+.atlas-dice-colour-strip__ring {
+  position: absolute;
+  inset: -16.667%;
+  background: var(--text-normal);
+  mask: var(--atlas-dice-ring) center / 100% 100% no-repeat;
+  pointer-events: none;
+}
+
+// The accent die's mark at its lower right: a link, as on a mood tied to its scene, on a disc of the panel's ground.
+.atlas-dice-colour-strip__follows {
+  position: absolute;
+  right: 2%;
+  bottom: 2%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30%;
+  aspect-ratio: 1;
+  border: $border-width-s solid var(--background-modifier-border);
+  border-radius: $radius-full;
+  background: var(--background-primary);
+  color: var(--text-muted);
+  pointer-events: none;
+
+  svg {
+    width: 62%;
+    height: 62%;
+  }
 }

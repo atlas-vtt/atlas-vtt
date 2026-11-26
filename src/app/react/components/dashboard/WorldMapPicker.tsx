@@ -64,8 +64,9 @@ export function WorldMapPicker({ choices, value, onChange, labelledBy, disabled,
     const onPointerDown = (event: MouseEvent): void => {
       if (!rootRef.current?.contains(event.target as Node)) setIsOpen(false);
     };
-    document.addEventListener('mousedown', onPointerDown);
-    return () => document.removeEventListener('mousedown', onPointerDown);
+    const doc = rootRef.current?.doc ?? activeDocument;
+    doc.addEventListener('pointerdown', onPointerDown);
+    return () => doc.removeEventListener('pointerdown', onPointerDown);
   }, [isOpen]);
 
   const close = (): void => {
@@ -81,7 +82,7 @@ export function WorldMapPicker({ choices, value, onChange, labelledBy, disabled,
 
   const onListKeyDown = (event: React.KeyboardEvent): void => {
     const options = [...(rootRef.current?.querySelectorAll<HTMLButtonElement>('[role="option"]') ?? [])];
-    const current = options.indexOf(document.activeElement as HTMLButtonElement);
+    const current = options.indexOf(event.currentTarget.doc.activeElement as HTMLButtonElement);
     const step = STEP[event.key];
     if (step !== undefined) {
       event.preventDefault();
@@ -129,7 +130,7 @@ export function WorldMapPicker({ choices, value, onChange, labelledBy, disabled,
             aria-controls={listId}
             onChange={(event) => setQuery(event.target.value)}
           />
-          <div id={listId} role="listbox" aria-labelledby={labelledBy} className="world-map-picker__list" {...STANDING_LIST}>
+          <div id={listId} role="listbox" aria-labelledby={labelledBy} className="atlas-world-map-picker__list" {...STANDING_LIST}>
             {shown.map((choice) => (
               <button
                 key={choice.id}

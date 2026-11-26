@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",
     "inlineSourceMap": true,
     "inlineSources": true,
     "module": "ESNext",
@@ -8,24 +7,29 @@
     "allowJs": true,
     "noEmit": true,
     "noImplicitAny": true,
-    "moduleResolution": "Node",
+    "moduleResolution": "Bundler",
     "importHelpers": true,
     "isolatedModules": true,
     "strictNullChecks": true,
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
+    // ES2023 is what the oldest web views Atlas runs in have (iPadOS 16.4, Chromium 110). A newer
+    // built-in is a type error here, where it would be a crash there; the bundler lowers syntax only.
     "lib": [
       "DOM",
       "DOM.Iterable",
-      "ESNext"
+      "ES2023"
     ],
     "skipLibCheck": true,
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
     "jsx": "react-jsx",
     "resolveJsonModule": true,
-    "allowImportingTsExtensions": true
+    "allowImportingTsExtensions": true,
+    "paths": {
+      "src/*": ["./src/*"]
+    }
   },
   "include": [
     "src/**/*.ts",

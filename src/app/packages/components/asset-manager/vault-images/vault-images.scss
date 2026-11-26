@@ -50,7 +50,6 @@
     box-shadow: none;
     font: inherit;
     cursor: pointer;
-    @include atlas-corner-shape;
 
     &[aria-disabled='true'] { cursor: default; }
   }

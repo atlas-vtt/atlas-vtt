@@ -4,7 +4,6 @@ import { act, cleanup, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { registerSoundDirector } from '../../../src/app/plugin/soundDirector';
 import { SoundPane } from '../../../src/app/react/components/dm-screen/sound/SoundPane';
-import { SettingsService } from '../../../src/app/services/SettingsService';
 import { SOUND_VIEW_TYPE, SoundView } from '../../../src/app/sound-view';
 import { MoodStore } from '../../../src/app/soundLibrary/MoodStore';
 import { libraryRig, type LibraryRig } from '../../helpers/libraryRig';
@@ -27,10 +26,6 @@ async function openView(): Promise<{ view: SoundView; leafEl: HTMLElement }> {
   return { view, leafEl };
 }
 
-const setSwitch = (on: boolean): void => {
-  act(() => SettingsService.forApp(rig.app)?.setExperimental('sound', on));
-};
-
 beforeEach(async () => {
   // jsdom lays nothing out, and a tab of no width is one another tab covers.
   Object.defineProperty(HTMLElement.prototype, 'clientWidth', { configurable: true, get: () => 1000 });
@@ -39,9 +34,6 @@ beforeEach(async () => {
   rig = await libraryRig({ local: { music: '/m', ambience: '/a' } });
   rig.locations.music.addFile('Battle/a.mp3');
   rig.locations.music.addFile('Calm/b.mp3');
-  // The real switch: the page and the director both follow what it tells them.
-  vi.mocked(SettingsService.forApp(rig.app)!.isExperimentalOn).mockRestore();
-  setSwitch(true);
 });
 
 afterEach(async () => {
@@ -76,14 +68,6 @@ describe('the palette command', () => {
     return { check: commands.get('sound-open-page')!, leaves, getLeaf, revealLeaf };
   }
 
-  it('is not offered while the switch is off', () => {
-    setSwitch(false);
-    const { check, getLeaf } = command();
-    expect(check(true)).toBe(false);
-    expect(check(false)).toBe(false);
-    expect(getLeaf).not.toHaveBeenCalled();
-  });
-
   it('opens one tab, and a second run reveals that one', async () => {
     const { check, leaves, getLeaf, revealLeaf } = command();
     expect(check(true)).toBe(true);
@@ -108,18 +92,6 @@ describe('the tab', () => {
     expect(leafEl.querySelector('.atlas-sound-moods')).not.toBeNull();
     expect(leafEl.querySelector('.atlas-sound-desk')).not.toBeNull();
     expect(leafEl.querySelector('.atlas-dm-screen-pages')).toBeNull();
-  });
-
-  it('shows nothing of sound while the switch is off, restored or switched, and follows it back on', async () => {
-    setSwitch(false);
-    const { view, leafEl } = await openView();
-    expect(view.contentEl.querySelector('[class*="atlas-sound"]')).toBeNull();
-
-    setSwitch(true);
-    expect(leafEl.querySelector('.atlas-sound-pane')).not.toBeNull();
-
-    setSwitch(false);
-    expect(view.contentEl.querySelector('.atlas-sound-pane')).toBeNull();
   });
 
   it('stops nothing when it closes', async () => {

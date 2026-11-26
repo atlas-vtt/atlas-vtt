@@ -12,7 +12,7 @@
 
 import * as THREE from 'three';
 
-import { buildColouredMap, diceArtworkReady, loadDiceArtwork } from './dieArtwork';
+import { buildColouredMap, diceArtworkReady, loadDiceArtwork, type FaceNumbers } from './dieArtwork';
 import { parseHex } from './diceLook';
 import type { DieSides } from './dieGeometry';
 import { activeLook, resolveLook, type ResolvedLook } from './dieSkin';
@@ -40,22 +40,22 @@ const coloured = new Map<string, ColouredEntry>();
 const retired = new WeakSet<THREE.Material>();
 let clock = 0;
 
-const keyOf = (sides: DieSides, colour: string): string => `${sides}|${colour.toLowerCase()}`;
+const keyOf = (sides: DieSides, colour: string, numbers: FaceNumbers): string => `${sides}|${numbers === 'plain' ? '' : `${numbers}|`}${colour.toLowerCase()}`;
 
 /** A coloured look as accent dice have it, in the active look's font. */
 function colouredLook(colour: string): ResolvedLook {
   return resolveLook({ colour: 'accent', font: activeLook().font }, parseHex(colour));
 }
 
-/** The assets of a die of `sides` in `colour`, sharing `plain`'s body and relief. */
-export function colouredAssets(plain: ColourableAssets, sides: DieSides, colour: string): ColourableAssets {
-  const key = keyOf(sides, colour);
+/** The assets of a die of `sides` in `colour`, sharing `plain`'s body and relief (numbered alike). */
+export function colouredAssets(plain: ColourableAssets, sides: DieSides, colour: string, numbers: FaceNumbers = 'plain'): ColourableAssets {
+  const key = keyOf(sides, colour, numbers);
   const known = coloured.get(key);
   if (known) {
     known.used = ++clock;
     return known.assets;
   }
-  const textures = buildColouredMap(sides, () => colouredLook(colour));
+  const textures = buildColouredMap(sides, () => colouredLook(colour), numbers);
   const material = plain.material.clone();
   material.map = textures.map;
   const assets: ColourableAssets = { geometry: plain.geometry, material, redraw: textures.redraw };

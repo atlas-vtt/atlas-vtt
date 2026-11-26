@@ -14,11 +14,17 @@ function isDeviceGone(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'NotFoundError';
 }
 
+/** A context closed while its move was under way (Atlas unloading, a reload): nothing is left to move. */
+function isClosing(error: unknown): boolean {
+  return error instanceof DOMException && error.name === 'InvalidStateError';
+}
+
 async function move(output: object, sinkId: string): Promise<void> {
   if (!isMovable(output)) return;
   try {
     await output.setSinkId(sinkId);
   } catch (error) {
+    if (isClosing(error)) return;
     if (!isDeviceGone(error)) {
       console.error('[Atlas] Could not move sound to another output', error);
       return;

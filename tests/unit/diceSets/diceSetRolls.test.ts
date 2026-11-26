@@ -9,7 +9,7 @@ import { rollStatblockDice } from '../../../src/app/services/statblockRolls';
 import { DiceTool, rollDiceFormula, rollingWith, type DiceRollInputs } from '../../../src/app/tools/DiceTool';
 import { dieLabel, namedDiceLine, rollLine } from '../../../src/app/tools/diceLabels';
 import type { DiceSet } from '../../../src/app/types/diceSetTypes';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../../src/app/utils/typedEmitter';
 
 /** A line as read: the spaces it never breaks at are spaces. */
 const read = (line: string | null): string | null => line?.replace(/\u00a0/g, ' ') ?? null;

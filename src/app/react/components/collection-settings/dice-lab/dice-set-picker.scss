@@ -55,8 +55,7 @@ $list-inset: $spacing-xs;
 .atlas-dice-picker {
   @include atlas-flex-col($list-inset);
   padding: $list-inset;
-  border-radius: $radius-xl;
-  @include atlas-corner-shape;
+  border-radius: $surface-radius;
   background: var(--background-secondary);
 }
 
@@ -75,8 +74,7 @@ $list-inset: $spacing-xs;
   min-height: calc(#{$dice-stack-height} + 2 * #{$spacing-s});
   padding: $spacing-s;
   // Concentric with the list's corner: the list's radius less its inset
-  border-radius: calc(#{$radius-xl} - #{$list-inset});
-  @include atlas-corner-shape;
+  border-radius: calc(#{$surface-radius} - #{$list-inset});
   color: var(--text-normal);
   cursor: pointer;
   outline: none;

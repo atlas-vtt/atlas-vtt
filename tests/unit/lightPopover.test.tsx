@@ -54,9 +54,9 @@ describe('LightPopover', () => {
   it('marks a light whose stored kind it does not know as the preset it equals, else as custom', () => {
     const { store, torch, light } = renderPopover();
     const unknown = 'brazier' as LightKind;
-    act(() => store.getState().updateLight(torch, { emission: { ...light().emission, kind: unknown } }));
+    act(() => { store.getState().updateLight(torch, { emission: { ...light().emission, kind: unknown } }); });
     expect(screen.getByRole('button', { name: 'Torch' }).getAttribute('aria-pressed')).toBe('true');
-    act(() => store.getState().updateLight(torch, { emission: { ...light().emission, bright: 12 } }));
+    act(() => { store.getState().updateLight(torch, { emission: { ...light().emission, bright: 12 } }); });
     expect(screen.getByRole('button', { name: 'Custom light' }).getAttribute('aria-pressed')).toBe('true');
   });
 
@@ -141,7 +141,7 @@ describe('LightPopover', () => {
 
   it('raises a bright range of nothing again, which has no ring handle on the map', () => {
     const { store, torch, light } = renderPopover();
-    act(() => store.getState().updateLight(torch, { emission: { ...light().emission, bright: 0 } }));
+    act(() => { store.getState().updateLight(torch, { emission: { ...light().emission, bright: 0 } }); });
     const bright = screen.getByLabelText('Bright') as HTMLInputElement;
     expect(bright.value).toBe('0');
     fireEvent.change(bright, { target: { value: '10' } });
@@ -153,17 +153,17 @@ describe('LightPopover', () => {
     const { light } = renderPopover();
     const bright = screen.getByRole('slider', { name: 'Bright range' });
     const dim = screen.getByRole('slider', { name: 'Dim range' });
-    act(() => bright.focus());
+    act(() => { bright.focus(); });
     fireEvent.keyDown(bright, { key: 'ArrowRight' });
     expect(light().emission).toMatchObject({ bright: 21, dim: 40 });
-    act(() => dim.focus());
+    act(() => { dim.focus(); });
     fireEvent.keyDown(dim, { key: 'ArrowLeft' });
     expect(light().emission).toMatchObject({ bright: 21, dim: 39 });
   });
 
   it('follows the light when the map changes it, as a ring drag does', () => {
     const { store, torch, light } = renderPopover();
-    act(() => store.getState().updateLight(torch, { emission: { ...light().emission, bright: 12.5 } }));
+    act(() => { store.getState().updateLight(torch, { emission: { ...light().emission, bright: 12.5 } }); });
     expect((screen.getByLabelText('Bright') as HTMLInputElement).value).toBe('12.5');
   });
 
@@ -188,7 +188,7 @@ describe('LightPopover', () => {
   it('shows another light in the same popover when that one is opened', () => {
     const { store, lantern } = renderPopover();
     const element = popover();
-    act(() => store.getState().openLightPopover(lantern));
+    act(() => { store.getState().openLightPopover(lantern); });
     expect(popover()).toBe(element);
     expect(screen.getByRole('button', { name: 'Lantern' }).getAttribute('aria-pressed')).toBe('true');
     expect((screen.getByLabelText('Dim') as HTMLInputElement).value).toBe('60');
@@ -197,7 +197,7 @@ describe('LightPopover', () => {
   it('goes when the store closes it, taking no more input while it leaves', async () => {
     const { store } = renderPopover();
     const element = popover();
-    act(() => store.getState().closeLightPopover());
+    act(() => { store.getState().closeLightPopover(); });
     expect(element.hasAttribute('inert')).toBe(true);
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
@@ -264,9 +264,9 @@ describe('LightPopover', () => {
     const { store, torch } = renderPopover(false);
     const map = screen.getByRole('button', { name: 'Map' });
     map.focus();
-    act(() => store.getState().openLightPopover(torch));
+    act(() => { store.getState().openLightPopover(torch); });
     expect(document.activeElement).toBe(popover());
-    act(() => store.getState().closeLightPopover());
+    act(() => { store.getState().closeLightPopover(); });
     expect(document.activeElement).toBe(map);
   });
 });

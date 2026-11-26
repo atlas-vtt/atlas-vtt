@@ -75,7 +75,7 @@ describe('a list of sides that roll for their order', () => {
   });
 });
 
-describe('a collapsed list', () => {
+describe('a list cut to its first cards', () => {
   it('shows the turn and the next two, across the round\'s end', () => {
     const segments = listSegments(items('a', 'b', 'c', 'd', 'e*'), shape({ turnAt: 3 }));
     expect(drawn(firstCards(segments, 3))).toEqual(['d', '|Round 3|', 'a b']);

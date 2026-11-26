@@ -24,8 +24,11 @@ export const QUEST_TYPE = 'quest';
 export const QUEST_KINDS = ['main', 'side'] as const;
 export type QuestKind = (typeof QUEST_KINDS)[number];
 
-/** How far a quest has got: told, taken up, done, or failed. The last two are behind the party. */
-export const QUEST_STATUSES = ['open', 'active', 'done', 'failed'] as const;
+/**
+ * How far a quest has got: kept from the players, told, taken up, done, or failed. The last two are
+ * behind the party. A hidden quest is the GM's alone: players are never sent it.
+ */
+export const QUEST_STATUSES = ['hidden', 'open', 'active', 'done', 'failed'] as const;
 export type QuestStatus = (typeof QUEST_STATUSES)[number];
 
 /** A quest note as Atlas reads its frontmatter. What could not be read is unset, never guessed. */
@@ -46,6 +49,9 @@ export interface Quest {
   readonly created: number;
   readonly modified: number;
 }
+
+/** Whether players may be sent a quest: every one the GM has not hidden from them. */
+export const isQuestForPlayers = <T extends Pick<Quest, 'status'>>(quest: T): quest is T & { readonly status: Exclude<QuestStatus, 'hidden'> } => quest.status !== 'hidden';
 
 /** Whether a quest is behind the party: done or failed. */
 export const isQuestOver = (quest: Pick<Quest, 'status'>): boolean => quest.status === 'done' || quest.status === 'failed';

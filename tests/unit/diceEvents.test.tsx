@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { act, cleanup, render, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DiceTool } from '../../src/app/tools/DiceTool';
@@ -70,8 +70,10 @@ describe('dice events belong to one view', () => {
     const second = cards(b.bus);
     const broadcast = vi.spyOn(document, 'dispatchEvent');
     act(() => { a.tool.rollDice('d20'); });
-    expect(first.container.querySelector('.atlas-dice-toast')).not.toBeNull();
-    expect(second.container.querySelector('.atlas-dice-toast')).toBeNull();
+    // A map's rolls render into the portal host, in front of everything: one card, the rolling view's.
+    expect(document.querySelectorAll('.atlas-dice-toast')).toHaveLength(1);
+    expect(first.container.querySelector('.atlas-dice-rolls-anchor')).not.toBeNull();
+    expect(second.container.querySelector('.atlas-dice-rolls-anchor')).not.toBeNull();
     expect(broadcast).not.toHaveBeenCalled();
   });
 

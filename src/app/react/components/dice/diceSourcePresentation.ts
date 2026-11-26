@@ -22,6 +22,9 @@ export type UseDiceAvatar = (
   presentation?: RollSourcePresentation | null,
 ) => DiceAvatar | null;
 
+/** Whom the GM's roll was shown to: the players as well (`players`), or the GM alone (`gm`). */
+export type RollAudience = 'players' | 'gm';
+
 /** A roll ready to show, with who it names. */
 export interface PreparedDiceRoll {
   result: DiceRollResult;
@@ -30,4 +33,9 @@ export interface PreparedDiceRoll {
    * and nothing is looked up for it. A value: exactly this name and portrait.
    */
   sourcePresentation?: RollSourcePresentation | null;
+  /**
+   * Set only on the GM's own display, as "Show my rolls to players" stood when the roll
+   * arrived; never in the player window, where a roll players do not see never arrives.
+   */
+  audience?: RollAudience;
 }

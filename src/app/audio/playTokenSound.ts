@@ -8,11 +8,11 @@ import type { PlayOutcome, TokenSoundPlayer } from './TokenSoundPlayer';
 const PROBLEMS: Record<PlayOutcome, ((name: string) => string) | null> = {
   played: null,
   stopped: null,
-  missing: (name) => t('tokenSound.missing', { name }),
-  'too-large': (name) => t('tokenSound.tooLarge', { name }),
-  'too-long': (name) => t('tokenSound.tooLong', { name }),
-  unreadable: (name) => t('tokenSound.unreadable', { name }),
-  unavailable: () => t('tokenSound.unavailable'),
+  missing: (name) => t('audio.token.missing', { name }),
+  'too-large': (name) => t('audio.token.tooLarge', { name }),
+  'too-long': (name) => t('audio.token.tooLong', { name }),
+  unreadable: (name) => t('audio.token.unreadable', { name }),
+  unavailable: () => t('audio.token.unavailable'),
 };
 
 /** Plays a token's sound, and tells the GM why when it cannot play. */

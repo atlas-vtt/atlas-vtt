@@ -1,7 +1,7 @@
 import { isResourceKey, MAX_BOOK_TITLE, MAX_SHEET_RESOURCES, MAX_TOKEN_VALUE, parseBookCharacter, type AssetRef, type BookCharacter, type SheetResource } from '../../protocol/index.ts';
 import type { ResourceDefinition, ResourceHolder } from '../../../resources/resourceTypes';
 import { visibleResources } from '../../../resources/visibleResources';
-import type { ShownRollToken } from '../../../services/playerRollSource';
+import type { TokenFace } from '../../../services/playerRollSource';
 import { hexColour, ringColour } from '../scenePicture.ts';
 import { clippedLine } from './bookTexts.ts';
 import type { TrackedSheetValue } from './trackedSheet.ts';
@@ -36,14 +36,16 @@ function sheetResources(
 }
 
 /**
- * The sheet of a player's own character, from its token as the players' frame shows it: its name
+ * The sheet of a player's own character, from its token's face (as the players' frame shows it, or
+ * as the scene holds a token the frame does not show: the map hides a token, never a character
+ * from its own player): its name
  * (always: the nameplate setting hides other tokens' names, not one's own), artwork by hash, the
  * ring's colour (none for artwork shown unframed), its resources and its statblock's tracked
  * numbers (`trackedSheetValues`). `maxEditable` says of each of the token's own resources whether
  * its player may set its maximum (none, unless it is given). Null when it cannot be told.
  */
 export function sheetOf(
-  shown: ShownRollToken, token: ResourceHolder, definitions: readonly ResourceDefinition[], art: (path: string) => AssetRef | null, tracked: readonly TrackedSheetValue[] = [],
+  shown: TokenFace, token: ResourceHolder, definitions: readonly ResourceDefinition[], art: (path: string) => AssetRef | null, tracked: readonly TrackedSheetValue[] = [],
   maxEditable: (definition: ResourceDefinition) => boolean = () => false,
 ): BookCharacter | null {
   return parseBookCharacter({

@@ -6,6 +6,13 @@
   position: relative;
 }
 
+// As tall as the scene tab bar above it, not the main toolbar: its buttons are the tabs' height.
+// Padding, gap and corners are every bar's.
+.atlas-vtt-plugin .atlas-player-window-bar > .atlas-vtt-toolbar .atlas-tool-button > span > .btn {
+  width: 28px;
+  height: 28px;
+}
+
 .atlas-player-window-bar__menu {
   position: relative;
   display: flex;

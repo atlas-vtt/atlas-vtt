@@ -44,7 +44,7 @@
 .atlas-uvtt-floors__floor {
   @include atlas-flex-row($spacing-xs);
   padding: $spacing-xs;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
 
   &:hover {
     background: var(--background-modifier-hover);
@@ -59,7 +59,7 @@
 
 .atlas-uvtt-floors__file {
   @include atlas-truncate;
-  color: var(--text-faint);
+  color: var(--text-muted);
   font-size: $font-ui-smaller;
 }
 
@@ -69,6 +69,8 @@
   // As tall as the floor's name field beside it
   width: var(--input-height);
   height: var(--input-height);
+  // $spacing-xs inside the floor's row: concentric with its corner.
+  border-radius: $control-inset-radius;
   box-shadow: none;
 
   &:disabled {

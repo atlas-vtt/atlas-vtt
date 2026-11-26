@@ -1,5 +1,6 @@
 import type { PreviewWindowLayout } from '../stores/pinnedNotePreviewSlice';
 import type { ViewFrame } from '../packages/components/primitives/popoverFit';
+import { clamp } from '../utils/math';
 
 interface Size {
   width: number;
@@ -184,8 +185,4 @@ export class PreviewWindowPlacement {
     this.element.style.width = `${width}px`;
     this.element.style.height = `${height}px`;
   }
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(value, max));
 }

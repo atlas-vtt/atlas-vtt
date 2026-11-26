@@ -1,4 +1,5 @@
 import { readFogEdge, type FogEdge } from '../fog/fogEdge';
+import { readDragDistance, type DragDistance } from '../measure/dragDistance';
 import type { LegacyPlayerBars } from '../resources/playerVisibilityMigration';
 import type { App, Plugin } from 'obsidian';
 import { availableHotkeys, canShareHotkey, type MapHotkeyId, type MapHotkeys } from '../keyboard/mapHotkeys';
@@ -10,7 +11,6 @@ import { DEFAULT_DICE_LOOK, isDiceColour, isDiceFont, type DiceLook } from '../d
 import { readToolbarLayout, type StoredToolbarLayout } from '../toolbar/toolbarLayout';
 import {
   DEFAULT_SETTINGS,
-  isRecord,
   defaultInputMode,
   readStoredSettings,
   storedSettings,
@@ -20,13 +20,16 @@ import {
   type TutorialId,
   TUTORIAL_IDS,
 } from './atlasSettings';
+import { isRecord } from '../utils/guards';
 import {
-  loadAnimateMaps, loadGraphicsChoice, loadInitiativeCollapsed, loadInputMode, loadLightingQuality, loadPickedLightingQuality, loadPlayerView4k,
-  saveAnimateMaps, saveGraphicsChoice, saveInitiativeCollapsed, saveInputMode, savePickedLightingQuality, savePlayerView4k,
+  loadAnimateMaps, loadGmFogOpacity, loadGraphicsChoice, loadInputMode, loadLightingQuality, loadPickedLightingQuality, loadPlayerView4k,
+  loadSelectionBarShown,
+  saveAnimateMaps, saveGmFogOpacity, saveGraphicsChoice, saveInputMode, savePickedLightingQuality, savePlayerView4k, saveSelectionBarShown,
 } from './deviceSettings';
 import { readGpuFacts } from './gpuFacts';
 import { pickLightingQuality } from '../lighting/deviceTier';
-import { readDock, type InitiativeLayout } from '../initiative/initiativeLayout';
+import { deviceProfile } from '../platform/deviceProfile';
+import { readListEdge, readListEdges, type InitiativeLayout } from '../initiative/initiativeLayout';
 import type { InitiativeTurnOptions } from '../initiative/turnOptions';
 import type { LightingQuality, LightingQualityLevel } from '../lighting/lightingQuality';
 import { knobsOf, qualityOf, type GraphicsChoice } from '../lighting/graphicsSettings';
@@ -46,7 +49,7 @@ type SettingsListener = (settings: AtlasSettings) => void;
 
 /**
  * The GM's Atlas preferences, kept in the plugin's data (`data.json`), except the input mode,
- * the lighting quality, whether maps animate and the collapsed initiative tracker, which belong to the device (`deviceSettings.ts`). Without a data store (tests, a view
+ * the lighting quality and whether maps animate, which belong to the device (`deviceSettings.ts`). Without a data store (tests, a view
  * without the plugin) the settings live in memory only.
  */
 export class SettingsService {
@@ -177,7 +180,7 @@ export class SettingsService {
 
   setHotkey(id: MapHotkeyId, key: string): void {
     const bindings = this.getHotkeys();
-    const conflict = key && availableHotkeys(false, (feature) => this.isExperimentalOn(feature)).find(action => action.id !== id && bindings[action.id] === key && !canShareHotkey(action.id, id));
+    const conflict = key && availableHotkeys(false).find(action => action.id !== id && bindings[action.id] === key && !canShareHotkey(action.id, id));
     if (conflict) throw new Error(`Already assigned to ${conflict.label}. Clear that shortcut first.`);
     this.settings.hotkeys = withHotkey(this.settings.hotkeys, id, key);
     this.commit();
@@ -192,8 +195,21 @@ export class SettingsService {
     return this.settings.onboarding.enabled && !this.settings.onboarding.completed[id];
   }
 
+  /** Whether this GM has been through the welcome wizard, which every GM sees once, with tutorials switched on or off. */
+  hasBeenWelcomed(): boolean {
+    return this.settings.onboarding.completed.welcome === true;
+  }
+
   completeTutorial(id: TutorialId): void {
     this.settings.onboarding = { ...this.settings.onboarding, completed: { ...this.settings.onboarding.completed, [id]: true } };
+    this.commit();
+  }
+
+  /** Shows one tutorial again from its first step, also while the others are switched off. */
+  replayTutorial(id: TutorialId): void {
+    const completed = { ...this.settings.onboarding.completed };
+    delete completed[id];
+    this.settings.onboarding = { ...this.settings.onboarding, enabled: true, completed };
     this.commit();
   }
 
@@ -213,7 +229,6 @@ export class SettingsService {
     this.commit();
   }
 
-  // Navigation settings
   getNavigationSettings(): NavigationSettings {
     return { ...this.settings.navigation };
   }
@@ -270,17 +285,30 @@ export class SettingsService {
 
   /**
    * The level picked for this device's graphics (`pickLightingQuality`) the first time it is
-   * asked, then stored, so it never changes by itself. `high` where the graphics cannot be read,
-   * which is asked again next time.
+   * asked, then stored, so it never changes by itself. The finest level the device's profile
+   * allows (`high` on a desktop) where the graphics cannot be read, which is asked again next time.
    */
   private pickedLightingQuality(): LightingQualityLevel {
     const stored = loadPickedLightingQuality(this.app);
     if (stored) return stored;
+    const finest = deviceProfile().budgets.lightingQualityDefault;
     const facts = readGpuFacts();
-    if (!facts) return 'high';
-    const level = pickLightingQuality(facts);
+    if (!facts) return finest;
+    const level = pickLightingQuality(facts, finest);
     savePickedLightingQuality(this.app, level);
     return level;
+  }
+
+  /** Whether the bar above a selection shows on this device under a mouse too; under a finger it always does. */
+  isSelectionBarShown(): boolean {
+    return loadSelectionBarShown(this.app);
+  }
+
+  /** Stores the choice on this device and tells the open maps. */
+  setSelectionBarShown(shown: boolean): void {
+    if (this.isSelectionBarShown() === shown) return;
+    saveSelectionBarShown(this.app, shown);
+    this.notify();
   }
 
   /** Whether animated maps play on this device as chosen, or null when never chosen (`animateMapsOn` decides then). */
@@ -305,6 +333,18 @@ export class SettingsService {
     if (this.isPlayerView4k() === on) return;
     savePlayerView4k(this.app, on);
     this.notify();
+  }
+
+  /** How opaque fog is in the GM's view, 0 to 1 (`readGmFogOpacity`); players' fog is always opaque. */
+  getGmFogOpacity(): number {
+    return loadGmFogOpacity(this.app);
+  }
+
+  /** The GM's fog opacity is this device's, as its screen decides what shows through: local storage, not the synced settings. */
+  setGmFogOpacity(opacity: number): void {
+    const before = this.getGmFogOpacity();
+    saveGmFogOpacity(this.app, opacity);
+    if (this.getGmFogOpacity() !== before) this.notify();
   }
 
   getLaserPointerSettings(): LaserPointerSettings {
@@ -339,45 +379,60 @@ export class SettingsService {
     this.commit();
   }
 
-  /** Whether the GM's initiative cards show names: off unless the file says `true`. */
-  showsInitiativeNames(): boolean {
-    return this.settings.initiativeNames === true;
+  /** When a dragged token shows its distance: the stored choice, or always when the file holds something else. */
+  getDragDistance(): DragDistance {
+    return readDragDistance(this.settings.dragDistance);
   }
 
-  setInitiativeNames(on: boolean): void {
-    if (this.showsInitiativeNames() === on) return;
-    this.settings.initiativeNames = on;
+  setDragDistance(choice: DragDistance): void {
+    if (this.settings.dragDistance === choice) return;
+    this.settings.dragDistance = choice;
     this.commit();
   }
 
-  /** How the initiative lists are laid out: the GM's choices, and whether this device collapsed the tracker. */
+  /** Whether the GM's tracker is the compact list: off unless the file says `true`. */
+  showsCompactInitiative(): boolean {
+    return this.settings.initiativeCompact === true;
+  }
+
+  setCompactInitiative(on: boolean): void {
+    if (this.showsCompactInitiative() === on) return;
+    this.settings.initiativeCompact = on;
+    this.commit();
+  }
+
+  /** How the initiative lists are laid out: the GM's choices. */
   initiativeLayout(): InitiativeLayout {
+    const dock = readListEdge(this.settings.initiativeDock);
+    const edges = readListEdges(this.settings.initiativeEdges, dock);
     return {
-      fromTurn: this.settings.initiativeFromTurn !== false,
-      dock: readDock(this.settings.initiativeDock),
-      collapsed: loadInitiativeCollapsed(this.app),
+      // During a fight the lists always start at the turn
+      fromTurn: true,
+      // An older version may have moved the list since: the dock it wrote counts among the edges
+      dock: edges.includes(dock) ? dock : edges[0] ?? dock,
+      edges,
+      facesPlayers: this.settings.initiativeFacesPlayers === true,
     };
   }
 
-  /** The GM's choices go into the synced settings, the collapsed tracker into this device's local storage. */
+  /** The GM's choices go into the synced settings. */
   setInitiativeLayout(changes: Partial<InitiativeLayout>): void {
     const current = this.initiativeLayout();
-    const { fromTurn = current.fromTurn, dock = current.dock, collapsed = current.collapsed } = changes;
-    if (collapsed !== current.collapsed) saveInitiativeCollapsed(this.app, collapsed);
-    if (fromTurn === current.fromTurn && dock === current.dock) {
-      if (collapsed !== current.collapsed) this.notify();
-      return;
-    }
-    this.settings.initiativeFromTurn = fromTurn;
+    const { facesPlayers = current.facesPlayers } = changes;
+    // One edge chosen alone is the list's only edge; edges chosen keep the dock among them, as its first where it left them
+    const edges = changes.edges ?? (changes.dock !== undefined ? [changes.dock] : current.edges);
+    const dock = changes.dock ?? (edges.includes(current.dock) ? current.dock : edges[0] ?? current.dock);
+    if (dock === current.dock && facesPlayers === current.facesPlayers && edges.join() === current.edges.join()) return;
     this.settings.initiativeDock = dock;
+    if (edges.length > 1 || this.settings.initiativeEdges !== undefined) this.settings.initiativeEdges = [...edges];
+    if (facesPlayers || this.settings.initiativeFacesPlayers !== undefined) this.settings.initiativeFacesPlayers = facesPlayers;
     this.commit();
   }
 
-  /** What a turn change does: the banner is on unless the file says `false`, the others off unless it says `true`. */
+  /** What a turn change does: the banner is on unless the file says `false`, moving only on one's turn off unless it says `true`. */
   initiativeTurnOptions(): InitiativeTurnOptions {
     return {
       banner: this.settings.initiativeBanner !== false,
-      followTurn: this.settings.initiativeFollowTurn === true,
       movesOnTurn: this.settings.initiativeMovesOnTurn === true,
     };
   }
@@ -385,9 +440,8 @@ export class SettingsService {
   setInitiativeTurnOptions(changes: Partial<InitiativeTurnOptions>): void {
     const next = { ...this.initiativeTurnOptions(), ...changes };
     const current = this.initiativeTurnOptions();
-    if (next.banner === current.banner && next.followTurn === current.followTurn && next.movesOnTurn === current.movesOnTurn) return;
+    if (next.banner === current.banner && next.movesOnTurn === current.movesOnTurn) return;
     this.settings.initiativeBanner = next.banner;
-    this.settings.initiativeFollowTurn = next.followTurn;
     this.settings.initiativeMovesOnTurn = next.movesOnTurn;
     this.commit();
   }
@@ -448,6 +502,35 @@ export class SettingsService {
     this.commit();
   }
 
+  /** Whether the GM hid the sidebar's starter tokens offer in the collection with this uid. */
+  isStarterOfferHidden(collectionUid: string): boolean {
+    return this.settings.hiddenStarterOffers?.includes(collectionUid) === true;
+  }
+
+  /** Hides or shows the sidebar's starter tokens offer in one collection; the list is left out of the file once empty. */
+  setStarterOfferHidden(collectionUid: string, hidden: boolean): void {
+    this.setListed('hiddenStarterOffers', collectionUid, hidden);
+  }
+
+  /** Whether the GM dismissed one of the Sound page's download offers. */
+  isSoundOfferHidden(offerId: string): boolean {
+    return this.settings.hiddenSoundOffers?.includes(offerId) === true;
+  }
+
+  setSoundOfferHidden(offerId: string, hidden: boolean): void {
+    this.setListed('hiddenSoundOffers', offerId, hidden);
+  }
+
+  private setListed(key: 'hiddenStarterOffers' | 'hiddenSoundOffers', id: string, hidden: boolean): void {
+    const list = this.settings[key] ?? [];
+    if (list.includes(id) === hidden) return;
+    const others = list.filter((other) => other !== id);
+    const next = hidden ? [...others, id] : others;
+    // Kept as a key while empty, so a reload while the save waits still sees this change (`reload`).
+    this.settings[key] = next.length > 0 ? next : undefined;
+    this.commit();
+  }
+
   /** Whether the GM switched an experimental feature on: off unless the file says `true`. */
   isExperimentalOn(id: ExperimentalFeatureId): boolean {
     return this.settings.experimental[id] === true;
@@ -469,6 +552,17 @@ export class SettingsService {
     const read = readToolbarLayout(next);
     if (JSON.stringify(read) === JSON.stringify(this.settings.toolbar)) return;
     this.settings.toolbar = read;
+    this.commit();
+  }
+
+  /** Whether the map's bars hide until the pointer comes near them: off unless the file says `true`. */
+  isToolbarAutoHide(): boolean {
+    return this.settings.toolbarAutoHide === true;
+  }
+
+  setToolbarAutoHide(on: boolean): void {
+    if (this.isToolbarAutoHide() === on) return;
+    this.settings.toolbarAutoHide = on;
     this.commit();
   }
 
@@ -572,7 +666,6 @@ export class SettingsService {
     this.commit();
   }
 
-  // Get all settings
   getAllSettings(): AtlasSettings {
     return { ...this.settings };
   }

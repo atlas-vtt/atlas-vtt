@@ -6,6 +6,7 @@ import type { Point } from '../../types/visionTypes';
 import { canvasBadgeColors } from '../utils/canvasBadgeColors';
 import { cssColorToHexNumber, getObsidianAccentColor } from '../utils/colorUtils';
 import { mapMarkerScale } from '../utils/mapMarkerScale';
+import { pointerReach } from '../utils/pointerReach';
 
 /** Screen pixels at marker scale 1. A light's badge is smaller than a note pin's (20). */
 export const LIGHT_MARKER_RADIUS = 14;
@@ -126,9 +127,9 @@ export function lightMarkerLook(light: LightSource, state: LightMarkerState, the
   };
 }
 
-/** World radius within which a press at viewport `zoom` hits a marker. */
+/** World radius within which a press at viewport `zoom` hits a marker; wider for a finger. */
 export function lightMarkerHitRadius(zoom: number): number {
-  return LIGHT_MARKER_HIT_RADIUS * mapMarkerScale(zoom);
+  return pointerReach(LIGHT_MARKER_HIT_RADIUS) * mapMarkerScale(zoom);
 }
 
 /** The light whose marker is at the world `point` at viewport `zoom`: the nearest one within reach. */

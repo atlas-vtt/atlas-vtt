@@ -1,6 +1,8 @@
 import { Point as PixiPoint, type Application, type FederatedPointerEvent } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import { watchClick } from '../utils/clickRelease';
+import { isPrimaryPress, isSecondaryPress } from '../utils/pointerButtons';
+import { isFinger } from '../utils/pointerReach';
 import { setCanvasCursor } from '../utils/canvasCursor';
 import { canRunMapHotkeys, matchesMapHotkey } from '../../keyboard/mapHotkeys';
 import type { SettingsService } from '../../services/SettingsService';
@@ -23,6 +25,8 @@ const DOUBLE_CLICK_GUARD_MS = 500;
  * Hands the pointer and keys to `session` while it lasts; returns the function that gives them back.
  * A left press on the map is the session's alone: it is taken before PIXI sees it, so no tool,
  * token or marquee answers it. Moved while held it turns the tokens, released it puts them down.
+ * A finger's press brings the tokens to it, moved while held it carries them, and they are put
+ * down where it lifts: a tap places at the tap.
  * A right-drag still pans and a right click in place puts the tokens away, as Escape does (which
  * first lets go of a press). With Shift held the wheel cycles the queue instead of zooming. Shift is
  * read from every pointer, key and wheel event and dropped when the window loses focus. The system
@@ -34,6 +38,8 @@ export function bindPlacementInput(deps: PlacementInputDeps, session: PlacementS
   const win = canvas.ownerDocument.defaultView ?? window;
   let stopRightClick: (() => void) | null = null;
   const wheel = new WheelSteps();
+  /** The press under way is a finger's: it carries the tokens instead of turning them. */
+  let carried = false;
   const cursor = (): string => (session.pressing ? 'grabbing' : 'none');
 
   const screenOf = (event: { clientX: number; clientY: number }): Point => {
@@ -48,14 +54,19 @@ export function bindPlacementInput(deps: PlacementInputDeps, session: PlacementS
     queueMicrotask(() => { if (session.active) setCanvasCursor(canvas, cursor()); });
   };
   const onPress = (event: PointerEvent): void => {
-    if (event.target !== canvas || event.button !== 0) return;
+    if (event.target !== canvas || !isPrimaryPress(event)) return;
+    // A second finger is the start of a pinch, never a second press
+    if (event.pointerType === 'touch' && !event.isPrimary) return;
     event.stopPropagation();
     event.preventDefault();
+    carried = isFinger(event);
     session.pressAt(screenOf(event), event.shiftKey);
     setCanvasCursor(canvas, cursor());
   };
   const onPressMove = (event: PointerEvent): void => {
-    if (session.pressing) session.turn(screenOf(event), event.altKey);
+    if (!session.pressing) return;
+    if (carried) session.carry(screenOf(event));
+    else session.turn(screenOf(event), event.altKey);
   };
   const onRelease = (event: PointerEvent): void => {
     if (event.button !== 0 || !session.pressing) return;
@@ -80,7 +91,7 @@ export function bindPlacementInput(deps: PlacementInputDeps, session: PlacementS
     event.preventDefault();
   };
   const onRightPress = (event: FederatedPointerEvent): void => {
-    if (event.button !== 2 || session.pressing) return;
+    if (!isSecondaryPress(event) || session.pressing) return;
     stopRightClick?.();
     stopRightClick = watchClick(viewport, event, () => session.cancel());
   };

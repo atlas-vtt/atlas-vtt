@@ -63,8 +63,9 @@ export function useTrayPlaces(
         const dy = host.offsetTop + host.clientTop - host.scrollTop;
         const origin = outer.getBoundingClientRect();
         const seen = clippedViewFrame(outer);
-        // Over the stage, never over the sets and options beside it
-        const stage = (outer.closest('.atlas-dice-lab__stage') ?? outer).getBoundingClientRect();
+        // Over the stage, never over the sets and options beside it. A tray in a floating card (`data-step-frame`)
+        // has too little room of its own: its panel may open anywhere the card can be seen.
+        const stage = outer.closest('[data-step-frame]') ? seen : (outer.closest('.atlas-dice-lab__stage') ?? outer).getBoundingClientRect();
         const frame = {
           left: Math.max(seen.left, stage.left) - origin.left,
           top: Math.max(seen.top, stage.top) - origin.top,

@@ -10,9 +10,9 @@ import { frameSource, framePiece, sizePlayerWindow } from '../mocks/playerFrameS
 
 const app = {
   vault: { adapter: { exists: async () => true, write: async () => {} } },
-  workspace: { on: vi.fn(() => ({})), offref: vi.fn() },
+  workspace: { containerEl: document.body, on: vi.fn(() => ({})), offref: vi.fn() },
 } as any;
-afterEach(() => { PlayerWindowService.getInstance()?.destroy(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+afterEach(() => { PlayerWindowService.getInstance()?.destroy(); vi.unstubAllGlobals(); vi.restoreAllMocks(); vi.useRealTimers(); });
 
 interface ScheduledRenders {
   requestRender: ReturnType<typeof vi.fn>;
@@ -112,7 +112,10 @@ describe('player window mirroring', () => {
     const source = (service as any).streamSource;
     source.store = createStore(() => ({}));
 
+    expect(service.awaitsSource()).toBe(false);
     service.releaseSource(source.store);
+    // Until a view shows players the presented scene again
+    expect(service.awaitsSource()).toBe(true);
     // At once: a hidden window has no next frame, and the closing view must not stay referenced
     expect(renders.stopListening).toHaveBeenCalledTimes(1);
     nextFrame();
@@ -121,6 +124,8 @@ describe('player window mirroring', () => {
     expect((service as any).streamSource.store).toBeUndefined();
     expect(service.isWindowOpen()).toBe(true);
     expect(renders.capture).toHaveBeenCalledTimes(1);
+    service.releaseHeldFrame(frameSource({ withPlayerSafeFrame: vi.fn() }));
+    expect(service.awaitsSource()).toBe(false);
   });
 
   it.each(['presentCanvas', 'releaseHeldFrame'] as const)('lets go of the previous canvas at once on %s', (swap) => {
@@ -194,6 +199,30 @@ describe('player window mirroring', () => {
     (service as any).mirror.frame();
     service.destroy();
     expect(release).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps following the GM from the main window while the player window gets no display frames, as on another virtual desktop', () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'performance'] });
+    const renders = scheduledRenders();
+    mirror(renders);
+    renders.render();
+    expect(renders.capture).toHaveBeenCalledTimes(1);
+
+    // The GM changes the map after the player window's frames stopped: nothing is mirrored yet
+    vi.advanceTimersByTime(300);
+    renders.render();
+    expect(renders.capture).toHaveBeenCalledTimes(1);
+
+    renders.requestRender.mockClear();
+    vi.advanceTimersByTime(300);
+    expect(renders.requestRender).toHaveBeenCalled();
+    renders.render();
+    expect(renders.capture).toHaveBeenCalledTimes(2);
+
+    // An idle map is not rendered for it
+    renders.requestRender.mockClear();
+    vi.advanceTimersByTime(1000);
+    expect(renders.requestRender).not.toHaveBeenCalled();
   });
 
   it('copies every frame for sources without a render schedule', () => {

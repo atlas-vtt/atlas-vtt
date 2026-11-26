@@ -59,22 +59,22 @@ $picker-thumb-inset: 3px;
   flex-shrink: 0;
 }
 
-.world-map-picker__list {
+.atlas-world-map-picker__list {
   @include atlas-flex-col(2px);
   min-height: 0;
   overflow-y: auto;
-  @include atlas-scrollbar;
 }
 
 .world-map-picker__option {
   @include atlas-select-option(32px);
   flex-shrink: 0;
   justify-content: flex-start;
-  padding: 4px;
+  padding: $surface-inset;
   padding-inline-end: $spacing-s;
 
+  // $surface-inset inside the option, concentric with its corner.
   .world-map-thumb {
-    border-radius: calc(#{$radius-m} - 4px);
+    border-radius: $control-inset-radius;
   }
 }
 

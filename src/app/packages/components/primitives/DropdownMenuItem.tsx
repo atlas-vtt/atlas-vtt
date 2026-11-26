@@ -8,6 +8,11 @@ export interface DropdownMenuItemProps {
   shortcut?: string
   isActive?: boolean
   destructive?: boolean
+  /**
+   * The row begins with its icon, on the menu's text edge: for a menu none of whose rows is
+   * ticked, where the place kept for a tick would only set the row in from every other.
+   */
+  flush?: boolean
   /** Shown, but not to be chosen right now. */
   disabled?: boolean
   /** Set inside a `role="menu"` container, which arrow keys move through. */
@@ -21,11 +26,12 @@ export const DropdownMenuItem: FC<DropdownMenuItemProps> = ({
   shortcut,
   isActive = false,
   destructive = false,
+  flush = false,
   disabled = false,
   role,
   onClick,
 }) => {
-  if (destructive) {
+  if (destructive && !flush) {
     return (
       <Button
         variant="ghost"
@@ -44,14 +50,16 @@ export const DropdownMenuItem: FC<DropdownMenuItemProps> = ({
     <Button
       variant="ghost"
       size="sm"
-      className="atlas-dropdown-menu-item"
+      className={`atlas-dropdown-menu-item${flush ? ' atlas-dropdown-menu-item--flush' : ''}${destructive ? ' atlas-dropdown-btn--destructive' : ''}`}
       role={role}
       disabled={disabled}
       onClick={onClick}
     >
-      <span className="atlas-dropdown-menu-item__check">
-        {isActive && <Check className="h-4 w-4" />}
-      </span>
+      {!flush && (
+        <span className="atlas-dropdown-menu-item__check">
+          {isActive && <Check className="h-4 w-4" />}
+        </span>
+      )}
       <Icon className="h-4 w-4" />
       <span>{label}</span>
       {shortcut && <span className="atlas-dropdown-menu-item__shortcut">{shortcut}</span>}

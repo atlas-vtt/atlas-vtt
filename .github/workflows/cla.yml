@@ -28,7 +28,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          path-to-document: https://github.com/ByteMirror/atlas-vtt/blob/main/CLA.md
+          path-to-document: https://github.com/atlas-vtt/atlas-vtt/blob/main/CLA.md
           path-to-signatures: signatures/version1/cla.json
           # Kept off main so signatures neither clutter its history nor trigger CI.
           branch: cla-signatures

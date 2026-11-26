@@ -8,22 +8,35 @@ import { showAtlasToast } from '../../../../react/components/AtlasToast';
 import { chooseAction } from '../../../../ui/confirmDialog';
 import type { AnyAsset, CollectionOption } from '../types';
 import { t } from '../../../../i18n';
+import { MOVE_PROBLEM_TOAST_MS, showMove, type ShownMove } from './optimisticMove';
+import { MOVED_TOAST_MS, movedWhat } from './moveNotice';
+import { planLeavingFocus } from './leavingFocus';
 
 export interface CollectionTransferContext {
   app: ObsidianApp;
   assetService: AssetService | null;
   setAssets: React.Dispatch<React.SetStateAction<AnyAsset[]>>;
   setSelectedAssetIds: React.Dispatch<React.SetStateAction<string[]>>;
+  /** Shows a collection with the assets `assetIds` in it selected: what the notice of the transfer offers. */
+  openCollection?: (collectionId: string, assetIds: readonly string[]) => void;
 }
 
-/** Toasts with more than a confirmation to read stay longer. */
-const LONG_TOAST_DURATION = 6000;
+/** Collections by name, as the picker lists them ("Book 2" before "Book 10"). */
+export function collectionsByName(collections: readonly CollectionOption[]): CollectionOption[] {
+  return [...collections].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+}
 
 /** The collections assets shown for `currentCollectionId` can go to, by name. */
 export function transferTargets(collections: readonly CollectionOption[], currentCollectionId: string): CollectionOption[] {
-  return collections
-    .filter((collection) => collection.id !== currentCollectionId)
-    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+  return collectionsByName(collections.filter((collection) => collection.id !== currentCollectionId));
+}
+
+/** A Move or Copy to collection… the GM is choosing the collection of (decision #41): what goes, and how it goes there. */
+export interface CollectionPick {
+  mode: TransferMode;
+  assets: readonly AnyAsset[];
+  /** Moves or copies the assets into the chosen collection (`transferToCollection`). */
+  transfer: (target: CollectionOption) => void;
 }
 
 /**
@@ -55,7 +68,8 @@ async function idsToTransfer(app: ObsidianApp, assetService: AssetService, asset
 
 /**
  * Moves or copies `assets` into `target` and reports the outcome. Scenes they
- * are linked with are offered along. Moved assets leave the grid at once; the
+ * are linked with are offered along. Moved assets leave the grid as soon as the
+ * GM has chosen (#30), and come back with the reason if the move fails; the
  * refresh that follows the transfer shows the rest.
  */
 export async function transferToCollection(
@@ -66,22 +80,34 @@ export async function transferToCollection(
 ): Promise<void> {
   const { assetService } = context;
   if (!assetService || assets.length === 0) return;
-  const chosen = assets.length === 1 ? t('common.quoted', { name: assets[0]!.name }) : t('count.items', { count: assets.length });
+  const chosen = movedWhat(assets);
+  // Read while the cards are still there: the menu that asked gave focus back to one of them.
+  const focus = planLeavingFocus(assets.map((asset) => asset.id));
   let what = chosen;
+  let shown: ShownMove | null = null;
+  let assetIds: string[] | null = null;
   try {
-    const assetIds = await idsToTransfer(context.app, assetService, assets, target, mode);
+    assetIds = await idsToTransfer(context.app, assetService, assets, target, mode);
     if (!assetIds) return;
     const along = assetIds.length - assets.length;
     if (along > 0) what = t('transfer.andScenes', { what: chosen, count: along });
-    const result = await transferAssets(context.app, assetService, { assetIds, targetCollectionId: target.id, mode });
     if (mode === 'move') {
-      const moved = new Set(result.assets.map((record) => record.id));
-      context.setAssets((prev) => prev.filter((asset) => !moved.has(asset.id)));
-      context.setSelectedAssetIds((prev) => prev.filter((id) => !moved.has(id)));
+      shown = showMove(context.setAssets, assetIds, () => null);
+      const leaving = new Set(assetIds);
+      context.setSelectedAssetIds((prev) => prev.filter((id) => !leaving.has(id)));
+      focus.afterLeaving();
     }
-    showAtlasToast(t(mode === 'move' ? 'transfer.moved' : 'transfer.copied', { what, target: target.name }));
+    const result = await transferAssets(context.app, assetService, { assetIds, targetCollectionId: target.id, mode });
+    const moved = new Set(result.assets.map((record) => record.id));
+    shown?.restore(assetIds.filter((id) => !moved.has(id)));
+    const message = t(mode === 'move' ? 'transfer.moved' : 'transfer.copied', { what, target: target.name });
+    const { openCollection } = context;
+    const arrived = result.assets.map((record) => record.id);
+    if (openCollection) showAtlasToast(message, MOVED_TOAST_MS, { label: t('transfer.openCollection'), run: () => openCollection(target.id, arrived) });
+    else showAtlasToast(message);
   } catch (error) {
     console.error(`[Atlas] Could not ${mode} assets to ${target.id}:`, error);
-    showAtlasToast(t(`transfer.${mode}Failed`, { what, error: error instanceof Error ? error.message : String(error) }), LONG_TOAST_DURATION);
+    if (assetIds) shown?.restore(assetIds);
+    showAtlasToast(t(`transfer.${mode}Failed`, { what, error: error instanceof Error ? error.message : String(error) }), MOVE_PROBLEM_TOAST_MS);
   }
 }

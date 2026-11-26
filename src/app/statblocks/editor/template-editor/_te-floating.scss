@@ -5,10 +5,9 @@
 @use '../../../../../styles/tokens' as *;
 @use '../../../../../styles/mixins' as *;
 
-// The context menu's geometry: 28 px capsule rows, $spacing-xs inside the border.
+// The context menu's geometry: 28 px rows, $surface-inset inside the border.
 $row-height: 28px;
-$menu-inset: $spacing-xs;
-$menu-radius: $row-height * 0.5 + $menu-inset + $border-width-m;
+$menu-inset: $surface-inset;
 
 .atlas-vtt-plugin {
   // ── Insert menu ─────────────────────────────────────────────────────────
@@ -30,7 +29,7 @@ $menu-radius: $row-height * 0.5 + $menu-inset + $border-width-m;
 
   .atlas-te-insert__panel {
     @include atlas-elevated-surface;
-    @include atlas-panel-radius($menu-radius);
+    @include atlas-panel-radius($surface-radius);
     display: grid;
     grid-template-columns: 220px 260px;
     gap: $menu-inset;
@@ -49,8 +48,9 @@ $menu-radius: $row-height * 0.5 + $menu-inset + $border-width-m;
     min-width: 0;
   }
 
-  // The search is one more row of the menu: a capsule of a row's height.
+  // The search is one more row of the menu.
   input.atlas-te-insert__search {
+    @include atlas-text-input;
     @include atlas-panel-inset-radius($menu-inset);
     height: $row-height;
     padding: 0 $spacing-s;
@@ -62,7 +62,6 @@ $menu-radius: $row-height * 0.5 + $menu-inset + $border-width-m;
     align-items: stretch;
     max-height: 320px;
     overflow-y: auto;
-    @include atlas-scrollbar;
   }
 
   .atlas-te-insert__empty {
@@ -76,7 +75,7 @@ $menu-radius: $row-height * 0.5 + $menu-inset + $border-width-m;
     max-height: 360px;
     padding: $menu-inset;
     overflow: hidden;
-    border-radius: $radius-l;
+    border-radius: $radius-m;
     background: var(--background-secondary);
     pointer-events: none;
   }

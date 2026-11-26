@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { Container, Ticker } from 'pixi.js';
 import { TFile } from 'obsidian';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
@@ -38,6 +38,7 @@ async function showScene(size = 1400): Promise<Harness> {
   const manager = {
     init: vi.fn(),
     getViewport: () => viewport,
+    getGestures: () => null,
     getApp: () => ({ renderer: { resolution: 1, name: 'canvas' }, canvas: document.createElement('canvas'), ticker }),
     destroy: vi.fn(),
   };
@@ -120,6 +121,24 @@ describe('the renderer and its map image', () => {
     store.temporal.getState().undo();
     expect(renderer.getMapRect()).toEqual({ x: 0, y: 0, width: 1000, height: 1000 });
     expect(bounds).toHaveBeenLastCalledWith({ x: 0, y: 0, width: 1000, height: 1000 });
+  });
+
+  it('tells what covers the map the scene\'s rect while a preview draws a floor elsewhere', async () => {
+    const { renderer, store, mapImage } = await showScene(1000);
+    store.getState().setGrid({ enabled: true, visible: true, type: 'square', size: 70, offsetX: 0, offsetY: 0, opacity: 0.5 });
+    const levels = ['ground', 'upper'].map((id) => ({ id, name: id, elevation: { bottom: 0, top: 10 }, background: null }));
+    // The upper floor placed two cells right and down (Position floor), and shown.
+    store.setState({ mapLoaded: true, isMapLoading: false, persistenceEnabled: false, levels, viewedLevel: 'upper', levelAlignments: { upper: { offset: { x: 140, y: 140 }, scale: 1, stretch: { x: 1, y: 1 } } } });
+    expect(renderer.getMapRect()).toEqual({ x: 0, y: 0, width: 1140, height: 1140 });
+
+    // Its grid fitted on its own: the image is drawn from the world's corner, the scene keeps it where it was.
+    renderer.setLevelImageAlignment(true);
+    expect(mapImage.worldRect).toEqual({ x: 0, y: 0, width: 1000, height: 1000 });
+    expect(renderer.getSceneMapRect()).toEqual({ x: 0, y: 0, width: 1140, height: 1140 });
+
+    renderer.setLevelImageAlignment(false);
+    expect(renderer.getSceneMapRect()).toEqual(renderer.getMapRect());
+    expect(renderer.getMapRect()).toEqual({ x: 0, y: 0, width: 1140, height: 1140 });
   });
 
   it('takes the stretch a load shows for the scene\'s size at once', async () => {

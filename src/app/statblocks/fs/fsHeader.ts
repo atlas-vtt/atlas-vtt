@@ -1,19 +1,20 @@
 /**
  * A Fantasy Statblocks layout's name, image, type, level, hit points and
  * description as the header Atlas draws (`templateHeader.ts`). Each part takes
- * the layout's own key for it (FS's `cr` is the level), which keeps its key
- * and gets the part's meaning where it is not the part's own; a block that
- * shows that key and nothing else leaves the layout, since the header shows
- * it. A part the layout has no key for, or shows only inside a block with
- * other values ("{size} {type}, {alignment}"), is hidden, so nothing shows
- * twice. Where the layout's top heading shows another key than the name
- * (Cairn's `title`, "Aranea", where `name` is the bestiary's "Aranea
+ * the layout's own key for it (FS's `cr` is the level, and so is a `tier`),
+ * which keeps its key and gets the part's meaning where it is not the part's
+ * own; a block that shows that key and nothing else leaves the layout, since
+ * the header shows it, and so does one that only strings such keys together
+ * ("{tier} {type}"). A part the layout has no key for, or shows only inside a
+ * block with other values ("{size} {type}, {alignment}"), is hidden, so
+ * nothing shows twice. Where the layout's top heading shows another key than
+ * the name (Cairn's `title`, "Aranea", where `name` is the bestiary's "Aranea
  * (Cairn)"), that key is the display name the header shows, and its heading
  * leaves the layout too. Pure.
  */
 
 import { patternRefs } from '../expressions/patternRefs';
-import { showsHeaderValue, withoutBlocks } from '../model/headerDuplicates';
+import { joinsHeaderValues, showsHeaderValue, withoutBlocks } from '../model/headerDuplicates';
 import { HEADER_PARTS } from '../model/templateHeader';
 import { fieldsShownBy, flattenReadingOrder } from '../model/treeQueries';
 import {
@@ -22,7 +23,7 @@ import {
 
 /** The keys FS layouts keep each part under, the most usual first. */
 const FS_KEYS: Readonly<Record<HeaderPartId, readonly FieldKey[]>> = {
-  name: ['name'], token: ['image'], level: ['level', 'cr'], type: ['type'], hp: ['hp'], description: ['description'],
+  name: ['name'], token: ['image'], level: ['level', 'cr', 'tier'], type: ['type'], hp: ['hp'], description: ['description'],
 };
 
 interface PartKey {
@@ -61,6 +62,8 @@ export function withFsHeader(template: StatblockTemplate): StatblockTemplate {
   for (const partKey of [...keys, ...(display ? [{ part: 'name' as const, key: display }] : [])]) {
     for (const block of all) if (showsHeaderValue(block, partKey.part, partKey.key, template.fields)) moved.add(block.id);
   }
+  const found = new Set(keys.map(({ key }) => key));
+  for (const block of all) if (joinsHeaderValues(block, found)) moved.add(block.id);
   const blocks = withoutBlocks(template.layout.blocks, moved);
   const stillShown = new Set(flattenReadingOrder(blocks).flatMap((block) => fieldsShownBy(block, patternRefs)));
   const hidden = HEADER_PART_IDS.filter((part) => {

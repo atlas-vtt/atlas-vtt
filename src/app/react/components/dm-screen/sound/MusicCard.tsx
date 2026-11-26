@@ -7,6 +7,7 @@ import type { SoundDirector } from '../../../../soundDirector/SoundDirector';
 import { IconAction } from './IconAction';
 import { MusicPosition } from './MusicPosition';
 import { TrackList } from './TrackList';
+import { TrackFade } from './TrackFade';
 import { useSoundValue } from './useSound';
 import { SOUND_KEYS } from './useSoundKeys';
 import { ReverbKnob } from './ReverbKnob';
@@ -45,6 +46,7 @@ export const MusicCard = React.memo(function MusicCard({ director }: { director:
         {listOpen && <TrackList director={director} />}
         <div className="atlas-sound-music__actions">
           <IconAction label={t('audio.tracks')} icon={ListMusic} pressed={listOpen} className="atlas-sound-music__quiet atlas-sound-music__list" onClick={() => setListOpen(!listOpen)} />
+          <TrackFade director={director} />
           <IconAction label={t('audio.shuffle')} icon={Shuffle} pressed={shuffle} disabled={!playing} className="atlas-sound-music__quiet" onClick={() => director.desk.setShuffle(!shuffle)} />
           <IconAction label={t(repeating.label)} icon={repeating.icon} pressed={repeat !== undefined} disabled={!playing} className="atlas-sound-music__quiet" onClick={() => director.desk.setRepeat(repeating.next)} />
           <IconAction label={t('audio.back')} icon={SkipBack} disabled={!playing} className="atlas-sound-music__transport" onClick={() => director.desk.back()} />

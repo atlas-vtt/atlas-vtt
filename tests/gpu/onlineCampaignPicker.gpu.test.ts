@@ -26,7 +26,7 @@ const CHOICES: CampaignChoice[] = [
 
 const actions = (): MenuActions => ({
   start: vi.fn(), choose: vi.fn(), search: vi.fn(), openCampaigns: vi.fn(), signIn: vi.fn(), cancelSignIn: vi.fn(), reopenSignIn: vi.fn(), signOut: vi.fn(), retry: vi.fn(), openAccountPage: vi.fn(), update: vi.fn(),
-  newCode: vi.fn(), setRequireCode: vi.fn(), setAskToJoin: vi.fn(), copyCode: () => Promise.resolve(true), hideImage: vi.fn(), addPlayer: vi.fn(), newLink: vi.fn(),
+  newCode: vi.fn(), setRequireCode: vi.fn(), setAskToJoin: vi.fn(), hideImage: vi.fn(), addPlayer: vi.fn(), newLink: vi.fn(),
   stop: vi.fn(), share: vi.fn(), copy: () => Promise.resolve(true), toggleQr: vi.fn(),
 });
 

@@ -1,6 +1,6 @@
 import { Container } from 'pixi.js';
 import { LayerManager } from '../layerManager';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../utils/typedEmitter';
 import { PixiRendererOrchestrator } from '../PixiRendererOrchestrator';
 
 /**

@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { MenuEntry } from '../../../../src/app/online/gm/dock/dockMenu.ts';
 import { groupsOf, type OnlineSnapshot, type SceneFacts } from '../../../../src/app/online/gm/dock/panelModel.ts';
 import { renderPlayerList, type ListActions } from '../../../../src/app/online/gm/dock/playerList.ts';
+import { CODE_SHOWN_MS } from '../../../../src/app/online/gm/dock/secretCode.ts';
 
 const menus = vi.hoisted(() => ({ opened: [] as (readonly MenuEntry[])[] }));
 vi.mock('../../../../src/app/online/gm/dock/dockMenu.ts', () => ({ openMenuBelow: (entries: readonly MenuEntry[]) => menus.opened.push(entries) }));
@@ -23,7 +24,7 @@ const SCENE: SceneFacts = {
 const snapshot = (over: Partial<OnlineSnapshot>): OnlineSnapshot => ({ status: 'online', link: null, campaignId: null, sharedLeaf: null, sharedName: null, sharedTokens: {}, players: [], playerTokens: [], seats: null, gate: null, rests: [], cardOrder: [], ...over });
 
 function actions(): ListActions & { selectToken: ReturnType<typeof vi.fn<(id: string) => void>> } {
-  return { selectToken: vi.fn<(id: string) => void>(), assign: vi.fn(), release: vi.fn(), unmark: vi.fn(), kick: vi.fn(), copyPlayerCode: vi.fn(() => Promise.resolve(true)), newPlayerCode: vi.fn(), askRename: vi.fn(), askRemoveFromCampaign: vi.fn(), playerPrompt: () => false, selected: () => [], imageSrc: (path) => `app://vault/${path}` };
+  return { selectToken: vi.fn<(id: string) => void>(), assign: vi.fn(), release: vi.fn(), unmark: vi.fn(), kick: vi.fn(), drawingsOf: vi.fn((playerId: string) => (playerId === ANA.id ? 3 : 0)), clearDrawings: vi.fn(), playerCode: (playerId: string) => ({ [ANA.id]: '482193', [BEN.id]: '731904' })[playerId] ?? null, newPlayerCode: vi.fn(), askRename: vi.fn(), askRemoveFromCampaign: vi.fn(), playerPrompt: () => false, selected: () => [], imageSrc: (path) => `app://vault/${path}` };
 }
 
 function list(over: Partial<OnlineSnapshot>): { el: HTMLElement; does: ReturnType<typeof actions> } {
@@ -90,7 +91,7 @@ describe('the players of an online table', () => {
     it('releases the token the player is shown by alone, and keeps their other tokens', () => {
       const { el, does } = list({ players: [ANA], playerTokens: [{ tokenId: 'cleric', label: 'Cleric', ownerId: ANA.id }, { tokenId: 'wolf', label: 'Wolf', ownerId: ANA.id }] });
       const entries = menuOf(el);
-      expect(titles(entries)).toEqual(['Assign selected tokens here', 'Release Cleric', 'Release all', 'Copy code', 'New code', 'Rename…', 'Remove from table', 'Remove from campaign']);
+      expect(titles(entries)).toEqual(['Assign selected tokens here', 'Release Cleric', 'Release all', 'Clear drawings', 'New code', 'Rename…', 'Remove from table', 'Remove from campaign']);
       run(entries, 'Release Cleric');
       expect(does.release).toHaveBeenCalledWith(['cleric']);
       run(entries, 'Release all');
@@ -99,7 +100,7 @@ describe('the players of an online table', () => {
 
     it('offers one release for a player with one token, and none to run for a player without', () => {
       const one = menuOf(list({ players: [ANA], playerTokens: [{ tokenId: 'cleric', label: 'Cleric', ownerId: ANA.id }] }).el);
-      expect(titles(one)).toEqual(['Assign selected tokens here', 'Release Cleric', 'Copy code', 'New code', 'Rename…', 'Remove from table', 'Remove from campaign']);
+      expect(titles(one)).toEqual(['Assign selected tokens here', 'Release Cleric', 'Clear drawings', 'New code', 'Rename…', 'Remove from table', 'Remove from campaign']);
       const none = menuOf(list({ players: [BEN], playerTokens: [] }).el);
       expect(none.find((entry) => entry.title === 'Release all')?.disabled).toBe(true);
     });
@@ -114,15 +115,13 @@ describe('a player of the campaign', () => {
   };
   const run = (entries: readonly MenuEntry[], title: string): void => entries.find((entry) => entry.title === title)?.run();
 
-  it('has a menu that copies the code, makes a new one, renames and removes, each for that player', () => {
+  it('has a menu that makes a new code, renames and removes, each for that player', () => {
     const { el, does } = list({ players: [ANA, BEN] });
     const entries = menuOf(el);
-    run(entries, 'Copy code');
     run(entries, 'New code');
     run(entries, 'Rename…');
     run(entries, 'Remove from table');
     run(entries, 'Remove from campaign');
-    expect(does.copyPlayerCode).toHaveBeenCalledWith(ANA.id);
     expect(does.newPlayerCode).toHaveBeenCalledWith(ANA.id);
     expect(does.askRename).toHaveBeenCalledWith(expect.objectContaining({ id: ANA.id, name: 'Ana' }));
     expect(does.kick).toHaveBeenCalledWith(ANA.id);
@@ -133,13 +132,51 @@ describe('a player of the campaign', () => {
     const entries = menuOf(list({ players: [ANA] }).el);
     expect(entries.slice(-2).map((entry) => [entry.title, entry.warning])).toEqual([['Remove from table', true], ['Remove from campaign', true]]);
     expect(entries.find((entry) => entry.title === 'Remove from table')?.apart).toBe(true);
-    expect(entries.find((entry) => entry.title === 'Copy code')?.apart).toBe(true);
+    expect(entries.find((entry) => entry.title === 'New code')?.apart).toBe(true);
   });
 
-  it('never has a code in the list: no digits, no field', () => {
+  it('clears that player\'s drawings from its menu, and offers nothing to clear where they drew nothing', () => {
+    const { el, does } = list({ players: [ANA, BEN] });
+    const more = [...el.querySelectorAll<HTMLButtonElement>('.atlas-online-player__more')];
+    menus.opened.length = 0;
+    more[0]?.click();
+    const ana = menus.opened.at(-1) ?? [];
+    expect(ana.find((entry) => entry.title === 'Clear drawings')).toMatchObject({ disabled: false, apart: true });
+    run(ana, 'Clear drawings');
+    expect(does.clearDrawings).toHaveBeenCalledWith(ANA.id);
+    more[1]?.click();
+    // The row keeps its place with nothing drawn, disabled.
+    expect((menus.opened.at(-1) ?? []).find((entry) => entry.title === 'Clear drawings')?.disabled).toBe(true);
+  });
+
+  it('has each player\'s code in their row, with no digit of it in the page until pressed', () => {
     const { el } = list({ players: [ANA, BEN], playerTokens: [{ tokenId: 'cleric', label: 'Cleric', ownerId: ANA.id }] });
+    expect(el.querySelectorAll('.atlas-online-player__code')).toHaveLength(2);
     expect(el.textContent).not.toMatch(/\d/);
     expect(el.querySelector('input')).toBeNull();
+  });
+
+  it('shows a code on the first press, copies it on the next, and hides it again a while later, across redraws', async () => {
+    vi.useFakeTimers();
+    const write = vi.fn(() => Promise.resolve());
+    Object.defineProperty(window.navigator, 'clipboard', { value: { writeText: write }, configurable: true });
+    const chip = (el: HTMLElement): HTMLButtonElement => el.querySelector<HTMLButtonElement>('.atlas-online-player__code')!;
+    const first = list({ players: [ANA] }).el;
+    chip(first).click();
+    expect(chip(first).textContent).toBe('482 193');
+    expect(chip(first).getAttribute('aria-label')).toBe('Ana: Copy code 482 193');
+    expect(write).not.toHaveBeenCalled();
+    // The panel is drawn anew on every change: the code stays shown, and the next press copies.
+    const again = list({ players: [ANA] }).el;
+    expect(chip(again).textContent).toBe('482 193');
+    chip(again).click();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(write).toHaveBeenCalledWith('482 193');
+    expect(chip(again).textContent).toBe('Copied');
+    vi.advanceTimersByTime(CODE_SHOWN_MS);
+    expect(chip(again).textContent).not.toMatch(/\d/);
+    expect(chip(again).getAttribute('aria-label')).toBe('Ana: Show code');
+    vi.useRealTimers();
   });
 });
 

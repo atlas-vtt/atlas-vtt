@@ -13,7 +13,7 @@ export const snapshots: Translation = {
   'snapshots.overwriteWithCurrent': '用当前地图覆盖',
   'snapshots.renameFailed': '无法重命名快照',
   'snapshots.renameNamed': '重命名 {name}',
-  'snapshots.restoreBody': '棋子、图钉、迷雾、绘图、先攻以及这张地图上的其他一切都会回到此快照中的样子。',
+  'snapshots.restoreBody': '指示物、图钉、迷雾、绘图、先攻以及这张地图上的其他一切都会回到此快照中的样子。',
   'snapshots.restoreFailed': '无法恢复快照',
   'snapshots.restoreNamed': '恢复 {name}',
   'snapshots.restoreTitle': '恢复「{name}」？',

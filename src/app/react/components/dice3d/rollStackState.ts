@@ -24,6 +24,8 @@ export interface StackedRoll extends PreparedDiceRoll {
   leaving?: true;
   /** Thrown without sound: another display shows the same roll and plays it. */
   muted?: true;
+  /** Lets the logs show the roll's result (`holdRoll`): its dice have landed, or its panel is gone. */
+  release?: () => void;
 }
 
 /**

@@ -1,6 +1,6 @@
 import {
   bookLine, isResourceKey, MAX_BOOK_TITLE, MAX_COUNTER, MAX_COUNTERS, MAX_FORMULA, MAX_SHEET_LIST, MAX_TABLE_COLUMNS, MAX_TABLE_ROWS,
-  type SheetCounter, type SheetField, type SheetNode, type SheetPair, type SheetValue,
+  type SheetCounter, type SheetField, type SheetNode, type SheetPair, type SheetRaw, type SheetValue,
 } from '../../protocol/index.ts';
 import { valuePrompt, type BlockDisplay } from '../../../statblocks/render/blockDisplay';
 import { MAX_TRACK_BOXES } from '../../../statblocks/render/values/trackBoxes';
@@ -48,12 +48,19 @@ export function displayText(display: BlockDisplay): string {
   return display.state === 'prompt' ? '' : display.text?.text ?? '';
 }
 
-/** The prompt a block shows where it is empty, else null. */
-export const promptOf = (display: BlockDisplay): string | null => (display.state === 'prompt' ? display.prompt : null);
+/**
+ * The prompt a block shows where it is empty, else null. A fallback standing in for a value the
+ * player may set is that field's prompt: the player sees it while the note holds no value, and may
+ * write one over it, as the GM may in the note's panel.
+ */
+export function promptOf(display: BlockDisplay, field: SheetField | null = null): string | null {
+  if (display.state === 'prompt') return display.prompt;
+  return display.state === 'fallback' && field !== null ? displayText(display) : null;
+}
 
 /** A block's value as one plain text, with its prompt where it is empty; `rollable` where its block rolls its number as a bonus. */
 export function plainValue(build: SheetBuild, label: string | null, display: BlockDisplay, field: SheetField | null, rollable = false): SheetValue {
-  return sheetValue(build, label, displayText(display), 'plain', field, promptOf(display), { rollable });
+  return sheetValue(build, label, displayText(display), 'plain', field, promptOf(display, field), { rollable });
 }
 
 const plainNode = (build: SheetBuild, label: string | null, display: BlockDisplay, field: SheetField | null, rollable = false): SheetNode => ({ k: 'value', value: plainValue(build, label, display, field, rollable) });
@@ -178,6 +185,23 @@ function sheetCounter(row: CounterRow): SheetCounter | null {
   return { name: row.name, max: row.max, used: row.used, reset: row.reset, regain: row.regain };
 }
 
+const isStoredRow = (value: SheetRaw | undefined): value is { readonly [key: string]: SheetRaw } => typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * The field with each stored row at the maximum and uses the card shows, where they are not the
+ * row's own (a row that takes its template's maximum, changed since): a page builds its edit from
+ * these rows, and one sent with the stored maximum would read as the player setting it.
+ */
+function fieldAsShown(field: SheetField, rows: readonly CounterRow[]): SheetField {
+  if (!Array.isArray(field.value)) return field;
+  const stored: readonly SheetRaw[] = field.value;
+  const value = stored.map((each, index) => {
+    const row = rows[index];
+    return row && isStoredRow(each) && each.max !== row.max ? { ...each, max: row.max, used: row.used } : each;
+  });
+  return { ...field, value };
+}
+
 /**
  * A Counters block: every row as the note holds it (or the template's preset rows, where it holds
  * none), rows without uses included, so the page writes back the whole list in the note's order.
@@ -193,12 +217,7 @@ function countersNode(build: SheetBuild, block: CountersBlock, display: BlockDis
   const rows = known ? shownCounterRows(known, value) : null;
   const counters = rows && rows.length <= MAX_COUNTERS ? rows.map(sheetCounter) : null;
   if (!counters?.every((row): row is SheetCounter => row !== null)) return { k: 'value', value: sheetValue(build, label, valueText(value), 'plain', null, null) };
-  return { k: 'counters', label, counters, field };
-}
-
-/** What a player may change of the field a block shows: nothing where its fallback stands in for the field's value. */
-export function shownFieldOf(build: SheetBuild, key: FieldKey, block: TemplateBlock, display: BlockDisplay): SheetField | null {
-  return display.state === 'fallback' ? null : sheetFieldOf(build, key, block);
+  return { k: 'counters', label, counters, field: field && rows ? fieldAsShown(field, rows) : field };
 }
 
 /**
@@ -210,23 +229,23 @@ export function leafNode(build: SheetBuild, block: TemplateBlock, display: Block
   switch (block.type) {
     case 'title': case 'line': {
       const key = block.type === 'title' ? block.field : block.fields[0];
-      const field = key === undefined ? null : shownFieldOf(build, key, block, display);
+      const field = key === undefined ? null : sheetFieldOf(build, key, block);
       return plainNode(build, null, display, field);
     }
     case 'stat': {
-      const value = plainValue(build, labelOf(build, block), display, shownFieldOf(build, block.field, block, display), rollableBlock(block));
+      const value = plainValue(build, labelOf(build, block), display, sheetFieldOf(build, block.field, block), rollableBlock(block));
       return { k: 'value', value: { ...value, ...trackedResource(build, block.field) } };
     }
-    case 'tags': return wordsNode(build, block, display, shownFieldOf(build, block.field, block, display));
-    case 'pairs': return pairsNode(build, block, display, shownFieldOf(build, block.field, block, display));
+    case 'tags': return wordsNode(build, block, display, sheetFieldOf(build, block.field, block));
+    case 'pairs': return pairsNode(build, block, display, sheetFieldOf(build, block.field, block));
     case 'metric': return metricNode(build, block, display);
-    case 'scores': return tableNode(build, block, display, shownFieldOf(build, block.field, block, display));
-    case 'track': return trackNode(build, block, display, shownFieldOf(build, block.field, block, display));
-    case 'counters': return countersNode(build, block, display, shownFieldOf(build, block.field, block, display));
+    case 'scores': return tableNode(build, block, display, sheetFieldOf(build, block.field, block));
+    case 'track': return trackNode(build, block, display, sheetFieldOf(build, block.field, block));
+    case 'counters': return countersNode(build, block, display, sheetFieldOf(build, block.field, block));
     case 'text': {
-      const field = block.field === undefined ? null : shownFieldOf(build, block.field, block, display);
+      const field = block.field === undefined ? null : sheetFieldOf(build, block.field, block);
       const text = display.state === 'value' ? (block.field ? valueText(build.shown.reader(block.field)) : block.text ?? '') : displayText(display);
-      return { k: 'value', value: sheetValue(build, block.heading?.trim() || null, text, 'markdown', field, promptOf(display)) };
+      return { k: 'value', value: sheetValue(build, block.heading?.trim() || null, text, 'markdown', field, promptOf(display, field)) };
     }
     case 'heading': {
       const text = clippedLine(block.text, MAX_BOOK_TITLE);

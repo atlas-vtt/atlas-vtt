@@ -28,7 +28,11 @@ function darknessShapes(sight: Sight, spots: EngineScene['spots'], outside: read
 
 /** Keeps both current frame pictures ready, so mirroring switches no geometry. */
 export class SceneSightLayers {
-  readonly view = new Container({ label: 'frameSight' });
+  /**
+   * Its own render group: the meshes change with every step of a drag, and a child added or
+   * removed makes PIXI rebuild the whole group it lies in, which was the viewport's.
+   */
+  readonly view = new Container({ label: 'frameSight', isRenderGroup: true });
   private gm: FrameSight | null = null;
   private player: FrameSight | null = null;
   private outside: { sight: Sight; shapes: readonly PierceShape[] } | null = null;

@@ -12,6 +12,7 @@ import type { TokenPerception } from '../../vision/tokenPerception';
 import { MapController } from '../../MapController';
 import { field } from './atlasLighting.ts';
 import { call, type SceneState } from './atlasView.ts';
+import type { PictureBasis } from './eyesSight.ts';
 import { roundPlace } from './scenePicture.ts';
 
 /** Atlas's default token diameter, which the players' outlines take for a sprite that names none. */
@@ -28,6 +29,12 @@ export interface MapLayerSource {
   doorsSeen(walls: Readonly<Record<string, WallSegment>>, fog: FogCoverage | null): ReadonlySet<string> | null;
   /** Which of `points` the players' picture of a lit scene shows now (the doors' rule, with the committed fog); null as for the doors. */
   pointsSeen(points: readonly Point[], fog: FogCoverage | null): boolean[] | null;
+  /**
+   * What the players' sight is worked out from now (its sight, its ambient light, its lights'
+   * reaches), each the same object while it is the same: while all are, `pointsSeen` answers as it
+   * did. Null while the lighting cannot be read; without it, whoever asks cannot tell.
+   */
+  sightParts?(): readonly unknown[] | null;
   /** The tokens the players only sense now, where their frame outlines them; null as for the doors. */
   sensed(tokens: Readonly<Record<string, TokenEntity>>): SensedMark[] | null;
   /** Where the map's rules are looked up (Atlas's asset service and the played campaign), or null. */
@@ -73,6 +80,10 @@ export function mapLayerSourceOf(renderer: unknown, view: unknown): MapLayerSour
       const lighting = controllerOf(renderer);
       return lighting === null ? null : playerPointSight(lighting.view, points, fog);
     },
+    sightParts: () => {
+      const lighting = controllerOf(renderer);
+      return lighting === null ? null : [lighting.view.currentSight(), lighting.view.ambientLight(), lighting.view.lightReaches()];
+    },
     sensed: (tokens) => {
       const lighting = controllerOf(renderer);
       const tokenRenderer = call(renderer, 'getTokenRenderer');
@@ -88,6 +99,34 @@ export function mapLayerSourceOf(renderer: unknown, view: unknown): MapLayerSour
       });
     },
     rules: () => rulesLookupOf(view),
+  };
+}
+
+/** The sprites of a renderer's tokens by id, or none while it has no token renderer. */
+function spritesOf(tokenRenderer: unknown): Readonly<Record<string, object | null>> {
+  const sprites = call(tokenRenderer, 'getTokenSprites');
+  return typeof sprites === 'object' && sprites !== null ? (sprites as Readonly<Record<string, object | null>>) : {};
+}
+
+/**
+ * The renderer of the GM's view as the basis a player's own picture of the level it shows is cut from
+ * (`EyesSight`), read anew at each call: its lighting's sight, the players' frame of its token renderer
+ * (`playerFramePerception`: committed fog, the roof drawn) and its sprites. Null for a renderer without
+ * that frame.
+ */
+export function pictureBasisOf(renderer: unknown): PictureBasis | null {
+  const tokenRenderer = call(renderer, 'getTokenRenderer');
+  const framePerception = field(tokenRenderer, 'playerFramePerception');
+  if (!isFunction(framePerception)) return null;
+  return {
+    lighting: () => {
+      const lighting = controllerOf(renderer);
+      return lighting === null ? null : { sight: lighting.view.currentSight(), ambient: lighting.view.ambientLight(), reaches: lighting.view.lightReaches() };
+    },
+    frame: (lit) => (framePerception as (sight?: TokenPerception) => TokenPerception | undefined).call(tokenRenderer, lit),
+    roofed: () => false,
+    drawn: () => spritesOf(tokenRenderer),
+    outline: (tokenId) => spritePlace(field(spritesOf(tokenRenderer), tokenId)),
   };
 }
 

@@ -114,6 +114,21 @@ describe('the shared store while the GM works on another scene tab', () => {
     gate.dispose();
   });
 
+  it('tells its listeners when Atlas presents another level of the scene, which changes nothing in the store', () => {
+    const v = view();
+    const gate = new PresentedStore(v.store as unknown as SceneStore, v.presented, () => undefined);
+    const heard: SceneState[] = [];
+    gate.subscribe((state) => heard.push(state));
+
+    gate.present({ ...v.presented, levelId: 'upper' });
+    expect(gate.presentedLevel).toBe('upper');
+    expect(heard).toEqual([v.store.getState()]);
+    // The same level again is no news.
+    gate.present({ ...v.presented, levelId: 'upper' });
+    expect(heard).toHaveLength(1);
+    gate.dispose();
+  });
+
   it('ends a player\'s drag on the presented scene as one undo step, and refuses moves while it holds', () => {
     const v = view();
     const holds: number[] = [];

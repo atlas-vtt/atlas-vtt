@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React, { useState } from 'react';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
 import { TooltipProvider } from '../../src/app/packages/components/primitives/tooltip';
@@ -14,9 +14,13 @@ beforeEach(() => { Element.prototype.scrollIntoView = vi.fn(); });
 afterEach(cleanup);
 
 const handlers = (): AssetCardHandlers => ({
-  onSelect: vi.fn(), onContextMenu: vi.fn(), onOpen: vi.fn(), onDragStart: vi.fn(),
-  onDragEnd: vi.fn(), onSpawnCountChange: vi.fn(), onOpenStatblock: vi.fn(),
+  onSelect: vi.fn(), onContextMenu: vi.fn(), onOpen: vi.fn(), onDelete: vi.fn(), onDragStart: vi.fn(),
+  onDragEnd: vi.fn(), onSpawnCountChange: vi.fn(), onOpenStatblock: vi.fn(), onArtNeeded: vi.fn(),
 });
+
+// The tag button lies in the card's art well, hidden from assistive tech: the card is the grid's one control.
+const tagButton = (): HTMLElement => document.querySelector<HTMLElement>('.atlas-asset-card-tags')!;
+const menu = (): HTMLElement => screen.getByRole('dialog');
 
 function Harness({ cardHandlers, createTag }: { cardHandlers: AssetCardHandlers; createTag: AssetTagMenuActions['createTag'] }): React.JSX.Element {
   const [asset, setAsset] = useState<AnyAsset>({ id: 'glade', name: 'Glade', type: 'maps', imageUrl: '', mapFilePath: 'glade.webp', tags: ['forest'], modifiedAt: 0 });
@@ -40,11 +44,12 @@ function Harness({ cardHandlers, createTag }: { cardHandlers: AssetCardHandlers;
 }
 
 function openMenu(): HTMLElement {
-  fireEvent.keyDown(screen.getByRole('button', { name: '1 tag' }), { key: 'Enter' });
+  expect(tagButton().querySelector('[data-count]')?.getAttribute('data-count')).toBe('1');
+  fireEvent.keyDown(tagButton(), { key: 'Enter' });
   return screen.getByRole('combobox', { name: 'Search or create tags' });
 }
 
-const option = (name: string): HTMLElement => screen.getByRole('option', { name });
+const option = (name: string): HTMLElement => within(menu()).getByRole('option', { name });
 
 it('shows the assigned tags first and toggles tags without selecting or opening the asset', async () => {
   const cardHandlers = handlers();
@@ -52,13 +57,13 @@ it('shows the assigned tags first and toggles tags without selecting or opening 
   const search = openMenu();
 
   expect(document.activeElement).toBe(search);
-  expect(screen.getAllByRole('option').map((element) => element.textContent)).toEqual(['Forest', 'Night']);
+  expect(within(menu()).getAllByRole('option').map((element) => element.textContent)).toEqual(['Forest', 'Night']);
   expect(option('Forest').getAttribute('aria-selected')).toBe('true');
 
   fireEvent.click(option('Night'));
   fireEvent.doubleClick(option('Night'));
   expect(option('Night').getAttribute('aria-selected')).toBe('true');
-  expect(screen.getByRole('button', { name: '2 tags' })).toBeTruthy();
+  expect(tagButton().querySelector('[data-count]')?.getAttribute('data-count')).toBe('2');
 
   fireEvent.keyDown(search, { key: 'Enter' });
   expect(option('Forest').getAttribute('aria-selected')).toBe('false');
@@ -72,7 +77,7 @@ it('filters by the search and creates a missing tag on the asset', async () => {
   const search = openMenu();
 
   fireEvent.change(search, { target: { value: 'nig' } });
-  expect(screen.getAllByRole('option').map((element) => element.textContent)).toEqual(['Night', 'Create “nig”']);
+  expect(within(menu()).getAllByRole('option').map((element) => element.textContent)).toEqual(['Night', 'Create “nig”']);
 
   fireEvent.change(search, { target: { value: 'Swamp' } });
   await act(async () => { fireEvent.keyDown(search, { key: 'Enter' }); });

@@ -15,11 +15,10 @@
   margin: 0;
   padding: 0;
   border: none;
-  border-radius: $radius-xl;
+  border-radius: $radius-m;
   background: transparent;
   box-shadow: none;
   cursor: pointer;
-  @include atlas-corner-shape;
   transition: box-shadow $transition-fast $transition-ease, transform $transition-press $transition-ease-out;
 
   &:hover {
@@ -47,7 +46,6 @@
   overflow: hidden;
   border-radius: inherit;
   background: var(--background-secondary);
-  @include atlas-corner-shape;
 
   // A hairline over the picture, so a white or black look keeps its edge on any theme.
   &::after {

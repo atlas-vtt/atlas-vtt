@@ -1,12 +1,13 @@
 import { isCount, parseAsset } from './asset.ts';
 import { parseSeq } from './delta.ts';
-import { parseFog } from './fog.ts';
+import { parseFog, parseFogEdge } from './fog.ts';
 import type { GmMessage } from './game.ts';
 import { parseInitiative } from './initiative.ts';
 import { parseLightingScene, parseSight } from './lighting.ts';
 import { parseLiquids } from './liquids.ts';
 import { parseLive } from './live.ts';
-import { parseAnnotations, parseDoors, parseGrid, parsePins, parseSensed } from './mapLayers.ts';
+import { parseAnnotations } from './annotations.ts';
+import { parseDoors, parseGrid, parsePins, parseSensed } from './mapLayers.ts';
 import { MAX_SCENE_ID } from './moves.ts';
 import { parseWidgetBar } from './widgets.ts';
 
@@ -26,7 +27,9 @@ export function parseSceneInput(value: Record<string, unknown>, scene: string): 
     case 'fog': {
       const fog = parseFog(value.fog);
       const seq = parseSeq(value.seq);
-      return fog === undefined || seq === null ? null : { t: 'fog', scene, ...(seq !== undefined && { seq }), fog };
+      // An edge that cannot be read is left out: the fog still shows, with a hard edge.
+      const edge = value.edge === undefined ? null : parseFogEdge(value.edge);
+      return fog === undefined || seq === null ? null : { t: 'fog', scene, ...(seq !== undefined && { seq }), fog, ...(edge !== null && { edge }) };
     }
     case 'lighting': {
       const lighting = parseLightingScene(value);
@@ -69,7 +72,9 @@ export function parseSceneInput(value: Record<string, unknown>, scene: string): 
     }
     case 'annotations': {
       const annotations = parseAnnotations(value);
-      return annotations === null ? null : { t: 'annotations', scene, ...annotations };
+      // A number that cannot be read is left out: the drawings still show.
+      const rev = isCount(value.rev, Number.MAX_SAFE_INTEGER) ? { rev: value.rev } : {};
+      return annotations === null ? null : { t: 'annotations', scene, ...rev, ...annotations };
     }
     case 'initiative': {
       const list = parseInitiative(value.list);

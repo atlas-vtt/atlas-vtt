@@ -1,0 +1,25 @@
+import type { Translation } from '../../types';
+
+export const playerBar: Translation = {
+  'playerBar.bar': 'Finestra giocatori',
+  'playerBar.fullScreen': 'Schermo intero sul televisore',
+  'playerBar.fullScreenHint': 'Riempie il secondo schermo con la finestra giocatori',
+  'playerBar.leaveFullScreen': 'Esci dallo schermo intero',
+  'playerBar.connectScreen': 'Collega un secondo schermo',
+  'playerBar.curtainDown': 'Nascondi la mappa',
+  'playerBar.curtainUp': 'Rivela la mappa',
+  'playerBar.toggleCurtain': 'Nascondi o rivela la mappa nella finestra giocatori',
+  'playerBar.playersSee': 'Impostazioni del tavolo',
+  'playerBar.close': 'Chiudi finestra giocatori',
+  'playerBar.freeze': 'Metti in pausa la vista giocatori',
+  'playerBar.unfreeze': 'Riprendi: la vista giocatori torna a seguirti',
+  'playerBar.freezeTrueScale': 'Con TrueScale attivo, blocca i giocatori sull’inquadratura della tua mappa',
+  'playerBar.takeBack': 'Ritira il materiale',
+  'playerBar.openHint': 'Mostra la scena presentata anche su uno schermo al tavolo',
+  'playerBar.freezeOnline': 'I giocatori online non possono muovere le pedine durante la pausa',
+  'playerBar.playMode': 'Modalità di gioco',
+  'playerBar.modeTable': 'Controllo pedine',
+  'playerBar.modeRemote': 'Telecomando',
+  'playerBar.modeTableHint': 'Ogni giocatore muove le sue pedine sulla propria mappa',
+  'playerBar.modeRemoteHint': 'I telefoni fanno da telecomandi per lo schermo condiviso',
+};

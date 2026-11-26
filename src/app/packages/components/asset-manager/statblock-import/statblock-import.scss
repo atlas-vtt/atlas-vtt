@@ -1,4 +1,5 @@
 @use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
 
 .atlas-statblock-import {
   display: flex;
@@ -22,7 +23,7 @@
     align-items: center;
     gap: $spacing-s;
     min-width: 180px;
-    input { width: 100%; }
+    input { @include atlas-text-input; }
   }
   &__selection { color: var(--text-muted); span { margin-left: auto; } }
   &__list {
@@ -30,7 +31,7 @@
     flex-shrink: 0;
     box-sizing: content-box;
     border: $border-width-s solid var(--background-modifier-border);
-    border-radius: $radius-l;
+    border-radius: $radius-m;
     overflow: hidden;
   }
   // Rows are placed by the virtual list; each but the first draws the line above it.

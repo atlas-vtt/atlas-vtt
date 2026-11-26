@@ -23,6 +23,8 @@ export interface CapsuleMenuInput {
   diceRolls?: (() => void) | undefined;
   /** Copies a note's text in as the text new statblocks start with ("Start from a note…"); unset while read-only. */
   startFromNote?: (() => void) | undefined;
+  /** Share in the Armarium and Export…; unset where the template has no file of the vault's own to share. */
+  share?: readonly ContextMenuEntry[] | undefined;
   /** Unset where the template has no file to delete (a built-in, a template never saved). */
   deleteTemplate?: (() => void) | undefined;
 }
@@ -33,6 +35,7 @@ export function capsuleMenuEntries(input: CapsuleMenuInput): ContextMenuEntry[] 
   if (input.diceRolls) entries.push({ type: 'item', label: t('templateEditor.menu.dice'), icon: 'dices', onClick: input.diceRolls });
   if (input.rests) entries.push({ type: 'item', label: input.rests.open ? t('templateEditor.menu.backToCard') : t('recoveryEditor.title'), icon: 'bed', onClick: input.rests.toggle });
   if (input.json) entries.push({ type: 'item', label: input.json.open ? t('templateEditor.menu.closeJson') : t('templateEditor.menu.editJson'), icon: 'braces', onClick: input.json.toggle });
+  if (input.share) entries.push(...input.share);
   entries.push({
     type: 'item',
     label: t('templateEditor.menu.delete'),

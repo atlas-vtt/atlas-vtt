@@ -188,6 +188,27 @@ describe('exporting', () => {
     expect(await creator.assets.getCollection('source')).toMatchObject({ version: 1, author: 'Dungeon Tube', releasedAt: expect.any(Number) });
   });
 
+  it('carries a thumbnail in every format the vault holds it in, also when only the other device\'s has arrived', async () => {
+    const png = TOKEN_THUMB.replace(/\.webp$/, '.png');
+    const pathsOf = async (creator: Vault): Promise<string[]> => {
+      const preview = await prepareCollectionExport(creator.vault.app, creator.assets, 'source');
+      expect(preview.missing).toEqual([]);
+      const bundle = await exportCollectionBundle(creator.vault.app, creator.assets, preview, { kind: 'release', version: 1 });
+      return (await manifestOf(bundle.blob)).files.map((file) => file.vaultPath);
+    };
+
+    const both = await creatorVault();
+    await both.vault.app.vault.create(png, 'THUMB PNG');
+    expect(await pathsOf(both)).toEqual(expect.arrayContaining([TOKEN_THUMB, png]));
+
+    const onlyOther = await creatorVault();
+    await onlyOther.vault.app.vault.create(png, 'THUMB PNG');
+    onlyOther.vault.files.delete(TOKEN_THUMB);
+    const paths = await pathsOf(onlyOther);
+    expect(paths).toContain(png);
+    expect(paths).not.toContain(TOKEN_THUMB);
+  });
+
   it('leaves out the content the user excluded and every file only it uses', async () => {
     const creator = await creatorVault();
     const [scene] = await creator.assets.getAssets('source', 'scene');

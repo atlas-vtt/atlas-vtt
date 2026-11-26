@@ -18,7 +18,9 @@ import { TOKEN_UI_Z_INDEX, TokenControlsUI } from '../TokenControlsUI';
 import { TokenRotationUI } from '../TokenRotationUI';
 import { TokenResizeUI } from '../TokenResizeUI';
 import type { ConditionDefinition } from '../../types/collectionSettingsTypes';
+import type { MeasurementSettings } from '../../grid/measurementFormat';
 import { destroyTree } from '../utils/destroyTree';
+import { viewportDocument } from '../utils/viewportDocument';
 import { restingTokenUIScale } from './tokenSizing';
 import { levelObjects } from '../../levels/levelObjects';
 import { mapTokens } from '../../tokens/offMap';
@@ -34,12 +36,15 @@ export class UIManager implements ITokenUIManager {
   private playerUIContainer: Container | null = null;
   private playerTokenUIs: Record<string, TokenUIRenderer> = {};
   private tokenUIs: Record<string, TokenUIRenderer> = {};
+  /** Each token's place in the pile (`TokenRenderer`), which its UIs, the GM's and the players', follow. */
+  private readonly pilePlaces = new Map<string, number>();
   /** The canvas shows the players' view (session view, the peek): token UIs draw what players see. */
   private playersView = false;
   private tokenControlsUI?: TokenControlsUI;
   private readonly selectionBar: { hovered: string | null; active: string | null } = { hovered: null, active: null };
   /** The token whose bars show their +/- buttons, whose wheels make room for them. */
   private barButtonsTokenId: string | null = null;
+  private barButtonsSpan: number | undefined;
   private tokenRotationUI?: TokenRotationUI;
   private tokenResizeUI?: TokenResizeUI;
   
@@ -47,6 +52,10 @@ export class UIManager implements ITokenUIManager {
   public conditionDefsProvider: (() => ConditionDefinition[]) | null = null;
   /** The resources of the map's collection; read on every draw, so set it before tokens are created. */
   public resourceDefsProvider: ResourceDefsProvider = () => [];
+  /** What the map measures in, for the tokens' height chips. */
+  public measurementProvider: (() => MeasurementSettings) | null = null;
+  /** Whether players see names while the canvas is the table's picture (`TokenUIRenderer.tableNameplates`). */
+  public tableNameplates: (() => boolean | undefined) | null = null;
   /** Called once the handles and controls of a new selection stand: the selection highlight passes behind them. */
   public onSelectionUIChange: (() => void) | null = null;
 
@@ -72,8 +81,8 @@ export class UIManager implements ITokenUIManager {
     this.viewId = viewId;
     this.isPlayerView = isPlayerView;
     
-    // Create UI container for non-rotating elements
-    this.uiContainer = new Container();
+    // Create UI container for non-rotating elements: a render group, as the tokens' (`TokenRenderer`)
+    this.uiContainer = new Container({ isRenderGroup: true });
     this.uiContainer.sortableChildren = true;
     this.uiContainer.eventMode = 'passive'; // UI should not block token interactions
     this.uiContainer.interactiveChildren = true;
@@ -89,7 +98,7 @@ export class UIManager implements ITokenUIManager {
       this.tokenControlsUI.resourceDefsProvider = () => this.resourceDefsProvider();
       this.tokenControlsUI.slotsProvider = (tokenId) => this.tokenUIs[tokenId]?.getResourceSlots() ?? [];
       this.tokenControlsUI.wheelAnchorProvider = (tokenId) => this.tokenUIs[tokenId]?.getWheelAnchor() ?? null;
-      this.tokenControlsUI.onBarButtonsChange = (tokenId) => this.setBarButtonsToken(tokenId);
+      this.tokenControlsUI.onBarButtonsChange = (tokenId, span) => this.setBarButtonsToken(tokenId, span);
       this.tokenRotationUI = new TokenRotationUI(this.viewport, this.store);
       this.tokenResizeUI = new TokenResizeUI(this.viewport, this.store);
       
@@ -138,13 +147,16 @@ export class UIManager implements ITokenUIManager {
       return null;
     }
     
-    const ui = new TokenUIRenderer(this.store, this.viewport.options?.ticker);
+    const ui = new TokenUIRenderer(this.store, this.viewport.options?.ticker, viewportDocument(this.viewport));
     ui.conditionDefsProvider = this.conditionDefsProvider;
     ui.resourceDefsProvider = () => this.resourceDefsProvider();
+    ui.measurementProvider = this.measurementProvider;
+    ui.tableNameplates = this.tableNameplates;
     ui.zoomProvider = () => this.viewport.scale.x;
     ui.onScaleChange = (scale) => this.tokenControlsUI?.setScaleFor(tokenId, scale);
     ui.setPlayersView(this.playersView);
     this.tokenUIs[tokenId] = ui;
+    ui.setPilePlace(this.pilePlaces.get(tokenId) ?? 0);
     
     const uiElement = ui.getContainer();
     this.uiContainer.addChild(uiElement);
@@ -170,9 +182,8 @@ export class UIManager implements ITokenUIManager {
       return;
     }
     
-    // Get sprite dimensions
-    const sprite = tokenSprite.getChildByLabel('tokenSprite');
-    ui.update(token, sprite?.width || 70);
+    // The token's diameter, not its art's: unframed art has its own shape and reaches past it
+    ui.update(token, tokenSprite.tokenSize || 70);
   }
 
   updateSelectionUI(selectedTokenIds: string[]): void {
@@ -184,8 +195,7 @@ export class UIManager implements ITokenUIManager {
         if (tokenId) {
           const tokenSprite = this.getTokenSprite(tokenId);
           if (tokenSprite) {
-            const sprite = tokenSprite.getChildByLabel('tokenSprite');
-            const tokenSize = sprite?.width || 70;
+            const tokenSize = tokenSprite.tokenSize || 70;
             this.tokenControlsUI.show(
               tokenId,
               tokenSprite.position.x,
@@ -207,8 +217,7 @@ export class UIManager implements ITokenUIManager {
         if (tokenId) {
           const tokenSprite = this.getTokenSprite(tokenId);
           if (tokenSprite) {
-            const sprite = tokenSprite.getChildByLabel('tokenSprite');
-            const tokenSize = sprite?.width || 70;
+            const tokenSize = tokenSprite.tokenSize || 70;
             this.tokenRotationUI.show(tokenId, tokenSize);
           }
         }
@@ -224,8 +233,7 @@ export class UIManager implements ITokenUIManager {
         if (tokenId) {
           const tokenSprite = this.getTokenSprite(tokenId);
           if (tokenSprite) {
-            const sprite = tokenSprite.getChildByLabel('tokenSprite');
-            const tokenSize = sprite?.width || 70;
+            const tokenSize = tokenSprite.tokenSize || 70;
             this.tokenResizeUI.show(tokenId, tokenSize);
           }
         }
@@ -282,7 +290,14 @@ export class UIManager implements ITokenUIManager {
     this.tokenResizeUI?.hide();
   }
 
+  setPilePlace(tokenId: string, place: number): void {
+    this.pilePlaces.set(tokenId, place);
+    this.tokenUIs[tokenId]?.setPilePlace(place);
+    this.playerTokenUIs[tokenId]?.setPilePlace(place);
+  }
+
   destroyTokenUI(tokenId: string): void {
+    this.pilePlaces.delete(tokenId);
     const playerUI = this.playerTokenUIs[tokenId];
     if (playerUI) {
       playerUI.getContainer().removeFromParent();
@@ -376,11 +391,12 @@ export class UIManager implements ITokenUIManager {
   }
 
   /** Scale of `tokenId`'s bars, which its +/- controls match. */
-  private setBarButtonsToken(tokenId: string | null): void {
-    if (tokenId === this.barButtonsTokenId) return;
-    if (this.barButtonsTokenId) this.tokenUIs[this.barButtonsTokenId]?.setBarButtonsShown(false);
+  private setBarButtonsToken(tokenId: string | null, span?: number): void {
+    if (tokenId === this.barButtonsTokenId && span === this.barButtonsSpan) return;
+    if (tokenId !== this.barButtonsTokenId && this.barButtonsTokenId) this.tokenUIs[this.barButtonsTokenId]?.setBarButtonsShown(false);
     this.barButtonsTokenId = tokenId;
-    if (tokenId) this.tokenUIs[tokenId]?.setBarButtonsShown(true);
+    this.barButtonsSpan = span;
+    if (tokenId) this.tokenUIs[tokenId]?.setBarButtonsShown(true, span);
   }
 
   private barScale(tokenId: string): number {
@@ -492,6 +508,11 @@ export class UIManager implements ITokenUIManager {
     this.updateAllTokenSettings();
   }
 
+  /** A token is being resized or turned by its handles. */
+  public transforming(): boolean {
+    return this.tokenResizeUI?.isCurrentlyResizing === true || this.tokenRotationUI?.isCurrentlyRotating === true;
+  }
+
   /** How far a selected token's bars stand out from it, in world units. */
   public bars(tokenId: string): BarsSpan {
     const ui = this.tokenUIs[tokenId];
@@ -540,6 +561,7 @@ export class UIManager implements ITokenUIManager {
     if (!this.playerUIContainer) {
       this.playerUIContainer = new Container();
       this.playerUIContainer.zIndex = this.uiContainer.zIndex;
+      this.playerUIContainer.sortableChildren = true;
       this.playerUIContainer.eventMode = 'none';
       this.playerUIContainer.visible = false;
       this.viewport.addChild(this.playerUIContainer);
@@ -551,15 +573,19 @@ export class UIManager implements ITokenUIManager {
       if (!token || token.kind !== 'character' || !sprite) continue;
       let ui = this.playerTokenUIs[tokenId];
       if (!ui) {
-        ui = new TokenUIRenderer(this.store, this.viewport.options?.ticker);
+        ui = new TokenUIRenderer(this.store, this.viewport.options?.ticker, viewportDocument(this.viewport));
         this.playerTokenUIs[tokenId] = ui;
+        ui.setPilePlace(this.pilePlaces.get(tokenId) ?? 0);
         this.playerUIContainer.addChild(ui.getContainer());
       }
       ui.conditionDefsProvider = this.conditionDefsProvider;
       ui.resourceDefsProvider = () => this.resourceDefsProvider();
+      ui.measurementProvider = this.measurementProvider;
       ui.update(token, sprite.tokenSize || 70, settings);
       ui.getContainer().position.copyFrom(sprite.position);
       ui.getContainer().renderable = sprite.visible && !token.isHidden && isSeen(tokenId);
+      // The card the GM's hover shows names the token's conditions to the players too
+      ui.showConditionCard(this.tokenUIs[tokenId]?.showsConditionCard() ?? false);
     }
     const dmControls: Container[] = [
       ...(this.tokenControlsUI ? [this.tokenControlsUI.getContainer()] : []),

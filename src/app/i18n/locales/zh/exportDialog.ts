@@ -23,4 +23,10 @@ export const exportDialog: Translation = {
   'exportDialog.version': '版本',
   'exportDialog.versionInvalid': '版本必须是不小于 {min} 的整数。',
   'exportDialog.zipHint': '把合集存成可以交给别人的 .zip 文件',
+  'exportDialog.tooLargeToShare': '所选内容有 {size}；Armarium 最多接受 {limit}。请去掉一些项目，或把合集拆成两个分享。',
+  'exportDialog.shareInArmarium': '在 Armarium 分享',
+  'exportDialog.shareIntro': '选择要在 Armarium 分享的内容。Atlas 会打包合集并上传；不会保存为文件，版本发布后才会记录在这里。',
+  'exportDialog.uploadVersion': '上传 v{version}',
+  'exportDialog.uploadHint': '打包合集并上传到 Armarium',
+  'exportDialog.closeShareHint': '关闭且不分享',
 };

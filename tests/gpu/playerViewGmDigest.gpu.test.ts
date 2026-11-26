@@ -52,7 +52,7 @@ it('a live ruler from a hidden token', async () => {
 it('kept rulers after a session-view round trip', async () => {
   const s = await scene();
   await s.add({ id: 'goblin', x: 60, y: 60, isHidden: true }, { id: 'hero', x: 180, y: 60 });
-  s.events.emit('measure-persistence-changed', true);
+  s.store.getState().setMeasureTool({ keep: true });
   s.measureFrom(60, 60, 60, 220);
   s.measureFrom(180, 60, 220, 220);
   s.store.getState().setGMView(false);

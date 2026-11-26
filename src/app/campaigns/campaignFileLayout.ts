@@ -7,7 +7,7 @@
 
 import type { RecordLayout, StoredRecord } from '../services/recordFiles/recordLayout';
 import { CAMPAIGNS_FOLDER } from './campaignPaths';
-import { isRecord } from './campaignValues';
+import { isRecord } from '../utils/guards';
 
 export interface CampaignFileSpec {
   /** The file's name in the campaign's folder. */

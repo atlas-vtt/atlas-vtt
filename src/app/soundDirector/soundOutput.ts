@@ -1,3 +1,4 @@
+import { resumeOnGesture } from '../sound/engine/audioUnlock';
 import { followOutputDevice, forgetOutputFollower } from '../sound/engine/outputDevice';
 import type { SoundContext } from '../sound/engine/audioNodes';
 import type { LocalLevels } from '../sound/engine/mixerGraph';
@@ -107,13 +108,6 @@ export class SoundOutput {
     return this.watchdog?.check() ?? Promise.resolve();
   }
 
-  /** A window coming back is when a context turns out to have stopped. */
-  watchVisibility(): () => void {
-    const changed = (): void => void this.check();
-    document.addEventListener('visibilitychange', changed);
-    return () => document.removeEventListener('visibilitychange', changed);
-  }
-
   waitingKeys(): string[] {
     return this.player?.waitingKeys() ?? [];
   }
@@ -131,6 +125,7 @@ export class SoundOutput {
   private open(): OutputContext {
     if (this.context) return this.context;
     const context = this.deps.createContext();
+    resumeOnGesture(context);
     followOutputDevice(context);
     this.context = context;
     this.player = this.playerOn(context, this.deps.levels());
@@ -160,6 +155,7 @@ export class SoundOutput {
   private rebuild(): void {
     this.closeContext();
     const context = this.deps.createContext();
+    resumeOnGesture(context);
     followOutputDevice(context);
     this.context = context;
     this.player?.useContext(context);

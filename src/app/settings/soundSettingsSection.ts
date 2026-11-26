@@ -1,22 +1,54 @@
 import { t } from '../i18n';
+import type { LocalLevels } from '../sound/engine/mixerGraph';
 import { listOutputDevices, type OutputDeviceChoice } from '../sound/engine/outputDevice';
 import type { SettingsService } from '../services/SettingsService';
 import { CHANNEL_DB_RANGE, MAX_CROSSFADE_SECONDS, MAX_FADE_SECONDS } from '../services/soundSettings';
 import type { SoundDirector } from '../soundDirector/SoundDirector';
+import { addSettingButton } from '../ui/atlasButton';
+import { showNotice } from '../ui/notice';
 import type { AtlasSettingRow, AtlasSettingSection } from './settingSections';
+
+const VINDSVEPT_URL = 'https://vindsvept.se';
+/**
+ * The credit a video using the music must carry in its description, in the composer's own wording; his
+ * channel's system claims videos whose description lacks it. Pasted content, so never translated.
+ */
+const VIDEO_CREDIT = 'Music by Vindsvept – released under CC-BY 4.0. www.youtube.com/Vindsvept';
 
 const DEFAULT_OUTPUT = 'default';
 
-function levelRow(settings: SettingsService, director: SoundDirector, name: string, key: 'musicDb' | 'ambienceDb' | 'masterDb'): AtlasSettingRow {
+/**
+ * One of this device's levels. The Sound page's Master fader and a Stream Deck move the same level, so the slider
+ * follows the director while it shows. Obsidian's `setValue` reports itself as a change, which must not be written back.
+ */
+function levelRow(director: SoundDirector, name: string, key: keyof LocalLevels): AtlasSettingRow {
   return {
     name,
     desc: t('audio.settings.levelHint'),
     aliases: ['sound', 'music', 'ambience', 'volume', 'level'],
     render: (setting) => {
-      setting.addSlider((slider) => slider
-        .setLimits(CHANNEL_DB_RANGE.min, CHANNEL_DB_RANGE.max, 1)
-        .setValue(settings.getSoundSettings()[key])
-        .onChange((value) => director.setChannelLevels({ [key]: value }, true)));
+      let shown = director.snapshot().levels[key];
+      let following = false;
+      let follow = (): void => undefined;
+      setting.addSlider((slider) => {
+        slider
+          .setLimits(CHANNEL_DB_RANGE.min, CHANNEL_DB_RANGE.max, 1)
+          .setValue(shown)
+          .onChange((value) => {
+            if (following) return;
+            shown = value;
+            director.setChannelLevels({ [key]: value }, true);
+          });
+        follow = () => {
+          const db = director.snapshot().levels[key];
+          if (db === shown) return;
+          shown = db;
+          following = true;
+          slider.setValue(db);
+          following = false;
+        };
+      });
+      return director.subscribe(() => follow());
     },
   };
 }
@@ -110,10 +142,27 @@ export function soundSettingsSection(settings: SettingsService, director: SoundD
             .onChange((crossfadeSeconds) => settings.setSoundSettings({ crossfadeSeconds })));
         },
       },
-      levelRow(settings, director, t('audio.music'), 'musicDb'),
-      levelRow(settings, director, t('audio.ambience'), 'ambienceDb'),
-      levelRow(settings, director, t('audio.master'), 'masterDb'),
+      levelRow(director, t('audio.music'), 'musicDb'),
+      levelRow(director, t('audio.ambience'), 'ambienceDb'),
+      levelRow(director, t('audio.master'), 'masterDb'),
       outputRow(director),
+      {
+        name: t('audio.settings.musicCredit'),
+        desc: t('audio.settings.musicCreditHint'),
+        aliases: ['sound', 'music', 'credits', 'licence', 'license', 'vindsvept'],
+        render: (setting) => {
+          addSettingButton(setting, {
+            text: t('audio.settings.musicCreditCopy'),
+            onClick: () => {
+              navigator.clipboard.writeText(VIDEO_CREDIT).then(
+                () => showNotice(t('audio.settings.musicCreditCopied')),
+                (error: unknown) => console.error('[Atlas] Could not copy the music credit', error),
+              );
+            },
+          });
+          addSettingButton(setting, { text: t('audio.settings.musicCreditOpen'), onClick: () => { window.open(VINDSVEPT_URL); } });
+        },
+      },
     ],
   };
 }

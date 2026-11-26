@@ -11,8 +11,9 @@ export type FenceEditAction = (path: string) => void;
 
 /**
  * The statblock of the note a fence stands in, drawn while the fence is on
- * screen. The fence holds no data: the note's frontmatter is the statblock, so
- * whatever the fence's body says is ignored.
+ * screen (also in a native note's link preview, statblockLinkPreview.ts). The
+ * fence holds no data: the note's frontmatter is the statblock, so whatever
+ * the fence's body says is ignored.
  */
 export class StatblockFenceChild extends MarkdownRenderChild {
   private root: Root | null = null;

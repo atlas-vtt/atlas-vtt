@@ -1,9 +1,11 @@
+import { learnCanvasLimit } from '../../imageProcessing/canvasLimit';
+import { realmImageEncoder } from '../../imageProcessing/imageEncoder';
 import { sha256 } from '../../utils/hashing';
 import { indexedDbTesseraBackend } from './indexedDbTesseraBackend';
 import { MemoryTesseraBackend } from './memoryTesseraBackend';
 import { browserGraphicsPrimitives, createTesseraGraphics } from './tesseraGraphics';
 import { TesseraDecoderCore } from './tesseraDecoderCore';
-import type { TesseraEvent, TesseraMessage, TesseraReply, TesseraRequest } from './tesseraProtocol';
+import type { TesseraBudgets, TesseraEvent, TesseraMessage, TesseraReply, TesseraRequest } from './tesseraProtocol';
 import { TesseraStore, type TesseraStoreBackend } from './tesseraStore';
 
 /**
@@ -12,7 +14,12 @@ import { TesseraStore, type TesseraStoreBackend } from './tesseraStore';
  */
 
 export type PostMessage = (message: TesseraMessage, transfer: Transferable[]) => void;
-export type CoreFactory = (appId: string | null, emit: (event: TesseraEvent) => void) => Promise<TesseraDecoderCore>;
+export type CoreFactory = (
+  appId: string | null,
+  emit: (event: TesseraEvent) => void,
+  budgets?: TesseraBudgets,
+  wantEncoders?: () => void,
+) => Promise<TesseraDecoderCore>;
 
 /** A macrotask, so messages queued meanwhile run first. `self`: in the worker there is no `window`. */
 function nextTask(): Promise<void> {
@@ -38,14 +45,24 @@ async function openBackend(appId: string | null): Promise<TesseraStoreBackend> {
 }
 
 /** A core over this global scope's IndexedDB, image decoding and canvases. */
-export const browserTesseraCore: CoreFactory = async (appId, emit) => {
-  const store = new TesseraStore({ backend: await openBackend(appId), estimateQuota: quota });
+export const browserTesseraCore: CoreFactory = async (appId, emit, budgets, wantEncoders) => {
+  await learnCanvasLimit();
+  const graphics = createTesseraGraphics(browserGraphicsPrimitives(), realmImageEncoder);
+  const store = new TesseraStore({
+    backend: await openBackend(appId),
+    estimateQuota: quota,
+    format: () => graphics.tesseraFormat(),
+    ...(budgets && { cacheLimits: { maxBytes: budgets.cacheMax, quotaShare: budgets.cacheQuotaShare } }),
+  });
   return new TesseraDecoderCore({
     store,
-    graphics: createTesseraGraphics(browserGraphicsPrimitives()),
+    graphics,
     sha256,
     yieldToMessages: nextTask,
     emit,
+    ...(wantEncoders && { wantEncoders }),
+    ...(budgets && { decodedBudget: budgets.decodedLevels }),
+    ...(budgets?.sourcePixels !== undefined && { maxSourcePixels: budgets.sourcePixels }),
   });
 };
 
@@ -122,6 +139,12 @@ export function hostTesseraCore(createCore: CoreFactory, post: PostMessage): Tes
       case 'close':
         ready.close(request.handle);
         return;
+      case 'builds':
+        ready.holdBuilds(request.held);
+        return;
+      case 'encoders':
+        ready.useEncoders(request.ports);
+        return;
       case 'cache-size':
         reply({ type: 'cache-size', id: request.id, bytes: await ready.cacheSize() });
         return;
@@ -145,8 +168,8 @@ export function hostTesseraCore(createCore: CoreFactory, post: PostMessage): Tes
     }
   };
 
-  const start = (appId: string | null): Promise<TesseraDecoderCore> => {
-    const started = createCore(appId, (event) => post(event, []));
+  const start = (appId: string | null, budgets?: TesseraBudgets): Promise<TesseraDecoderCore> => {
+    const started = createCore(appId, (event) => post(event, []), budgets, () => post({ type: 'want-encoders' }, []));
     // Before any reply: the client counts a worker that fails before this as one that never started.
     void started.then(() => post({ type: 'ready' }, []), () => undefined);
     return started;
@@ -155,7 +178,7 @@ export function hostTesseraCore(createCore: CoreFactory, post: PostMessage): Tes
   return {
     receive: (request) => {
       if (disposed) return;
-      if (request.type === 'init') core ??= start(request.appId);
+      if (request.type === 'init') core ??= start(request.appId, request.budgets);
       const started = core ?? start(null);
       core = started;
       void started.then((ready) => handle(request, ready)).catch((error: unknown) => {

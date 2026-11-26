@@ -29,4 +29,8 @@ export const grid: Translation = {
   'grid.unitOfCampaign': 'Для всех карт, пока идёт кампания',
   'grid.unitOfCollection': 'Для всех сцен коллекции',
   'grid.unitOfScene': 'Для этой сцены',
+  'grid.tableTvTrueScale': 'Реальный масштаб на ТВ стола',
+  'grid.tableTvTrueScaleHint': 'Выключите для карт без выровненной сетки, например карт регионов: тогда ТВ следует за вашим масштабом',
+  'grid.unitName': 'Название единицы',
+  'grid.unitNameHint': 'Для этой сцены, например миль или св. лет. Пусто — обычная единица',
 };

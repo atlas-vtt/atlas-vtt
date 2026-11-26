@@ -14,7 +14,6 @@ export const color = {
   'color.white': 'White',
   'color.yellow': 'Yellow',
   'color.cyan': 'Cyan',
-  'color.darkGray': 'Dark Gray',
   'color.brown': 'Brown',
   'color.default': 'Default',
 } as const satisfies Record<string, Message>;

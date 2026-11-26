@@ -74,12 +74,21 @@ describe('CreateCollectionModal', () => {
     expect(stored['Age of Umbra']).toMatchObject({ resources: [{ key: 'hp' }, { key: 'stress' }] });
   });
 
-  it('refuses a name another collection has', () => {
+  it('refuses a name another collection has as it is typed, with Create disabled', () => {
     const { assets } = setup(['Gloomhollow']);
+    const create = screen.getByRole<HTMLButtonElement>('button', { name: 'Create collection' });
+    expect(create.disabled).toBe(true);
+    expect(screen.queryByRole('alert')).toBeNull();
+
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'gloomhollow' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Create collection' }));
     expect(screen.getByRole('alert').textContent).toBe('A collection named "gloomhollow" already exists');
+    expect(create.disabled).toBe(true);
+    fireEvent.click(create);
     expect(assets.createCollection).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Gloomhollow Deep' } });
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(create.disabled).toBe(false);
   });
 
   it('sets up a new game system, saves it as a preset and starts the collection with it', async () => {
@@ -93,7 +102,7 @@ describe('CreateCollectionModal', () => {
     expect(screen.getByRole('alert').textContent).toBe('Enter a name');
 
     fireEvent.change(screen.getByLabelText('Preset name'), { target: { value: 'Hills Rules' } });
-    fireEvent.click(screen.getByRole('button', { name: /Add Condition/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Add condition/ }));
     fireEvent.change(screen.getByPlaceholderText('Condition name'), { target: { value: 'Muddy' } });
     fireEvent.click(screen.getByRole('button', { name: 'Create collection' }));
 

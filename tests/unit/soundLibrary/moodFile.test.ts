@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { MAX_MOOD_LAYERS } from '../../../src/app/sound/soundTypes';
 import { getPinIconDefinition, PIN_TONES } from '../../../src/app/types/pinIcons';
 import { DEFAULT_MOOD_ICON, moodIcon, moodTone } from '../../../src/app/soundLibrary/moodLook';
+import { faderDb } from '../../../src/app/react/components/dm-screen/sound/faderScale';
 import { DEFAULT_FADE_SECONDS, isNewerMood, MOOD_FORMAT, MOOD_LIMITS, moodFileText, moodOf, readStoredMood } from '../../../src/app/soundLibrary/moodFile';
 
 const read = (value: unknown): ReturnType<typeof moodOf> => {
@@ -63,7 +64,7 @@ describe('reading a mood file', () => {
 
   it('takes from a track list only what it can read', () => {
     const music = read({ ...VALID, music: { tracks: ['a', 3, '', null, 'b'], shuffle: 'yes', levelDb: 999 } })?.music;
-    expect(music).toEqual({ tracks: ['a', 'b'], shuffle: false, levelDb: MOOD_LIMITS.maxLevelDb });
+    expect(music).toEqual({ tracks: ['a', 'b'], shuffle: false, levelDb: faderDb(1) });
     const long = read({ ...VALID, music: { tracks: Array.from({ length: 5000 }, (_, n) => `t${n}`) } })?.music;
     expect(long !== 'keep' && long !== 'none' && long?.tracks.length).toBe(MOOD_LIMITS.tracks);
   });

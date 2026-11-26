@@ -1,4 +1,4 @@
-import { Platform } from 'obsidian';
+import { isDesktopApp } from '../platform/desktopOnly';
 
 /** What a directory entry says of itself. */
 export interface NodeDirent {
@@ -33,8 +33,12 @@ export interface NodeFsModule {
     realpath(path: string): Promise<string>;
     mkdir(path: string, options: { recursive: boolean }): Promise<unknown>;
     rename(from: string, to: string): Promise<void>;
+    unlink(path: string): Promise<void>;
+    rmdir(path: string): Promise<void>;
     open(path: string, flags: string): Promise<NodeFileHandle>;
+    access(path: string, mode?: number): Promise<void>;
   };
+  constants: { W_OK: number };
   watch(path: string, options: { recursive: boolean }, listener: (event: string, name: string | Uint8Array | null) => void): NodeWatcher;
 }
 
@@ -53,7 +57,7 @@ function required(win: Window, module: string): unknown {
 
 /** Node's files on the desktop app; null anywhere else, where a folder outside the vault cannot be linked. */
 export function nodeFilesOf(win: Window): NodeFiles | null {
-  if (!Platform.isDesktop || !Platform.isDesktopApp) return null;
+  if (!isDesktopApp()) return null;
   try {
     const fs = required(win, 'fs') as NodeFsModule | null;
     const path = required(win, 'path') as { sep: string } | null;

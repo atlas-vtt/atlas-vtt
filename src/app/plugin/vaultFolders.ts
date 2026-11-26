@@ -30,6 +30,28 @@ export async function ensureFolder(app: App, path: string): Promise<TFolder> {
 }
 
 /**
+ * Renames a folder through Obsidian, so links to the files in it follow. Obsidian
+ * may first ask whether to update those links and only then settle its
+ * promise; the rename itself is done once the vault reports it, so Atlas
+ * never waits for that answer.
+ */
+export function renameFolderInVault(app: App, folder: TFolder, newPath: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const renamed = app.vault.on('rename', (file) => {
+      if (file.path === newPath) settle(resolve);
+    });
+    const settle = (done: () => void): void => {
+      app.vault.offref(renamed);
+      done();
+    };
+    app.fileManager.renameFile(folder, newPath).then(
+      () => settle(resolve),
+      (error: unknown) => settle(() => reject(error instanceof Error ? error : new Error(String(error)))),
+    );
+  });
+}
+
+/**
  * Whether a file or folder has this path, in any letter case: macOS and Windows do not tell names
  * apart by it.
  */

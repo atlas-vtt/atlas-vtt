@@ -187,6 +187,17 @@ export function darkenColor(color: number, amount: number): number {
 }
 
 /**
+ * Mix two hex colours channel by channel
+ * @param from - Hex color as number (0xRRGGBB)
+ * @param to - Hex color as number (0xRRGGBB)
+ * @param share - Share of `to` in the result (0-1)
+ */
+export function mixColor(from: number, to: number, share: number): number {
+  const channel = (shift: number): number => Math.round(((from >> shift) & 0xff) * (1 - share) + ((to >> shift) & 0xff) * share);
+  return (channel(16) << 16) | (channel(8) << 8) | channel(0);
+}
+
+/**
  * Get 3D ring colors from a base color
  * Returns highlight, shadow, and specular colors for beveled effect
  */

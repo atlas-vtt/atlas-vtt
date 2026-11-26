@@ -5,6 +5,8 @@ import { cn } from '../../../../utils/cn';
 import { t } from '../../../i18n';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import { MAX_RECOVERY_BUTTONS, type RecoveryButton } from '../../../recovery/recoveryTypes';
+import { useSurfaceMenu } from '../interaction/SurfaceMenuProvider';
+import type { SurfaceAction } from '../interaction/surfaceActions';
 import { RailNameInput } from './RailNameInput';
 
 interface RecoveryRailProps {
@@ -25,7 +27,8 @@ type FocusRequest = { id: string } | 'add' | null;
 /**
  * The template's recovery buttons as a row of capsules and an Add button. A click selects a
  * button, a double click (or F2) renames it in place, a drag (or Alt with an arrow) moves it, and
- * Delete or Backspace removes it, focus going to the next, else the previous, else Add.
+ * Delete or Backspace removes it, focus going to the next, else the previous, else Add. A button's
+ * menu (a right-click, a finger's long press) renames and removes it too.
  */
 export function RecoveryRail({ buttons, selected, onSelect, onAdd, onRename, onReorder, onMove, onRemove }: RecoveryRailProps): React.ReactElement {
   const [renaming, setRenaming] = useState<string | null>(null);
@@ -34,6 +37,7 @@ export function RecoveryRail({ buttons, selected, onSelect, onAdd, onRename, onR
   const capsules = useRef(new Map<string, HTMLButtonElement>());
   const addRef = useRef<HTMLButtonElement>(null);
   const full = buttons.length >= MAX_RECOVERY_BUTTONS;
+  const menu = useSurfaceMenu();
 
   useEffect(() => {
     if (focus === null) return;
@@ -47,6 +51,16 @@ export function RecoveryRail({ buttons, selected, onSelect, onAdd, onRename, onR
     const next = buttons[at + 1] ?? buttons[at - 1];
     onRemove(id);
     setFocus(next ? { id: next.id } : 'add');
+  };
+
+  const openMenu = (event: React.MouseEvent<HTMLButtonElement>, id: string): void => {
+    if (!menu) return;
+    event.preventDefault();
+    const actions: SurfaceAction[] = [
+      { kind: 'item', id: 'rename', label: t('common.rename'), icon: 'pencil', hint: 'F2', run: () => setRenaming(id) },
+      { kind: 'item', id: 'remove', label: t('common.remove'), icon: 'trash-2', destructive: true, run: () => remove(id) },
+    ];
+    menu.openAt(actions, { x: event.clientX, y: event.clientY }, { returnFocus: event.currentTarget });
   };
 
   const onCapsuleKey = (event: React.KeyboardEvent<HTMLButtonElement>, id: string): void => {
@@ -106,6 +120,7 @@ export function RecoveryRail({ buttons, selected, onSelect, onAdd, onRename, onR
                   aria-pressed={selected === button.id}
                   onClick={() => onSelect(button.id)}
                   onDoubleClick={() => setRenaming(button.id)}
+                  onContextMenu={(event) => openMenu(event, button.id)}
                   onKeyDown={(event) => onCapsuleKey(event, button.id)}
                 >
                   <span className="atlas-rc-capsule__name">{button.name}</span>

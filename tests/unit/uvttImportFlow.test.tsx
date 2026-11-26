@@ -67,7 +67,7 @@ beforeEach(async () => {
   trigger = vi.spyOn(vault.app.workspace, 'trigger');
   trigger.mockClear();
   container = document.body.createDiv({ cls: 'atlas-asset-manager-container' });
-  renderHook(() => useUvttImport({ app: vault.app, assetService: assets, isOpen: true, isMapCreatorOpen: false, isBusy: false, collectionId: COLLECTION, onSceneOpened }));
+  renderHook(() => useUvttImport({ app: vault.app, assetService: assets, windowRef: { current: null }, isOpen: true, isMapCreatorOpen: false, isBusy: false, collectionId: COLLECTION, onSceneOpened }));
 });
 afterEach(() => { cleanup(); container.remove(); vi.unstubAllGlobals(); vi.restoreAllMocks(); AssetService.resetInstance(); });
 

@@ -1,4 +1,4 @@
-import type { EventEmitter } from 'events';
+import type { EventEmitter } from '../utils/typedEmitter';
 import { createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { TFile, type App } from 'obsidian';

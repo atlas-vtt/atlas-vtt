@@ -1,6 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useId } from 'react';
 import { Grid, Hexagon } from 'lucide-react';
 import { CloseButton } from '../../packages/components/primitives/CloseButton';
+import { ToggleLabel } from '../../packages/components/primitives/Toggle';
+import { Button } from '../../packages/components/primitives/button';
+import { Select, type SelectOption } from '../../packages/components/primitives/Select';
+import { Slider } from '../../packages/components/primitives/slider';
 import type { AtlasView } from '../../atlas-view';
 import { t } from '../../i18n';
 
@@ -13,6 +17,8 @@ interface GridSettingsModalProps {
 type GridType = 'square' | 'hex-horizontal' | 'hex-vertical';
 type UnitType = 'feet' | 'yards' | 'meters' | 'units';
 
+const UNIT_TYPES: readonly UnitType[] = ['feet', 'yards', 'meters', 'units'];
+
 interface GridSettings {
   type: GridType;
   size: number;
@@ -24,7 +30,7 @@ interface GridSettings {
   opacity: number;
 }
 
-export function GridSettingsModal({ isOpen, onClose, view }: GridSettingsModalProps) {
+export function GridSettingsModal({ isOpen, onClose, view }: GridSettingsModalProps): React.JSX.Element | null {
   // Grid settings state - initialize from store when modal opens
   const [settings, setSettings] = useState<GridSettings>(() => {
     const currentGrid = view?.atlasStore?.getState()?.grid;
@@ -40,6 +46,12 @@ export function GridSettingsModal({ isOpen, onClose, view }: GridSettingsModalPr
     };
   });
   
+  const sizeLabel = useId();
+  const unitsLabel = useId();
+  const opacityLabel = useId();
+  const [layer, setLayer] = useState<HTMLDivElement | null>(null);
+  const unitOptions: SelectOption<UnitType>[] = UNIT_TYPES.map(unit => ({ value: unit, label: t(`gridModal.unit.${unit}`) }));
+
   const [gridVisible, setLocalGridVisible] = useState(() => {
     return view?.atlasStore?.getState()?.grid?.visible ?? true;
   });
@@ -64,11 +76,11 @@ export function GridSettingsModal({ isOpen, onClose, view }: GridSettingsModalPr
     }
   }, [isOpen, view]);
 
-  const updateSetting = <K extends keyof GridSettings>(key: K, value: GridSettings[K]) => {
+  const updateSetting = <K extends keyof GridSettings>(key: K, value: GridSettings[K]): void => {
     setSettings(prev => ({ ...prev, [key]: value }));
   };
 
-  const applySettings = () => {
+  const applySettings = (): void => {
     const gridSystem = view?.renderer?.getGridSystem();
     if (gridSystem) {
       
@@ -114,7 +126,7 @@ export function GridSettingsModal({ isOpen, onClose, view }: GridSettingsModalPr
   if (!isOpen) return null;
 
   return (
-    <div className="atlas-vtt-plugin atlas-vtt-root atlas-grid-settings-overlay">
+    <div ref={setLayer} className="atlas-vtt-plugin atlas-vtt-root atlas-grid-settings-overlay">
       <div className="atlas-grid-settings-backdrop" onClick={onClose} />
       
       <div className="atlas-vtt-plugin atlas-grid-settings-modal">
@@ -128,21 +140,21 @@ export function GridSettingsModal({ isOpen, onClose, view }: GridSettingsModalPr
           <div className="atlas-grid-settings-section">
             <h3>{t('gridModal.type')}</h3>
             <div className="atlas-grid-type-options">
-              <button
+              <button type="button"
                 className={`atlas-grid-type-option ${settings.type === 'square' ? 'atlas-active' : ''}`}
                 onClick={() => updateSetting('type', 'square')}
               >
                 <Grid size={24} />
                 <span>{t('grid.type.square')}</span>
               </button>
-              <button
+              <button type="button"
                 className={`atlas-grid-type-option ${settings.type === 'hex-horizontal' ? 'atlas-active' : ''}`}
                 onClick={() => updateSetting('type', 'hex-horizontal')}
               >
                 <Hexagon size={24} />
                 <span>{t('grid.type.hexFlat')}</span>
               </button>
-              <button
+              <button type="button"
                 className={`atlas-grid-type-option ${settings.type === 'hex-vertical' ? 'atlas-active' : ''}`}
                 onClick={() => updateSetting('type', 'hex-vertical')}
               >
@@ -154,15 +166,14 @@ export function GridSettingsModal({ isOpen, onClose, view }: GridSettingsModalPr
           
           {/* Grid Size */}
           <div className="atlas-grid-settings-section">
-            <h3>{t('gridModal.size')}</h3>
+            <h3 id={sizeLabel}>{t('gridModal.size')}</h3>
             <div className="atlas-grid-size-control">
-              <input
-                type="range"
-                min="20"
-                max="200"
-                value={settings.size}
-                onChange={(e) => updateSetting('size', Number(e.target.value))}
-                className="atlas-grid-slider"
+              <Slider
+                aria-labelledby={sizeLabel}
+                min={20}
+                max={200}
+                value={[settings.size]}
+                onValueChange={(next: number[]) => updateSetting('size', next[0] ?? settings.size)}
               />
               <span className="atlas-grid-size-value">{settings.size}px</span>
             </div>
@@ -170,41 +181,32 @@ export function GridSettingsModal({ isOpen, onClose, view }: GridSettingsModalPr
           
           {/* Grid Units */}
           <div className="atlas-grid-settings-section">
-            <h3>{t('gridModal.units')}</h3>
+            <h3 id={unitsLabel}>{t('gridModal.units')}</h3>
             <div className="atlas-grid-units-control">
               <input
                 type="number"
                 min="1"
                 max="100"
+                aria-labelledby={unitsLabel}
                 value={settings.unitDistance}
                 onChange={(e) => updateSetting('unitDistance', Number(e.target.value))}
                 className="atlas-grid-units-input"
               />
-              <select
-                value={settings.unitType}
-                onChange={(e) => updateSetting('unitType', e.target.value as UnitType)}
-                className="atlas-grid-units-select"
-              >
-                <option value="feet">{t('gridModal.unit.feet')}</option>
-                <option value="yards">{t('gridModal.unit.yards')}</option>
-                <option value="meters">{t('gridModal.unit.meters')}</option>
-                <option value="units">{t('gridModal.unit.units')}</option>
-              </select>
+              <Select labelledBy={unitsLabel} layer={layer} value={settings.unitType} options={unitOptions} onChange={(unit) => updateSetting('unitType', unit)} />
               <span className="atlas-grid-units-label">{settings.type === 'square' ? t('gridModal.perSquare') : t('gridModal.perHex')}</span>
             </div>
           </div>
           
           {/* Grid Opacity */}
           <div className="atlas-grid-settings-section">
-            <h3>{t('gridModal.opacity')}</h3>
+            <h3 id={opacityLabel}>{t('gridModal.opacity')}</h3>
             <div className="atlas-grid-opacity-control">
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={settings.opacity * 100}
-                onChange={(e) => updateSetting('opacity', Number(e.target.value) / 100)}
-                className="atlas-grid-slider"
+              <Slider
+                aria-labelledby={opacityLabel}
+                min={0}
+                max={100}
+                value={[settings.opacity * 100]}
+                onValueChange={(next: number[]) => updateSetting('opacity', (next[0] ?? settings.opacity * 100) / 100)}
               />
               <span className="atlas-grid-opacity-value">{Math.round(settings.opacity * 100)}%</span>
             </div>
@@ -212,24 +214,17 @@ export function GridSettingsModal({ isOpen, onClose, view }: GridSettingsModalPr
           
           {/* Grid Visibility Toggle */}
           <div className="atlas-grid-settings-section">
-            <label className="atlas-grid-visibility-toggle">
-              <input
-                type="checkbox"
-                checked={gridVisible}
-                onChange={(e) => setLocalGridVisible(e.target.checked)}
-              />
-              <span>{t('gridModal.show')}</span>
-            </label>
+            <ToggleLabel label={t('gridModal.show')} value={gridVisible} onChange={() => setLocalGridVisible(!gridVisible)} />
           </div>
         </div>
         
         <div className="atlas-grid-settings-footer">
-          <button className="atlas-grid-settings-cancel" onClick={onClose}>
+          <Button variant="outline" size="sm" onClick={onClose}>
             {t('common.cancel')}
-          </button>
-          <button className="atlas-grid-settings-apply" onClick={applySettings}>
+          </Button>
+          <Button size="sm" onClick={applySettings}>
             {t('gridModal.apply')}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

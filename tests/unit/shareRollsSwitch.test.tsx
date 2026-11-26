@@ -14,17 +14,21 @@ vi.mock('../../src/app/react/root/AtlasUIContext', () => ({
 vi.mock('../../src/app/react/ViewStoreContext', () => ({
   useAtlasStore: (selector: (state: { isPlayerView: boolean }) => unknown) => selector({ isPlayerView: context.isPlayerView }),
 }));
-vi.mock('../../src/app/react/hooks/useDicePreviews', () => ({ useDicePreviews: () => ({}) }));
+vi.mock('../../src/app/react/hooks/useDicePreviews', () => ({ useDicePreviews: () => null }));
 vi.mock('../../src/app/packages/components/primitives/tooltip', () => ({
   LabelTooltip: ({ children }: { children: React.ReactNode }): React.ReactNode => children,
+  TooltipProvider: ({ children }: { children: React.ReactNode }): React.ReactNode => children,
 }));
 
-const diceTool = { rollDice: vi.fn(() => true), rollingDice: () => ({ dice: [{ count: 1, sides: 20 }], crit: 'natural' }) } as unknown as DiceTool;
+const diceTool = {
+  rollDice: vi.fn(() => true), rollingDice: () => ({ dice: [{ count: 1, sides: 20 }], crit: 'natural' }),
+  checkRoll: () => null, tray: { formula: '', side: 'normal' }, rememberTray: vi.fn(),
+} as unknown as DiceTool;
 let settings: SettingsService;
 
 beforeEach(() => {
   vi.useFakeTimers();
-  context.app = {};
+  context.app = { workspace: { on: () => ({}), offref: () => undefined } };
   context.viewType = 'atlas-vtt';
   context.isPlayerView = false;
   settings = new SettingsService(context.app as never);

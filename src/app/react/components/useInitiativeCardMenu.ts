@@ -9,6 +9,9 @@ import type { TokenEntity } from '../../types';
 import type { InitiativeEntry } from '../../types/initiativeTypes';
 import type { ListedSide } from '../../initiative/sides';
 import { initiativeCardMenu, type CardMenuMode } from './initiativeCardMenu';
+import { entryToken } from '../../initiative/party';
+import { useMapConditions } from '../hooks/useMapConditions';
+import { combatantConditionsMenu } from './context-menu/combatantConditionsMenu';
 
 interface CardMenuInputs {
   tokens: Readonly<Record<string, TokenEntity>>;
@@ -24,6 +27,8 @@ interface CardMenuInputs {
   defeated: () => ReadonlySet<string>;
   /** Opens the edit popup of `entry` beside its card. */
   edit: (entry: InitiativeEntry, cardElement: HTMLElement) => void;
+  /** Shows the statblock of `entry` beside its card until a press outside it. */
+  preview?: (entry: InitiativeEntry, cardElement: HTMLElement) => void;
 }
 
 /** The other combatants holding a card a combatant may swap its own with: one per card, in the order they act. */
@@ -38,7 +43,7 @@ function swapTargets(entries: readonly InitiativeEntry[], entry: InitiativeEntry
 
 /** Opens the menu of a combatant's card (`initiativeCardMenu`) with the store's actions. */
 export function useInitiativeCardMenu(inputs: CardMenuInputs): (event: React.MouseEvent, entry: InitiativeEntry, cardElement: HTMLElement) => void {
-  const { tokens, bySides, sides, cards, fightRuns, roll, defeated, edit } = inputs;
+  const { tokens, bySides, sides, cards, fightRuns, roll, defeated, edit, preview } = inputs;
   const { view } = useAtlasUI();
   const store = useViewStoreHook();
   const swapInitiativeCards = useAtlasStore((s) => s.swapInitiativeCards);
@@ -48,22 +53,26 @@ export function useInitiativeCardMenu(inputs: CardMenuInputs): (event: React.Mou
   const setInitiativeSitsOut = useAtlasStore((s) => s.setInitiativeSitsOut);
   const delayInitiativeTurn = useAtlasStore((s) => s.delayInitiativeTurn);
   const actNowInInitiative = useAtlasStore((s) => s.actNowInInitiative);
+  const updateInitiativeEntry = useAtlasStore((s) => s.updateInitiativeEntry);
+  const conditionDefinitions = useMapConditions();
 
   return useCallback((event: React.MouseEvent, entry: InitiativeEntry, cardElement: HTMLElement): void => {
     const targets = cards ? swapTargets(store.getState().initiative.entries, entry) : [];
-    const entries = initiativeCardMenu(entry, tokens[entry.tokenId], { bySides, sides, cards, fightRuns, swapTargets: targets }, {
+    const entries = initiativeCardMenu(entry, entryToken(tokens, entry), { bySides, sides, cards, fightRuns, swapTargets: targets }, {
       roll: () => roll(entry.id),
       moveToFront: () => moveToFront(entry.id),
       moveToBack: () => moveToBack(entry.id),
       edit: () => edit(entry, cardElement),
-      updateToken: (changes) => updateTokens([{ id: entry.tokenId, changes }]),
+      updateToken: (changes) => { if (entry.tokenId !== undefined) updateTokens([{ id: entry.tokenId, changes }]); },
       setSitsOut: (sitsOut) => setInitiativeSitsOut(entry.id, sitsOut),
       swapCard: (withId) => swapInitiativeCards(entry.id, withId),
       delay: () => delayInitiativeTurn(entry.id, defeated()),
       actNow: () => actNowInInitiative(entry.id),
-      placeOnMap: () => { if (view) placeCombatantOnMap(view, entry.tokenId); },
+      placeOnMap: () => { if (view && entry.tokenId !== undefined) placeCombatantOnMap(view, entry.tokenId); },
+      ...(entry.statblockPath && preview && { preview: () => preview(entry, cardElement) }),
       remove: () => removeCombatant(store, entry, defeated()),
-    });
+      setHiddenFromPlayers: (hidden) => updateInitiativeEntry(entry.id, { hiddenFromPlayers: hidden ? true : undefined }),
+    }, conditionDefinitions.length > 0 ? combatantConditionsMenu(store, conditionDefinitions, entry.id) : null);
     openContextMenuGlobal(entries, { x: event.clientX, y: event.clientY });
-  }, [store, view, tokens, bySides, sides, cards, fightRuns, roll, defeated, edit, swapInitiativeCards, moveToFront, moveToBack, updateTokens, setInitiativeSitsOut, delayInitiativeTurn, actNowInInitiative]);
+  }, [store, view, tokens, bySides, sides, cards, fightRuns, roll, defeated, edit, preview, swapInitiativeCards, moveToFront, moveToBack, updateTokens, setInitiativeSitsOut, delayInitiativeTurn, actNowInInitiative, updateInitiativeEntry, conditionDefinitions]);
 }

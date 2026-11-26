@@ -97,10 +97,10 @@ describe('MosaicCanvas', () => {
     // The layer's own bounds are the image's; its scale stretches them.
     expect(mosaicCanvas.layer.boundsArea).toMatchObject({ x: 0, y: 0, width: 12000, height: 3000 });
     expect(viewport.worldWidth).toBe(12600);
-    expect(changes).toEqual(['image', 'image']);
+    expect(changes).toEqual(['image', 'placement']);
 
     mosaicCanvas.setStretch({ x: 1.05, y: 1 });
-    expect(changes).toEqual(['image', 'image']);
+    expect(changes).toEqual(['image', 'placement']);
   });
 
   it('draws an image that lies askew turned level about its centre, in the box that then holds it', async () => {

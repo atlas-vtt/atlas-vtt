@@ -5,8 +5,18 @@ import { FogCoverageCache } from '../../fog/FogCoverageCache';
 import { validateFogOperation } from '../../fog/fogOperationShape';
 import { coverCanvas } from '../utils/coverCanvas';
 import { drawFogCoverage } from './drawFogCoverage';
-import { drawWithSpreadEdges, FOG_COLOR, renderOperation } from './fogRenderUtils';
+import { drawWithSpreadEdges, FOG_COLOR, renderOperation, renderOperations } from './fogRenderUtils';
 import { fogEdgeBlur } from '../../fog/fogEdge';
+
+/**
+ * The fog canvas' texels per world pixel: `wanted`, or fewer where the canvas would be longer than
+ * `maxSide`. A web view on a tablet draws nothing on a canvas above a size of its own and says nothing
+ * (`canvasLimit.ts`), which would show the players the whole map.
+ */
+export function fogCanvasScale(bounds: Pick<FogBounds, 'width' | 'height'>, wanted: number, maxSide: number): number {
+  const longest = Math.max(bounds.width, bounds.height);
+  return longest * wanted > maxSide ? maxSide / longest : wanted;
+}
 
 export class FogCanvasCompositor {
   private canvas: HTMLCanvasElement;
@@ -21,15 +31,17 @@ export class FogCanvasCompositor {
   private spread: HTMLCanvasElement | null = null;
   constructor(
     bounds: FogBounds,
-    scale = 0.5,
+    private readonly wantedScale = 0.5,
     private readonly coverageCache = new FogCoverageCache(),
     private readonly mapKey: () => string | null = () => null,
+    /** The canvas' longest side on this device (`DeviceBudgets.fogCanvasSide`). */
+    private readonly maxSide = Infinity,
   ) {
     this.bounds = bounds;
-    this.scale = scale;
+    this.scale = fogCanvasScale(bounds, wantedScale, maxSide);
     this.canvas = getDomHost().createCanvas(undefined, {
-      width: Math.max(1, Math.round(bounds.width * scale)),
-      height: Math.max(1, Math.round(bounds.height * scale)),
+      width: Math.max(1, Math.round(bounds.width * this.scale)),
+      height: Math.max(1, Math.round(bounds.height * this.scale)),
     });
 
     const ctx = this.canvas.getContext('2d', { willReadFrequently: false, alpha: true });
@@ -40,10 +52,10 @@ export class FogCanvasCompositor {
   // ── Public API ──────────────────────────────────────────────────────
 
   /**
-   * Returns false after covering the canvas when geometry or drawing fails. `fadeEdge` false draws
-   * the fog as its shapes are, for what reads its pixels.
+   * Draws the fog of `ops`, and on it `preview`: a stroke under way, or the shapes of one where it
+   * takes several. Returns false after covering the canvas when geometry or drawing fails.
    */
-  composite(ops: Readonly<Record<string, FogOperation>>, preview?: FogOperation, fadeEdge = true): boolean {
+  composite(ops: Readonly<Record<string, FogOperation>>, preview?: FogOperation | readonly FogOperation[]): boolean {
     const coverage = this.coverageCache.get(ops, this.mapKey());
     if (!coverage) return this.coverCanvas();
     try {
@@ -52,15 +64,19 @@ export class FogCanvasCompositor {
       this.ctx.globalAlpha = 1;
       this.ctx.fillStyle = FOG_COLOR;
       drawFogCoverage(this.ctx, coverage.shape, this.bounds, this.scale);
-      if (preview) {
-        validateFogOperation(preview);
-        renderOperation(this.ctx, preview, this.bounds, this.scale, preview.offsetX ?? 0, preview.offsetY ?? 0);
-      }
-      if (fadeEdge) this.fadeEdges();
+      if (preview) this.drawPreview('kind' in preview ? [preview] : preview);
+      this.fadeEdges();
       return true;
     } catch {
       return this.coverCanvas();
     }
+  }
+
+  private drawPreview(strokes: readonly FogOperation[]): void {
+    for (const stroke of strokes) validateFogOperation(stroke);
+    const [only] = strokes;
+    if (only && strokes.length === 1) renderOperation(this.ctx, only, this.bounds, this.scale, only.offsetX ?? 0, only.offsetY ?? 0);
+    else renderOperations(this.ctx, strokes, this.bounds, this.scale);
   }
 
   /** Fades the edge over `worldPx` map pixels from the next composite on; 0 keeps it hard. */
@@ -136,6 +152,7 @@ export class FogCanvasCompositor {
   /** Recreate canvas when map/bounds change. */
   updateBounds(bounds: FogBounds): void {
     this.bounds = bounds;
+    this.scale = fogCanvasScale(bounds, this.wantedScale, this.maxSide);
     this.canvas.width = Math.max(1, Math.round(bounds.width * this.scale));
     this.canvas.height = Math.max(1, Math.round(bounds.height * this.scale));
   }
@@ -147,6 +164,11 @@ export class FogCanvasCompositor {
 
   getBounds(): FogBounds {
     return this.bounds;
+  }
+
+  /** The canvas' texels per world pixel, for the bounds it has now. */
+  getScale(): number {
+    return this.scale;
   }
 
   destroy(): void {

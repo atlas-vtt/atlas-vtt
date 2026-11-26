@@ -66,18 +66,9 @@
     @include atlas-visually-hidden;
   }
 
-  .atlas-online-button {
-    font-size: $font-ui-small;
-    border-radius: $radius-m;
-    @include atlas-corner-shape;
-
-    &:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-  }
-
-  .atlas-online-button--ghost {
+  // Text buttons are Atlas's own (`textButton`: `btn btn--<kind> btn--sm`); a ghost keeps the bars' press,
+  // above the plain ghost button's rules (`.atlas-vtt-plugin .btn--ghost`).
+  .atlas-online-button--ghost.btn {
     @include online-ghost;
 
     &.is-active {
@@ -96,7 +87,6 @@
     padding: 0;
     border-radius: $radius-m;
     cursor: pointer;
-    @include atlas-corner-shape;
     @include online-ghost;
 
     svg {
@@ -104,6 +94,11 @@
       height: $icon-s;
     }
 
+  }
+
+  // In the invite row, $online-inset inside it (QR at its end, ⋯ beside it): the row's concentric corner.
+  .atlas-online-invite-row .atlas-online-icon-button {
+    border-radius: $online-row-control-radius;
   }
 
   .atlas-online-close {
@@ -210,7 +205,6 @@
     padding: $spacing-s;
     resize: vertical;
     line-height: var(--line-height-normal);
-    @include atlas-corner-shape;
   }
 
   .atlas-online-feedback__toggle {

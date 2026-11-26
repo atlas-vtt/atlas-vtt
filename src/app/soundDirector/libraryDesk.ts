@@ -3,6 +3,7 @@ import { t } from '../i18n';
 import { MOOD_LIMITS } from '../soundLibrary/moodFile';
 import { recordsByFile, recordsForFiles, soundOfFile, type RecordsSeam } from '../soundLibrary/libraryRecords';
 import type { LibraryFile, SoundLibrary } from '../soundLibrary/SoundLibrary';
+import { workSlices } from '../utils/workSlices';
 import { mixHolding } from './libraryMix';
 import type { SoundDirector } from './SoundDirector';
 
@@ -74,10 +75,20 @@ async function soundsOfFiles(deps: Pick<LibraryDeskDeps, 'records' | 'library'>,
   });
 }
 
-/** Asks for files' copies in the background, writing no record. What has a copy already is skipped. */
+/** Sounds handed to the copies at once: each is stated and its header queued for reading, which a folder of thousands must not do in one task. */
+export const REQUEST_BATCH = 100;
+
+/**
+ * Asks for files' copies in the background, writing no record, a batch at a time with the browser given its turn
+ * between slices, so a folder of thousands costs no frame. What has a copy already is skipped after its header.
+ */
 export async function requestCopies(deps: Pick<LibraryDeskDeps, 'records' | 'library' | 'director'>, files: readonly LibraryFile[]): Promise<number> {
   const sounds = await soundsOfFiles(deps, files);
-  deps.director.shelf.request(sounds);
+  const slice = workSlices();
+  for (let at = 0; at < sounds.length; at += REQUEST_BATCH) {
+    await slice();
+    deps.director.shelf.request(sounds.slice(at, at + REQUEST_BATCH));
+  }
   return sounds.length;
 }
 

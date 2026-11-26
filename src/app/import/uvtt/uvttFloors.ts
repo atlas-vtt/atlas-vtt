@@ -1,4 +1,5 @@
 import { t } from '../../i18n';
+import { deviceUvttLimits, type UvttDeviceLimits } from './uvttDeviceLimits';
 import { UVTT_LIMITS, type UvttMap, type UvttPoint } from './uvttTypes';
 
 /** What deciding whether files can be the floors of one scene reads of each. */
@@ -23,9 +24,9 @@ function segmentsOf(map: FloorCandidate['map']): number {
 }
 
 /** Why files of these sizes cannot be the floors of one scene, in a sentence; known before any is read. */
-export function floorFilesProblem(files: readonly Pick<FloorCandidate, 'bytes'>[]): string | null {
+export function floorFilesProblem(files: readonly Pick<FloorCandidate, 'bytes'>[], limits: Pick<UvttDeviceLimits, 'floorsBytes'> = deviceUvttLimits()): string | null {
   if (files.length > UVTT_LIMITS.floors) return t('uvttFloors.tooMany', { count: UVTT_LIMITS.floors });
-  if (files.reduce((sum, file) => sum + file.bytes, 0) > UVTT_LIMITS.floorsBytes) return t('uvttFloors.tooLarge', { size: megabytes(UVTT_LIMITS.floorsBytes) });
+  if (files.reduce((sum, file) => sum + file.bytes, 0) > limits.floorsBytes) return t('uvttFloors.tooLarge', { size: megabytes(limits.floorsBytes) });
   return null;
 }
 

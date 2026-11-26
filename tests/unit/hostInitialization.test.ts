@@ -14,7 +14,7 @@ describe('plugin host initialization', () => {
     expect(ts.isStringLiteral(first.moduleSpecifier) && first.moduleSpecifier.text).toBe('./src/app/plugin/host/initializeHost');
   });
 
-  it.each(['ru', 'en', 'fr'])('initializes translated constants from %s', async value => {
+  it.each(['ru', 'en', 'ja'])('initializes translated constants from %s', async value => {
     vi.resetModules();
     language.value = value;
     await import('../../src/app/plugin/host/initializeHost');
@@ -22,6 +22,6 @@ describe('plugin host initialization', () => {
     const { MAP_HOTKEYS } = await import('../../src/app/keyboard/mapHotkeys');
     expect(getLocale()).toBe(value === 'ru' ? 'ru' : 'en');
     expect(MAP_HOTKEYS.find(action => action.id === 'help')?.label).toBe(t('hotkey.help'));
-    expect(MAP_HOTKEYS.find(action => action.id === 'help')?.label).toBe(value === 'ru' ? 'Сочетания клавиш' : 'Keyboard shortcuts');
+    expect(MAP_HOTKEYS.find(action => action.id === 'help')?.label).toBe(value === 'ru' ? 'Шпаргалка' : 'Cheat sheet');
   });
 });

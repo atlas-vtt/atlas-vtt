@@ -18,6 +18,8 @@ vi.mock('../../../../src/app/services/TokenStatblockLinkService', () => ({ Token
 vi.mock('../../../../src/app/statblocks/editor/openStatblockEditor', () => ({ openStatblockEditor: vi.fn(async () => undefined) }));
 vi.mock('../../../../src/app/statblocks/editor/create/CreationPrompt', () => ({ promptStatblockName: vi.fn() }));
 vi.mock('../../../../src/app/statblocks/editor/create/TemplateChoiceModal', () => ({ chooseTemplate: vi.fn() }));
+const showNotice = vi.hoisted(() => vi.fn());
+vi.mock('../../../../src/app/ui/notice', () => ({ showNotice }));
 
 const MARSH: CollectionSettings = {
   conditions: [],
@@ -59,6 +61,7 @@ afterEach(() => {
   vi.mocked(openStatblockEditor).mockClear();
   vi.mocked(promptStatblockName).mockReset();
   vi.mocked(chooseTemplate).mockReset();
+  showNotice.mockClear();
 });
 
 const app = (): App => harness.app as unknown as App;
@@ -107,6 +110,21 @@ describe('creating a statblock for a token', () => {
     expect(openStatblockEditor).toHaveBeenCalledWith(app(), expect.objectContaining({ collectionId: 'default' }));
   });
 
+  it('starts from a template picked itself: the token\'s art and link as with a role, in Obsidian\'s folder for new notes (#656)', async () => {
+    const onLinked = vi.fn();
+    const path = await createStatblock(app(), {
+      collectionId: 'marsh', templateId: 'builtin:5e-2014-monster', name: 'Marsh Warden', tokenImagePath: 'art/warden.webp', from: 'map', onLinked,
+    });
+
+    expect(path).toBe('Marsh Warden.md');
+    expect(frontmatterOfText(harness.files.get('Marsh Warden.md')!)).toEqual({
+      statblock: true, 'atlas-template': 'builtin:5e-2014-monster', name: 'Marsh Warden', image: 'art/warden.webp',
+    });
+    expect(link).toHaveBeenCalledWith('art/warden.webp', 'Marsh Warden.md');
+    expect(onLinked).toHaveBeenCalledWith('Marsh Warden.md');
+    expect(openStatblockEditor).toHaveBeenCalledWith(app(), { notePath: 'Marsh Warden.md', collectionId: 'marsh', from: 'map', focusFirstEmpty: true });
+  });
+
   it('makes nothing while the switch is off', async () => {
     settings({ editor: false });
     expect(await createStatblock(app(), { collectionId: 'marsh', roleId: 'monster', name: 'Warden', from: 'map' })).toBeNull();
@@ -119,6 +137,24 @@ describe('creating a statblock for a token', () => {
     harness.app.vault.create = vi.fn(async () => { throw new Error('disk full'); });
     expect(await createStatblock(app(), { collectionId: 'marsh', roleId: 'monster', name: 'Warden', from: 'map' })).toBeNull();
     expect(openStatblockEditor).not.toHaveBeenCalled();
+    expect(showNotice).toHaveBeenCalledWith('Couldn\'t create the statblock.');
+  });
+
+  it('keeps and opens the note when the token cannot be linked to it, and says only that (#641)', async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    link.mockRejectedValue(new Error('index busy'));
+    const onLinked = vi.fn();
+    const path = await createStatblock(app(), {
+      collectionId: 'marsh', roleId: 'monster', name: 'Marsh Warden', tokenImagePath: 'art/warden.webp', from: 'map', onLinked,
+    });
+
+    expect(path).toBe('Bestiary/Marsh Warden.md');
+    expect(harness.files.has('Bestiary/Marsh Warden.md')).toBe(true);
+    expect(onLinked).not.toHaveBeenCalled();
+    expect(openStatblockEditor).toHaveBeenCalledWith(app(), { notePath: 'Bestiary/Marsh Warden.md', collectionId: 'marsh', from: 'map', focusFirstEmpty: true });
+    expect(showNotice).toHaveBeenCalledWith('The statblock was created, but the token could not be linked to it. Use Link statblock in the token\'s menu.');
+    expect(showNotice).not.toHaveBeenCalledWith('Couldn\'t create the statblock.');
+    expect(logged).toHaveBeenCalled();
   });
 });
 

@@ -8,7 +8,7 @@ vi.mock('../../src/app/services/PlayerWindowPresenter', () => ({ openPlayerWindo
 vi.mock('../../src/app/react/components/command-palette/GridSettingsPanel', () => ({ GridSettingsPanel: () => null }));
 vi.mock('../../src/app/react/components/command-palette/TokenSettingsPanel', () => ({ TokenSettingsPanel: () => null }));
 vi.mock('../../src/app/react/components/command-palette/WidgetSettingsPanel', () => ({ WidgetSettingsPanel: () => null }));
-vi.mock('../../src/app/react/components/command-palette/LocalPlayerViewSettingsPanel', () => ({ LocalPlayerViewSettingsPanel: () => null }));
+vi.mock('../../src/app/react/components/command-palette/PlayerViewSettingsPanel', () => ({ PlayerViewSettingsPanel: () => null }));
 vi.mock('../../src/app/packages/components/asset-manager/AssetManager', () => ({ default: () => null }));
 
 const card = (): HTMLElement => query('.atlas-toolbar-card');
@@ -64,14 +64,14 @@ describe('the toolbar editor\'s card in a real layout', () => {
     expect(performance.now() - hoveredAt).toBeGreaterThanOrEqual(500);
 
     expect(label()).toBe('Measure');
-    expect(card().textContent).toContain('Measure a distance, or the reach of a circle or cone');
+    expect(card().textContent).toContain('Measure a distance or an area, keep it on the map');
     const image = card().querySelector('img');
     if (!image) throw new Error('no screenshot');
     await image.decode();
     expect(image.naturalWidth).toBe(560);
-    // Concentric with the card's corners on the two that face them.
-    expect(getComputedStyle(image).borderTopLeftRadius).toBe('14.5px');
-    expect(getComputedStyle(image).borderBottomLeftRadius).toBe('8px');
+    // 8 px inside the card, deeper than a surface's corner controls: the control radius.
+    expect(getComputedStyle(image).borderTopLeftRadius).toBe('10px');
+    expect(getComputedStyle(image).borderBottomLeftRadius).toBe('10px');
 
     // Above the tray, centred over its tool.
     const box = rectOf(card());

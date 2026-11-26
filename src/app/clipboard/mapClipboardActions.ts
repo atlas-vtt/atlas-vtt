@@ -2,6 +2,8 @@ import type { StoreApi } from 'zustand';
 import type { ViewAtlasState } from '../storeFactory';
 import { mayLinkFromScene } from '../services/sceneLinks';
 import { readMapClipboard, writeMapClipboard } from './mapClipboard';
+
+export { holdsMapClipboard } from './mapClipboard';
 import { collectMapObjects, countMapObjects, type MapObjectContent, type Point } from './mapObjectContent';
 import { pasteOffset, placeMapObjects } from './mapObjectPlacement';
 import { levelObjects } from '../levels/levelObjects';
@@ -9,6 +11,7 @@ import { levelLinkList, MAX_LEVEL_LINKS } from '../levels/levelLinks';
 import { hasLevels } from '../levels/sceneLevels';
 import { t } from '../i18n';
 import { showNotice } from '../ui/notice';
+import { tellCopiesLeftOut } from '../pixi/annotations/annotationNotices';
 import { withoutOffMap } from '../tokens/offMap';
 
 type ClipboardStore = Pick<StoreApi<ViewAtlasState>, 'getState'>;
@@ -77,7 +80,14 @@ export async function pasteClipboard(store: ClipboardStore, target: Point): Prom
   if (countMapObjects(content) === 0) return [];
   const placed = placeMapObjects(content, pasteOffset(content, target, state.grid), state.grid, levelObjects(state));
   tellStairsLeftOut(state, placed);
+  tellCopiesLeftOut(levelObjects(state), placed);
   return state.insertMapObjects(placed);
+}
+
+/** The world point in the middle of what the view shows: where a paste lands that no pointer placed. */
+export function viewCentre(viewport: { screenWidth: number; screenHeight: number; toWorld(x: number, y: number): Point }): Point {
+  const { x, y } = viewport.toWorld(viewport.screenWidth / 2, viewport.screenHeight / 2);
+  return { x, y };
 }
 
 /** Duplicates the selection one grid cell away and returns the ids of the copies. */
@@ -85,6 +95,9 @@ export function duplicateSelection(store: ClipboardStore): string[] {
   const state = store.getState();
   const ids = editableSelection(state);
   const content = copyableContent(state, ids);
-  if (content) tellStairsLeftOut(state, content);
+  if (content) {
+    tellStairsLeftOut(state, content);
+    tellCopiesLeftOut(levelObjects(state), content);
+  }
   return state.duplicateMapObjects(ids);
 }

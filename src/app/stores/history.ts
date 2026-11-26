@@ -48,3 +48,8 @@ export function runUntracked<T>(store: HistoryHost, fn: () => T): T {
 export function isHistoryTravelling(store: HistoryHost): boolean {
   return getHistoryStore(store)?.getState().isTravelling() ?? false;
 }
+
+/** Whether a gesture or a panel has a transaction open on the store: what it writes is not a step yet. */
+export function isHistoryTransactionOpen(store: HistoryHost): boolean {
+  return getHistoryStore(store)?.getState().isInTransaction() ?? false;
+}

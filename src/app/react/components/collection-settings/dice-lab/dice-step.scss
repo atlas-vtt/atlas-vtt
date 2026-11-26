@@ -11,7 +11,6 @@ $step-width: 264px;
 // ── Step panel: sides, name or colour, under the die ───────────────────────
 .atlas-dice-lab__step-panel {
   @include atlas-elevated-surface;
-  @include atlas-scrollbar;
   position: absolute;
   z-index: 2;
   width: $step-width;
@@ -57,8 +56,7 @@ button.atlas-dice-lab__side {
   height: auto;
   padding: $spacing-xs;
   border: none;
-  border-radius: $radius-l;
-  @include atlas-corner-shape;
+  border-radius: $radius-m;
   background: transparent;
   box-shadow: none;
   color: var(--text-muted);
@@ -110,8 +108,7 @@ button.atlas-dice-lab__side {
 .atlas-dice-lab__other {
   @include atlas-flex-row($spacing-xs);
   padding: $spacing-xs;
-  border-radius: $radius-l;
-  @include atlas-corner-shape;
+  border-radius: $radius-m;
   transition: background-color $transition-fast $transition-ease, box-shadow $transition-fast $transition-ease;
 
   &.atlas-selected {
@@ -119,8 +116,10 @@ button.atlas-dice-lab__side {
     box-shadow: inset 0 0 0 $border-width-m color-mix(in oklch, var(--interactive-accent) 70%, transparent);
   }
 
+  // At the row's end, $surface-inset inside it: concentric with the row's corner.
   .atlas-csm-input.atlas-dice-lab__number {
     height: $input-height-s;
+    border-radius: $control-inset-radius;
   }
 }
 

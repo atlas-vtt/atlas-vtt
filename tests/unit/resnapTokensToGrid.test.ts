@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { createStore } from 'zustand/vanilla';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { PixiRendererOrchestrator } from '../../src/app/PixiRendererOrchestrator';

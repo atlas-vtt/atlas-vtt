@@ -8,7 +8,7 @@ import { Button } from '../../primitives/button';
 import { Slider } from '../../primitives/slider';
 import { LabelTooltip } from '../../primitives/tooltip';
 import { Skeleton } from '../../primitives/Skeleton';
-import { clampImagePosition, cropReset } from './cropMath';
+import { clampImagePosition, cropReset, renderedImageRect } from './cropMath';
 import type { ImageAspect } from './cropMath';
 import { clampZoom, ZOOM_MAX, ZOOM_MIN, ZOOM_STEP } from './types';
 import type { CreatorMode, ImagePosition, TokenPreview, TokenPreviewPatch } from './types';
@@ -27,6 +27,10 @@ interface TokenPreviewCardProps {
 
 const WHEEL_ZOOM_SENSITIVITY = 0.0025;
 const ENTER_STAGGER_CAP = 12;
+
+// Built here and not inside the `framed &&` that shows it: the bundler writes an imported constant out
+// again wherever it stands in a logical expression, which put the ring image into the bundle twice.
+const ringImage = <img className="atlas-token-card__ring" src={tokenRingImageUrl} alt="" />;
 
 /** Natural size of the image behind a URL, for aspect-aware drag limits. */
 function useImageAspect(url: string): ImageAspect | null {
@@ -78,7 +82,7 @@ function ConversionBadge({ preview, mode }: Pick<TokenPreviewCardProps, 'preview
   }
   if (compressionRatio === undefined || compressionRatio <= 0) return null;
   return (
-    <LabelTooltip label={t('creator.reduction')}>
+    <LabelTooltip label={t('creator.reduction', { percent: compressionRatio })}>
       <div className="atlas-token-card__badge">−{compressionRatio}%</div>
     </LabelTooltip>
   );
@@ -103,13 +107,14 @@ export const TokenPreviewCard = React.memo(function TokenPreviewCard({ preview, 
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
 
-  const isCropEditable = mode === 'token' && preview.showRing !== false;
+  const isCropEditable = mode === 'token';
+  const framed = isCropEditable && preview.showRing !== false;
   const aspect = useImageAspect(preview.previewUrl);
   const wellSize = useWellSize(artElement);
 
   const clampPosition = useCallback(
-    (position: ImagePosition, scale: number): ImagePosition => clampImagePosition(position, scale, aspect),
-    [aspect],
+    (position: ImagePosition, scale: number): ImagePosition => clampImagePosition(position, scale, aspect, framed ? undefined : 'contain'),
+    [aspect, framed],
   );
 
   useEffect(() => {
@@ -163,7 +168,7 @@ export const TokenPreviewCard = React.memo(function TokenPreviewCard({ preview, 
 
   const placement: React.CSSProperties = isCropEditable
     ? {
-        backgroundSize: `${preview.imageScale * 100}%`,
+        backgroundSize: !framed && !aspect ? 'contain' : `${renderedImageRect(preview.imageScale, preview.imagePosition, aspect, framed ? undefined : 'contain').width * 100}%`,
         backgroundPosition: `calc(50% + ${preview.imagePosition.x * wellSize}px) calc(50% + ${preview.imagePosition.y * wellSize}px)`,
       }
     : { backgroundSize: 'contain', backgroundPosition: 'center' };
@@ -185,7 +190,7 @@ export const TokenPreviewCard = React.memo(function TokenPreviewCard({ preview, 
       {/* The card never shows the upload itself: its place is held until the converted image is there. */}
       {preview.isOptimizing && <Skeleton className="atlas-token-card__pending" live />}
       {preview.refused !== undefined && <p className="atlas-token-card__refused" role="alert">{preview.refused}</p>}
-      {isCropEditable && <><div className="atlas-token-card__mask" /><img className="atlas-token-card__ring" src={tokenRingImageUrl} alt="" /></>}
+      {framed && <><div className="atlas-token-card__mask" />{ringImage}</>}
 
       <LabelTooltip label={t('creator.select', { name: preview.name })}>
         <button
@@ -215,7 +220,7 @@ export const TokenPreviewCard = React.memo(function TokenPreviewCard({ preview, 
 
   return (
     <div
-      className={cn('atlas-token-card', `atlas-token-card--${mode}`, preview.isSelected && 'atlas-selected', !isCropEditable && 'atlas-token-card--unframed', entrance === null && 'atlas-token-card--settled')}
+      className={cn('atlas-token-card', `atlas-token-card--${mode}`, preview.isSelected && 'atlas-selected', !framed && 'atlas-token-card--unframed', entrance === null && 'atlas-token-card--settled')}
       style={{ '--atlas-enter-index': Math.min(entrance ?? 0, ENTER_STAGGER_CAP) } as React.CSSProperties}
     >
       {isCropEditable ? <LabelTooltip label={t('creator.cropHint')}>{art}</LabelTooltip> : art}

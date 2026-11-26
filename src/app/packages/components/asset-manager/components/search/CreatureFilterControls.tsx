@@ -9,7 +9,8 @@ import type { CreatureFilterPanel } from '../../hooks/useCreatureFilters';
 import { FilterSection } from './FilterSection';
 import { OptionFilter } from './OptionFilter';
 import { RangeFilter } from './RangeFilter';
-import { t } from '../../../../../i18n';
+import { filterGlyph } from '../../search/filterGlyphs';
+import { t, tPointer } from '../../../../../i18n';
 
 const STATBLOCK_CHOICES = [
   { value: 'any', label: t('filters.all') },
@@ -92,6 +93,7 @@ export function CreatureFilterControls({ panel, statblockFilter = true }: Creatu
     <OptionFilter
       key={facet.definition.id}
       title={facet.definition.label}
+      icon={filterGlyph(facet.definition.id)}
       options={facet.options}
       onChange={(key, state) => setSelection((current) => withOptionState(current, facet.definition.id, key, state))}
     />
@@ -99,7 +101,7 @@ export function CreatureFilterControls({ panel, statblockFilter = true }: Creatu
 
   return (
     <>
-      <p className="atlas-filter-panel__hint">{t('filters.hint')}</p>
+      <p className="atlas-filter-panel__hint">{tPointer('filters.hint')}</p>
       {statblockFilter && (
         <FilterSection title={t('filters.statblock')} active={selection.statblock !== 'any'}>
           <SegmentedControl

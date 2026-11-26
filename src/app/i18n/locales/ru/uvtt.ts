@@ -11,4 +11,5 @@ export const uvtt: Translation = {
   },
   'uvtt.openFailed': 'Не удалось открыть «{name}». Сцена лежит на вкладке «Сцены».',
   'uvtt.collectionGone': 'Коллекции больше нет. Выберите другую и попробуйте снова.',
+  'uvtt.notMaps.touch': { one: '{files} — не карта, которую Atlas может импортировать. Выберите файл .dd2vtt, .uvtt или .df2vtt либо видео WebM или MP4.', few: '{files} — не карты, которые Atlas может импортировать. Выберите файл .dd2vtt, .uvtt или .df2vtt либо видео WebM или MP4.', many: '{files} — не карты, которые Atlas может импортировать. Выберите файл .dd2vtt, .uvtt или .df2vtt либо видео WebM или MP4.', other: '{files} — не карты, которые Atlas может импортировать. Выберите файл .dd2vtt, .uvtt или .df2vtt либо видео WebM или MP4.' },
 };

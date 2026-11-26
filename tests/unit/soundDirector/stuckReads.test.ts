@@ -1,12 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { CachedSound } from '@/app/sound/codec/opusCache';
-import { readSoundPeaks } from '@/app/sound/codec/soundPeaksClient';
 import { STUCK_AFTER_MS } from '@/app/sound/codec/stuckWatch';
 import type { SoundRecord } from '@/app/sound/soundTypes';
-import { backgroundCopies, SoundCopies, type CopyCache, type SoundFileAccess } from '@/app/soundDirector/soundCopies';
+import { backgroundCopies, SoundCopies, type SoundFileAccess } from '@/app/soundDirector/soundCopies';
 import { prepareSource, type PreparedSource } from '@/app/soundDirector/sourcePrepare';
-import { record } from '../../helpers/soundDirectorRig';
+import { FakeCopyFolder, factsOf, record } from '../../helpers/soundDirectorRig';
 
 class FakeWorker {
   static made: FakeWorker[] = [];
@@ -19,35 +17,23 @@ class FakeWorker {
   say(message: unknown): void { this.onmessage?.({ data: message } as MessageEvent<unknown>); }
 }
 
-vi.mock('@/app/sound/codec/soundPeaksWorker?worker&inline', () => ({ default: class { constructor() { return new FakeWorker(); } } }));
 vi.mock('@/app/soundDirector/sourceWorker?worker&inline', () => ({ default: class { constructor() { return new FakeWorker(); } } }));
-
-const copy = (hash: string): CachedSound => ({ hash, byteLength: 1, frames: 48000, channels: 2, lufs: -20, truePeakDb: -3, lastUsed: 0 });
 
 function copies(read: SoundFileAccess['read'], prepare: (source: ArrayBuffer | Blob) => Promise<PreparedSource> = () => Promise.resolve({ hash: 'h', source: new Blob([]) }), parallel?: number): { made: SoundCopies; refused: string[]; done: () => string[] } {
   const refused: string[] = [];
   const ran: string[] = [];
-  const cache = {
-    get: () => Promise.resolve(null),
-    put: () => Promise.resolve(),
-    hashOf: () => Promise.resolve(null),
-    remember: () => Promise.resolve(),
-    bytes: () => Promise.resolve(null),
-    blob: () => Promise.resolve(null),
-    setPeaks: () => Promise.resolve(),
-    pin: () => undefined,
-    unpin: () => undefined,
-  } satisfies CopyCache;
+  const folder = new FakeCopyFolder();
   const made = new SoundCopies(
     { statOf: () => ({ size: 1, mtime: 1 }), read, pathNow: ({ filePath }) => filePath },
-    cache,
+    folder,
     { run: (job) => {
       ran.push(job.kind);
-      return Promise.resolve({ ...copy('h'), bytes: new Blob([]) });
+      const bytes = new Blob([]);
+      folder.made.set(bytes, factsOf(job.key));
+      return Promise.resolve({ bytes, frames: 48000, channels: 2, lufs: -20, truePeakDb: -3, peaks: new Uint8Array(0) });
     } },
     prepare,
     (sound) => refused.push(sound.id),
-    () => Promise.resolve(new Uint8Array(0)),
     parallel,
   );
   return { made, refused, done: () => ran };
@@ -129,24 +115,5 @@ describe('copies made at once', () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(made.stateOf(sounds[3]!).state).toBe('ready');
     expect(made.stateOf(sounds[2]!).state).toBe('not-converted');
-  });
-});
-
-describe('a waveform', () => {
-  it('that gets nowhere is stopped, and one that gets somewhere is not', async () => {
-    const stuck = readSoundPeaks(new Blob([]), 48000);
-    const failure = expect(stuck).rejects.toMatchObject({ reason: 'unreadable' });
-    await vi.advanceTimersByTimeAsync(STUCK_AFTER_MS + 1);
-    await failure;
-    expect(FakeWorker.made[0]?.terminated).toBe(true);
-
-    const going = readSoundPeaks(new Blob([]), 48000);
-    const worker = FakeWorker.made[1];
-    for (let at = 0; at < 3; at++) {
-      await vi.advanceTimersByTimeAsync(STUCK_AFTER_MS - 1000);
-      worker?.say({ step: true });
-    }
-    worker?.say({ peaks: Uint8Array.of(1) });
-    await expect(going).resolves.toEqual(Uint8Array.of(1));
   });
 });

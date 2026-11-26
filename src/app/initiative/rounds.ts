@@ -40,15 +40,16 @@ export function backToRoundBefore(initiative: InitiativeState): void {
 
 /**
  * Whether a combatant takes a turn when the turn comes to it: not defeated (`defeated` holds the
- * entry ids whose card shows the skull), not sitting the round out, not waiting after a delay.
+ * entry ids whose card shows the skull), not hidden from the players (`hiddenFromPlayers`),
+ * not sitting the round out, not waiting after a delay.
  */
 export function actsInTurn(entry: InitiativeEntry, defeated: ReadonlySet<string>): boolean {
-  return !defeated.has(entry.id) && !entry.sitsOut && !entry.delayed;
+  return canStillAct(entry, defeated) && !entry.sitsOut;
 }
 
-/** Whether a combatant can act in some round: marks clear when a round begins, a defeat and a delay do not. */
+/** Whether a combatant can act in some round: marks clear when a round begins; a defeat, a hide and a delay do not. */
 export function canStillAct(entry: InitiativeEntry, defeated: ReadonlySet<string>): boolean {
-  return !defeated.has(entry.id) && !entry.delayed;
+  return !defeated.has(entry.id) && !entry.delayed && !entry.hiddenFromPlayers;
 }
 
 /**

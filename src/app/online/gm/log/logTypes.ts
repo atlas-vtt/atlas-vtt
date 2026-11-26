@@ -44,6 +44,8 @@ export interface LoggedRoll {
   readonly roll: SharedRoll;
   /** The token by the id players know it by, when they see it. */
   readonly token: string | null;
+  /** The players whose picture shows the token, where only some do: the rest are told the roll without it. */
+  readonly namedFor?: readonly string[];
   /** False for a GM's roll the players are not shown: only the GM's log has it. */
   readonly shared: boolean;
   readonly face?: RollFace;
@@ -63,6 +65,7 @@ export function rollEntry(stamp: Pick<GmLogEntry, 'id' | 'at' | 'who' | 'name'>,
     ...stamp, kind: 'roll', roll: roll.roll, token: roll.token,
     ...(!roll.shared && { hidden: true as const }),
     ...(roll.face !== undefined && { face: roll.face }),
+    ...(roll.namedFor !== undefined && { namedFor: roll.namedFor }),
     ...(roll.mode !== undefined && roll.to !== undefined && { mode: roll.mode, to: roll.to }),
     ...(roll.flavor !== undefined && { flavor: roll.flavor }),
     ...(roll.speaker !== undefined && { speaker: roll.speaker.speaker }),

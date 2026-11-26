@@ -14,7 +14,7 @@ import { dieGeometry, faceIndexForValue, type DieSides } from './dieGeometry';
 import { faceMarks, type NumeralMark } from './faceMarks';
 import { fitNumeral, type InkBox } from './numeralFit';
 
-const SHEET_CELL = 160;
+export const SHEET_CELL = 160;
 const SHEET_COLS = 6;
 const SHEET_ROWS = 4;
 /**
@@ -22,12 +22,12 @@ const SHEET_ROWS = 4;
  * baking tool). From it follows how large the cell has to land on the face for
  * the numeral to get the requested height.
  */
-const SHEET_FILL = 0.6;
+export const SHEET_FILL = 0.6;
 const SHEET_NUMERALS = 22;
 /** Alpha above which a sheet pixel counts as ink. */
-const INK_ALPHA = 40;
+export const INK_ALPHA = 40;
 /** Assumed ink while the sheet cannot be measured: the drawn height, as wide as tall, centred. */
-const NOMINAL_INK: InkBox = {
+export const NOMINAL_INK: InkBox = {
   x0: SHEET_CELL * (1 - SHEET_FILL) / 2,
   y0: SHEET_CELL * (1 - SHEET_FILL) / 2,
   x1: SHEET_CELL * (1 + SHEET_FILL) / 2,
@@ -42,11 +42,11 @@ function scifiFont(px: number | string): string {
 }
 
 /** Top-left corner of a sheet cell, in sheet pixels. */
-function cellOrigin(cell: number): { left: number; top: number } {
+export function cellOrigin(cell: number): { left: number; top: number } {
   return { left: (cell % SHEET_COLS) * SHEET_CELL, top: Math.floor(cell / SHEET_COLS) * SHEET_CELL };
 }
 
-interface NumeralSheet {
+export interface NumeralSheet {
   image: HTMLImageElement | HTMLCanvasElement;
   /** Ink bounds per cell; null where the canvas cannot be read. */
   ink: InkBox[] | null;
@@ -120,6 +120,11 @@ async function setScifiSheet(): Promise<HTMLCanvasElement> {
   return canvas;
 }
 
+/** The loaded numeral sheet of a font, if it is. */
+export function numeralSheet(font: DiceFont): NumeralSheet | undefined {
+  return sheets.get(font);
+}
+
 /** Whether the numeral sheet of a font is loaded. */
 export function numeralsReady(font: DiceFont): boolean {
   return sheets.has(font);
@@ -182,8 +187,8 @@ function scaleFor(font: DiceFont, sides: DieSides, mark: NumeralMark, ink: InkBo
   return scale;
 }
 
-/** The sheet cell of a numeral, in `ink`, or as drawn when `ink` is null. */
-function numeralSource(sheet: NumeralSheet, cell: number, ink: string | null): { image: CanvasImageSource; sx: number; sy: number } {
+/** The sheet cell of a numeral, in `ink`, or as drawn when `ink` is null. Draw it before asking for the next. */
+export function numeralSource(sheet: NumeralSheet, cell: number, ink: string | null): { image: CanvasImageSource; sx: number; sy: number } {
   const { left: sx, top: sy } = cellOrigin(cell);
   if (ink === null) return { image: sheet.image, sx, sy };
   scratch ??= getDomHost().createCanvas(undefined, { width: SHEET_CELL, height: SHEET_CELL });

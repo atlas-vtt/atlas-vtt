@@ -1,21 +1,26 @@
 import { t } from '../i18n';
-import { BAND_FORMATS, BAND_MAX_PIXELS, bandDecodable, DECODED_MAX_PIXELS, DECODER_MAX_SIDE, decodable, scaledJpegDecodeSize } from './decodeLimits';
+import { fittingCanvas, learnCanvasLimit } from './canvasLimit';
+import { BAND_FORMATS, BAND_MAX_PIXELS, bandDecodable, DECODED_MAX_PIXELS, DECODER_MAX_SIDE, decodable, holdsDecoded, scaledJpegDecodeSize, sourcePixelsWithin } from './decodeLimits';
 import type { BandUnsupportedReason } from './band/bandTypes';
 import { unsupportedMessage } from './band/unsupportedMessage';
-import type { FramePlacement, ImageJob, ImageJobResult, ImageLayout, ThumbnailSpec } from './imageJob';
+import type { FramePlacement, ImageJob, ImageJobResult, ImageLayout, ScaleDown, ThumbnailSpec } from './imageJob';
 import { imageHeader, type ImageHeader } from './imageDimensions';
 import { withDecodedImage } from './imageElement';
 import { fitSize, vectorRasterSize, type Size } from './imageLayout';
 import { BandRefusedError, ImageDecodeError, ImageWorkerPool, type ImageJobOptions } from './ImageWorkerPool';
 import ImageWorker from './imageWorker?worker&inline';
+import { DESKTOP_BUDGETS, imageWorkerCount } from '../platform/deviceBudgets';
+import { deviceProfile } from '../platform/deviceProfile';
 
 export type { FramePlacement, ThumbnailSpec, ImageJobResult as ProcessedImage } from './imageJob';
 
 /**
- * Image conversion for imports: decoding, scaling and WebP encoding run in a
+ * Image conversion for imports: decoding, scaling and encoding run in a
  * pool of workers, so Obsidian stays responsive and a batch uses several
  * cores. Browsers encode images on the CPU only; parallel workers are what
- * make a batch faster.
+ * make a batch faster. What is encoded is WebP, or PNG where the platform
+ * cannot encode WebP (`imageEncoder.ts`): name a stored result by its bytes
+ * (`imageExtension`), never by the format asked for.
  */
 
 export interface ImagePreset {
@@ -56,18 +61,16 @@ export interface ProcessOptions {
   sourcePreview?: ThumbnailSpec | undefined;
   /** Work nobody waits for yet, such as preview conversions; jobs someone waits for run first. */
   background?: boolean;
-  /** The result is stored under a WebP name: a PNG or JPEG that fits is encoded too instead of kept. */
+  /** The result is a derived file (a thumbnail, a cover): a PNG or JPEG that fits is encoded too instead of kept. */
   webpOnly?: boolean;
 }
 
-/** Workers beyond this add little for batches of token art and cost memory. */
-const MAX_WORKERS = 6;
 /**
- * Decoded pixels all running jobs may hold together. Token art runs in
+ * Decoded pixels all running jobs may hold together on a desktop. Token art runs in
  * parallel; a huge map (150 megapixels hold 1.2 GB while converting, the
- * largest 2.1 GB) runs alone.
+ * largest 2.1 GB) runs alone. A tablet's pool gets less (`deviceBudgets.ts`).
  */
-export const MEMORY_BUDGET_BYTES = 1024 ** 3;
+export const MEMORY_BUDGET_BYTES = DESKTOP_BUDGETS.imageWorkerBudget;
 /** Side assumed for an image that reports no size of its own, such as an SVG without dimensions. */
 const UNSIZED_IMAGE_SIDE = 2048;
 const SVG = 'image/svg+xml';
@@ -91,17 +94,14 @@ let disposed = false;
 
 function workerPool(): ImageWorkerPool {
   if (disposed) throw new Error('Image processing has stopped.');
-  pool ??= new ImageWorkerPool(() => new ImageWorker({ name: 'Atlas image processing' }), {
-    maxWorkers: workerCount(),
-    memoryBudget: MEMORY_BUDGET_BYTES,
-  });
+  if (!pool) {
+    const { budgets } = deviceProfile();
+    pool = new ImageWorkerPool(() => new ImageWorker({ name: 'Atlas image processing' }), {
+      maxWorkers: imageWorkerCount(budgets, navigator.hardwareConcurrency || 2),
+      memoryBudget: budgets.imageWorkerBudget,
+    });
+  }
   return pool;
-}
-
-/** One core stays free for Obsidian itself. */
-function workerCount(): number {
-  const cores = navigator.hardwareConcurrency || 2;
-  return Math.min(MAX_WORKERS, Math.max(1, cores - 1));
 }
 
 /** Stops the workers; called when the plugin unloads. */
@@ -111,20 +111,31 @@ export function disposeImageProcessing(): void {
   pool = null;
 }
 
+interface Raster {
+  bitmap: ImageBitmap;
+  /** Set where this device's canvases drew the image smaller than it was to be. */
+  scaledDown?: ScaleDown | undefined;
+}
+
 /**
  * Rasterizes `blob` on the main thread for formats workers cannot decode. A
  * vector image is drawn at the size `layout` asks for, so an SVG map gets a
- * map's pixels rather than a token's.
+ * map's pixels rather than a token's; either at most as large as a canvas
+ * draws here (`canvasLimit.ts`).
  */
-function rasterize(blob: Blob, layout: ImageLayout): Promise<ImageBitmap> {
+async function rasterize(blob: Blob, layout: ImageLayout): Promise<Raster> {
+  await learnCanvasLimit();
   return withDecodedImage(blob, (image) => {
     const natural = { width: image.naturalWidth || UNSIZED_IMAGE_SIDE, height: image.naturalHeight || UNSIZED_IMAGE_SIDE };
-    const { width, height } = blob.type === SVG ? vectorRasterSize(natural, layout) : natural;
-    const canvas = new OffscreenCanvas(width, height);
+    const wanted = blob.type === SVG ? vectorRasterSize(natural, layout) : natural;
+    const canvas = fittingCanvas(wanted);
     const context = canvas.getContext('2d');
     if (!context) throw new Error('Could not create a drawing surface for the image.');
     context.drawImage(image, 0, 0, canvas.width, canvas.height);
-    return canvas.transferToImageBitmap();
+    const scaledDown = canvas.width < wanted.width || canvas.height < wanted.height
+      ? { from: wanted, to: { width: canvas.width, height: canvas.height } }
+      : undefined;
+    return { bitmap: canvas.transferToImageBitmap(), scaledDown };
   });
 }
 
@@ -133,16 +144,26 @@ function jobCost(size: Size | null): number | undefined {
   return size ? size.width * size.height * 4 * 2 : undefined;
 }
 
-/** Raised for a source larger than Atlas can read, with a message to show: the band decoders' cap for their formats, the browser's for the rest. */
+/** What the worker decodes of a source: a JPEG's smaller size only where `ImageDecoder` exists (not in WebKit), else all of it. */
+function decodedSize(header: ImageHeader | null, scaledDecode: ImageJob['scaledDecode']): Size | null {
+  return scaledDecode && typeof ImageDecoder !== 'undefined' ? scaledDecode.decoded : header;
+}
+
+/**
+ * Raised for a source larger than Atlas can read, with a message to show: the band decoders' cap for
+ * their formats, the browser's for the rest, or with `devicePixels` what this device holds decoded.
+ */
 export class ImageTooLargeError extends Error {
-  constructor(readonly size: Size, format?: string) {
+  constructor(readonly size: Size, format?: string, devicePixels?: number) {
     const banded = format !== undefined && BAND_FORMATS.has(format);
-    super(t('image.tooLarge', {
-      width: size.width,
-      height: size.height,
-      megapixels: Math.floor((banded ? BAND_MAX_PIXELS : DECODED_MAX_PIXELS) / 1e6),
-      side: banded ? MAP_MAX_SIDE : DECODER_MAX_SIDE,
-    }));
+    super(devicePixels !== undefined
+      ? t('image.tooLargeForDevice', { width: size.width, height: size.height, megapixels: Math.floor(devicePixels / 1e6) })
+      : t('image.tooLarge', {
+        width: size.width,
+        height: size.height,
+        megapixels: Math.floor((banded ? BAND_MAX_PIXELS : DECODED_MAX_PIXELS) / 1e6),
+        side: banded ? MAP_MAX_SIDE : DECODER_MAX_SIDE,
+      }));
   }
 }
 
@@ -178,8 +199,12 @@ async function process(source: Blob, job: Omit<ImageJob, 'source'>, options: Pro
   const band = bandJobOf(header, job.layout);
   if (header && !decodable(header) && !band) throw new ImageTooLargeError(header, header.format);
   const scaledDecode = band ? undefined : scaledDecodeOf(header, job.layout);
+  // A tablet holds less than the browser decodes: what would be decoded whole past that is refused here.
+  const { imageSourceBytes } = deviceProfile().budgets;
+  const decoded = decodedSize(header, scaledDecode);
+  if (header && decoded && !holdsDecoded(decoded, imageSourceBytes)) throw new ImageTooLargeError(header, header.format, sourcePixelsWithin(imageSourceBytes));
   // A band decode holds the file's bytes, an eighth of the image and the decoder's rows: far less than a decode.
-  const cost = band ? source.size + (jobCost({ width: Math.ceil(header!.width / 8), height: Math.ceil(header!.height / 8) }) ?? 0) : jobCost(scaledDecode?.decoded ?? header);
+  const cost = band ? source.size + (jobCost({ width: Math.ceil(header!.width / 8), height: Math.ceil(header!.height / 8) }) ?? 0) : jobCost(decoded);
   const run: ImageJobOptions = { signal: options.signal, background: options.background ?? false, cost };
   const withCopies = { ...job, thumbnail: options.thumbnail, preview: options.preview, sourcePreview: options.sourcePreview, webpOnly: options.webpOnly, band };
   // One pool for both attempts: after unload it refuses the fallback and frees its bitmap
@@ -191,20 +216,21 @@ async function process(source: Blob, job: Omit<ImageJob, 'source'>, options: Pro
     if (!(error instanceof ImageDecodeError)) throw error;
     return afterEarlierRasters(async () => {
       options.signal?.throwIfAborted();
-      const bitmap = await rasterize(source, job.layout);
-      return workers.run({ ...withCopies, source: bitmap }, { ...run, cost: jobCost(bitmap), transfer: [bitmap] });
+      const { bitmap, scaledDown } = await rasterize(source, job.layout);
+      const result = await workers.run({ ...withCopies, source: bitmap }, { ...run, cost: jobCost(bitmap), transfer: [bitmap] });
+      return scaledDown && !result.scaledDown ? { ...result, scaledDown } : result;
     });
   }
 }
 
-/** `source` scaled down to fit the preset and encoded as WebP; a PNG, JPEG or WebP that fits is kept as it is (see `webpOnly`). */
+/** `source` scaled down to fit the preset and encoded (`imageEncoder.ts`); a PNG, JPEG or WebP that fits is kept as it is (see `webpOnly`). */
 export function optimizeImage(source: Blob, preset: ImagePreset, options: ProcessOptions = {}): Promise<ImageJobResult> {
   const { maxWidth, maxHeight, maxPixels, quality } = preset;
   return process(source, { layout: { kind: 'fit', maxWidth, maxHeight, maxPixels }, quality }, options);
 }
 
 /**
- * A picture drawn off the main thread (a generated map), encoded as WebP like `optimizeImage`
+ * A picture drawn off the main thread (a generated map), encoded like `optimizeImage`
  * encodes an upload, without a PNG between: the bitmap moves to an image worker, which encodes it
  * as it is where it fits the preset. The bitmap is taken over.
  */
@@ -227,13 +253,13 @@ export interface FrameOptions extends ProcessOptions {
   quality: number;
 }
 
-/** A square WebP of `source` placed in a frame; areas it does not cover stay transparent. */
+/** A square picture of `source` placed in a frame, encoded (`imageEncoder.ts`); areas it does not cover stay transparent. */
 export function renderFramedImage(source: Blob, placement: FramePlacement, options: FrameOptions): Promise<ImageJobResult> {
   const { minSize, maxSize, quality } = options;
   return process(source, { layout: { kind: 'frame', placement, minSize, maxSize }, quality }, options);
 }
 
-/** WebP bytes of `source` whose longer side is at most `spec.size` pixels. */
+/** `source` with its longer side at most `spec.size` pixels, as the bytes of a derived file: WebP, or PNG where the platform encodes no WebP. */
 export async function renderThumbnail(source: Blob, spec: ThumbnailSpec, options: Pick<ProcessOptions, 'signal' | 'background'> = {}): Promise<ArrayBuffer> {
   const { image } = await optimizeImage(source, { maxWidth: spec.size, maxHeight: spec.size, quality: spec.quality }, { ...options, webpOnly: true });
   return image.arrayBuffer();

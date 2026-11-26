@@ -249,7 +249,7 @@ export class TesseraServer {
           to: { x: x - part.x, y: y - part.y, width, height },
         });
       });
-      return this.graphics.compose(part.width, part.height, parts);
+      return await this.graphics.compose(part.width, part.height, parts);
     } finally {
       for (const bitmap of bitmaps) bitmap?.close();
     }

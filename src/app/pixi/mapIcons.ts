@@ -1,11 +1,14 @@
 import { t } from '../i18n';
+import { getPinIconDefinition, PIN_ICON_PATHS, type PinIconId } from '../types/pinIcons';
+
 /**
- * Icons stampable onto a map with the draw tool.
+ * The twelve symbols stamps had before they took the pin icons: no longer offered, and drawn as
+ * they always were, so a map stamped then looks the same. Never rename one of these ids, and
+ * give none of them to a pin icon.
  *
- * Values are the inner markup of the matching 24×24 Lucide icon, so the
- * toolbar picker can show the same glyph via `lucide-react`.
+ * Values are the inner markup of the matching 24×24 Lucide icon.
  */
-export const MAP_ICON_SVG: Record<string, string> = {
+export const MAP_ICON_SVG: Readonly<Record<string, string>> = {
   'door-open': '<path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M10 12v.01"/><path d="M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z"/>',
   'door-closed': '<path d="M18 20V6a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v14"/><path d="M2 20h20"/><path d="M14 12v.01"/>',
   'lock': '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
@@ -20,8 +23,8 @@ export const MAP_ICON_SVG: Record<string, string> = {
   'circle-x': '<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>',
 };
 
-/** Human-readable names, shared by the toolbar picker and the drawing context menu. */
-export const MAP_ICON_LABELS: Record<string, string> = {
+/** The names of the twelve older symbols. */
+const MAP_ICON_LABELS: Readonly<Record<string, string>> = {
   'door-open': t('mapIcon.doorOpen'),
   'door-closed': t('mapIcon.doorClosed'),
   'lock': t('mapIcon.lock'),
@@ -36,7 +39,22 @@ export const MAP_ICON_LABELS: Record<string, string> = {
   'circle-x': t('mapIcon.blocked'),
 };
 
-export type MapIconName = keyof typeof MAP_ICON_SVG;
+/** Whether `icon` is a pin icon: one of the symbols the Stamp mode offers. */
+export function isStampIcon(icon: string): icon is PinIconId {
+  return Object.hasOwn(PIN_ICON_PATHS, icon);
+}
 
-/** Icon footprint in world units — one standard square grid cell. */
-export const MAP_ICON_SIZE = 70;
+/** How a stamp's symbol is drawn: a pin icon's silhouette (a path on its 512×512 canvas), or an older symbol's lines (the markup of a 24×24 icon). */
+export type StampGlyph = { readonly kind: 'silhouette'; readonly path: string } | { readonly kind: 'lines'; readonly markup: string };
+
+/** The glyph of the symbol a stamp stores; null for one this Atlas does not know. */
+export function stampGlyph(icon: string): StampGlyph | null {
+  if (isStampIcon(icon)) return { kind: 'silhouette', path: PIN_ICON_PATHS[icon] };
+  return Object.hasOwn(MAP_ICON_SVG, icon) ? { kind: 'lines', markup: MAP_ICON_SVG[icon]! } : null;
+}
+
+/** What a stamp's symbol is called; null for one this Atlas does not know. */
+export function stampIconName(icon: string): string | null {
+  if (isStampIcon(icon)) return getPinIconDefinition(icon).name;
+  return Object.hasOwn(MAP_ICON_LABELS, icon) ? MAP_ICON_LABELS[icon]! : null;
+}

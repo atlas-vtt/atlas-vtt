@@ -2,7 +2,6 @@ import type { Translation } from '../../types';
 
 export const widgets: Translation = {
   'widgets.add': 'Добавить виджет',
-  'widgets.autoSort': 'Сортировать по инициативе',
   'widgets.colour': 'Цвет виджета',
   'widgets.delete': 'Удалить виджет',
   'widgets.deleteEverywhere': 'Удалить из всех сцен',
@@ -18,6 +17,7 @@ export const widgets: Translation = {
   'widgets.name': 'Название виджета',
   'widgets.new': 'Новый виджет',
   'widgets.onlyWhereOn': 'Показывать только там, где включён',
+  'widgets.reorder': 'Перетащите, чтобы изменить порядок',
   'widgets.segments': 'Сегменты',
   'widgets.showAll': 'Показывать все виджеты',
   'widgets.showCount': 'Показывать число',
@@ -30,4 +30,5 @@ export const widgets: Translation = {
   'widgets.type.clock': 'Часы',
   'widgets.type.counter': 'Счётчик',
   'widgets.type.timer': 'Таймер',
+  'widgets.spreadStack': 'Показать все виджеты ({count})',
 };

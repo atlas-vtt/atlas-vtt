@@ -1,4 +1,5 @@
 import { getDomHost } from '../../../host/dom';
+import { fittingCanvas, learnCanvasLimit, releaseCanvas } from '../../../imageProcessing/canvasLimit';
 import { openVideoElement } from './videoElement';
 
 /**
@@ -15,15 +16,23 @@ export async function videoPoster(bytes: BlobPart, mime: string): Promise<ImageB
   }
 }
 
-/** The poster as a PNG, for what takes an image file (thumbnails). */
+/**
+ * The poster as a PNG, for what takes an image file (thumbnails): at the video's size, or fit
+ * within the largest canvas this device draws on (`canvasLimit.ts`).
+ */
 export async function videoPosterBlob(bytes: BlobPart, mime: string): Promise<Blob> {
   const poster = await videoPoster(bytes, mime);
   try {
-    const canvas = new OffscreenCanvas(poster.width, poster.height);
-    const context = canvas.getContext('2d');
-    if (!context) throw new Error('The video poster could not be drawn.');
-    context.drawImage(poster, 0, 0);
-    return await canvas.convertToBlob({ type: 'image/png' });
+    await learnCanvasLimit();
+    const canvas = fittingCanvas({ width: poster.width, height: poster.height });
+    try {
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('The video poster could not be drawn.');
+      context.drawImage(poster, 0, 0, canvas.width, canvas.height);
+      return await canvas.convertToBlob({ type: 'image/png' });
+    } finally {
+      releaseCanvas(canvas);
+    }
   } finally {
     poster.close();
   }

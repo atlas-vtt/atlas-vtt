@@ -4,6 +4,7 @@ import type { TokenEntity } from '../types';
 import type { CardsFight, InitiativeEntry } from '../types/initiativeTypes';
 import { cardsNeeded, type CardGroupOf } from './cardDeal';
 import { sideOf } from './sides';
+import { entryToken } from './party';
 
 /**
  * Every combatant its own card; with `share`, combatants that are not on the players' side and
@@ -11,7 +12,7 @@ import { sideOf } from './sides';
  */
 export function cardGroupOf(tokens: Readonly<Record<string, TokenEntity>>, share: boolean): CardGroupOf {
   return (entry) => {
-    const token = tokens[entry.tokenId];
+    const token = entryToken(tokens, entry);
     if (share && token?.imagePath && sideOf(token) !== 'players') return `art:${token.imagePath}`;
     return `entry:${entry.id}`;
   };

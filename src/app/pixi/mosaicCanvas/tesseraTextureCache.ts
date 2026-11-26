@@ -5,9 +5,10 @@
  */
 import { ImageSource, Rectangle, Texture, UPDATE_PRIORITY, type TextureSource, type Ticker } from 'pixi.js';
 import { tesseraKey, type PixelRect, type TesseraRef } from './pyramid';
+import { DESKTOP_BUDGETS } from '../../platform/deviceBudgets';
 
-/** GPU memory the tessera textures of one renderer may take, beyond the pinned ones. */
-export const TESSERA_TEXTURE_BUDGET_BYTES = 160 * 1024 * 1024;
+/** GPU memory the tessera textures of one renderer may take, beyond the pinned ones, where the cache is told no budget of its device. */
+export const TESSERA_TEXTURE_BUDGET_BYTES = DESKTOP_BUDGETS.tileTextureBudget;
 /** Tessera textures uploaded per frame at most, so a burst of arrivals never stalls one frame. */
 export const TESSERA_UPLOADS_PER_FRAME = 4;
 
@@ -24,6 +25,8 @@ export interface TesseraTextureCacheOptions {
   requestRender: () => void;
   budgetBytes?: number;
   uploadsPerFrame?: number;
+  /** While true, every tessera that arrived uploads in the next frame: nothing is drawn meanwhile whose frames the uploads would slow. */
+  uploadAtOnce?: () => boolean;
 }
 
 interface Entry {
@@ -176,8 +179,9 @@ export class TesseraTextureCache {
   private readonly upload = (): void => {
     if (this.uploads.size === 0) return;
     const done: string[] = [];
+    const cap = this.options.uploadAtOnce?.() ? Infinity : this.uploadsPerFrame;
     for (const key of this.uploads) {
-      if (done.length >= this.uploadsPerFrame) break;
+      if (done.length >= cap) break;
       done.push(key);
     }
     for (const key of done) {

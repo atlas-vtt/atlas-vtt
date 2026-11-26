@@ -1,0 +1,26 @@
+import type { Translation } from '../../types';
+
+export const snapshots: Translation = {
+  'snapshots.deleteBody': 'O instantâneo é removido deste mapa. O mapa em si não muda.',
+  'snapshots.deleteFailed': 'Não foi possível excluir o instantâneo',
+  'snapshots.deleteTitle': 'Excluir "{name}"?',
+  'snapshots.empty': 'Nenhum instantâneo ainda. Salve o mapa como está agora para voltar a esse estado depois, por exemplo antes de um encontro começar.',
+  'snapshots.name': 'Nome do instantâneo',
+  'snapshots.new': 'Novo instantâneo',
+  'snapshots.overwriteBody': 'O instantâneo é substituído pelo mapa como está agora. O estado anterior dele se perde.',
+  'snapshots.overwriteFailed': 'Não foi possível substituir o instantâneo',
+  'snapshots.overwriteTitle': 'Substituir "{name}"?',
+  'snapshots.overwriteWithCurrent': 'Substituir pelo mapa atual',
+  'snapshots.renameFailed': 'Não foi possível renomear o instantâneo',
+  'snapshots.renameNamed': 'Renomear {name}',
+  'snapshots.restoreBody': 'Tokens, alfinetes, névoa, desenhos, iniciativa e tudo o mais neste mapa voltam a ser como eram neste instantâneo.',
+  'snapshots.restoreFailed': 'Não foi possível restaurar o instantâneo',
+  'snapshots.restoreNamed': 'Restaurar {name}',
+  'snapshots.restoreTitle': 'Restaurar "{name}"?',
+  'snapshots.restoreWarning': 'As mudanças feitas desde então se perdem e não podem ser desfeitas. Salve um instantâneo antes para mantê-las.',
+  'snapshots.restored': '"{name}" restaurado',
+  'snapshots.saveFailed': 'Não foi possível salvar o instantâneo',
+  'snapshots.savedAt': 'Salvo em {date}',
+  'snapshots.updatedAt': 'Atualizado em {date}',
+  'snapshots.defaultName': 'Instantâneo',
+};

@@ -2,6 +2,7 @@ import type { Asset } from '../AssetService';
 import { collectionFolderPath } from '../assetPaths';
 import type { BundleFile } from '../collectionBundle/bundleFormat';
 import { besideMap, freePathIn, sceneMapOf, type PathMap } from '../collectionBundle/pathRemap';
+import { siblingPaths, thumbnailFiles } from '../thumbnailFiles';
 import { JSON_FOLDERS } from '../vault-sync/assetFiles';
 import { sceneSnapshotFolder, snapshotOwnerOf } from '../../snapshots/snapshotPaths';
 import { baseName, parentPath } from '../../utils/pathUtils';
@@ -41,13 +42,13 @@ export interface TransferPlan {
   recordPaths: ReadonlyMap<string, string>;
 }
 
-/** The image and thumbnail of every token among `assets`, which each token owns: deleting the token deletes them. */
+/** The image and thumbnail (in every format, `thumbnailFiles`) of every token among `assets`, which each token owns: deleting the token deletes them. */
 export function tokenArtwork(assets: readonly Asset[]): Set<string> {
   const artwork = new Set<string>();
   for (const asset of assets) {
     if (asset.type !== 'token') continue;
     artwork.add(asset.imagePath);
-    if (asset.thumbnailPath) artwork.add(asset.thumbnailPath);
+    for (const path of thumbnailFiles(asset.thumbnailPath)) artwork.add(path);
   }
   return artwork;
 }
@@ -133,6 +134,13 @@ export function planTransfer(input: TransferPlanInput): TransferPlan {
     }
   };
 
+  /** A thumbnail's other format takes the name its twin got, so the two stay one thumbnail (`thumbnailFiles`). */
+  const besideTwin = (file: BundleFile, wanted: string): string => {
+    if (file.role !== 'thumbnail') return wanted;
+    const twin = siblingPaths(file.vaultPath).map((path) => rewrites.get(path)).find((to) => to !== undefined);
+    return twin ? `${twin.slice(0, twin.lastIndexOf('.'))}${wanted.slice(wanted.lastIndexOf('.'))}` : wanted;
+  };
+
   // A scene's thumbnail takes whatever name its map gets, so it is placed after the maps.
   const mapPaths = files.filter((file) => file.role === 'scene-map').map((file) => file.vaultPath);
   const besideMaps: Array<{ file: BundleFile; map: string }> = [];
@@ -144,7 +152,7 @@ export function planTransfer(input: TransferPlanInput): TransferPlan {
     }
     const destination = destinationOf(file);
     if (!destination) continue;
-    const to = place(file, destination.to, destination.op);
+    const to = place(file, besideTwin(file, destination.to), destination.op);
     if (file.role === 'asset-file' && file.owners?.[0]) recordPaths.set(file.owners[0], to);
   }
   for (const { file, map } of besideMaps) {

@@ -2,7 +2,7 @@
 @use '../../../../../styles/tokens' as *;
 @use '../../../../../styles/mixins' as *;
 
-$roofs-inset: $spacing-xs;
+$roofs-inset: $surface-inset;
 $roofs-height: 28px;
 
 .atlas-roofs-toggle {
@@ -13,7 +13,7 @@ $roofs-height: 28px;
   height: $roofs-height;
   padding: 6px;
   border: none;
-  // A capsule like the floors above it, concentric with the switcher's corners
+  // A row like the floors above it, concentric with the switcher's corners
   @include atlas-panel-inset-radius($roofs-inset);
   background: transparent;
   box-shadow: none;

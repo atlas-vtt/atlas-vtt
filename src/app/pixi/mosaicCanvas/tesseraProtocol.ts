@@ -31,9 +31,21 @@ export interface OpenedPyramid {
   pyramid: Pyramid;
 }
 
+/** What the device lets the tessera core hold, told at its start: a worker cannot ask the device itself. */
+export interface TesseraBudgets {
+  /** Bytes of decoded levels all builds may hold together. */
+  decodedLevels: number;
+  /** The cache never grows past this many bytes, whatever the quota. */
+  cacheMax: number;
+  /** Share of the origin's quota the cache may take. */
+  cacheQuotaShare: number;
+  /** The most pixels of a source decoded whole (`maxSourcePixelsFor`); the desktop's when left out. */
+  sourcePixels?: number | undefined;
+}
+
 export type TesseraRequest =
-  /** First message to a worker: which vault's cache to open; null keeps the cache in memory. */
-  | { type: 'init'; appId: string | null }
+  /** First message to a worker: which vault's cache to open (null keeps the cache in memory), and the device's budgets (the desktop's when left out). */
+  | { type: 'init'; appId: string | null; budgets?: TesseraBudgets | undefined }
   /**
    * Opens a map for serving (`prebuild`: builds its pyramid without serving).
    * Sent first without bytes; the worker answers `need-bytes` when the cache
@@ -54,6 +66,10 @@ export type TesseraRequest =
   | { type: 'cancel'; id: number }
   /** Ends an open; its pending requests are answered with an `error`. */
   | { type: 'close'; handle: number }
+  /** Ports of tessera encoder workers the builds hand their tesserae to (`TesseraEncoderPool`); nothing is answered. */
+  | { type: 'encoders'; ports: MessagePort[] }
+  /** Holds the builds before their next tessera (`held`), or lets them go on; nothing is answered. */
+  | { type: 'builds'; held: boolean }
   | { type: 'cache-size'; id: number }
   | { type: 'clear-cache'; id: number }
   /** The stored WebP bytes of a cached pyramid's tesserae, by its hash, never decoded. */
@@ -81,7 +97,8 @@ export type TesseraReply =
 
 /** Unrequested news from the worker; `path` names the file the map was opened or prebuilt from, where one was. */
 export type TesseraEvent =
-  | { type: 'progress'; hash: string; done: number; total: number; path?: string }
+  /** `inBands`: a build of an image read in bands, whose tesserae are served from the cache once written, not cut from decoded levels. */
+  | { type: 'progress'; hash: string; done: number; total: number; path?: string; inBands?: true }
   | { type: 'complete'; hash: string; path?: string }
   /** A build stopped writing the cache (storage full, encoding unsupported); the open map keeps showing. */
   | { type: 'build-failed'; hash: string; message: string; path?: string };
@@ -91,7 +108,12 @@ export interface TesseraReady {
   type: 'ready';
 }
 
-export type TesseraMessage = TesseraReply | TesseraEvent | TesseraReady;
+/** A build is about to encode and the core has no encoder workers: the page starts them and sends `encoders`. */
+export interface TesseraWantsEncoders {
+  type: 'want-encoders';
+}
+
+export type TesseraMessage = TesseraReply | TesseraEvent | TesseraReady | TesseraWantsEncoders;
 
 export function isTesseraEvent(message: TesseraMessage): message is TesseraEvent {
   return message.type === 'progress' || message.type === 'complete' || message.type === 'build-failed';

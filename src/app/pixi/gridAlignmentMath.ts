@@ -61,7 +61,8 @@ export interface MapBounds {
 // ---------------------------------------------------------------------------
 
 const AXIS_THRESHOLD = 0.1;
-const QUADRANT_MARGIN = 0.1;
+/** How far past the map's edge a click still counts as on it, as a share of the map's size. */
+const MAP_EDGE_MARGIN = 0.05;
 
 // ---------------------------------------------------------------------------
 // Functions
@@ -176,22 +177,18 @@ export function getQuadrantBounds(mapBounds: MapBounds, index: 0 | 1 | 2 | 3): M
 }
 
 /**
- * Validates a click is within the active quadrant.
- * Adds ~10% margin tolerance at quadrant edges so near-boundary clicks aren't rejected.
+ * Whether a clicked point lies on the map, with a margin past its edges so that a corner on the
+ * edge is not missed. Measurements may start anywhere on the map: the lit quarter is a suggestion,
+ * since a level padded with black to line up with other levels can have no cell in it.
  */
-export function isPointInQuadrant(
-  point: AlignmentPoint,
-  quadrant: 0 | 1 | 2 | 3,
-  mapBounds: MapBounds,
-): boolean {
-  const qb = getQuadrantBounds(mapBounds, quadrant);
-  const marginX = qb.width * QUADRANT_MARGIN;
-  const marginY = qb.height * QUADRANT_MARGIN;
+export function isPointOnMap(point: AlignmentPoint, mapBounds: MapBounds): boolean {
+  const marginX = mapBounds.width * MAP_EDGE_MARGIN;
+  const marginY = mapBounds.height * MAP_EDGE_MARGIN;
 
   return (
-    point.x >= qb.x - marginX &&
-    point.x <= qb.x + qb.width + marginX &&
-    point.y >= qb.y - marginY &&
-    point.y <= qb.y + qb.height + marginY
+    point.x >= mapBounds.x - marginX &&
+    point.x <= mapBounds.x + mapBounds.width + marginX &&
+    point.y >= mapBounds.y - marginY &&
+    point.y <= mapBounds.y + mapBounds.height + marginY
   );
 }

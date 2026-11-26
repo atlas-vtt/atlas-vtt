@@ -1,4 +1,4 @@
-import { UNDO_BAR_ID } from '../../../../toolbar/toolbarCatalog'
+import { isSideBarId } from '../../../../toolbar/toolbarCatalog'
 import { barSlotOf, isHtmlElement, overflowButtonOf, traySlotOf } from './toolbarEditDom'
 
 /**
@@ -59,13 +59,13 @@ export function laidOutBox(row: Element, slot: HTMLElement): GhostBox {
 
 /**
  * The element a flight leaves from or lands on in `place`: the tool's slot,
- * or "More tools" where the bar has no room for it. The undo/redo bar has
- * only its own slot.
+ * or "More tools" where the bar has no room for it. A bar beside the toolbar
+ * has only its own slot.
  */
 export function flightEnd(row: Element, id: string, place: 'bar' | 'tray'): HTMLElement | null {
   const slot = place === 'bar' ? barSlotOf(row, id) : traySlotOf(row, id)
   if (slot && !slot.hidden) return slot
-  return place === 'bar' && id !== UNDO_BAR_ID ? overflowButtonOf(row) : null
+  return place === 'bar' && !isSideBarId(id) ? overflowButtonOf(row) : null
 }
 
 /**

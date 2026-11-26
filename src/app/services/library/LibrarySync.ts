@@ -1,6 +1,7 @@
 import type { App } from 'obsidian';
 import type { AssetMetadata } from '../AssetService';
-import { desiredLibraryFiles } from './libraryFiles';
+import { LibraryFileMemo } from './libraryFiles';
+import type { IndexSnapshot } from './indexSnapshot';
 import { readLibraryChanges } from './libraryReader';
 import { mergeLibraryChanges, type LibraryMergeResult } from './mergeLibraryChanges';
 import { LibraryWriter } from './libraryWriter';
@@ -24,6 +25,8 @@ const MIGRATED_KEY = 'atlas-vtt:library-files';
 export class LibrarySync {
   private state: LibraryState = emptyLibraryState();
   private readonly writer: LibraryWriter;
+  /** The files the last save asked for, so the next works out only those of records that changed. */
+  private memo = new LibraryFileMemo();
   /** Whether the files have been read once; until then nothing is written, so no file is written from an index older than the vault. */
   private filesRead = false;
   private filesWritten = false;
@@ -42,6 +45,7 @@ export class LibrarySync {
   /** Takes the bookkeeping stored with a loaded index. */
   restore(state: LibraryState): void {
     this.state = state;
+    this.memo = new LibraryFileMemo();
   }
 
   /** Whether this device has written its library to vault files. */
@@ -109,9 +113,9 @@ export class LibrarySync {
   }
 
   /** Writes what changed to the library files, once they have been read; the first full write migrates this device. */
-  async persist(snapshot: AssetMetadata): Promise<void> {
+  async persist(snapshot: IndexSnapshot): Promise<void> {
     if (!this.filesRead) return;
-    await this.writer.write(desiredLibraryFiles(snapshot));
+    await this.writer.write(this.memo.files(snapshot));
     this.filesWritten = true;
     if (this.migrated) return;
     this.app.saveLocalStorage(MIGRATED_KEY, true);

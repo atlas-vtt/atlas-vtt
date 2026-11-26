@@ -12,6 +12,7 @@ export const image = {
   'image.displayFailed': 'Failed to display image on player view',
   'image.closed': 'Image display closed',
   'image.tooLarge': 'This image is {width} × {height} px, larger than Obsidian can open: at most {megapixels} megapixels and {side} px a side. Export it smaller and import it again.',
+  'image.tooLargeForDevice': 'This image is {width} × {height} px, larger than this device can open: at most {megapixels} megapixels. Export it smaller and import it again.',
   'image.unsupported': 'This image is {width} × {height} px, more than Obsidian opens at once, and Atlas can read an image this large only as a plain JPEG or a PNG without interlacing. {advice}',
   'image.unsupported.progressive': 'Save it as a plain JPEG, not progressive, and import it again.',
   'image.unsupported.interlaced': 'Save the PNG without interlacing and import it again.',

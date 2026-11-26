@@ -87,6 +87,11 @@ export class PresentedSceneStore implements PresentedSceneSource {
     this.listeners.forEach((listener) => listener(next));
   }
 
+  /** The map at `filePath` is gone: a scene presented from it is presented no longer, so none made later at its path reaches players unasked. */
+  mapDeleted(filePath: string): void {
+    if (this.scene?.filePath === filePath) this.set(null);
+  }
+
   private read(): PresentedScene | null {
     try {
       return readPresentedScene(this.storage.loadLocalStorage(PRESENTED_SCENE_KEY));

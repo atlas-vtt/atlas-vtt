@@ -1,6 +1,7 @@
 import type { Translation } from '../../types';
 
 export const settings: Translation = {
+  'settings.experimental.heading': 'Экспериментальные функции',
   'settings.hotkeys.assignFailed': 'Не удалось назначить сочетание',
   'settings.hotkeys.clear': 'Очистить сочетание',
   'settings.hotkeys.defaultSuffix': '{group} · По умолчанию: {key}',
@@ -49,6 +50,7 @@ export const settings: Translation = {
   'settings.updates.heading': 'Обновления',
   'settings.updates.notice': 'Atlas {version} готов к установке.',
   'settings.updates.noticeTitle': 'Доступно обновление',
+  'settings.updates.partUpdate': 'Atlas обновлён на этом устройстве лишь частично: работает версия {running}, остальное от версии {installed}. Программа синхронизации пропустила его большой файл main.js; скопируйте этот файл с другого устройства или из выпуска Atlas {installed} на GitHub в папку плагина в этом хранилище.',
   'settings.updates.showAfterUpdates': 'Показывать изменения после обновления',
   'settings.updates.showAfterUpdatesDesc': 'Один раз открывать описание выпуска после обновления Atlas. Список изменений всегда доступен здесь.',
   'settings.updates.upToDate': 'Установлена последняя версия Atlas',
@@ -63,4 +65,17 @@ export const settings: Translation = {
   'settings.storage.mapImageCache': 'Кэш изображений карт',
   'settings.storage.mapImageCacheInfo': 'Хранит фрагменты каждой карты на этом устройстве, чтобы карты открывались быстро. Всё очищенное строится заново, когда понадобится карте.',
   'settings.storage.unavailable': 'Недоступно',
+  'settings.maps.fogEdge': 'Край тумана',
+  'settings.maps.fogEdgeCrackled': 'Трещины',
+  'settings.maps.fogEdgeHint': '«Мягкий» растворяет край тумана; «Трещины» превращает его в зернистый, растрескавшийся край. Ползунок задаёт, как далеко он заходит в обе стороны от контура тумана, в пикселях карты, для вас и ваших игроков, так что карта видна на это расстояние внутри тумана. 0 оставляет край жёстким.',
+  'settings.maps.fogEdgeSoft': 'Мягкий',
+  'settings.maps.selectionBar': 'Показывать панель выделения',
+  'settings.maps.selectionBarHint': '«Изменить», «Дублировать» и «Удалить» над выделенным на карте. На сенсорном экране она видна всегда.',
+  'settings.navigation.zoomButtons': 'Показывать кнопки масштаба',
+  'settings.navigation.zoomButtonsHint': 'Кнопки у правого края карты приближают, отдаляют и вписывают всю карту.',
+  'settings.navigation.fingers': 'Пальцы',
+  'settings.navigation.fingersPan': 'Двигать карту',
+  'settings.navigation.fingersPanHint': 'Перо рисует, закрашивает и измеряет. Один палец двигает карту, а касание по-прежнему ставит то, что ставит инструмент.',
+  'settings.navigation.fingersTool': 'Использовать инструмент',
+  'settings.navigation.fingersToolHint': 'Один палец рисует, закрашивает и измеряет, как перо. Двумя пальцами карту двигают и масштабируют.',
 };

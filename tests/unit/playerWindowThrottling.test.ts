@@ -68,11 +68,11 @@ describe('PlayerWindowService and background throttling', () => {
       getTableTvSettings: () => DEFAULT_TABLE_TV_SETTINGS,
       getTableTvDevice: () => DEFAULT_TABLE_TV_DEVICE,
       onChange: () => vi.fn(),
-      initiativeLayout: () => ({ fromTurn: true, dock: 'right', collapsed: false }),
+      initiativeLayout: () => ({ fromTurn: true, dock: 'right', edges: ['right'], facesPlayers: false }),
     };
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
     // Test doubles: the service reads only what these give
-    return new PlayerWindowService({ workspace: { on: vi.fn(() => ({})), offref: vi.fn() } } as never, store as never, settings as never);
+    return new PlayerWindowService({ workspace: { containerEl: document.body, on: vi.fn(() => ({})), offref: vi.fn() } } as never, store as never, settings as never);
   }
 
   it('keeps the player window awake while it is one, and lets a popout that stays open as something else sleep again', () => {

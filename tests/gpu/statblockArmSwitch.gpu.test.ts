@@ -89,7 +89,7 @@ describe('the Add to next roll switch in the real stylesheet', () => {
     }
   });
 
-  it('sits after its number, centred on it, a 28 × 16 pill whose thumb keeps 2 px all round', () => {
+  it('sits after its number, centred on it, a 28 × 16 pill whose thumb keeps the 4 px inset all round', () => {
     const { container } = render(React.createElement('div', { className: 'atlas-vtt-plugin', style: { width: 380, padding: 16 } }, sheet('B.md')));
     for (const id of ['armed001', 'armed002', 'armed004']) {
       const block = frame(container, id);
@@ -100,7 +100,7 @@ describe('the Add to next roll switch in the real stylesheet', () => {
       expect(box.left - value.right, id).toBeCloseTo(4, 0);
       expect((box.top + box.bottom) / 2, id).toBeCloseTo((value.top + value.bottom) / 2, 0);
       const thumb = rect(pill.querySelector('.atlas-toggle__thumb')!);
-      expect([thumb.left - box.left, thumb.top - box.top, box.bottom - thumb.bottom], id).toEqual([2, 2, 2]);
+      expect([thumb.left - box.left, thumb.top - box.top, box.bottom - thumb.bottom], id).toEqual([4, 4, 4]);
       expect(getComputedStyle(pill).borderTopLeftRadius).toBe(getComputedStyle(pill.parentElement!).borderTopLeftRadius);
     }
   });

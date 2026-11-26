@@ -15,7 +15,7 @@ import { fieldByKey, fieldKeysOf, labelToKey } from '../../model/fieldKeys';
 import { newFieldFor } from '../../model/newFields';
 import { spliced, withChildren } from '../../model/treeEdit';
 import { updateBlock } from '../../model/treeOps';
-import { bindHeaderPart, fieldNamedBy } from '../../model/headerBinding';
+import { bindHeaderPart, fieldNamedBy, rekeyHeaderPart } from '../../model/headerBinding';
 import { HEADER_PARTS, headerPartOf } from '../../model/templateHeader';
 import { findBlock } from '../../model/treeQueries';
 import {
@@ -25,7 +25,7 @@ import { labelTargetOf, type LabelPart } from './labelTargets';
 
 export interface LabelCommit {
   template: StatblockTemplate;
-  /** The field a block without one was bound to. */
+  /** The field a block without one was bound to, or the collection's key a part of the header took. */
   bound?: { key: FieldKey; created: boolean; fromCollection: boolean } | undefined;
 }
 
@@ -104,18 +104,24 @@ function reheading(template: StatblockTemplate, block: TemplateBlock, heading: s
 }
 
 /**
- * A part of the header renamed: its field's label, never its key; the field comes with it where the template had none.
- * A name another field of the template has points the part at that field instead (a level the system calls by another
- * name, kept under its own key), where the part can show it (`bindHeaderPart`).
+ * A part of the header renamed: its field's label; the field comes with it where the template had none. A name another
+ * field of the template has points the part at that field instead (a level the system calls by another name, kept under
+ * its own key), where the part can show it (`bindHeaderPart`). A name no field has, but that names a key the collection's
+ * statblocks hold, moves the part's field to that key, as a new block's first label does (`rekeyHeaderPart`): a level
+ * renamed Tier shows the statblocks' `tier`. Otherwise the key stays.
  */
-function renameHeaderPart(template: StatblockTemplate, id: string, label: string): StatblockTemplate {
+function renameHeaderPart(template: StatblockTemplate, id: string, label: string, collectionKeys: Iterable<FieldKey>): LabelCommit {
   const part = headerPartOf(template, id);
-  if (!part || !label) return template;
+  if (!part || !label) return { template };
   const named = fieldNamedBy(template.fields, label, part.key);
   const bound = named ? bindHeaderPart(template, part.id, named.key) : template;
-  if (bound !== template) return bound;
+  if (bound !== template) return { template: bound };
   const field = fieldByKey(template.fields, part.key);
-  return field ? updateField(template, field.key, { label }) : addField(template, { ...HEADER_PARTS[part.id].field, label });
+  const relabelled = field ? updateField(template, field.key, { label }) : addField(template, { ...HEADER_PARTS[part.id].field, label });
+  const used = named ? null : collectionKey(collectionKeys, labelToKey(label, []));
+  const rekeyed = used === null ? relabelled : rekeyHeaderPart(relabelled, part.id, used);
+  if (used === null || rekeyed === relabelled) return { template: relabelled };
+  return { template: rekeyed, bound: { key: used, created: false, fromCollection: true } };
 }
 
 /**
@@ -126,7 +132,7 @@ function renameHeaderPart(template: StatblockTemplate, id: string, label: string
 export function commitLabel(
   template: StatblockTemplate, id: string, text: string, collectionKeys: Iterable<FieldKey> = [], part?: LabelPart,
 ): LabelCommit {
-  if (headerPartOf(template, id)) return { template: renameHeaderPart(template, id, text.trim()) };
+  if (headerPartOf(template, id)) return renameHeaderPart(template, id, text.trim(), collectionKeys);
   const block = findBlock(template.layout.blocks, id)?.block;
   const target = block ? labelTargetOf(block, template.fields, part) : null;
   if (!block || !target) return { template };

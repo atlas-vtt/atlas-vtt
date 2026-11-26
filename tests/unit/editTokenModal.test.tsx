@@ -22,7 +22,7 @@ function open(resources: NonNullable<Character['resources']>, definitions: reado
   return { input, saved: (): Character => store.getState().objects.tokens.t1 as Character };
 }
 
-describe('Edit Token resources', () => {
+describe('Edit token resources', () => {
   it('names a static value plainly: it has no maximum, it is the value', () => {
     const { input } = open({ hp: { current: 5, max: 8 }, armor: { current: 15, max: 15 } }, [HP, ARMOR]);
     expect(input('Armor').value).toBe('15');

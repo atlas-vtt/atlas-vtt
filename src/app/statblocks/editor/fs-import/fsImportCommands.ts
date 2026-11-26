@@ -8,6 +8,7 @@
 import { TFile, type App, type Menu, type Plugin, type TAbstractFile } from 'obsidian';
 import { experimentalFeatureOn } from '../../../experimental/experimentalFeatures';
 import { runInBackground } from '../../../utils/backgroundTask';
+import { fileInputAttrs } from '../../../platform/fileInputAccept';
 import { importLayoutFile } from './layoutImportFlow';
 import { t } from '../../../i18n';
 
@@ -18,7 +19,7 @@ export function pickLayoutFile(app: App, doc: Document): void {
   const input = doc.body.createEl('input', {
     type: 'file',
     cls: 'atlas-hidden-file-input',
-    attr: { accept: '.json,application/json' },
+    attr: fileInputAttrs('.json,application/json'),
   });
   input.addEventListener('change', () => {
     const file = input.files?.[0];

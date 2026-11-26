@@ -13,7 +13,7 @@ import { fogRectangle } from '../../../../../tests/helpers/fogOperations';
 
 describe('playerLightingLayers', () => {
   function overlays(): GmOverlays {
-    return { wallEditor: new Container(), lightZones: new Container(), levelSurfaces: new Container(), exploredMemory: new Container(), doorBadges: new Container(), lightMarkers: new Container(), rangeRings: new Container(), sightAids: new Container() };
+    return { wallEditor: new Container(), lightZones: new Container(), levelSurfaces: new Container(), exploredMemory: new Container(), rooms: new Container(), doorBadges: new Container(), lightMarkers: new Container(), rangeRings: new Container(), sightAids: new Container() };
   }
 
   it('switches the lighting to the player view and hides every GM overlay, light markers, range rings and sight aids included', () => {
@@ -25,6 +25,7 @@ describe('playerLightingLayers', () => {
       { layer: gm.lightZones, visible: false },
       { layer: gm.levelSurfaces, visible: false },
       { layer: gm.exploredMemory, visible: false },
+      { layer: gm.rooms, visible: false },
       { layer: gm.doorBadges, visible: false },
       { layer: gm.lightMarkers, visible: false },
       { layer: gm.rangeRings, visible: false },
@@ -60,6 +61,7 @@ describe('playerLightingLayers', () => {
       { layer: gm.lightZones, visible: false },
       { layer: gm.levelSurfaces, visible: false },
       { layer: gm.exploredMemory, visible: false },
+      { layer: gm.rooms, visible: false },
       { layer: gm.doorBadges, visible: false },
       { layer: gm.lightMarkers, visible: false },
       { layer: gm.rangeRings, visible: false },

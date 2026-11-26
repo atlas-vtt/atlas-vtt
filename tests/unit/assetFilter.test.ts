@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { filterAssets, filterFolders, type AssetFilter } from '../../src/app/packages/components/asset-manager/utils/assetFilter';
+import { filterAssets, filterFolders, matchingAssets, type AssetFilter } from '../../src/app/packages/components/asset-manager/utils/assetFilter';
 import type { AnyAsset, Folder, TokenAsset } from '../../src/app/packages/components/asset-manager/types';
 
 const token = (name: string, folderId: string | null, tags: string[] = []): TokenAsset => ({
@@ -23,37 +23,37 @@ const forest = { id: 'forest-id', name: 'Forest' };
 const filter = (overrides: Partial<AssetFilter>): AssetFilter => ({ tab: 'tokens', folderId: null, search: '', tags: [], ...overrides });
 
 describe('filterAssets', () => {
-  it('lists only the open folder while no tag is selected', () => {
-    expect(names(filterAssets(assets, folders, filter({})))).toEqual(['Goblin']);
-    expect(names(filterAssets(assets, folders, filter({ folderId: 'monsters' })))).toEqual(['Wolf']);
+  it('lists only the open folder while nothing narrows the list', () => {
+    expect(names(filterAssets(assets, filter({})))).toEqual(['Goblin']);
+    expect(names(filterAssets(assets, filter({ folderId: 'monsters' })))).toEqual(['Wolf']);
   });
 
-  it('finds tagged assets in every folder from the root', () => {
-    expect(names(filterAssets(assets, folders, filter({ tags: [forest] })))).toEqual(['Goblin', 'Wolf', 'Ghoul']);
+  it('finds tagged assets in every folder of the tab, wherever the GM stands', () => {
+    expect(names(filterAssets(assets, filter({ tags: [forest] })))).toEqual(['Goblin', 'Wolf', 'Ghoul']);
+    expect(names(filterAssets(assets, filter({ folderId: 'undead', tags: [forest] })))).toEqual(['Goblin', 'Wolf', 'Ghoul']);
   });
 
-  it('finds tagged assets in every subfolder of the open folder', () => {
-    expect(names(filterAssets(assets, folders, filter({ folderId: 'monsters', tags: [forest] })))).toEqual(['Wolf', 'Ghoul']);
-  });
-
-  it('lists every folder below the open one while other filters narrow the list', () => {
-    expect(names(filterAssets(assets, folders, filter({ folderId: 'monsters', narrowed: true })))).toEqual(['Wolf', 'Ghoul']);
+  it('lists every folder of the tab while other filters narrow the list', () => {
+    expect(names(filterAssets(assets, filter({ folderId: 'monsters', narrowed: true })))).toEqual(['Goblin', 'Wolf', 'Ghoul', 'Innkeeper']);
     expect(filterFolders(folders, filter({ narrowed: true }))).toEqual([]);
   });
 
-  it('searches every folder from the root and every subfolder of the open folder', () => {
-    expect(names(filterAssets(assets, folders, filter({ search: 'o' })))).toEqual(['Goblin', 'Wolf', 'Ghoul']);
-    expect(names(filterAssets(assets, folders, filter({ folderId: 'monsters', search: 'o' })))).toEqual(['Wolf', 'Ghoul']);
+  it('searches every folder of the tab, and takes a search of blanks for none', () => {
+    expect(names(filterAssets(assets, filter({ search: 'o' })))).toEqual(['Goblin', 'Wolf', 'Ghoul']);
+    expect(names(filterAssets(assets, filter({ folderId: 'monsters', search: 'o' })))).toEqual(['Goblin', 'Wolf', 'Ghoul']);
+    expect(names(filterAssets(assets, filter({ folderId: 'monsters', search: '  ' })))).toEqual(['Wolf']);
   });
 
   it('requires every selected tag and the search', () => {
-    expect(names(filterAssets(assets, folders, filter({ tags: [forest, { id: 'beast', name: 'Beast' }] })))).toEqual(['Wolf']);
-    expect(names(filterAssets(assets, folders, filter({ tags: [forest], search: 'gh' })))).toEqual(['Ghoul']);
+    expect(names(filterAssets(assets, filter({ tags: [forest, { id: 'beast', name: 'Beast' }] })))).toEqual(['Wolf']);
+    expect(names(filterAssets(assets, filter({ tags: [forest], search: 'gh' })))).toEqual(['Ghoul']);
   });
+});
 
-  it('survives folders whose parents form a cycle', () => {
-    const cyclic = [folder('a', 'b'), folder('b', 'a')];
-    expect(names(filterAssets([token('Loop', 'b', ['Forest'])], cyclic, filter({ folderId: 'a', tags: [forest] })))).toEqual(['Loop']);
+describe('matchingAssets', () => {
+  it('is what a filter shows, from every folder, also while nothing narrows the list yet', () => {
+    expect(names(matchingAssets(assets, filter({ folderId: 'monsters' })))).toEqual(['Goblin', 'Wolf', 'Ghoul', 'Innkeeper']);
+    expect(names(matchingAssets(assets, filter({ folderId: 'npcs', tags: [forest] })))).toEqual(names(filterAssets(assets, filter({ folderId: 'npcs', tags: [forest] }))));
   });
 });
 

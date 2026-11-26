@@ -31,6 +31,9 @@ async function rewritten(bytes: Uint8Array, frames: number): Promise<Uint8Array>
   return new Uint8Array(await writer.finish(frames).arrayBuffer());
 }
 
+/** What every test conversion is told of its source: Atlas writes it into the copy's comments. */
+export const COPY_TAGS = { key: 'a'.repeat(64), from: 'source.wav' } as const;
+
 export function memoryBytes(bytes: Uint8Array): SoundBytes {
   return { byteLength: bytes.length, read: (start, end) => Promise.resolve(bytes.slice(start, end)) };
 }

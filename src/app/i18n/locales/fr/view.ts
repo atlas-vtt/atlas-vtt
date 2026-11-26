@@ -1,0 +1,26 @@
+import type { Translation } from '../../types';
+
+export const view: Translation = {
+  'view.copyFailed': 'Impossible de copier le chemin du fichier',
+  'view.copyPath': 'Copier le chemin du fichier',
+  'view.more': 'Plus d\'options',
+  'view.zoom': 'Zoom',
+  'view.zoomIn': 'Zoom avant',
+  'view.zoomOut': 'Zoom arrière',
+  'view.pathCopied': 'Chemin du fichier copié dans le presse-papiers',
+  'view.rename': 'Renommer…',
+  'view.reveal': 'Afficher dans l\'explorateur de fichiers',
+  'view.splitDown': 'Diviser vers le bas',
+  'view.splitRight': 'Diviser vers la droite',
+  'view.mainWindowOnly': 'Atlas fonctionne dans votre fenêtre Obsidian principale. Pour utiliser deux écrans, déplacez plutôt vos notes dans une nouvelle fenêtre.',
+  'view.initializing': 'Initialisation…',
+  'view.sceneNotFound': 'Fichier de scène introuvable : {path}',
+  'view.preparing': 'Préparation…',
+  'view.canvas': 'Canevas Atlas',
+  'view.player': 'Vue joueurs',
+  'view.playerRestoreFailed': 'Impossible de restaurer la vue joueurs. Envoyez de nouveau une scène dans cette fenêtre.',
+  'view.connecting': 'Connexion à la session de jeu…',
+  'view.playerTitle': 'Vue joueurs : {name}',
+  'view.playerDefault': 'Vue joueurs',
+  'view.noGraphics': 'Atlas a besoin de l\'accélération graphique pour dessiner les cartes. Activez l\'accélération matérielle dans les paramètres généraux d\'Obsidian, ou vérifiez vos pilotes graphiques.',
+};

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { LayerPlay, Mood, SoundInfo, TableSound } from '@/app/sound/soundTypes';
 import type { SoundBuffer, SoundConvolverNode, SoundNode } from '@/app/sound/engine/audioNodes';
-import { desiredSound, reverbSend } from '@/app/sound/engine/desiredSound';
+import { kWeightedEnergy } from '@/app/sound/codec/loudness';
+import { desiredSound, reverbMix } from '@/app/sound/engine/desiredSound';
 import { roomImpulse, roomTailSeconds } from '@/app/sound/engine/roomImpulse';
 import { RoomReverb } from '@/app/sound/engine/roomReverb';
 import { SoundClockMap } from '@/app/sound/engine/soundClockMap';
@@ -25,16 +26,26 @@ function mood(partial: Partial<Mood>): Mood {
 
 const layerOf = (state: TableSound, key: string): LayerPlay | undefined => state.layers.find((play) => play.sound.key === key);
 
+/** In dB, how much louder a steady dark sound (white noise under a 200 Hz one-pole low-pass) comes out of an impulse than it goes in. */
+function darkLoudnessGainDb(impulse: Float32Array): number {
+  const pole = Math.exp((-2 * Math.PI * 200) / SOUND_RATE);
+  const darkened = (input: Float32Array): Float32Array => {
+    const out = new Float32Array(input.length + SOUND_RATE / 2);
+    let low = 0;
+    for (let i = 0; i < out.length; i++) out[i] = low = pole * low + (1 - pole) * (input[i] ?? 0);
+    return out;
+  };
+  return 10 * Math.log10(kWeightedEnergy(darkened(impulse)) / kWeightedEnergy(darkened(Float32Array.of(1))));
+}
+
 describe('a room\'s impulse', () => {
-  it('is the same on every device, as loud for every room, and dies away', () => {
+  it('is the same on every device, as loud as what goes in for every room, and dies away', () => {
     for (const room of ['room', 'hall', 'cave', 'cathedral'] as const) {
       const [left, right] = roomImpulse(room, SOUND_RATE);
       expect(roomImpulse(room, SOUND_RATE)[0]).toEqual(left);
       expect(left.length).toBeCloseTo(roomTailSeconds(room) * SOUND_RATE, -2);
       for (const side of [left, right]) {
-        let energy = 0;
-        for (const value of side) energy += value * value;
-        expect(energy).toBeCloseTo(1, 5);
+        expect(Math.abs(darkLoudnessGainDb(side))).toBeLessThan(1);
         const tenth = Math.floor(side.length / 10);
         const sum = (from: number): number => side.subarray(from, from + tenth).reduce((total, value) => total + value * value, 0);
         expect(sum(side.length - tenth)).toBeLessThan(sum(0) / 1000);
@@ -48,15 +59,29 @@ describe('a room\'s impulse', () => {
 });
 
 describe('what a voice sends', () => {
-  it('is the amount squared, nothing for what is no amount, and the room the state names', () => {
-    expect(reverbSend(0.5)).toBe(0.25);
-    expect(reverbSend(2)).toBe(1);
-    for (const nothing of [undefined, 0, -1, Number.NaN]) expect(reverbSend(nothing)).toBe(0);
+  it('splits its power between channel and room, wetter with the amount but never louder, all dry for what is no amount', () => {
+    const power = ({ dry, wet }: { dry: number; wet: number }): number => dry * dry + wet * wet;
+    let wetter = 0;
+    for (let amount = 0.05; amount <= 1; amount += 0.05) {
+      const mix = reverbMix(amount);
+      expect(power(mix)).toBeCloseTo(1, 12);
+      expect(mix.wet).toBeGreaterThan(wetter);
+      wetter = mix.wet;
+    }
+    // A full knob is clearly wet, the tail twice as loud as what stays dry; half is a touch of room.
+    expect((reverbMix(1).wet / reverbMix(1).dry) ** 2).toBeCloseTo(2, 12);
+    expect((reverbMix(0.5).wet / reverbMix(0.5).dry) ** 2).toBeCloseTo(1 / 8, 12);
+    expect(reverbMix(2)).toEqual(reverbMix(1));
+    for (const nothing of [undefined, 0, -1, Number.NaN]) expect(reverbMix(nothing)).toEqual({ dry: 1, wet: 0 });
+  });
+
+  it('is the room the state names, and the mix of each play', () => {
     const dry = moodTransition(EMPTY_TABLE_SOUND, mood({ layers: [{ sound: 'rain', levelDb: 0 }] }), SOUNDS, 0);
     expect(desiredSound(dry, 100)).toMatchObject({ sending: false, room: { id: 'room' } });
     const wet = moodTransition(EMPTY_TABLE_SOUND, mood({ room: 'cave', layers: [{ sound: 'rain', levelDb: 0, reverb: 0.5 }] }), SOUNDS, 0);
     expect(desiredSound(wet, 100)).toMatchObject({ sending: true, room: { id: 'cave' } });
-    expect(desiredSound(wet, 100).voices[0]?.send).toBe(0.25);
+    expect(desiredSound(wet, 100).voices[0]).toMatchObject({ dry: reverbMix(0.5).dry, send: reverbMix(0.5).wet });
+    expect(desiredSound(dry, 100).voices[0]).toMatchObject({ dry: 1, send: 0 });
   });
 });
 

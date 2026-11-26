@@ -4,7 +4,7 @@ import { PixiAppManager } from '../pixi/PixiAppManager'; // Import PixiAppManage
 import type { Viewport } from 'pixi-viewport';
 import type { Application } from 'pixi.js';
 import type { GridSystem } from '../grid/GridSystem';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../utils/typedEmitter';
 import type { ViewAtlasStore } from '../storeFactory';
 import type { SettingsService } from './SettingsService';
 import { bindViewportNavigation } from '../pixi/viewportNavigation';

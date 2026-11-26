@@ -46,6 +46,7 @@ describe('the lighting tool\'s menu', () => {
   afterEach(() => {
     cleanup();
     style.remove();
+    document.body.removeAttribute('data-atlas-pointer');
   });
 
   const box = (selector: string): number[] => {
@@ -59,6 +60,78 @@ describe('the lighting tool\'s menu', () => {
     act(() => store.getState().setSceneLighting({ enabled: true }));
     expect(shape()).toEqual(off);
     act(() => store.getState().setSceneLighting({ enabled: false }));
+    expect(shape()).toEqual(off);
+  });
+
+  it('spans the time of day in its top corners and stands everything else on the text edge', () => {
+    const row = document.querySelector<HTMLElement>('.atlas-dropdown-menu-item')!.getBoundingClientRect();
+    const rect = (selector: string): DOMRect => document.querySelector(selector)!.getBoundingClientRect();
+    // The time of day is the menu's first thing: it reaches out as far as the rows, concentric with the corners.
+    const time = rect('.atlas-segmented');
+    expect(time.left).toBeCloseTo(row.left, 1);
+    expect(time.right).toBeCloseTo(row.right, 1);
+    expect(getComputedStyle(document.querySelector('.atlas-segmented')!).borderTopLeftRadius)
+      .toBe(getComputedStyle(document.querySelector('.atlas-dropdown-menu-item')!).borderTopLeftRadius);
+    // The ambient slider, its colour and the dynamic lighting switch stand 12px inside the rows on both sides.
+    const [start, end] = [row.left + 12, row.right - 12];
+    expect(rect('.atlas-scene-lighting__ambient .slider-track').left).toBeCloseTo(start, 1);
+    expect(rect('.atlas-swatch--picker').right).toBeCloseTo(end, 1);
+    expect(rect('.atlas-dropdown-toggle-row__label').left).toBeCloseTo(start, 1);
+    // The dynamic lighting switch is the menu's last thing: it stands in the bottom corner, as far out as the rows.
+    expect(rect('.atlas-dropdown-toggle-row .atlas-toggle').right).toBeCloseTo(row.right, 1);
+    const menu = rect('.atlas-dropdown-content');
+    expect(menu.bottom - rect('.atlas-dropdown-toggle-row .atlas-toggle').bottom).toBeCloseTo(menu.right - row.right, 1);
+    // The time of day's options run concentric inside it.
+    const option = document.querySelector('.atlas-segmented__option')!;
+    expect(parseFloat(getComputedStyle(option).borderTopLeftRadius)).toBe(parseFloat(getComputedStyle(document.querySelector('.atlas-segmented')!).borderTopLeftRadius) - 4);
+  });
+
+  it('moves the time of day to the text edge once a row stands above it', () => {
+    act(() => {
+      store.getState().setLightingTool({ mode: 'rooms' });
+      store.getState().setRoomTool({ shape: 'brush' });
+    });
+    const row = document.querySelector<HTMLElement>('.atlas-dropdown-menu-item')!.getBoundingClientRect();
+    const time = document.querySelector<HTMLElement>('.atlas-segmented')!;
+    expect(time.getBoundingClientRect().left).toBeCloseTo(row.left + 12, 1);
+    expect(time.getBoundingClientRect().right).toBeCloseTo(row.right - 12, 1);
+    expect(getComputedStyle(time).borderTopLeftRadius).toBe('10px');
+  });
+  /** The sizes of what the menu holds to press: its rows, the options of its segmented control, its switch, a slider's disc and the colour picker. */
+  const sizes = (): Record<string, number[]> => {
+    const size = (element: Element | null): number[] => {
+      const { width, height } = element!.getBoundingClientRect();
+      return [width, height];
+    };
+    const thumb = document.querySelector('.slider-thumb')!;
+    const disc = getComputedStyle(thumb, '::before');
+    return {
+      rows: [...new Set([...document.querySelectorAll('.atlas-dropdown-menu-item')].map((row) => row.getBoundingClientRect().height))],
+      option: [document.querySelector('.atlas-segmented__option')!.getBoundingClientRect().height],
+      switch: size(document.querySelector('.atlas-dropdown-toggle-row .atlas-toggle__switch')),
+      thumb: size(thumb),
+      disc: [thumb.getBoundingClientRect().width - parseFloat(disc.left) - parseFloat(disc.right)],
+      picker: size(document.querySelector('.atlas-swatch--picker')),
+    };
+  };
+
+  it('gives a fine pointer its dense sizes', () => {
+    expect(sizes()).toEqual({ rows: [30], option: [40], switch: [60, 40], thumb: [16, 16], disc: [16], picker: [24, 24] });
+  });
+
+  it('gives a coarse pointer 40 px rows, 44 px options and switch, a 28 px slider disc in a 44 px thumb, and keeps the menu\'s shape', () => {
+    act(() => document.body.setAttribute('data-atlas-pointer', 'coarse'));
+    expect(sizes()).toEqual({ rows: [40], option: [44], switch: [66, 44], thumb: [44, 44], disc: [28], picker: [40, 40] });
+    // A switch as large as a target takes no hit area beyond itself.
+    const hit = getComputedStyle(document.querySelector('.atlas-dropdown-toggle-row .atlas-toggle')!, '::before');
+    expect([hit.top, hit.right, hit.bottom, hit.left]).toEqual(['0px', '0px', '0px', '0px']);
+    // Rows keep the menu's corner and the menu stays inside the window.
+    expect(getComputedStyle(document.querySelector('.atlas-dropdown-menu-item')!).borderTopLeftRadius).toBe('10px');
+    const menu = document.querySelector('.atlas-dropdown-content')!.getBoundingClientRect();
+    expect(menu.top).toBeGreaterThanOrEqual(0);
+    const shape = (): number[][] => [box('.atlas-dropdown-content'), box('.atlas-dropdown-toggle-row'), box('.atlas-segmented'), box('.atlas-swatch--picker')];
+    const off = shape();
+    act(() => store.getState().setSceneLighting({ enabled: true }));
     expect(shape()).toEqual(off);
   });
 });

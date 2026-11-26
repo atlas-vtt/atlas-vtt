@@ -16,6 +16,7 @@ vi.mock('../../src/app/pixi/mosaicCanvas/MosaicCanvas', () => ({
     readonly worldRect = null;
     constructor(readonly deps: MosaicCanvasDeps) { made.push(deps); }
     load(): Promise<void> { return Promise.resolve(); }
+    onChange(): () => void { return () => undefined; }
   },
 }));
 

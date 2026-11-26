@@ -68,7 +68,13 @@ export class MosaicCanvas {
     this.layer.addChild(this.turned);
     this.video = new MapVideoSlot(deps.video, deps.requestRender);
     this.turned.addChild(this.video.container);
-    this.cache = new TesseraTextureCache({ ticker: deps.ticker, renderer: deps.renderer, requestRender: deps.requestRender });
+    this.cache = new TesseraTextureCache({
+      ticker: deps.ticker,
+      renderer: deps.renderer,
+      requestRender: deps.requestRender,
+      ...(deps.textureBudget !== undefined && { budgetBytes: deps.textureBudget }),
+      ...(deps.uploadAtOnce && { uploadAtOnce: deps.uploadAtOnce }),
+    });
     this.resident = new ResidentOverviews(this.cache);
     const camera = viewportCamera(deps.viewport, deps.renderer ?? { resolution: 1 });
     this.camera = (): TesseraView | null => {
@@ -88,6 +94,11 @@ export class MosaicCanvas {
   /** The image's own size in pixels, whatever its stretch; null before the first load and after `clear`. */
   get imageSize(): { width: number; height: number } | null {
     return this.shown ? { width: this.shown.width, height: this.shown.height } : null;
+  }
+
+  /** Which picture is shown: its pyramid's key, the same for the same picture shown again (a scene switched back to); null without one. */
+  get imageKey(): string | null {
+    return this.shown?.tesserae?.source.key ?? null;
   }
 
   /** The corners of an image that lies turned, or placed in from the origin, in its world rect, which then holds more than the image; null for one that fills it. */
@@ -119,7 +130,7 @@ export class MosaicCanvas {
     if (!this.shown) return;
     this.place(this.shown);
     this.deps.requestRender();
-    this.emit('image');
+    this.emit('placement');
   }
 
   /** Whether an animated map's video plays, holds its frame, or gives way to its poster (`mapVideoMode`). */

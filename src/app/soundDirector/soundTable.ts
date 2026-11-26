@@ -1,5 +1,4 @@
 import { LEAVE_DRIFT_MS } from '../sound/engine/soundVoice';
-import type { TableSound } from '../sound/soundTypes';
 import { soundingTrack } from './musicList';
 import { notePlayed } from './playedTracks';
 import { EMPTY_MIX, withStopStillMeant, type MixTiming, type SoundMix } from './soundMix';
@@ -7,6 +6,7 @@ import { pauseOnShiftedClock, withPauseStillMeant } from './musicPause';
 import type { SoundOutput } from './soundOutput';
 import type { SoundShelf } from './soundShelf';
 import { applyDueListChange } from './trackEnd';
+import { applyDueLoopSeams } from './loopSeam';
 import { isPlaying, OFFLINE_LEAD_MS, onShiftedClock } from './tableSound';
 import type { TableClock } from './tableClock';
 
@@ -16,11 +16,6 @@ const WATCH_EVERY_PULSES = 4;
 const LIST_CHANGE_AHEAD_MS = 1000;
 
 const OFFLINE_CLOCK: TableClock = { now: () => Date.now(), leadMs: OFFLINE_LEAD_MS };
-
-function keysOf(table: TableSound): Set<string> {
-  const sounds = [...(table.music?.tracks ?? []), ...table.outgoing.flatMap((play) => play.tracks), ...table.layers.map((play) => play.sound), ...table.outgoingLayers.map((play) => play.sound)];
-  return new Set(sounds.map((sound) => sound.key));
-}
 
 export interface SoundTableHost {
   fadeMs(): number;
@@ -91,10 +86,6 @@ export class SoundTable {
       // A press holds what it opened; anything else that begins to sound opens it here.
       if (!this.output.isOpen && isPlaying(next.table, this.now())) this.output.ensureRunning();
       this.output.setState(next.table);
-      // A paused list keeps its copies: it resumes from them.
-      const pinned = keysOf(next.table);
-      for (const track of next.paused?.play.tracks ?? []) pinned.add(track.key);
-      this.shelf.pinOnly(pinned);
     }
     if (this.isBusy()) this.keepPulsing();
     this.host.onMix(next, tableChanged);
@@ -146,7 +137,10 @@ export class SoundTable {
   private pulse(): void {
     this.output.tick();
     const { leadMs } = this.tableClock;
-    this.commit(applyDueListChange(this.current, this.now(), Math.max(LIST_CHANGE_AHEAD_MS, leadMs * 2), { leadMs, crossfadeMs: this.host.crossfadeMs() }));
+    const now = this.now();
+    const aheadMs = Math.max(LIST_CHANGE_AHEAD_MS, leadMs * 2);
+    const options = { leadMs, crossfadeMs: this.host.crossfadeMs() };
+    this.commit(applyDueLoopSeams(applyDueListChange(this.current, now, aheadMs, options), now, aheadMs, options));
     this.noteSounding();
     this.pulses++;
     if (this.pulses % WATCH_EVERY_PULSES !== 0) return;

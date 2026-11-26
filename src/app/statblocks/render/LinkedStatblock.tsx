@@ -35,6 +35,8 @@ export interface LinkedStatblockProps {
   tokenActions?: StatblockTokenActions | undefined;
   /** Offered beside "Template not found"; without it the notice offers nothing. */
   onChooseTemplate?: ((path: string) => void) | undefined;
+  /** A press on a Counters pip of a native vault note writes the note (a map's hover preview, the DM screen). */
+  pressableCounters?: boolean | undefined;
   className?: string | undefined;
 }
 
@@ -82,6 +84,7 @@ function ResolvedView(props: LinkedStatblockProps & { templateId: TemplateId | n
         originContext={props.originContext}
         tokenActions={props.tokenActions}
         onChooseTemplate={props.onChooseTemplate}
+        pressableCounters={props.pressableCounters === true && noteText === undefined}
         className={className}
       />
     );

@@ -7,6 +7,7 @@ import { DecodeBudget } from './decodeBudget';
 import { checkDecodable, DecodedLevels, decodeSource, decodedLevelsCost, decodedSizeCost, OpenError } from './decodedLevels';
 import { PyramidBuild, type BuildOutcome } from './pyramidBuilder';
 import { pyramidOf, type Pyramid } from './pyramid';
+import type { TesseraEncoder } from './tesseraEncoderPool';
 import type { TesseraGraphics } from './tesseraGraphics';
 import type { TesseraEvent } from './tesseraProtocol';
 import type { MapSource } from './tesseraServer';
@@ -45,11 +46,15 @@ export class NeedBytes extends Error {}
 export interface MapEntriesDeps {
   store: TesseraStore;
   graphics: TesseraGraphics;
+  /** Encodes the builds' tesserae; one by one with `graphics` where unset. */
+  encoder?: TesseraEncoder | undefined;
   emit: (event: TesseraEvent) => void;
   /** Resolves once pending requests had their turn. */
   yieldToRequests: () => Promise<void>;
   /** Bytes of decoded levels all builds may hold together. */
   decodedBudget?: number | undefined;
+  /** The most pixels of a source decoded whole; `MAX_SOURCE_PIXELS` when unset. A complete pyramid opens whatever its size. */
+  maxSourcePixels?: number | undefined;
   /** The decoder that reads a source the browser cannot decode in bands, or null; `bandDecodable` when unset. */
   bandDecoderOf?: ((blob: Blob) => Promise<BandDecoder | null>) | undefined;
 }
@@ -169,8 +174,8 @@ export class MapEntries {
       }
     }
     try {
-      if (decoded) checkDecodable(decoded);
-      const cost = decoded ? decodedSizeCost(decoded.width, decoded.height) : await decodedLevelsCost(blob);
+      if (decoded) checkDecodable(decoded, this.deps.maxSourcePixels);
+      const cost = decoded ? decodedSizeCost(decoded.width, decoded.height) : await decodedLevelsCost(blob, this.deps.maxSourcePixels);
       // Held from here, so an open waiting for memory knows this decode gives way when nobody shows it.
       entry.releaseBudget = await this.budget.acquire({ bytes: cost, urgent: () => this.shown(entry) });
     } catch (error) {
@@ -178,7 +183,7 @@ export class MapEntries {
       throw error;
     }
     try {
-      const source = decoded ? { pyramid: pyramidOf(decoded.width, decoded.height), bitmap: decoded } : await decodeSource(blob, this.deps.graphics);
+      const source = decoded ? { pyramid: pyramidOf(decoded.width, decoded.height), bitmap: decoded } : await decodeSource(blob, this.deps.graphics, this.deps.maxSourcePixels);
       entry.pyramid = source.pyramid;
       entry.levels = new DecodedLevels(source.pyramid, source.bitmap, this.deps.graphics);
     } catch (error) {
@@ -211,6 +216,7 @@ export class MapEntries {
     const build = new BandBuild(entry.hash, pyramid, source, decoder, {
       store: this.deps.store,
       graphics: this.deps.graphics,
+      encoder: this.deps.encoder,
       yieldToRequests: this.deps.yieldToRequests,
       emit: (event) => this.emitFor(entry, event),
     });
@@ -256,6 +262,7 @@ export class MapEntries {
     const build = new PyramidBuild(entry.hash, entry.pyramid, levels, {
       store: this.deps.store,
       graphics: this.deps.graphics,
+      encoder: this.deps.encoder,
       yieldToRequests: this.deps.yieldToRequests,
       emit: (event) => this.emitFor(entry, event),
     });

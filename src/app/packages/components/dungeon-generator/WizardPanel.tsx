@@ -6,7 +6,6 @@ import { t } from '../../../i18n';
 import { cn } from '../../../../utils/cn';
 import { Button } from '../primitives/button';
 import { CloseButton } from '../primitives/CloseButton';
-import { OverlayScroll } from '../primitives/OverlayScroll';
 import { LabelTooltip } from '../primitives/tooltip';
 import type { Wizard } from './useWizard';
 import { WizardStepContent, type CollectionChoice } from './WizardStepContent';
@@ -74,7 +73,7 @@ export function WizardPanel({ wizard, collection, onClose }: WizardPanelProps): 
         </span>
         {onClose && <CloseButton onClick={onClose} />}
       </div>
-      <OverlayScroll ref={scroller} frameClassName="atlas-dungeon-wizard__body" className="atlas-dungeon-wizard__scroll">
+      <div ref={scroller} className="atlas-dungeon-wizard__scroll">
         <AnimatePresence initial={false} mode="popLayout" custom={direction}>
           <motion.div
             key={shown}
@@ -89,7 +88,7 @@ export function WizardPanel({ wizard, collection, onClose }: WizardPanelProps): 
             <WizardStepContent step={shown} wizard={wizard} collection={collection} onSubmit={create} />
           </motion.div>
         </AnimatePresence>
-      </OverlayScroll>
+      </div>
       <div className="atlas-dungeon-wizard__footer">
         {actions.problem && !actions.creating && <p className="atlas-dungeon-wizard__problem" role="alert">{actions.problem}</p>}
         <div className="atlas-dungeon-wizard__nav">

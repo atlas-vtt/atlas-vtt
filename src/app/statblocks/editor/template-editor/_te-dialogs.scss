@@ -55,7 +55,6 @@
 
   // Save: the template's name, the line under it says what saving does or why it can't.
   input.atlas-te-save__name {
-    @include atlas-corner-shape;
     width: 100%;
     height: var(--input-height);
   }

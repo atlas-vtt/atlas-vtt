@@ -39,6 +39,11 @@ export class PresentedStore implements SceneStore {
     return this.frozen !== null;
   }
 
+  /** The scene tab of the view Atlas presents, or null for none of its tabs. */
+  get presentedTabId(): string | null {
+    return this.presented?.tabId ?? null;
+  }
+
   /** The level of a scene with several that Atlas presents (the eye); unset is the first. */
   get presentedLevel(): string | undefined {
     return this.presented?.levelId;
@@ -46,8 +51,10 @@ export class PresentedStore implements SceneStore {
 
   /** Atlas presents this tab of the view now, or none of its tabs (null). */
   present(presented: PresentedTab | null): void {
+    // Another level of the same scene changes nothing in the store, yet the floor players without a token are shown.
+    const anotherLevel = presented?.levelId !== this.presented?.levelId;
     this.presented = presented;
-    this.check(this.real.getState(), false);
+    this.check(this.real.getState(), anotherLevel);
   }
 
   getState(): SceneState {

@@ -59,6 +59,34 @@ export function isBuiltInSense(sense: SenseDefinition): boolean {
   return SHIPPED_SENSES.some((shipped) => shipped.id === sense.id && sameSenses([shipped], [sense]));
 }
 
+
+/** Display text only: stored preset definitions and user-authored senses keep their wording. */
+const BUILT_IN_TEXT: Partial<Record<string, readonly [MessageKey, MessageKey]>> = {
+  'darkvision': ['senses.builtIn.darkvision.name', 'senses.builtIn.darkvision.description'],
+  'low-light-vision': ['senses.builtIn.low-light-vision.name', 'senses.builtIn.low-light-vision.description'],
+  'blindsight': ['senses.builtIn.blindsight.name', 'senses.builtIn.blindsight.description'],
+  'tremorsense': ['senses.builtIn.tremorsense.name', 'senses.builtIn.tremorsense.description'],
+  'truesight': ['senses.builtIn.truesight.name', 'senses.builtIn.truesight.description'],
+  'see-invisible': ['senses.builtIn.see-invisible.name', 'senses.builtIn.see-invisible.description'],
+  'dnd5e-darkvision': ['senses.builtIn.dnd5e-darkvision.name', 'senses.builtIn.dnd5e-darkvision.description'],
+  'dnd5e-blindsight': ['senses.builtIn.dnd5e-blindsight.name', 'senses.builtIn.dnd5e-blindsight.description'],
+  'dnd5e-tremorsense': ['senses.builtIn.dnd5e-tremorsense.name', 'senses.builtIn.dnd5e-tremorsense.description'],
+  'dnd5e-truesight': ['senses.builtIn.dnd5e-truesight.name', 'senses.builtIn.dnd5e-truesight.description'],
+  'dnd5e-devils-sight': ['senses.builtIn.dnd5e-devils-sight.name', 'senses.builtIn.dnd5e-devils-sight.description'],
+  'dnd5e-see-invisibility': ['senses.builtIn.dnd5e-see-invisibility.name', 'senses.builtIn.dnd5e-see-invisibility.description'],
+};
+
+function builtInText(sense: SenseDefinition): readonly [MessageKey, MessageKey] | undefined {
+  const keys = BUILT_IN_TEXT[sense.id];
+  return keys && isBuiltInSense(sense) ? keys : undefined;
+}
+
+/** The localized name of an unchanged shipped sense, or the collection's own name. */
+export function senseDisplayName(sense: SenseDefinition): string {
+  const keys = builtInText(sense);
+  return keys ? t(keys[0]) : sense.name;
+}
+
 /** What is wrong with the name of `sense` among `all` the collection's senses, or null. */
 export function senseNameProblem(sense: SenseDefinition, all: readonly SenseDefinition[]): string | null {
   const name = sense.name.trim().toLowerCase();
@@ -124,7 +152,8 @@ export function describeSense(sense: SenseDefinition): string {
 
 /** The line a list shows under the sense's name: its own description, else what its fields say. */
 export function senseSummary(sense: SenseDefinition): string {
-  return sense.description.trim() || describeSense(sense);
+  const keys = builtInText(sense);
+  return keys ? t(keys[1]) : sense.description.trim() || describeSense(sense);
 }
 
 /**

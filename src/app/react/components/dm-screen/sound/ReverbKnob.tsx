@@ -25,7 +25,7 @@ const RADIUS = 13;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 const ARC = (CIRCUMFERENCE * SWEEP_DEG) / 360;
 
-const clamp = (amount: number): number => Math.max(0, Math.min(1, Math.round(amount * 100) / 100));
+const clampAmount = (amount: number): number => Math.max(0, Math.min(1, Math.round(amount * 100) / 100));
 const percent = (amount: number): number => Math.round(amount * 100);
 
 function keyed(event: React.KeyboardEvent, amount: number): number | null {
@@ -65,9 +65,9 @@ export const ReverbKnob = React.memo(function ReverbKnob({ name, room, value, on
       lastY = moved.clientY;
       // Kept unrounded while dragging, so slow fine steps still add up.
       current = Math.max(0, Math.min(1, current + delta));
-      const next = clamp(current);
+      const next = clampAmount(current);
       setHeld(next);
-      if (next !== clamp(value)) onChange(next);
+      if (next !== clampAmount(value)) onChange(next);
     };
     const end = (): void => {
       endDrag.current = null;
@@ -89,7 +89,7 @@ export const ReverbKnob = React.memo(function ReverbKnob({ name, room, value, on
     const next = keyed(event, shown);
     if (next === null) return;
     event.preventDefault();
-    onChange(clamp(next));
+    onChange(clampAmount(next));
   };
 
   const filled = ARC * shown;

@@ -63,6 +63,18 @@ describe('snapTokenCenter', () => {
     expect(snapTokenCenter({ x: 150, y: 90 }, size, 'square', CELL, toCell)).toEqual({ x: 180, y: 110 });
   });
 
+  it('keeps Small in the full cell', () => {
+    expect(snapTokenCenter({ x: 150, y: 90 }, 0.875, 'square', CELL, toCell)).toEqual(toCell({ x: 150, y: 90 }));
+  });
+
+  it('lets Tiny snap to each quarter of an offset square cell', () => {
+    for (const x of [22.5, 57.5]) {
+      for (const y of [22.5, 57.5]) {
+        expect(snapTokenCenter({ x: x + 2, y: y - 2 }, 0.75, 'square', CELL, toCell)).toEqual({ x, y });
+      }
+    }
+  });
+
   it.each([1.5, 2.5])('centres an even footprint (size %s) on the nearest grid intersection', (size) => {
     expect(snapTokenCenter({ x: 150, y: 90 }, size, 'square', CELL, toCell)).toEqual({ x: 145, y: 75 });
     expect(snapTokenCenter({ x: 190, y: 130 }, size, 'square', CELL, toCell)).toEqual({ x: 215, y: 145 });
@@ -85,7 +97,7 @@ describe('snapTokenCenter', () => {
     };
     const points = [{ x: 200, y: 150 }, { x: 251, y: 177 }, { x: 330, y: 402 }];
 
-    it.each([1, 2])('centres an odd footprint (size %s) on a hex', (size) => {
+    it.each([0.75, 0.875, 1, 2])('centres a sub-cell or odd footprint (size %s) on a hex', (size) => {
       for (const point of points) expect(snapTokenCenter(point, size, type, 64, toHex)).toEqual(toHex(point));
     });
 
@@ -133,6 +145,29 @@ describe('snapTokenCenter', () => {
 
 describe('resizedTokenCenter', () => {
   const grid = { type: 'square' as const, size: 70, snapToGrid: true };
+
+  it.each(['square', ...HEX_TYPES] as const)('keeps Small in its cell and Tiny aligned when resizing on %s', (type) => {
+    const center = { x: 35, y: 35 };
+    const targetGrid = { ...grid, type };
+    expect(resizedTokenCenter(center, 1, 0.875, targetGrid)).toEqual(center);
+    const tiny = type === 'square' ? { x: 17.5, y: 17.5 } : center;
+    expect(resizedTokenCenter(center, 0.875, 0.75, targetGrid)).toEqual(tiny);
+    expect(resizedTokenCenter(tiny, 0.75, 1, targetGrid)).toEqual(center);
+    const large = resizedTokenCenter(tiny, 0.75, 1.5, targetGrid);
+    expect(large).toEqual(resizedTokenCenter(center, 1, 1.5, targetGrid));
+    expect(resizedTokenCenter(large, 1.5, 0.875, targetGrid)).toEqual(center);
+  });
+
+  it('grows Tiny from any quarter into the containing cell, with offsets and negative coordinates', () => {
+    const offsetGrid = { ...grid, offsetX: 5, offsetY: -80 };
+    for (const x of [-47.5, -12.5]) {
+      for (const y of [-62.5, -27.5]) {
+        for (const size of [0.875, 1]) {
+          expect(resizedTokenCenter({ x, y }, 0.75, size, offsetGrid)).toEqual({ x: -30, y: -45 });
+        }
+      }
+    }
+  });
 
   it('keeps the top-left corner, so a Medium token grown to Large moves onto the intersection', () => {
     expect(resizedTokenCenter({ x: 35, y: 35 }, 1, 1.5, grid)).toEqual({ x: 70, y: 70 });

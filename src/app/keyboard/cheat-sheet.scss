@@ -1,0 +1,139 @@
+@use '../../../styles/tokens' as *;
+@use '../../../styles/mixins' as *;
+
+// The cheat sheet (HotkeyHelp.tsx): a modal window over the map. One text edge, $spacing-l inside the window: the
+// title, the section labels and row names (the body's $spacing-s plus a row's $spacing-s) and the footer share it.
+
+.atlas-hotkey-help {
+  @include atlas-modal-overlay($z-atlas-modal + $z-notification);
+}
+
+.atlas-cheat-sheet {
+  @include atlas-modal-window;
+  width: min(1040px, 100%);
+}
+
+.atlas-cheat-sheet__header {
+  @include atlas-modal-header;
+
+  h2 { flex: 1 1 auto; }
+}
+
+.atlas-cheat-sheet__search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 0 1 240px;
+  min-width: 120px;
+
+  svg {
+    position: absolute;
+    left: $spacing-s;
+    width: $icon-s;
+    height: $icon-s;
+    color: var(--text-faint);
+    pointer-events: none;
+  }
+
+  input {
+    @include atlas-text-input;
+    padding-left: calc(2 * #{$spacing-s} + #{$icon-s});
+  }
+}
+
+.atlas-cheat-sheet__tour {
+  flex-shrink: 0;
+
+  svg { width: $icon-s; height: $icon-s; }
+}
+
+.atlas-cheat-sheet__body {
+  @include atlas-modal-body;
+  padding: $spacing-s;
+}
+
+.atlas-cheat-sheet__sections {
+  columns: 3 260px;
+  column-gap: $spacing-xl;
+}
+
+.atlas-cheat-sheet__section {
+  break-inside: avoid;
+  padding-bottom: $spacing-l;
+
+  h3 {
+    margin: 0;
+    padding: $spacing-xs $spacing-s;
+    color: var(--text-faint);
+    font-size: $font-ui-smaller;
+    font-weight: $font-weight-semibold;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  dl { margin: 0; }
+}
+
+.atlas-cheat-sheet__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-m;
+  min-height: 32px;
+  box-sizing: border-box;
+  padding: $spacing-xs $spacing-s;
+  border-radius: $radius-m;
+
+  &:hover { background: var(--background-modifier-hover); }
+
+  dt {
+    min-width: 0;
+    font-size: $font-ui-small;
+    line-height: var(--line-height-tight);
+    color: var(--text-normal);
+  }
+
+  dd {
+    margin: 0;
+    flex-shrink: 0;
+  }
+}
+
+.atlas-cheat-sheet__keys,
+.atlas-cheat-sheet__combo {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-xs;
+}
+
+// The combo is the outer <kbd> of a key combination; the browser's own kbd look stays off it.
+.atlas-cheat-sheet__combo {
+  font: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.atlas-cheat-sheet__cap { @include atlas-keycap; }
+
+.atlas-cheat-sheet__or,
+.atlas-cheat-sheet__gesture,
+.atlas-cheat-sheet__unset {
+  font-size: $font-ui-smaller;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.atlas-cheat-sheet__empty {
+  margin: 0;
+  padding: $spacing-2xl $spacing-l;
+  text-align: center;
+  @include atlas-help-text;
+}
+
+.atlas-cheat-sheet__footer {
+  @include atlas-modal-footer;
+  justify-content: flex-start;
+  font-size: $font-ui-smaller;
+  color: var(--text-muted);
+}

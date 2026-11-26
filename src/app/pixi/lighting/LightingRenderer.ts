@@ -23,9 +23,12 @@ import { LightingEngine } from './engine/LightingEngine';
 import type { EngineScene, SceneFrame } from './engine/types';
 import type { BelowShown } from './engine/LightingEngine';
 import { ExploredMemory, type ExploredMemoryState } from './ExploredMemory';
+import type { ForgottenFloors } from './ForgottenFloors';
 import type { LightingAttempt } from './lightingAttempts';
 import { PlayerView } from './PlayerView';
 import { SceneModelBuilder, SceneSpots, type SceneModel, type SceneState } from '../../vision/sceneModel';
+import type { PrebuildRequest } from '../../vision/prebuild/scenePrebuild';
+import type { PrebuiltScene } from '../../vision/prebuild/prebuildParts';
 import type { ExploredMemoryWatcher, SceneLightingView } from './sceneLightingView';
 import { levelExploredMask, viewedLevelId } from '../../levels/sceneLevels';
 import { MOTION_SLOW_MS, prefersReducedMotion } from '../../utils/motion';
@@ -55,6 +58,8 @@ function dragging(state: Pick<ViewState, 'heldTokens'>): boolean {
   return false;
 }
 const DEFAULT_CELL_SIZE = 70;
+/** What a view of a scene without lighting sees: everything. */
+const UNLIT_VIEW = { sight: SEES_ALL, gmSight: SEES_ALL };
 
 /** Why the engine does not light a view: it stopped on this device, or its last attempt never drew a frame. */
 export type LightingUnavailable = 'failed' | 'unfinished';
@@ -67,6 +72,8 @@ export type LightingState = SceneState & ExploredMemoryState & Pick<ViewState, '
   objects: Pick<ViewState['objects'], 'fog' | 'levelSurfaces'>;
   /** The GM hides the roofs of the GM's picture (the switcher's Roofs). */
   roofsHidden?: boolean;
+  /** Off, the canvas shows the players' view (session view); a scene without lighting has no other switch to it. */
+  isGMView?: boolean;
   /** How large the map draws token rings; the tokens of levels below wear theirs alike. */
   tokenSettings?: Pick<ViewState['tokenSettings'], 'tokenRingSize'>;
 };
@@ -103,6 +110,8 @@ export interface LightingRendererDeps {
   below?: BelowLevelsHost;
   /** How long a piece of a roof below takes to fade; unset, the motion of the canvas's window (none where it asks for reduced motion). */
   roofFadeMs?: number;
+  /** The scene's other floors, whose memories Forget explored areas takes along (the GM's view); without it only the floor shown is forgotten. */
+  floors?: ForgottenFloors;
   /**
    * Stamp what the tokens see into the explored memory at most every `EXPLORED_STAMP_MS` for every
    * change, not only while a drag holds tokens: for a view whose tokens are moved by something
@@ -111,6 +120,8 @@ export interface LightingRendererDeps {
    * never lost: the stamp still due is made on the next frame.
    */
   paceStamps?: boolean;
+  /** Traces a loading scene's light reaches and sight off the main thread (`SceneModelBuilder.prepare`); without it the reveal traces them. */
+  prebuild?: (request: PrebuildRequest) => Promise<PrebuiltScene | null>;
 }
 
 type SceneWithoutLook = Omit<EngineScene, keyof SceneLook | 'albedo'>;
@@ -180,6 +191,7 @@ export class LightingRenderer implements SceneLightingView {
       onChange: () => requestRender(deps.app),
       guard: (work) => this.run(work),
       stampEveryMs: EXPLORED_STAMP_MS,
+      ...(deps.floors && { floors: deps.floors }),
     });
     this.levelsBelow = deps.below ? new LevelsBelow({
       app: deps.app,
@@ -190,7 +202,7 @@ export class LightingRenderer implements SceneLightingView {
       measurement: deps.measurement,
       ...(deps.rules && { rules: deps.rules }),
       view: this.engine,
-      mode: () => (this.playerView.visible ? 'player' : 'gm'),
+      mode: () => (this.playerView.visible || this.inUnlitSessionView() ? 'player' : 'gm'),
       requestRender: () => requestRender(deps.app),
       fadeMs: deps.roofFadeMs ?? (prefersReducedMotion(deps.app.canvas) ? 0 : MOTION_SLOW_MS),
       onReady: () => this.run(() => this.update(deps.store.getState())),
@@ -209,6 +221,12 @@ export class LightingRenderer implements SceneLightingView {
 
   isEnabled(): boolean {
     return this.deps.store.getState().lighting.enabled;
+  }
+
+  /** Whether the canvas shows the players' view of a scene without lighting, whose session view flips no layer of the lighting. */
+  private inUnlitSessionView(): boolean {
+    const { lighting, isGMView } = this.deps.store.getState();
+    return !lighting.enabled && isGMView === false;
   }
 
   currentSight(): Sight { return this.sight; }
@@ -230,8 +248,9 @@ export class LightingRenderer implements SceneLightingView {
       this.engine.flush();
       below = this.belowForFrame(frame);
     });
+    const draw = (): T => this.engine.renderFrame(frame, render, below);
     try {
-      return this.engine.renderFrame(frame, render, below);
+      return this.levelsBelow ? this.levelsBelow.renderWith(below, draw) : draw();
     } finally {
       // Thumbnails are rare: their look's snapshots go once taken.
       this.levelsBelow?.releasePicture('thumbnail');
@@ -355,10 +374,11 @@ export class LightingRenderer implements SceneLightingView {
     const { lighting } = state;
     // A load rewrites the store in steps (the next map's path, a cleared scene, the saved one):
     // lighting is off for its duration, and the update that ends it builds the scene whole.
-    const bounds = lighting.enabled && !state.isMapLoading ? this.deps.bounds() : null;
+    const map = state.isMapLoading ? null : this.deps.bounds();
+    const bounds = lighting.enabled ? map : null;
     if (!bounds) {
-      // Nothing is drawn while off; the next update after switching on rebuilds everything.
-      this.levelsBelow?.reset(true);
+      // Nothing is lit while off; the next update after switching on rebuilds everything.
+      this.followBelowUnlit(state, map);
       this.engine.setCoverage(null);
       this.engine.setEnabled(false);
       this.model.reset();
@@ -395,6 +415,39 @@ export class LightingRenderer implements SceneLightingView {
     this.levelsBelow?.update(state, bounds, { sight: model.sight, gmSight });
     if (this.levelsBelow?.failed()) this.engine.fail(new Error('The lighting of a level below stopped'));
     requestRender(this.deps.app);
+  }
+
+  /**
+   * The store holds the scene a load brings, its map still hidden: its light reaches and sight are
+   * traced off the main thread, and the engine's shaders compiled in the graphics process, so the
+   * build that reveals it finds them. Resolves once the traces are handed over, or there is nothing to trace ahead.
+   */
+  prepareScene(): Promise<void> {
+    const state = this.deps.store.getState();
+    const map = this.deps.bounds();
+    const { prebuild } = this.deps;
+    if (this.stopped || !map || !state.lighting.enabled) return Promise.resolve();
+    this.run(() => this.engine.prepareShaders());
+    if (!prebuild) return Promise.resolve();
+    const reach = this.levelsBelow?.reach(state, map) ?? map;
+    return this.model.prepare(state, map, this.deps.measurement, this.deps.rules, reach, prebuild).catch((error: unknown) => {
+      console.warn('[LightingRenderer] The scene could not be traced ahead:', error);
+    });
+  }
+
+  /**
+   * A scene without lighting still shows the levels below through its openings, drawn as they are
+   * and all of them seen (`UnlitOpenings`); nothing below during a load or without a map.
+   */
+  private followBelowUnlit(state: LightingState, map: MapBounds | null): void {
+    const below = this.levelsBelow;
+    if (!below) return;
+    if (!map) {
+      below.reset(true);
+      return;
+    }
+    below.update(state, map, UNLIT_VIEW);
+    if (below.currentStack()) requestRender(this.deps.app);
   }
 
   /** A model built anew: its sight and reaches are the view's, and what the tokens now see is recorded. */
@@ -456,7 +509,8 @@ export class LightingRenderer implements SceneLightingView {
     const rest = this.model.restsAt();
     if (rest !== null && now >= rest) this.update(this.deps.store.getState());
     if (this.memory.stampDue(now)) requestRender(this.deps.app);
-    if (!this.layer.visible) return;
+    // A scene without lighting has no layer and may still show levels below, whose roofs fade.
+    if (!this.layer.visible && !this.levelsBelow?.currentStack()) return;
     const view = animationView(this.deps.viewport, this.deps.app.renderer.screen);
     this.levelsBelow?.animate(now, view);
     if (!this.engine.busy()) return;

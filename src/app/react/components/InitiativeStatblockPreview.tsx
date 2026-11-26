@@ -23,7 +23,8 @@ interface InitiativeStatblockPreviewProps {
 /** The statblock of the hovered combatant, beside the tracker. */
 export function InitiativeStatblockPreview({ app, state, tokens, side }: InitiativeStatblockPreviewProps): React.ReactElement {
   const hovered = state.hoveredEntry;
-  const token = hovered ? tokens[hovered.entry.tokenId] : undefined;
+  const tokenId = hovered?.entry.tokenId;
+  const token = tokenId !== undefined ? tokens[tokenId] : undefined;
   return (
     // Key forces remount on entry change to trigger animation
     <StatblockHoverPreview
@@ -31,14 +32,15 @@ export function InitiativeStatblockPreview({ app, state, tokens, side }: Initiat
       notePath={state.notePath}
       app={app}
       vitals={
-        hovered && {
+        // Only a token links a statblock: a player at the table has none to preview
+        hovered && tokenId !== undefined ? {
           ...hovered.entry,
           // Rolls from the preview act on the token, not on the initiative entry.
-          id: hovered.entry.tokenId,
+          id: tokenId,
           resources: token?.resources,
           ringColor: token?.ringColor,
           showRing: token?.showRing,
-        }
+        } : null
       }
       originContext={hovered?.originContext}
       isVisible={state.isVisible}

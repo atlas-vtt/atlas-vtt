@@ -82,7 +82,8 @@ describe('fog eligibility against the existing lighting rules', () => {
         const layers = presentation.frameLayers(composed);
         for (const token of Object.values(tokens)) {
           const id = token.id;
-          const blocked = rectangleCoverage(operations, sprites[id]!);
+          // Fog never takes a token of the party's (vision on, not hidden) from the players
+          const blocked = rectangleCoverage(operations, sprites[id]!) && !(token.vision?.enabled && !token.isHidden);
           const before = legacy?.(id) ?? 'seen';
           exercised[before]++;
           if (blocked) exercised.covered++;
@@ -148,7 +149,8 @@ describe('fog eligibility against the existing lighting rules', () => {
   });
 
   it('preserves the lighting predicate identity with empty fog and fails closed for invalid fog, even while held', () => {
-    const token: TokenEntity = { id: 'held', kind: 'token', imagePath: 'token.png', x: 30, y: 30, vision: { enabled: true } };
+    // A creature: invalid fog takes it from the players; a token of the party's it never takes
+    const token: TokenEntity = { id: 'held', kind: 'token', imagePath: 'token.png', x: 30, y: 30 };
     const group = sprite(token, token);
     const tokens = { held: token };
     const presentation = new PlayerSightTokens({ tokens: () => tokens, sprites: () => ({ held: group }), held: () => new Set(['held']) });

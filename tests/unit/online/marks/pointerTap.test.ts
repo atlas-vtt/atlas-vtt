@@ -87,4 +87,16 @@ describe('PointerTap', () => {
     expect(thinTrail([1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6], 6)).toEqual([2, 2, 4, 4, 6, 6]);
     expect(thinTrail([1, 1, 2, 2], 0)).toEqual([]);
   });
+
+  it('shows no dot once the pointer left the canvas: a mouse moved off it, or a finger lifted', () => {
+    const listeners = new Map<string, Listener>();
+    const viewport: TapViewport = { on: (event, listener) => void listeners.set(event, listener), off: () => undefined, toWorld: (point) => point, scale: { x: 1 } };
+    const canvas = new EventTarget();
+    const tap = new PointerTap(viewport, canvas, () => true);
+    listeners.get('pointerdown')?.({ button: 0, global: { x: 10, y: 20 } });
+    listeners.get('pointerup')?.({ button: 0, global: { x: 10, y: 20 } });
+    expect(tap.state()).toEqual({ at: [10, 20], on: false });
+    canvas.dispatchEvent(new Event('pointerleave'));
+    expect(tap.state()).toEqual({ at: null, on: false });
+  });
 });

@@ -2,6 +2,7 @@ import { ATLAS_DISCORD_URL, ATLAS_GITHUB_URL } from '../support/communityLinks';
 import type { IssueReporter } from '../support/IssueReporter';
 import type { AtlasSettingSection } from './settingSections';
 import { t } from '../i18n';
+import { addSettingButton } from '../ui/atlasButton';
 
 export function supportSettingsSection(reporter: IssueReporter): AtlasSettingSection {
   return {
@@ -12,7 +13,7 @@ export function supportSettingsSection(reporter: IssueReporter): AtlasSettingSec
         desc: t('settings.support.reportIssueDesc'),
         aliases: ['bug', 'crash', 'problem', 'feedback', 'github', 'support'],
         render: setting => {
-          setting.addButton(button => button.setButtonText(t('settings.support.reportIssue')).onClick(() => reporter.open({ type: 'bug' })));
+          addSettingButton(setting, { text: t('settings.support.reportIssue'), onClick: () => reporter.open({ type: 'bug' }) });
         },
       },
       {
@@ -20,7 +21,7 @@ export function supportSettingsSection(reporter: IssueReporter): AtlasSettingSec
         desc: t('settings.support.suggestFeatureDesc'),
         aliases: ['idea', 'request', 'enhancement'],
         render: setting => {
-          setting.addButton(button => button.setButtonText(t('settings.support.suggestFeature')).onClick(() => reporter.open({ type: 'feature' })));
+          addSettingButton(setting, { text: t('settings.support.suggestFeature'), onClick: () => reporter.open({ type: 'feature' }) });
         },
       },
       {
@@ -28,7 +29,7 @@ export function supportSettingsSection(reporter: IssueReporter): AtlasSettingSec
         desc: t('settings.support.discordDesc'),
         aliases: ['discord', 'community', 'chat', 'help'],
         render: setting => {
-          setting.addButton(button => button.setButtonText(t('settings.support.joinDiscord')).onClick(() => { window.open(ATLAS_DISCORD_URL); }));
+          addSettingButton(setting, { text: t('settings.support.joinDiscord'), onClick: () => { window.open(ATLAS_DISCORD_URL); } });
         },
       },
       {
@@ -36,7 +37,7 @@ export function supportSettingsSection(reporter: IssueReporter): AtlasSettingSec
         desc: t('settings.support.githubDesc'),
         aliases: ['github', 'source code', 'repository', 'releases'],
         render: setting => {
-          setting.addButton(button => button.setButtonText(t('settings.support.openGithub')).onClick(() => { window.open(ATLAS_GITHUB_URL); }));
+          addSettingButton(setting, { text: t('settings.support.openGithub'), onClick: () => { window.open(ATLAS_GITHUB_URL); } });
         },
       },
     ],

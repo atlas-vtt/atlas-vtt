@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { Container, Sprite, Texture, type Rectangle } from 'pixi.js';
 import { createStore } from 'zustand/vanilla';
 import { subscribeWithSelector } from 'zustand/middleware';
@@ -59,14 +59,14 @@ function setup(contextLost = false) {
   const pixiRenderer = { name: 'webgl', gl: { isContextLost: () => contextLost }, generateTexture, extract: { canvas: () => source } };
 
   const store = createStore(subscribeWithSelector(() => ({ activeTool: 'move' })));
-  const manager = { getApp: () => ({ renderer: pixiRenderer }), getViewport: () => viewport };
+  const manager = { getApp: () => ({ renderer: pixiRenderer }), getViewport: () => viewport, getGestures: () => null };
   const orchestrator = new PixiRendererOrchestrator({} as any, manager as any, new EventEmitter(), store as any, 'test');
   const frames: SceneFrame[] = [];
   const drawn = deferred();
   const whenReady = vi.fn((_rect: Rectangle, _worldPerScreenPixel: number, _timeoutMs: number) => drawn.promise);
   Object.assign(orchestrator as any, {
     mapImage: { layer: background, worldRect: { x: 0, y: 0, width: 800, height: 600 }, whenReady, drawFor, hideVideoFor: () => () => undefined },
-    pinRenderer: { getPinContainer: () => pins },
+    pinRenderer: { getPinContainer: () => pins, pictureLayers: () => [{ layer: pins, visible: false }] },
     hexLinkRenderer: { container: hexLinks },
     tokenRenderer: { getGmViewLayers: () => [{ layer: hiddenToken, visible: true, alpha: 0.5 }] },
     fogRenderer: { getGmViewLayers: () => [{ layer: fog, visible: true, alpha: 0.5 }] },

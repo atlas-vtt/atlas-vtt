@@ -1,4 +1,5 @@
 import { TFile, type App } from 'obsidian';
+import { encodeImage } from '../../../imageProcessing/imageEncoder';
 import { MosaicCanvasService } from '../../../pixi/mosaicCanvas/MosaicCanvasService';
 
 /** The longest side of the pictures the dashboard shows of a map: sharp across a wide pane, a small part of the map's own size. */
@@ -29,7 +30,7 @@ function revoke(picture: Promise<string | null>): void {
   void picture.then((url) => { if (url !== null) URL.revokeObjectURL(url); });
 }
 
-/** The whole map at `MAP_PICTURE_SIDE`, from the overview of its tesserae, as a WebP blob. */
+/** The whole map at `MAP_PICTURE_SIDE`, from the overview of its tesserae, as an encoded blob (`imageEncoder.ts`). */
 async function renderPicture(app: App, file: TFile): Promise<Blob> {
   const service = MosaicCanvasService.forApp(app);
   const opened = await service.open(file);
@@ -40,7 +41,7 @@ async function renderPicture(app: App, file: TFile): Promise<Blob> {
       const context = canvas.getContext('2d');
       if (!context) throw new Error('No 2D context for the map picture.');
       context.drawImage(bitmap, 0, 0);
-      return await canvas.convertToBlob({ type: 'image/webp', quality: PICTURE_QUALITY });
+      return await encodeImage(canvas, PICTURE_QUALITY);
     } finally {
       bitmap.close();
     }

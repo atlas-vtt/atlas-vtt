@@ -26,13 +26,30 @@ export async function readAsBlob(fs: NodeFsModule, absolute: string, onStep?: ()
   }
 }
 
+/** The bytes of a file from `start` up to `end` or its end: only those are read. */
+export async function readRangeOf(fs: NodeFsModule, absolute: string, start: number, end: number): Promise<Uint8Array<ArrayBuffer>> {
+  const handle = await fs.promises.open(absolute, 'r');
+  try {
+    const bytes = new Uint8Array(Math.max(0, end - start));
+    let filled = 0;
+    while (filled < bytes.length) {
+      const { bytesRead } = await handle.read(bytes, filled, bytes.length - filled, start + filled);
+      if (bytesRead === 0) break;
+      filled += bytesRead;
+    }
+    return bytes.slice(0, filled);
+  } finally {
+    await handle.close();
+  }
+}
+
 const isTaken = (error: unknown): boolean => error instanceof Object && Reflect.get(error, 'code') === 'EEXIST';
 
-/** A Blob as a new file, chunk by chunk. The `wx` flag makes the system refuse a file that is there. */
-export async function writeFromBlob(fs: NodeFsModule, absolute: string, content: Blob, shownPath: string): Promise<void> {
+/** A Blob as a file, chunk by chunk. The default `wx` flag makes the system refuse a file that is there; `w` writes over it. */
+export async function writeFromBlob(fs: NodeFsModule, absolute: string, content: Blob, shownPath: string, flags: 'wx' | 'w' = 'wx'): Promise<void> {
   let handle;
   try {
-    handle = await fs.promises.open(absolute, 'wx');
+    handle = await fs.promises.open(absolute, flags);
   } catch (error) {
     if (isTaken(error)) throw new SoundPathTakenError(shownPath);
     throw error;

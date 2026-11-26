@@ -9,6 +9,7 @@ import type { FileIdentity, OpenedPyramid, OpenFailure, TesseraEvent } from './t
 import { TesseraServer } from './tesseraServer';
 import { readStoredLevel, readTesseraBlobs, type StoredLevel, type TesseraSelection } from './tesseraBlobs';
 import { LevelWaits } from './levelWaits';
+import { TesseraEncoderPool } from './tesseraEncoderPool';
 import type { TesseraStore } from './tesseraStore';
 
 /**
@@ -28,8 +29,12 @@ export interface TesseraCoreDeps {
   emit: (event: TesseraEvent) => void;
   /** Bytes of decoded levels all builds may hold together. */
   decodedBudget?: number;
+  /** The most pixels of a source decoded whole on this device; the desktop's when unset. */
+  maxSourcePixels?: number;
   /** The decoder that reads a source the browser cannot decode in bands, or null; the real lookup when unset. */
   bandDecoderOf?: (blob: Blob) => Promise<BandDecoder | null>;
+  /** Asks the page for encoder workers (`useEncoders`), once a build is about to encode; builds encode here where unset. */
+  wantEncoders?: () => void;
 }
 
 export type OpenOutcome =
@@ -52,21 +57,27 @@ export class TesseraDecoderCore {
   private readonly entries: MapEntries;
   private readonly server: TesseraServer;
   private readonly levelWaits: LevelWaits;
+  private readonly encoders: TesseraEncoderPool;
   private nextHandle = 1;
   private disposed = false;
+  /** Set while builds are held (`holdBuilds`): resolves once they may go on. */
+  private buildsFreed: { promise: Promise<void>; free: () => void } | null = null;
 
   constructor(private readonly deps: TesseraCoreDeps) {
     this.server = new TesseraServer(deps.store, deps.graphics);
+    this.encoders = new TesseraEncoderPool(deps.graphics, deps.wantEncoders);
     this.levelWaits = new LevelWaits((hash, level) => this.pinned(hash, () => readStoredLevel(deps.store, hash, level)));
     this.entries = new MapEntries({
       store: deps.store,
       graphics: deps.graphics,
+      encoder: this.encoders,
       emit: (event) => {
         deps.emit(event);
         this.levelWaits.heard(event);
       },
       yieldToRequests: () => this.yieldToRequests(),
       decodedBudget: deps.decodedBudget,
+      maxSourcePixels: deps.maxSourcePixels,
       bandDecoderOf: deps.bandDecoderOf,
     });
   }
@@ -158,14 +169,39 @@ export class TesseraDecoderCore {
     this.entries.closed(entry);
   }
 
+  /** Builds hand their tesserae to these encoder workers from now on. */
+  useEncoders(ports: readonly MessagePort[]): void {
+    this.encoders.attach(ports);
+  }
+
   /** Stops every build and closes the cache once the writes under way are done; nothing is served afterwards. */
+  /**
+   * Holds every build before its next tessera while `held`, and lets them go on after: a tablet
+   * builds only while its window is seen. Nothing is given up: what is written stays, the pyramid
+   * stays incomplete in the cache, and the build goes on where it stood.
+   */
+  holdBuilds(held: boolean): void {
+    if (held === (this.buildsFreed !== null)) return;
+    if (held) {
+      let free = (): void => undefined;
+      const promise = new Promise<void>((resolve) => { free = resolve; });
+      this.buildsFreed = { promise, free };
+    } else {
+      this.buildsFreed?.free();
+      this.buildsFreed = null;
+    }
+  }
+
   async dispose(): Promise<void> {
     if (this.disposed) return;
     this.disposed = true;
+    // A held build hears that it is to stop only once it goes on.
+    this.holdBuilds(false);
     for (const handle of this.handles.keys()) this.server.cancelHandle(handle);
     this.handles.clear();
     this.levelWaits.dispose();
     this.entries.dispose();
+    this.encoders.dispose();
     await this.deps.store.close();
   }
 
@@ -232,5 +268,6 @@ export class TesseraDecoderCore {
   private async yieldToRequests(): Promise<void> {
     await this.deps.yieldToMessages();
     await this.server.idle();
+    while (this.buildsFreed && !this.disposed) await this.buildsFreed.promise;
   }
 }

@@ -14,3 +14,14 @@ describe("a found note's card", () => {
     expect(excerpt).not.toMatch(/wor…$/);
   });
 });
+
+describe("a found note's card with a table", () => {
+  it('reads the table as the words of its cells, without pipes or the delimiter row', () => {
+    const note = 'Order of battle:\n\n| Init | Name |\n| ---: | :--- |\n| 18 | **Mirela** |\n| 9 | Goblin \\| archer, [[Old Hale\\|Hale]] |\n\nThen | stays.';
+    expect(foundExcerpt(note)).toBe('Order of battle: Init Name 18 Mirela 9 Goblin | archer, Hale Then | stays.');
+  });
+
+  it('reads a table without outer pipes too', () => {
+    expect(foundExcerpt('a | b\n--|--\n1 | [[Mill|the mill]]')).toBe('a b 1 the mill');
+  });
+});

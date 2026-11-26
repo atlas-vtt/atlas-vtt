@@ -30,6 +30,12 @@ function matchAt(pattern: RegExp, text: string, at: number): RegExpExecArray | n
   return pattern.exec(text);
 }
 
+/** A label at `at` (`[fire]`) and where it ends, or null. */
+export function readLabel(text: string, at: number): { label: string; end: number } | null {
+  const label = matchAt(LABEL, text, at);
+  return label ? { label: label[1]!, end: LABEL.lastIndex } : null;
+}
+
 /** The term at `at` and where it ends, or null when none starts there. */
 export function readTerm(text: string, at: number): { term: TermDraft; end: number } | null {
   const dice = matchAt(DICE, text, at);

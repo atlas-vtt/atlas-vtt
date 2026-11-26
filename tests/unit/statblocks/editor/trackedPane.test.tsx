@@ -23,6 +23,13 @@ const AS_BOXES: StatblockTemplate = {
   layout: { maxColumns: 1, blocks: [{ id: 'title001', type: 'title', field: 'name', level: 1 }, { id: 'track001', type: 'track', field: 'armor', look: 'boxes', counts: 'up' }] },
 };
 
+// The same number written by a pattern of its block
+const WITH_PATTERN: StatblockTemplate = {
+  ...TEMPLATE,
+  lookups: { worn: { '0': 'Unarmoured', '1': 'Padded' } },
+  layout: { maxColumns: 1, blocks: [{ id: 'title001', type: 'title', field: 'name', level: 1 }, { id: 'statworn', type: 'stat', field: 'armor', pattern: '{armor|lookup:worn}' }] },
+};
+
 const library = vi.hoisted(() => ({ tokens: [] as unknown[] }));
 const place = vi.hoisted(() => ({ kept: true }));
 const writeCharacterResources = vi.hoisted(() => vi.fn());
@@ -88,6 +95,13 @@ describe('a tracked number beside a player character\'s note', () => {
     expect(more?.getAttribute('aria-disabled')).toBe('true');
     await act(async () => { fireEvent.click(more!); });
     expect(writeCharacterResources).not.toHaveBeenCalled();
+  });
+
+  it('writes the block\'s own pattern of the current value between the steps', async () => {
+    library.tokens = [MIRA];
+    const harness = await pane(WITH_PATTERN);
+    expect(stepper(harness)?.textContent).toContain('Unarmoured');
+    expect(stepper(harness)?.textContent).not.toContain('0 / 4');
   });
 
   it('shows no stepper on a note no player character links', async () => {

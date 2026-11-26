@@ -17,6 +17,8 @@ interface TokenCreatorFooterProps {
   /** Saving, while it runs. */
   saving: ProgressCount | null;
   canSubmit: boolean;
+  /** The secondary action drops the images held here (a draft that closing would keep), so it reads Discard. */
+  discards: boolean;
   onCancel: () => void;
   onSubmit: () => void;
 }
@@ -27,12 +29,12 @@ function savingLabel(mode: CreatorMode, isEditing: boolean): string {
 }
 
 /** Status, progress and actions of the token creator. */
-export function TokenCreatorFooter({ mode, isEditing, count, saveError, optimization, saving, canSubmit, onCancel, onSubmit }: TokenCreatorFooterProps): React.JSX.Element {
+export function TokenCreatorFooter({ mode, isEditing, count, saveError, optimization, saving, canSubmit, discards, onCancel, onSubmit }: TokenCreatorFooterProps): React.JSX.Element {
   const isSubmitting = saving !== null;
   const task: ProgressTask | null = saving
     ? { label: savingLabel(mode, isEditing), ...saving }
     : optimization ? { label: t('creator.optimizingImages'), ...optimization } : null;
-    return (
+  return (
     <footer className="atlas-token-creator__footer">
       <span className="atlas-token-creator__status">
         <ProgressStatus task={task} failed={Boolean(saveError)}>
@@ -40,7 +42,7 @@ export function TokenCreatorFooter({ mode, isEditing, count, saveError, optimiza
         </ProgressStatus>
       </span>
       <div className="atlas-token-creator__actions">
-        <Button variant="outline" size="sm" onClick={() => { if (!isSubmitting) onCancel(); }}>{t('common.cancel')}</Button>
+        <Button variant="outline" size="sm" onClick={() => { if (!isSubmitting) onCancel(); }}>{t(discards ? 'creator.discard' : 'common.cancel')}</Button>
         <Button variant="default" size="sm" onClick={onSubmit} disabled={!canSubmit}>
           {isSubmitting ? <Loader2 className="atlas-spin" /> : <Save />}
           <span>{isSubmitting ? t(isEditing ? 'creator.updating' : 'creator.creating') : t(isEditing ? 'creator.update' : 'creator.create')}</span>

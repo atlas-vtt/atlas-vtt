@@ -57,6 +57,28 @@ it('crops the stored image where the edit moved or zoomed it', async () => {
   expect(files.get(stored)).toBe('cropped');
 });
 
+it.each([
+  { imageScale: 2, imagePosition: { x: 0.1, y: -0.1 } },
+  { imageScale: 0.5, imagePosition: { x: 0, y: 0 } },
+  { imageScale: 1, imagePosition: { x: 0.1, y: -0.1 } },
+])('saves ringless zoom and position changes into the existing image: %o', async ({ imageScale, imagePosition }) => {
+  const { app, files, assetService, token, save } = await setup(stored, false);
+  expect(await save({ showRing: false, imageScale, imagePosition })).toBe(1);
+  expect(cropTokenImage).toHaveBeenCalledWith(expect.any(File), imageScale, imagePosition, undefined, false, false);
+  expect(files.get(stored)).toBe('cropped');
+  expect(app.vault.createBinary).not.toHaveBeenCalled();
+  expect(await assetService.getAssetById(token.id)).toMatchObject({ imagePath: stored, showRing: false });
+});
+
+it('keeps an existing ringless image untouched at its default fit, including after reset', async () => {
+  const { app, files, save } = await setup(stored, false);
+  expect(await save({ showRing: false, ...cropReset({ file: null, showRing: false }) })).toBe(1);
+  expect(cropTokenImage).not.toHaveBeenCalled();
+  expect(app.vault.modifyBinary).not.toHaveBeenCalled();
+  expect(app.vault.createBinary).not.toHaveBeenCalled();
+  expect(files.get(stored)).toBe('original art');
+});
+
 it('leaves the image alone when a ringed token is saved with its crop untouched', async () => {
   const { app, files, save } = await setup(stored, true);
   expect(await save({ name: 'Renamed' })).toBe(1);

@@ -28,7 +28,8 @@ function audioScene(): { store: ViewAtlasStore; history: () => HistoryState; aud
 }
 
 const volume = (store: ViewAtlasStore, audio: string): number | undefined => store.getState().objects.audios[audio]?.volume;
-const panelSlider = (): HTMLInputElement => document.querySelector<HTMLInputElement>('.atlas-audio-config__slider')!;
+/** The volume slider's thumb, the panel's first; PageUp moves it ten steps. */
+const volumeThumb = (): HTMLElement => document.querySelector<HTMLElement>('.atlas-audio-config [role="slider"]')!;
 const closePanel = (): void => { act(() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); }); };
 
 describe('undo and redo while the audio panel holds its edit open', () => {
@@ -36,7 +37,7 @@ describe('undo and redo while the audio panel holds its edit open', () => {
     const { store, history, audio, piece } = audioScene();
     store.getState().moveToken(piece, 70, 0);
     act(() => openAudioConfigPanel(audio, store, registry));
-    act(() => { fireEvent.change(panelSlider(), { target: { value: '80' } }); });
+    for (let press = 0; press < 3; press++) act(() => { fireEvent.keyDown(volumeThumb(), { key: 'PageUp' }); });
     expect(volume(store, audio)).toBe(0.8);
 
     history().undo();

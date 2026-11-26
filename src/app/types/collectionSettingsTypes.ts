@@ -5,8 +5,11 @@
  * grid defaults, and token conditions.
  */
 
+import type { AreaCellRule, ConeEnd } from '../measure/areaRules';
+import type { MovementRules } from '../measure/movementRules';
 import type { ResourceDefinition } from '../resources/resourceTypes';
 import type { CreatureFilterDefinition } from './creatureFilterTypes';
+import type { DicePreset, DiceRowSlot } from './dicePresetTypes';
 import type { DiceRules } from './diceRulesTypes';
 import type { RandomTableSource, RarityOption } from './randomTableTypes';
 import type { InitiativeRules } from './initiativeRulesTypes';
@@ -57,9 +60,10 @@ export type MeasurementMode = 'metric' | 'abstract';
 export type GridUnitType = 'feet' | 'yards' | 'meters' | 'units' | 'custom';
 /**
  * How diagonal steps count on square grids: `equidistant` counts each as 1 (D&D 5e),
- * `alternating` counts them 1, 2, 1, 2 (5-10-5), `euclidean` measures the straight line.
+ * `alternating` counts them 1, 2, 1, 2 (5-10-5), `euclidean` measures the straight line,
+ * `manhattan` counts each as 2 (no diagonal moves: one step across and one along).
  */
-export type DiagonalRule = 'equidistant' | 'alternating' | 'euclidean';
+export type DiagonalRule = 'equidistant' | 'alternating' | 'euclidean' | 'manhattan';
 
 /**
  * What a cell of difficult terrain (a map feature marked so) costs the movement ruler: `double`
@@ -69,6 +73,8 @@ export type DifficultTerrainRule = 'double' | 'none';
 
 export interface CollectionGridDefaults {
   unitType: GridUnitType;
+  /** The name a `custom` unit shows after a distance ("mi"); read with `readUnitName`. Unset, or with another unit type, none. */
+  unitName?: string;
   unitDistance: number;
   measurementMode: MeasurementMode;
   abstractRangeBands?: RangeBand[];
@@ -78,6 +84,10 @@ export interface CollectionGridDefaults {
   difficultTerrain?: DifficultTerrainRule;
   /** Full opening of the cone measurement in degrees. Unset means 90. */
   coneAngle?: number;
+  /** When a measured area covers a cell. Unset means `half` (`DEFAULT_AREA_CELL_RULE`). */
+  areaCellRule?: AreaCellRule;
+  /** How a measured cone ends. Unset means `round` (`DEFAULT_CONE_END`), as cones were always drawn. */
+  coneEnd?: ConeEnd;
 }
 
 export interface CollectionSettings {
@@ -116,6 +126,12 @@ export interface CollectionSettings {
    * own. Unset while it takes those of its preset; read with `collectionInitiativeRules`.
    */
   initiative?: InitiativeRules | undefined;
+  /**
+   * The steps a token's movement falls into, whether it adds up over a turn and the speed of a
+   * creature that states none, stored only once the collection has rules of its own. Unset while it takes those of its preset; read with
+   * `collectionMovementRules`.
+   */
+  movement?: MovementRules | undefined;
   /** Expendable token resources, in token order. Unset in collections saved before resources existed. */
   resources?: ResourceDefinition[];
   /** Filters on statblock fields Atlas does not filter by on its own. Read with `collectionCreatureFilters`. */
@@ -146,4 +162,21 @@ export interface CollectionSettings {
    * it takes those of its preset; read with `collectionItemRarities`.
    */
   itemRarities?: readonly RarityOption[] | undefined;
+  /** Rolls saved to roll again with one click. Arrives unchecked: read with `readDiceShelf`. */
+  dicePresets?: DicePreset[] | undefined;
+  /** The dice tray's row, stored only once the GM changes it; unset is the seven standard dice. Read with `readDiceShelf`. */
+  diceRow?: DiceRowSlot[] | undefined;
+  /** The players at the table, for the initiative tracker. Read with `collectionParty`. */
+  party?: PartyMember[];
+  /** Vault path of the picture an enemy added by name starts with. Read with `collectionEnemyImage`. */
+  enemyImagePath?: string | undefined;
+}
+
+/** A player at the table: in the initiative tracker without a token, with the number they rolled themselves. */
+export interface PartyMember {
+  /** Never changes: initiative entries point at it. */
+  id: string;
+  name: string;
+  /** Vault path of the player's picture. */
+  imagePath?: string;
 }

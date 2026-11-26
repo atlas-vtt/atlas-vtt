@@ -7,8 +7,10 @@ import { lightLevelAt } from '../lightLevels';
 import { LightReaches } from '../lightReaches';
 import { MAX_REFLECTION_SAMPLES, floorLight, reflectedArea, reflectedAt, type ReflectionSampling } from '../reflectedLight';
 import { exploredShapes } from '../exploredShapes';
-import { litPolygons, type LightReach } from '../sight';
+import { litPolygons, type LightReach, type SightRegion } from '../sight';
 import { computeVisibility, pointInPolygon } from '../visibility';
+import { visionCone } from '../visionCone';
+import { perceive } from '../perception';
 import { NORMAL_SIGHT } from '../../gameSystems/senses/generic';
 
 /** 50 px cells: a torch of 20/40 ft is bright to 200 px and dim to 400 px. */
@@ -92,6 +94,25 @@ describe('reflected light', () => {
     expect(level({ x: 500, y: 300 }, [{ ...reach!, reflection: [] }])).toBe('dark');
     expect(level({ x: 500, y: 300 }, [reach!])).toBe('dim');
     expect(level({ x: 720, y: 300 }, [reach!])).toBe('dark');
+  });
+
+  it('takes no light from a beam\'s sides: in the open a beam reflects nothing, and a token beside its cone stays unseen', () => {
+    for (const apex of [0, CELL / 2]) {
+      // A bullseye lantern facing east, 53° wide.
+      const [reach] = reachesOf([torch(300, 300, { cone: visionCone(90, 53, apex)! })], []);
+      expect(reach!.reflection).toEqual([]);
+      const beside = { x: 420, y: 400 };
+      expect(level(beside, [reach!])).toBe('dark');
+      const hero: SightRegion = { tokenId: 'hero', sense: NORMAL_SIGHT, origin: { x: 300, y: 300 }, radius: 1000, polygon: computeVisibility({ x: 300, y: 300 }, 1000, []), apex: 0, seesInvisible: false };
+      expect(perceive(beside, { all: false, regions: [hero] }, level(beside, [reach!]))).toBe('unseen');
+    }
+  });
+
+  it('still fills a wall\'s shadow inside a beam', () => {
+    const pillar = [wall(400, 280, 440, 280), wall(440, 280, 440, 320), wall(440, 320, 400, 320), wall(400, 320, 400, 280)];
+    const [reach] = reachesOf([torch(300, 300, { cone: visionCone(90, 53, CELL / 2)! })], pillar);
+    expect(level({ x: 500, y: 300 }, [{ ...reach!, reflection: [] }])).toBe('dark');
+    expect(level({ x: 500, y: 300 }, [reach!])).toBe('dim');
   });
 
   it('is swallowed by magical darkness like its light', () => {

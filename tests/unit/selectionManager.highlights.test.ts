@@ -1,8 +1,9 @@
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { describe, expect, it } from 'vitest';
 import { Container, Sprite, type Graphics } from 'pixi.js';
 import { createStore } from 'zustand/vanilla';
 import { subscribeWithSelector } from 'zustand/middleware';
+import { DEFAULT_DRAW_TOOL } from '../../src/app/annotations/annotationTypes';
 import { SelectionManager } from '../../src/app/pixi/SelectionManager';
 import { HIGHLIGHT_EDGE, SELECTION_LOOK } from '../../src/app/pixi/selection/selectionGeometry';
 import { INK_SHADE_REACH as SHADE_REACH } from '../../src/app/pixi/utils/canvasInk';
@@ -19,30 +20,21 @@ function token(x: number, y: number): Container {
   return group;
 }
 
-/** A fog operation covering 600..700 × 300..400 of the world. */
-function fogArea(viewport: Container): Container {
-  const sprite = viewport.addChild(new Sprite());
-  sprite.position.set(600, 300);
-  sprite.width = 100;
-  sprite.height = 100;
-  return sprite;
-}
-
 function setup(selectedIds: string[], bars: (zoom: number) => BarsSpan = () => ({ halfWidth: 50, reach: 24 })) {
   const tokens = { goblin: token(100, 100), orc: token(300, 100) };
   const viewport = Object.assign(new Container(), { toWorld: (point: { x: number; y: number }) => point });
-  const fog = { smoke: fogArea(viewport) };
   const store = createStore(subscribeWithSelector(() => ({
-    selectedIds, activeTool: 'select', selectionMode: 'box',
+    selectedIds, activeTool: 'select', drawTool: DEFAULT_DRAW_TOOL, selectionMode: 'box',
     objects: { tokens: { goblin: { id: 'goblin' }, orc: { id: 'orc' } }, drawings: {} },
   })));
-  const manager = new SelectionManager(viewport as never, () => tokens, () => fog, store as never, new EventEmitter());
+  const reads = { tokens: 0 };
+  const manager = new SelectionManager(viewport as never, () => { reads.tokens++; return tokens; }, store as never, new EventEmitter());
   manager.barsProvider = () => bars(viewport.scale.x);
   manager.updateSelectionOverlay();
   const layer = manager.getPlayerViewLayers()[0]!.layer as Container;
   const highlights = (): Container[] => layer.children.filter((child) => child.label === 'selectionHighlight');
-  const group = layer.children.find((child) => child.label === 'selectionGroupFrame') as Graphics;
-  return { viewport, manager, highlights, group };
+  const group = layer.getChildByLabel('selectionGroupFrame', true) as Graphics;
+  return { viewport, manager, highlights, group, tokens, reads };
 }
 
 /** The accent's middle stands this far outside the token's ring, in screen pixels. */
@@ -69,6 +61,18 @@ describe('SelectionManager highlights', () => {
     viewport.emit('zoomed', {});
     expect(highlights()[0]!.scale.x).toBeCloseTo(1 / 3);
     expect(accentRadius()).toBeCloseTo(39 * 3 + ACCENT_OFFSET, 0);
+  });
+
+  it('builds the highlight of things of one shape once for all of them, again at each zoom', () => {
+    const { viewport, highlights } = setup(['goblin', 'orc']);
+    const drawings = (): Set<unknown> => new Set(highlights().map((view) => (view.children[0] as Graphics).context));
+    expect(drawings().size).toBe(1);
+    const [before] = drawings() as Set<Graphics['context']>;
+    viewport.scale.set(2);
+    viewport.emit('zoomed', {});
+    expect(drawings().size).toBe(1);
+    expect(drawings().has(before)).toBe(false);
+    expect(before!.destroyed).toBe(true);
   });
 
   it('frames two or more together around their highlights and bars', () => {
@@ -98,6 +102,30 @@ describe('SelectionManager highlights', () => {
     expect(manager.groupFrameContains(200, 100 + 35 + 24 + 2 * pad + 0.4)).toBe(false);
   });
 
+  it('draws a selection asked for again by every moved token once, before the render or when it is read', () => {
+    const { manager, highlights, tokens, reads } = setup(['goblin', 'orc']);
+    tokens.goblin.position.set(160, 100);
+    tokens.orc.position.set(360, 100);
+    const before = reads.tokens;
+    manager.requestSelectionOverlay();
+    manager.requestSelectionOverlay();
+    expect(highlights()[0]!.position.x).toBe(100);
+    manager.drawAskedOverlay();
+    manager.drawAskedOverlay();
+    expect(reads.tokens - before).toBe(1);
+    expect(highlights().map((view) => view.position.x)).toEqual([160, 360]);
+    tokens.goblin.position.set(200, 100);
+    manager.requestSelectionOverlay();
+    expect(manager.groupFrameContains(200 - 39, 100)).toBe(true);
+    expect(highlights()[0]!.position.x).toBe(200);
+  });
+
+  it('redraws the group frame in a render group of its own, so a drag step never repacks the highlights', () => {
+    const { highlights, group } = setup(['goblin', 'orc']);
+    expect(group.parentRenderGroup).not.toBeNull();
+    expect(highlights().map((view) => view.parentRenderGroup)).not.toContain(group.parentRenderGroup);
+  });
+
   it('gives a single selection no frame to take hold of', () => {
     const { manager } = setup(['goblin']);
     expect(manager.groupFrameContains(100, 100)).toBe(false);
@@ -115,15 +143,10 @@ describe('SelectionManager highlights', () => {
     expect(manager.groupFrameContains(200, 100 + 35 + 48 + 2 * SELECTION_LOOK.groupGap - 1)).toBe(true);
   });
 
-  it('outlines selected fog but frames and grabs only what a group drag moves', () => {
-    const withFog = setup(['goblin', 'orc', 'smoke']);
-    expect(withFog.highlights()).toHaveLength(3);
-    expect(withFog.manager.groupFrameContains(200, 100)).toBe(true);
-    expect(withFog.manager.groupFrameContains(650, 350)).toBe(false);
-    const oneToken = setup(['goblin', 'smoke']);
-    expect(oneToken.highlights()).toHaveLength(2);
-    expect(oneToken.group.context.instructions).toHaveLength(0);
-    expect(oneToken.manager.groupFrameContains(650, 350)).toBe(false);
-    expect(oneToken.manager.groupFrameContains(100, 100)).toBe(false);
+  it('marks nothing for an id that is neither a token nor a drawing, as fog\'s is', () => {
+    const { highlights, group, manager } = setup(['goblin', 'fog_1']);
+    expect(highlights()).toHaveLength(1);
+    expect(group.context.instructions).toHaveLength(0);
+    expect(manager.groupFrameContains(100, 100)).toBe(false);
   });
 });

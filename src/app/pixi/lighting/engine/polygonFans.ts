@@ -1,5 +1,6 @@
 import { Buffer, BufferUsage, Geometry, UniformGroup } from 'pixi.js';
 import { HALO, LIGHT_LEVELS, softEdge } from '../../../lighting/lightingConstants';
+import type { Rect } from '../../../lighting/segments';
 import type { Point } from '../../../types/visionTypes';
 import type { Polygon } from '../../../vision/visibility';
 import { fanTriangles } from './fanTriangles';
@@ -86,4 +87,22 @@ export function setFalloff(falloff: Falloff, light: EngineLight): void {
 /** The average of a convex piece's corners, inside it. */
 export function middleOf(piece: readonly Point[]): Point {
   return { x: piece.reduce((sum, p) => sum + p.x, 0) / piece.length, y: piece.reduce((sum, p) => sum + p.y, 0) / piece.length };
+}
+
+/** The texels around `shapes`, on the grid of `texel` world px from the map's corner and within `world`; null where none is left. */
+export function texelRect(shapes: readonly { polygon: Polygon }[], texel: number, world: readonly [number, number]): Rect | null {
+  let [minX, minY, maxX, maxY] = [Infinity, Infinity, -Infinity, -Infinity];
+  for (const { polygon } of shapes) {
+    for (const p of polygon) {
+      minX = Math.min(minX, p.x);
+      minY = Math.min(minY, p.y);
+      maxX = Math.max(maxX, p.x);
+      maxY = Math.max(maxY, p.y);
+    }
+  }
+  const x0 = Math.max(0, Math.floor(minX / texel) * texel);
+  const y0 = Math.max(0, Math.floor(minY / texel) * texel);
+  const x1 = Math.min(world[0], Math.ceil(maxX / texel) * texel);
+  const y1 = Math.min(world[1], Math.ceil(maxY / texel) * texel);
+  return x1 > x0 && y1 > y0 ? [x0, y0, x1 - x0, y1 - y0] : null;
 }

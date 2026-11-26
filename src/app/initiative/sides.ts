@@ -1,4 +1,5 @@
-import { BUILT_IN_SIDES, defaultSides, sidesOfRules } from '../gameSystems/initiativeSideRules';
+import { isPlayersToken, type PlayerTokenRef } from '../characters/playerTokens';
+import { BUILT_IN_SIDES, defaultSides, inSideOrder, sidesOfRules } from '../gameSystems/initiativeSideRules';
 import { t } from '../i18n';
 import type { TokenEntity } from '../types';
 import type { InitiativeRules, SideId, SideRef } from '../types/initiativeRulesTypes';
@@ -33,11 +34,13 @@ export function listedByCards(initiative: Pick<InitiativeState, 'isActive' | 'ca
 /**
  * The side a token fights on: the one the GM gave it where `known` holds it (the sides of the
  * fight or the rules; the built-in two by default), else the players' for a token that sees (the
- * lighting takes those for the party), else the opponents'.
+ * lighting takes those for the party) and for one that is a player's by what the app knows of it
+ * (`isPlayersToken`: a player character of the library, what a player was given), else the opponents'.
  */
-export function sideOf(token: Pick<TokenEntity, 'side' | 'vision'> | undefined, known: readonly SideId[] = BUILT_IN_SIDES): SideId {
-  if (token?.side && known.includes(token.side)) return token.side;
-  return token?.vision?.enabled ? 'players' : 'opponents';
+export function sideOf(token: (Pick<TokenEntity, 'side' | 'vision'> & PlayerTokenRef) | undefined, known: readonly SideId[] = BUILT_IN_SIDES): SideId {
+  if (!token) return 'opponents';
+  if (token.side && known.includes(token.side)) return token.side;
+  return token.vision?.enabled || isPlayersToken(token) ? 'players' : 'opponents';
 }
 
 /** A side as the lists show it: its name, this round's roll where the order is rolled, and whether it has the turn. */
@@ -50,11 +53,11 @@ export interface ListedSide {
 
 /**
  * The sides as the lists draw them, in the order they act this round: a running fight's (rolled
- * order and the side or sides with the turn), else the rules'.
+ * order and the side or sides with the turn), else the rules' in the order the GM dragged them into.
  */
-export function listedSides(initiative: Pick<InitiativeState, 'isActive' | 'round' | 'sides'>, rules: InitiativeRules): ListedSide[] {
+export function listedSides(initiative: Pick<InitiativeState, 'isActive' | 'round' | 'sides' | 'sideOrder'>, rules: InitiativeRules): ListedSide[] {
   const fight = initiative.isActive ? initiative.sides : undefined;
-  if (!fight) return sidesOfRules(rules).map((side) => ({ id: side.id, name: sideName(side), roll: null, active: false }));
+  if (!fight) return inSideOrder(sidesOfRules(rules), initiative.sideOrder).map((side) => ({ id: side.id, name: sideName(side), roll: null, active: false }));
   const refs = new Map(fightSides(fight).map((side) => [side.id, side]));
   const rolls = fight.rolls?.[initiative.round];
   const active = activeSides(fight, initiative.round);

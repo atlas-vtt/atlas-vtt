@@ -76,12 +76,16 @@ export async function writeNewTemplateFile(
   return { path, text };
 }
 
-/** A new template, under an id no template of the library holds, in a file of its own in `folder`. */
+/**
+ * A new template, under an id no template of the library holds, in a file of its own in `folder`.
+ * It is a template of its own: where the one it was made from came from (`armarium`) stays behind.
+ */
 export async function newTemplateFile(
   app: App, library: TemplateLibrary, name: string, template: StatblockTemplate, folder: string = TEMPLATE_FOLDER,
 ): Promise<{ id: TemplateId; path: string }> {
   let id = newTemplateId(name);
   while (library.get(id)) id = newTemplateId(name);
-  const { path } = await writeNewTemplateFile(app, library, folder, name, { ...template, id });
+  const { armarium: _provenance, ...own } = template;
+  const { path } = await writeNewTemplateFile(app, library, folder, name, { ...own, id });
   return { id, path };
 }

@@ -118,6 +118,15 @@
     font-weight: 700;
     font-variant-numeric: tabular-nums;
     line-height: 1;
+
+    // The dice are in the air: the place stands, quiet, and the number comes in when they land.
+    &.is-rolling {
+      color: var(--text-faint);
+    }
+
+    &.is-landed {
+      animation: atlas-online-log-total-in $transition-normal $transition-ease-out both;
+    }
   }
 
   .atlas-online-log__roll-toggle {
@@ -142,6 +151,11 @@
 
     #{$log-coarse} & {
       @include log-wide-target;
+    }
+
+    // While the dice fly it keeps its place and offers nothing.
+    &.is-waiting {
+      visibility: hidden;
     }
   }
 

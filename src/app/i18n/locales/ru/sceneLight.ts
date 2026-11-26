@@ -2,6 +2,7 @@ import type { Translation } from '../../types';
 
 export const sceneLight: Translation = {
   'sceneLight.day': 'День',
+  'sceneLight.memoryNeeded': 'Нужна освещённая сцена, которая помнит исследованное',
   'sceneLight.dusk': 'Сумерки',
   'sceneLight.night': 'Ночь',
   'sceneLight.dark': 'Кромешная тьма',
@@ -12,7 +13,7 @@ export const sceneLight: Translation = {
   'sceneLight.forgetExplored': 'Забыть исследованные области',
   'sceneLight.openSettings': 'Настройки освещения…',
   'sceneLight.settings': 'Настройки освещения',
-  'sceneLight.closeSettings': 'Закрыть настройки освещения',
+  'sceneLight.settingsHint': 'Зрение, исследованные области и тёмное зрение',
   'sceneLight.tokenVision': 'Зрение токенов',
   'sceneLight.tokenVisionOn': 'Игроки видят только то, что видят их токены',
   'sceneLight.tokenVisionOff': 'Игроки видят всё, что освещено',
@@ -36,10 +37,10 @@ export const sceneLight: Translation = {
   'sceneLight.mode.memory': 'Исследованные области',
   'sceneLight.memory.reveal': 'Раскрыть',
   'sceneLight.memory.forget': 'Забыть',
+  'sceneLight.memory.revealTip': 'Отметить область как исследованную для игроков',
+  'sceneLight.memory.forgetTip': 'Заставить игроков забыть область',
   'sceneLight.memory.brush': 'Кисть',
   'sceneLight.memory.lasso': 'Лассо',
   'sceneLight.memory.rectangle': 'Прямоугольник',
-  'sceneLight.memory.strokeMode': 'Что делает штрих',
-  'sceneLight.memory.strokeShape': 'Форма штриха',
   'sceneLight.memory.brushSize': 'Размер кисти',
 };

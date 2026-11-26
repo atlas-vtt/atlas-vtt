@@ -36,6 +36,30 @@ export class NavigationHistory {
     return this.currentIndex < this.history.length - 1;
   }
 
+  /** Folders have another id now (`moved` gives it, or null for a folder that kept its own): Back and Forward lead to where they are. */
+  follow(moved: (folderId: string) => string | null): void {
+    this.history = this.history.map((folderId) => (folderId === null ? null : moved(folderId) ?? folderId));
+  }
+
+  /**
+   * A folder is gone: Back and Forward lead to its parent (null: the top level) where they led to it. A step that
+   * would then lead from a folder to that same folder is dropped, so no press of Back or Forward goes nowhere.
+   */
+  leave(folderId: string, parentId: string | null): void {
+    const history: (string | null)[] = [];
+    let currentIndex = this.currentIndex;
+    this.history.forEach((entry, index) => {
+      const next = entry === folderId ? parentId : entry;
+      if (history.at(-1) === next) {
+        if (index <= this.currentIndex) currentIndex--;
+      } else {
+        history.push(next);
+      }
+    });
+    this.history = history;
+    this.currentIndex = currentIndex;
+  }
+
   clear(): void {
     this.history = [];
     this.currentIndex = -1;

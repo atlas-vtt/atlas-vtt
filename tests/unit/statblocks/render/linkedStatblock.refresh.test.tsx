@@ -8,7 +8,7 @@ import type { TokenVitals } from '../../../../src/app/services/statblockVitalsSy
 import { addNote, creatureVault, forbidWrites, type CreatureVault } from '../../../mocks/creatureVault';
 import { MARSH_PATH, TEMPLATE_FOLDER, marshText } from '../library/templateTexts';
 import {
-  NATIVE, WARDEN, barOf, captionOf, fantasyCardOf, loadFantasyStatblocks, renderLinked, sheetOf, unloadFantasyStatblocks,
+  NATIVE, WARDEN, barOf, fantasyCardOf, loadFantasyStatblocks, renderLinked, sheetOf, unloadFantasyStatblocks,
 } from './linkedStatblockKit';
 
 let current: CreatureVault;
@@ -124,7 +124,7 @@ describe('LinkedStatblock: following changes', () => {
   it('hands a frontmatter statblock to Fantasy Statblocks once the plugin loads after mount', async () => {
     unloadFantasyStatblocks();
     const { container } = renderLinked(current, { path: 'Bestiary/Goblin.md' });
-    await waitFor(() => expect(captionOf(container)).toBe('Shown with Atlas\' field layout'));
+    await waitFor(() => expect(sheetOf(container)?.dataset.template).toBe('auto'));
 
     loadFantasyStatblocks(current);
     current.bestiary.push({ name: 'Goblin', path: 'Bestiary/Goblin.md' });

@@ -3,15 +3,15 @@ import { pngBandDecoder } from '../band/pngBandDecoder';
 
 const FIXTURES = ['rgb8.png', 'rgba8.png', 'gray8.png', 'gray16.png', 'gray1.png', 'graya8.png', 'palette8.png', 'palette4-trns.png', 'rgb8-trns.png'];
 
-async function fixture(name: string): Promise<Uint8Array> {
+async function fixture(name: string): Promise<Uint8Array<ArrayBuffer>> {
   const response = await fetch(`/tests/fixtures/images/${name}`);
   if (!response.ok) throw new Error(`${name}: ${response.status}`);
   return new Uint8Array(await response.arrayBuffer());
 }
 
 /** The pixels Chromium decodes, read back from a canvas (premultiplied there, so only opaque pixels are exact). */
-async function chromiumPixels(bytes: Uint8Array): Promise<ImageData> {
-  const bitmap = await createImageBitmap(new Blob([bytes as Uint8Array<ArrayBuffer>], { type: 'image/png' }), { premultiplyAlpha: 'none', colorSpaceConversion: 'none' });
+async function chromiumPixels(bytes: Uint8Array<ArrayBuffer>): Promise<ImageData> {
+  const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/png' }), { premultiplyAlpha: 'none', colorSpaceConversion: 'none' });
   const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
   const context = canvas.getContext('2d')!;
   context.drawImage(bitmap, 0, 0);
@@ -19,7 +19,7 @@ async function chromiumPixels(bytes: Uint8Array): Promise<ImageData> {
   return context.getImageData(0, 0, canvas.width, canvas.height);
 }
 
-async function bandPixels(bytes: Uint8Array): Promise<Uint8ClampedArray> {
+async function bandPixels(bytes: Uint8Array<ArrayBuffer>): Promise<Uint8ClampedArray> {
   const { width, height } = pngBandDecoder.inspect(bytes);
   const pixels = new Uint8ClampedArray(width * height * 4);
   await pngBandDecoder.decode(bytes, { reduce: 1, onBand: (band) => pixels.set(band.data, band.y * width * 4) });
@@ -39,7 +39,7 @@ function pngChunk(type: string, data: Uint8Array): Uint8Array {
 }
 
 /** A square RGB PNG of noisy gradients, its rows filtered with types 1 to 4 in turn, as encoders mix them. */
-async function syntheticPng(side: number): Promise<Uint8Array> {
+async function syntheticPng(side: number): Promise<Uint8Array<ArrayBuffer>> {
   const rowBytes = side * 3;
   const compressor = new CompressionStream('deflate');
   const writer = compressor.writable.getWriter();

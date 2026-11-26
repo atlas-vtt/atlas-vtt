@@ -1,5 +1,6 @@
 import type { TokenEntity } from '../types';
 import type { TokenVision } from '../types/lightingTypes';
+import type { SightRules } from './sightRules';
 
 /** How one picture of the scene treats tokens. The rule functions read these two decisions from here and make none of their own. */
 export interface SightPolicy {
@@ -12,6 +13,11 @@ export interface SightPolicy {
    * never true for a hidden token.
    */
   readonly alwaysSeen: (token: TokenEntity) => boolean;
+  /**
+   * The tokens of the one who looks: always shown, defeated or not (`sightPolicyFor` leaves them so), as an owner
+   * always sees their own token. Unset for the GM's and the party's pictures; never true for a hidden token.
+   */
+  readonly owned?: (token: TokenEntity) => boolean;
 }
 
 /**
@@ -34,6 +40,57 @@ export const PLAYER_SIGHT_POLICY: SightPolicy = Object.freeze({ givesSight: play
  * has one), and must stay so: while both pictures have the same sight the GM's view draws the players' footprints.
  */
 export const GM_SIGHT_POLICY: SightPolicy = Object.freeze({ givesSight: visionOn, alwaysSeen: playersSource });
+
+type TokenRule = (token: TokenEntity) => boolean;
+type DefeatTest = NonNullable<SightRules['defeated']>;
+
+/**
+ * One player's own picture: it sees through the players' sight of `sees` alone (their characters that see), and
+ * always shows every token `owns` that is not hidden, one that sees nothing or is defeated too. A new object at each
+ * call, and memos are kept per policy: hold on to it.
+ */
+export function ownPolicy(sees: TokenRule, owns: TokenRule): SightPolicy {
+  const owned = (token: TokenEntity): boolean => !token.isHidden && owns(token);
+  return Object.freeze({ givesSight: (token: TokenEntity) => PLAYER_SIGHT_POLICY.givesSight(token) && sees(token), alwaysSeen: owned, owned });
+}
+
+const undefeatedRules = new WeakMap<TokenRule, WeakMap<DefeatTest, TokenRule>>();
+const undefeatedPolicies = new WeakMap<SightPolicy, WeakMap<DefeatTest, SightPolicy>>();
+
+/** What `make` gives for `key` and `test`, made once and kept while both live. */
+function keptFor<K extends object, V>(memo: WeakMap<K, WeakMap<DefeatTest, V>>, key: K, test: DefeatTest, make: () => V): V {
+  let byTest = memo.get(key);
+  if (!byTest) memo.set(key, byTest = new WeakMap());
+  let kept = byTest.get(test);
+  if (kept === undefined) byTest.set(test, kept = make());
+  return kept;
+}
+
+/** `rule` for tokens that are not defeated; the same function for the same rule and test. */
+function undefeated(rule: TokenRule, defeated: DefeatTest): TokenRule {
+  return keptFor(undefeatedRules, rule, defeated, () => (token) => rule(token) && !defeated(token));
+}
+
+/**
+ * `policy` on a map played by `rules`: a token the rules count as defeated (`SightRules.defeated`: a resource that
+ * defeats it is spent) gives no sight and is not always shown (unless it is the looker's own, `owned`), so it has no
+ * footprint, records nothing as explored and is seen only where another token perceives it. Its vision still counts for the scene (`sceneHasVision`), so a party
+ * whose every vision token is defeated sees nothing rather than everything. The same object for the same policy and
+ * rules' test, and the GM's and the players' always-shown rules stay one function, so memos and the shared footprints hold.
+ */
+export function sightPolicyFor(policy: SightPolicy, rules: Pick<SightRules, 'defeated'> | undefined): SightPolicy {
+  const defeated = rules?.defeated;
+  if (!defeated) return policy;
+  return keptFor(undefeatedPolicies, policy, defeated, () => {
+    const { owned } = policy;
+    const shown = undefeated(policy.alwaysSeen, defeated);
+    return Object.freeze({
+      givesSight: undefeated(policy.givesSight, defeated),
+      alwaysSeen: owned ? (token: TokenEntity) => owned(token) || shown(token) : shown,
+      ...(owned && { owned }),
+    });
+  });
+}
 
 const sceneVision = new WeakMap<Readonly<Record<string, TokenEntity>>, boolean>();
 

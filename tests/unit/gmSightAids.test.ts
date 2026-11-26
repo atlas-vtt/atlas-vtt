@@ -83,7 +83,7 @@ describe('the ranges of a selected vision token', () => {
     expect(aids.rings.rings()[0]!.rings.map((ring) => [ring.radius, ring.style])).toEqual([[840, 'sight'], [420, 'sense'], [210, 'creatures']]);
     store.getState().setSelection([add(900, { enabled: true, senses: [{ id: 'low-light-vision' }, { id: 'darkvision', range: 30 }] })]);
     aids.update();
-    // What has no limit has neither ring nor label: Edit Token says it.
+    // What has no limit has neither ring nor label: Edit token says it.
     expect(labels(aids)).toEqual(['Darkvision 30ft']);
   });
 
@@ -277,6 +277,29 @@ describe('the marks on tokens the players do not see', () => {
     aids.update();
     expect(aids.marks.shown()).toEqual([]);
     expect(aids.marks.view.visible).toBe(false);
+  });
+
+  it('keep the badge of a token stepping out of and back into the players\' sight, unseen meanwhile, and let it go with its token', () => {
+    const { aids, store, perceived, add } = setup();
+    const id = add(100);
+    add(300);
+    perceived[id] = 'unseen';
+    aids.update();
+    const mark = aids.marks.view.children[0]!;
+    perceived[id] = 'seen';
+    aids.update();
+    expect(aids.marks.shown()).toEqual([]);
+    expect(mark.destroyed).toBe(false);
+    expect(mark.alpha).toBe(0);
+    perceived[id] = 'unseen';
+    aids.update();
+    expect(aids.marks.view.children[0]).toBe(mark);
+    expect(mark.alpha).toBe(1);
+    perceived[id] = 'seen';
+    aids.update();
+    store.getState().deleteToken(id);
+    aids.update();
+    expect(mark.destroyed).toBe(true);
   });
 
   it('are none on a hidden token, on an unlit scene and while a map loads', () => {

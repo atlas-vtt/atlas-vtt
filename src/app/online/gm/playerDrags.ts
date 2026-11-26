@@ -1,10 +1,11 @@
-import type { PlayerDrag, PlayerDragCancel, PlayerMove } from '../protocol/index.ts';
+import type { MoveRefusedReason, PlayerDrag, PlayerDragCancel, PlayerMove } from '../protocol/index.ts';
 import { holdTokens } from '../../lighting/sightOnDrop';
 import { abandonHistoryTransaction, beginHistoryTransaction, endHistoryTransaction } from '../../stores/history';
 import { placeTokens } from '../../stores/tokenStacking';
+import { countTurnMoveIn } from '../../stores/turnMovesSlice';
 import type { HeldTokens } from '../../types/viewUIState';
 import type { Point } from '../movement/index.ts';
-import { checkMove, landing, MoveRate, type MoveContext } from './moveCheck.ts';
+import { checkMove, dropPlace, landing, MoveRate, refusalReason, type MoveContext } from './moveCheck.ts';
 import type { MoveState, MoveStore } from './playerMoves.ts';
 import { mapTokens, sceneTokens } from '../../tokens/offMap';
 
@@ -16,7 +17,7 @@ export const DRAG_IDLE_MS = 3_000;
 
 export interface PlayerDragPorts {
   /** The shared scene, its list, owners and map, with the tokens as the store holds them now. */
-  context(state: MoveState): MoveContext;
+  context(state: MoveState, from: string): MoveContext;
   now(): number;
   setTimer(run: () => void, ms: number): number;
   clearTimer(timer: number): void;
@@ -41,9 +42,12 @@ const loaded = (state: MoveState): boolean => state.mapLoaded && !state.isMapLoa
  * down on top (`placeTokens`) and closes the transaction, so the whole drag is one undo step. Drags of
  * several players at once share one step. On a lit scene every message and the drop move the token
  * from where it is up to the first wall in the way (`landing`), so a drag never takes it through a
- * wall or a closed door. A drag the GM takes over (by holding any token), one whose
- * scene unloads, whose player leaves or stops sending, or that the checks refuse, ends at once: the
- * token stays where it is, or goes back where it was taken from when refused or cancelled.
+ * wall or a closed door; between messages it follows the pointer freely, and the drop puts it where
+ * the GM's own drop would (`dropPlace`: snapped by the scene's grid, on a place it reaches). A drag
+ * the GM takes over (by holding any token), one whose scene unloads, whose player leaves or stops
+ * sending, or that the checks refuse, ends at once: the token stays where it is (put down as a drop
+ * would, when its player left or stopped sending), or goes back where it was taken from when refused
+ * or cancelled.
  */
 export class PlayerDrags {
   private readonly store: MoveStore;
@@ -87,7 +91,7 @@ export class PlayerDrags {
     const state = this.store.getState();
     if (!this.rate.take(from, this.ports.now()) || !loaded(state) || this.gmHolds(state)) return;
     const live = this.find(from, drag.id);
-    const context = this.context(state, live);
+    const context = this.context(state, from, live);
     const verdict = checkMove(from, drag, context);
     if (!verdict.ok) {
       if (verdict.reason !== 'place' && live !== undefined) this.end([live], 'back');
@@ -111,26 +115,27 @@ export class PlayerDrags {
   }
 
   /**
-   * The player's drop of a token: where it ended their drag (the drop's place, or before the first
-   * wall on the way there), false when it was refused (the token went back, or the GM had taken the
-   * drag over), `turn` when it was refused for the token's turn, and null when no drag of theirs was under way.
+   * The player's drop of a token: where it ended their drag (where the GM's own drop would put it
+   * coming from the drop's place, or from before the first wall on the way there: `dropPlace`), false
+   * when it was refused (the token went back, or the GM had taken the drag over), `turn` or `paused`
+   * when it was refused for the token's turn or the GM's pause, and null when no drag of theirs was under way.
    */
-  drop(from: string, move: PlayerMove): Point | false | 'turn' | null {
+  drop(from: string, move: PlayerMove): Point | false | MoveRefusedReason | null {
     const state = this.store.getState();
     const live = this.find(from, move.id);
-    const context = this.context(state, live);
+    const context = this.context(state, from, live);
     const tokenId = context.scene === move.scene ? context.listedToken(move.id) : undefined;
     if (tokenId !== undefined && this.taken.delete(key(from, tokenId))) return false;
     if (live === undefined) return null;
     const verdict = checkMove(from, move, context);
     if (!verdict.ok || this.gmHolds(state)) {
       this.end([live], 'back');
-      return !verdict.ok && verdict.reason === 'turn' ? 'turn' : false;
+      return refusalReason(verdict) ?? false;
     }
     const token = mapTokens(state.objects)[live.tokenId];
-    const at = token === undefined ? { x: verdict.x, y: verdict.y } : landing(context, state, live.tokenId, token, verdict);
-    this.end([live], at);
-    return at;
+    const at = token === undefined ? { x: verdict.x, y: verdict.y } : dropPlace(context, state, token, verdict);
+    this.end([live], at ?? 'back');
+    return at ?? false;
   }
 
   /**
@@ -139,7 +144,7 @@ export class PlayerDrags {
    */
   cancel(from: string, cancel: PlayerDragCancel): void {
     const live = this.find(from, cancel.id);
-    const context = this.context(this.store.getState(), live);
+    const context = this.context(this.store.getState(), from, live);
     if (context.scene !== cancel.scene) return;
     const tokenId = context.listedToken(cancel.id);
     if (tokenId !== undefined) this.taken.delete(key(from, tokenId));
@@ -189,6 +194,14 @@ export class PlayerDrags {
     const last = this.live.size === 0;
     if (outcome !== 'back') this.changed = true;
     if (outcome !== 'as-is') {
+      // What each drop moved its token from where its drag began counts in the drop's own write, so undo gives it back
+      const counted: { tokenId: string; distance: number }[] = [];
+      if (outcome !== 'back') {
+        for (const { tokenId, start, from } of drags) {
+          const distance = this.ports.context(this.store.getState(), from).turnMove?.(tokenId, start, outcome) ?? null;
+          if (distance !== null) counted.push({ tokenId, distance });
+        }
+      }
       this.write((draft) => {
         if (outcome === 'back') {
           for (const { tokenId, start } of drags) {
@@ -196,7 +209,10 @@ export class PlayerDrags {
             if (token !== undefined) Object.assign(token, start);
           }
           draft._audioDirty = true;
-        } else placeTokens(draft, drags.map(({ tokenId }) => ({ id: tokenId, ...outcome })));
+        } else {
+          placeTokens(draft, drags.map(({ tokenId }) => ({ id: tokenId, ...outcome })));
+          for (const { tokenId, distance } of counted) countTurnMoveIn(draft, [tokenId], distance);
+        }
         if (last && Object.keys(draft.heldTokens).length > 0) draft.heldTokens = {};
       });
     }
@@ -214,14 +230,15 @@ export class PlayerDrags {
     else abandonHistoryTransaction(this.store);
   }
 
-  /** Drops each drag's token where it is, or puts it back when its player may no longer move it. */
+  /** Drops each drag's token where it is, as a drop puts it down there (`dropPlace`), or puts it back when its player may no longer move it. */
   private endWhereTheyAre(drags: readonly LiveDrag[]): void {
     for (const live of drags) {
       const state = this.store.getState();
       const token = mapTokens(state.objects)[live.tokenId];
-      const context = this.context(state, live);
+      const context = this.context(state, live.from, live);
       const verdict = token === undefined || context.scene === null ? null : checkMove(live.from, { scene: context.scene, id: live.alias, x: token.x, y: token.y }, context);
-      this.end([live], verdict?.ok === true ? { x: verdict.x, y: verdict.y } : 'back');
+      const at = verdict?.ok === true && token !== undefined ? dropPlace(context, state, token, token) : null;
+      this.end([live], at ?? 'back');
     }
   }
 
@@ -255,8 +272,8 @@ export class PlayerDrags {
   }
 
   /** What a drag message is checked against: a drag under way keeps its token even should it leave the players' list meanwhile. */
-  private context(state: MoveState, live: LiveDrag | undefined): MoveContext {
-    const context = this.ports.context(state);
+  private context(state: MoveState, from: string, live: LiveDrag | undefined): MoveContext {
+    const context = this.ports.context(state, from);
     return live === undefined ? context : { ...context, listedToken: (alias) => (alias === live.alias ? live.tokenId : context.listedToken(alias)) };
   }
 

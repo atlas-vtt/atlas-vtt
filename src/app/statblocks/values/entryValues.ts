@@ -14,6 +14,8 @@ import { valueText } from './valueText';
 export const DEFAULT_ENTRY_NAME_KEY = 'name';
 /** Fantasy Statblocks' key; its Daggerheart notes use `text`, which their templates name in `textKey`. */
 export const DEFAULT_ENTRY_TEXT_KEY = 'desc';
+/** The key those notes keep an entry's text under; read where a field names no text key of its own (`entryTextKeyOf`). */
+const OTHER_ENTRY_TEXT_KEY = 'text';
 
 export interface EntryExtra extends EntryExtraShape {
   value: FieldValue;
@@ -64,18 +66,26 @@ export function entryName(entry: FieldValue | undefined, shape?: EntryShape): st
   return textOf(entryRecord(entry, shape)?.[entryNameKey(shape)]);
 }
 
+/** Whether the shape reads `key` as an entry's name or as one of its extras. */
+function isOtherPart(key: string, shape?: EntryShape): boolean {
+  return key === entryNameKey(shape) || (shape?.extras ?? []).some((extra) => extra.key === key);
+}
+
 /**
- * The key this entry's text is read and written under: the shape's, else
- * `desc` where the entry holds nothing under the shape's key but has a `desc`.
- * Fantasy Statblocks draws an entry whose callback gives nothing
- * (`return property.text` on `{ name, desc }`) with its `desc`, and the notes
- * of one layout keep either.
+ * The key this entry's text is read and written under: the shape's, else the
+ * other of `desc` and `text` where the entry holds nothing under the shape's
+ * key but has a text there. Fantasy Statblocks draws an entry whose callback
+ * gives nothing (`return property.text` on `{ name, desc }`) with its `desc`,
+ * the notes of one layout keep either, and a statblock given another template
+ * keeps its entries as they were written: `{ name, text }` under a field that
+ * names no text key shows its text and is edited under `text`.
  */
 export function entryTextKeyOf(entry: FieldValue | undefined, shape?: EntryShape): string {
   const key = entryTextKey(shape);
   const record = entryRecord(entry, shape);
-  if (!record || key === DEFAULT_ENTRY_TEXT_KEY || textOf(record[key]) !== undefined) return key;
-  return textOf(record[DEFAULT_ENTRY_TEXT_KEY]) === undefined ? key : DEFAULT_ENTRY_TEXT_KEY;
+  if (!record || textOf(record[key]) !== undefined) return key;
+  const other = key === DEFAULT_ENTRY_TEXT_KEY ? OTHER_ENTRY_TEXT_KEY : DEFAULT_ENTRY_TEXT_KEY;
+  return isOtherPart(other, shape) || textOf(record[other]) === undefined ? key : other;
 }
 
 export function entryText(entry: FieldValue | undefined, shape?: EntryShape): string | undefined {

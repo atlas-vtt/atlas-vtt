@@ -210,6 +210,22 @@ describe('the statblock beside its note', () => {
     expect(view.containerEl.className).toBe('workspace-leaf-content');
   });
 
+  it('takes the panels off the notes of a popout the moment it closes, before the workspace says its layout changed', async () => {
+    const harness = await setup();
+    const view = harness.open(WARDEN);
+    const other = harness.open(HAG);
+    await start(harness);
+    const panel = panelOf(view)!;
+
+    // As Obsidian closes a popout: its leaves go, then the window, and `layout-change` comes a moment later
+    harness.leaves.splice(0, 1);
+    await act(async () => { harness.trigger('window-close'); });
+
+    expect(panel.isConnected).toBe(false);
+    expect(view.containerEl.className).toBe('workspace-leaf-content');
+    expect(panelOf(other)).not.toBeNull();
+  });
+
   it('undoes in the note with Mod+Z only while focus is in the panel, and leaves the key to its text fields', async () => {
     const harness = await setup();
     const view = harness.open(WARDEN);

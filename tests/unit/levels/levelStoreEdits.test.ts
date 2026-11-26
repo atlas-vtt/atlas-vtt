@@ -40,7 +40,7 @@ describe('clearing a floor', () => {
     const store = twoFloorStore('upper');
 
     store.getState().clearFog();
-    store.getState().clearDrawings();
+    store.getState().clearAnnotations('level');
 
     expect(Object.keys(store.getState().objects.fog)).toEqual(['low']);
     expect(Object.keys(store.getState().objects.drawings)).toEqual(['low']);

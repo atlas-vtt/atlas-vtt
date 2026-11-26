@@ -285,6 +285,9 @@ export class GridSystem implements UnlitGrid {
   private follow(map: MosaicCanvasView): () => void {
     return map.onChange((change) => {
       if (change === 'image') this.mapImageChanged();
+      // The same pixels drawn elsewhere (a floor moved, a stretch): the grid is clipped to the new rect, and the colour
+      // read from those pixels stays, so the grid never waits for it (a read per step of a drag hid it meanwhile).
+      else if (change === 'placement') this.createGrid();
     });
   }
 
@@ -386,7 +389,6 @@ export class GridSystem implements UnlitGrid {
     this.cellNumberLabels?.setOpacity(opacity);
   }
 
-  /** Return current options */
   public getOptions(): Readonly<GridOptions> {
     return this.options;
   }
@@ -447,18 +449,16 @@ export class GridSystem implements UnlitGrid {
     return squareCellCentre({ size, offsetX, offsetY }, { x, y });
   }
 
-  /** Snap a token's centre: a cell centre, or where cells meet for an even footprint (`tokenCenterShift`) */
+  /** Snap Tiny to square-cell quarters, Small/Medium to cell centres and even footprints where cells meet. */
   public snapTokenCenter(x: number, y: number, tokenSize: number): { x: number; y: number } {
     const { type, size } = this.options;
     return snapTokenCenter({ x, y }, tokenSize, type, size, (point) => this.snapToCellCenter(point.x, point.y));
   }
 
-  /** Get current grid size */
   public get gridSize(): number {
     return this.options.size;
   }
 
-  /** Set grid type */
   public setGridType(type: GridType): void {
     const oldType = this.options.type;
     this.updateOptions({ type });
@@ -502,7 +502,6 @@ export class GridSystem implements UnlitGrid {
     }
   }
 
-  /** Set grid scale */
   public setGridScale(scale: number): void {
     this.updateOptions({ scale });
   }
@@ -515,7 +514,6 @@ export class GridSystem implements UnlitGrid {
     }
   }
 
-  /** Set grid opacity */
   public setGridOpacity(opacity: number): void {
     this.updateOptions({ alpha: opacity });
   }

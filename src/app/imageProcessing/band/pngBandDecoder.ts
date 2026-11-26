@@ -84,7 +84,7 @@ async function nextChunk(chunks: AsyncGenerator<Uint8Array>): Promise<Uint8Array
  * scanline besides the band. A scanline is the filter byte and `ceil(width × bits per pixel / 8)`
  * bytes (PNG spec, 7.2).
  */
-async function decodeRows(bytes: Uint8Array, png: PngStructure, sink: RowSink): Promise<void> {
+async function decodeRows(bytes: Uint8Array<ArrayBuffer>, png: PngStructure, sink: RowSink): Promise<void> {
   const lineLength = 1 + Math.ceil((png.width * png.bitsPerPixel) / 8);
   const bytesPerPixel = Math.max(1, png.bitsPerPixel >> 3);
   const converter = new PixelConverter(png);
@@ -124,7 +124,7 @@ export const pngBandDecoder: BandDecoder = {
     return { width: png.width, height: png.height, hasAlpha: pngHasAlpha(png) };
   },
 
-  async decode(bytes: Uint8Array, options: BandDecodeOptions): Promise<void> {
+  async decode(bytes: Uint8Array<ArrayBuffer>, options: BandDecodeOptions): Promise<void> {
     options.signal?.throwIfAborted();
     const png = readPngStructure(bytes);
     const reduced = options.reduce === BLOCK;

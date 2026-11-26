@@ -1,4 +1,4 @@
-import { App, FileSystemAdapter, Menu, TFile, type EventRef } from 'obsidian';
+import { App, Menu, TFile, type EventRef } from 'obsidian';
 import { openContextMenuGlobal, type ContextMenuEntry } from '../react/root/ContextMenuContext';
 import { PlayerWindowService } from './PlayerWindowService';
 import { playImageEnter, playImageExit } from './imageDisplayMotion';
@@ -12,12 +12,29 @@ import { imageHeader } from '../imageProcessing/imageDimensions';
 import { showNotice } from '../ui/notice';
 import { statblockImageAt } from './statblockImageTarget';
 import { playerWindowStore } from '../stores/playerWindowStore';
+import { isResourceUrl, resourceUrlToFilePath, resourceUrlToVaultPath } from '../utils/pathUtils';
+import { followEveryDocument } from '../platform/atlasDocuments';
+import { canCopyItems } from '../platform/clipboardWrites';
+import { desktopOnly, isDesktopApp } from '../platform/desktopOnly';
+import { vaultBasePath } from '../platform/vaultBasePath';
 
 /** An image overlay in the player window. */
 interface ImageDisplay {
   container: HTMLDivElement;
   stage: HTMLDivElement;
   imageUrl: string;
+}
+
+/** Atlas' own elements; the document's root and body carry Atlas classes too (hidden chrome, a preview shown), and are none. */
+const ATLAS_UI = ':not(body):not(html)[class*="atlas-"]';
+const NOTE_CONTENT = '.markdown-rendered, .markdown-source-view, .markdown-preview-view';
+
+/** Whether `target` lies in Atlas' own UI, whose images stay its own; a note Atlas shows (its note preview) is the GM's content. */
+function inAtlasUi(target: Element): boolean {
+  const atlas = target.closest(ATLAS_UI);
+  if (!atlas) return false;
+  const note = target.closest(NOTE_CONTENT);
+  return !(note && atlas.contains(note));
 }
 
 export class ImageDisplayService {
@@ -35,6 +52,7 @@ export class ImageDisplayService {
   private lastContextMenuTarget: HTMLElement | null = null;
   private contextMenuEventRefs: EventRef[] = [];
   private contextMenuRegistered = false;
+  private stopFollowingDocuments: (() => void) | null = null;
 
   constructor(app: App) {
     this.app = app;
@@ -74,9 +92,6 @@ export class ImageDisplayService {
     });
     this.contextMenuEventRefs.push(linkMenuRef);
 
-    // Capture-phase listener to track right-click target (runs before Obsidian's handlers)
-    document.addEventListener('contextmenu', this.boundStoreContextMenuTarget, true);
-
     // Register for editor context menu (fires on right-click in markdown views)
     // This adds our item to Obsidian's native menu for rendered image embeds (![[image.png]])
     const editorMenuRef = this.app.workspace.on('editor-menu', (menu: Menu) => {
@@ -89,17 +104,28 @@ export class ImageDisplayService {
       if (!result) return;
 
       this.addImageDisplayMenuItem(menu, result.file);
-      menu.addItem((item) => {
-        item.setTitle(t('image.copy')).setIcon('copy').onClick(() => this.copyImageToClipboard(result.imgElement));
-      });
+      if (canCopyItems()) {
+        menu.addItem((item) => {
+          item.setTitle(t('image.copy')).setIcon('copy').onClick(() => this.copyImageToClipboard(result.imgElement));
+        });
+      }
+      if (!isDesktopApp()) return;
       menu.addItem((item) => {
         item.setTitle(t('image.openDefault')).setIcon('external-link').onClick(() => this.app.openWithDefaultApp(result.file.path));
       });
     });
     this.contextMenuEventRefs.push(editorMenuRef);
 
-    // Fallback: listen for context menu events on direct image views (non-editor contexts)
-    document.addEventListener('contextmenu', this.boundHandleContextMenu, false);
+    // In every window: a capture-phase listener tracks the right-click target ahead of Obsidian's handlers, and a
+    // fallback answers context menus on direct image views (non-editor contexts).
+    this.stopFollowingDocuments = followEveryDocument(this.app.workspace, (doc) => {
+      doc.addEventListener('contextmenu', this.boundStoreContextMenuTarget, true);
+      doc.addEventListener('contextmenu', this.boundHandleContextMenu, false);
+      return () => {
+        doc.removeEventListener('contextmenu', this.boundStoreContextMenuTarget, true);
+        doc.removeEventListener('contextmenu', this.boundHandleContextMenu, false);
+      };
+    });
   }
 
 
@@ -107,11 +133,11 @@ export class ImageDisplayService {
    * Resolve a right-click target to an image file and its IMG element.
    * Handles rendered embeds (![[image.png]]) and direct IMG clicks.
    */
-  private resolveImageFromTarget(target: HTMLElement): { file: TFile; imgElement: HTMLImageElement } | null {
+  private resolveImageFromTarget(target: Element): { file: TFile; imgElement: HTMLImageElement } | null {
     if (target.closest('.modal-container')) return null;
     // Atlas' own UI keeps its images to itself, but a statblock's pictures are content.
     let imgElement = statblockImageAt(target);
-    if (!imgElement && target.closest('[class*="atlas-"]')) return null;
+    if (!imgElement && inAtlasUi(target)) return null;
 
     if (target.tagName === 'IMG') {
       imgElement = target as HTMLImageElement;
@@ -168,17 +194,23 @@ export class ImageDisplayService {
       return;
     }
 
+    const viewed = this.viewedImageAt(target);
+    if (viewed) this.openImageMenu(event, viewed.file, viewed.imgElement);
+  }
+
+  /** The image of an image file's own tab under `target` (not Atlas' UI); null anywhere else. */
+  private viewedImageAt(target: Element): { file: TFile; imgElement: HTMLImageElement } | null {
     // Atlas' own UI keeps its images to itself
-    if (target.closest('[class*="atlas-"]')) return;
+    if (inAtlasUi(target)) return null;
 
     // Only handle direct image viewing (e.g. clicking an image file in a tab)
     const viewContent = target.closest('.view-content');
-    if (!viewContent || target.closest('.atlas-vtt')) return;
+    if (!viewContent || target.closest('.atlas-vtt')) return null;
 
-    if (!viewContent.closest('.workspace-leaf')) return;
+    if (!viewContent.closest('.workspace-leaf')) return null;
 
     const imgElement = viewContent.querySelector('img');
-    if (!imgElement) return;
+    if (!imgElement) return null;
 
     // Try to resolve the image file
     let imageFile = this.imageFileOf(imgElement);
@@ -187,12 +219,22 @@ export class ImageDisplayService {
       const activeFile = this.app.workspace.getActiveFile();
       if (activeFile && this.isImageFile(activeFile)) {
         const leafEl = target.closest('.workspace-leaf');
-        const activeLeafEl = document.querySelector('.workspace-leaf.mod-active');
+        const activeLeafEl = target.doc.querySelector('.workspace-leaf.mod-active');
         if (leafEl === activeLeafEl) imageFile = activeFile;
       }
     }
 
-    if (imageFile) this.openImageMenu(event, imageFile, imgElement);
+    return imageFile ? { file: imageFile, imgElement } : null;
+  }
+
+  /**
+   * The vault image under `target` that the image menus offer to show to the players: a rendered
+   * embed or picture in a note, a statblock's picture, an image file's own tab. Null for anything
+   * else, Atlas' own UI and pictures from the web included.
+   */
+  public imageFileAt(target: Element): TFile | null {
+    if (target.closest('.modal-container')) return null;
+    return (this.resolveImageFromTarget(target) ?? this.viewedImageAt(target))?.file ?? null;
   }
 
   /**
@@ -219,21 +261,18 @@ export class ImageDisplayService {
     event.stopPropagation();
 
     const entries: ContextMenuEntry[] = [
-      { type: 'item', label: t('image.display'), icon: 'monitor', onClick: () => this.displayImageOnPlayerView(file) },
-      { type: 'item', label: t('image.copy'), icon: 'copy', onClick: () => this.copyImageToClipboard(imgElement) },
-      { type: 'item', label: t('image.openDefaultMenu'), icon: 'external-link', onClick: () => this.app.openWithDefaultApp(file.path) },
+      ...desktopOnly<ContextMenuEntry>({ type: 'item', label: t('image.display'), icon: 'monitor', onClick: () => this.displayImageOnPlayerView(file) }),
+      ...(canCopyItems() ? [{ type: 'item' as const, label: t('image.copy'), icon: 'copy', onClick: () => this.copyImageToClipboard(imgElement) }] : []),
+      ...desktopOnly<ContextMenuEntry>({ type: 'item', label: t('image.openDefaultMenu'), icon: 'external-link', onClick: () => this.app.openWithDefaultApp(file.path) }),
     ];
 
     openContextMenuGlobal(entries, { x: event.clientX, y: event.clientY });
   }
   
-  /**
-   * Copy image to clipboard
-   */
   private async copyImageToClipboard(imgElement: HTMLImageElement): Promise<void> {
     try {
-      const blob = await this.renderImageAsPng(imgElement.src);
-      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      // The clipboard is asked within the press, as WebKit demands, and takes the picture once it is drawn.
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': this.renderImageAsPng(imgElement.src) })]);
       showNotice(t('image.copied'));
     } catch (error) {
       console.error('Failed to copy image:', error);
@@ -264,9 +303,10 @@ export class ImageDisplayService {
   }
 
   /**
-   * Add menu item to display image on player view
+   * Add menu item to display image on player view; none where there is no player window (mobile).
    */
   private addImageDisplayMenuItem(menu: Menu, file: TFile): void {
+    if (!isDesktopApp()) return;
     menu.addItem((item) => {
       item
         .setTitle(t('image.display'))
@@ -324,6 +364,8 @@ export class ImageDisplayService {
     const previous = this.detachImageDisplay();
 
     this.imageContainer = doc.body.createDiv({ cls: 'atlas-image-display' });
+    // The image's own colours behind it while the curtain hides the map (`image-display.scss`)
+    this.imageContainer.createEl('img', { cls: 'atlas-image-display__backdrop', attr: { src: imageUrl, alt: '', 'aria-hidden': 'true' } });
     // Turns with a table TV (the body's --atlas-tv-rotation); the close button stays on the window
     const turn = this.imageContainer.createDiv({ cls: 'atlas-image-display__turn' });
     this.imageStage = turn.createDiv({ cls: 'atlas-image-display__stage' });
@@ -363,9 +405,6 @@ export class ImageDisplayService {
     return this.imageContainer !== null;
   }
 
-  /**
-   * Check if file is an image
-   */
   private isImageFile(file: TFile): boolean {
     const imageExtensions = ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'svg', 'webp'];
     return imageExtensions.includes(file.extension.toLowerCase());
@@ -376,43 +415,11 @@ export class ImageDisplayService {
    */
   private extractFilePathFromSrc(src: string): string | null {
     try {
-      // Handle app://local URLs
-      if (src.startsWith('app://')) {
-        // Remove query parameters first
-        const cleanSrc = src.split('?')[0] ?? src;
-        
-        // Extract everything after app://[hash]/
-        const appMatch = cleanSrc.match(/app:\/\/[^/]+\/(.+)/);
-        if (appMatch?.[1]) {
-          let fullPath = decodeURIComponent(appMatch[1]);
-          
-          // Get the vault path
-          const adapter = this.app.vault.adapter;
-          const vaultPath = adapter instanceof FileSystemAdapter ? adapter.getBasePath() : '';
-          
-          // Normalize paths by ensuring they start with /
-          const normalizedFullPath = fullPath.startsWith('/') ? fullPath : '/' + fullPath;
-          const normalizedVaultPath = vaultPath.startsWith('/') ? vaultPath : '/' + vaultPath;
-          
-          // If the full path includes the vault path, extract the relative part
-          if (normalizedFullPath.includes(normalizedVaultPath)) {
-            const startIndex = normalizedFullPath.indexOf(normalizedVaultPath);
-            if (startIndex !== -1) {
-              // Get everything after the vault path
-              let relativePath = normalizedFullPath.substring(startIndex + normalizedVaultPath.length);
-              // Remove leading slash if present
-              if (relativePath.startsWith('/')) {
-                relativePath = relativePath.substring(1);
-              }
-              return relativePath;
-            }
-          }
-          
-          // If we couldn't extract relative path, return the full path
-          return fullPath;
-        }
+      // A resource URL: the file's place in the vault, else its path on disk
+      if (isResourceUrl(src)) {
+        return resourceUrlToVaultPath(src, vaultBasePath(this.app.vault.adapter)) ?? resourceUrlToFilePath(src);
       }
-      
+
       // Handle vault:// URLs
       const vaultMatch = src.match(/vault:\/\/(.+)/);
       if (vaultMatch?.[1]) {
@@ -469,8 +476,8 @@ export class ImageDisplayService {
   public destroy(): void {
     this.disposeImageDisplay();
 
-    document.removeEventListener('contextmenu', this.boundStoreContextMenuTarget, true);
-    document.removeEventListener('contextmenu', this.boundHandleContextMenu, false);
+    this.stopFollowingDocuments?.();
+    this.stopFollowingDocuments = null;
     this.lastContextMenuTarget = null;
 
     this.contextMenuEventRefs.forEach((eventRef) => {
@@ -510,7 +517,7 @@ export class ImageDisplayService {
     await after;
     // Removed at once meanwhile (destroy)
     if (!this.leavingDisplays.has(display)) return;
-    await playImageExit(display.container, display.stage);
+    await playImageExit(display.container, display.stage, after !== undefined);
     if (!this.leavingDisplays.delete(display)) return;
     this.removeImageDisplay(display);
   }

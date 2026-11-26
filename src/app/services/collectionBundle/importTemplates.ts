@@ -36,7 +36,7 @@ export interface TemplateReview {
  */
 export async function planTemplateImport(
   app: App,
-  manifest: CollectionBundleManifest,
+  manifest: Pick<CollectionBundleManifest, 'files'>,
   files: BundleFileReader,
   record: InstallRecord | null,
   collectionName: string,

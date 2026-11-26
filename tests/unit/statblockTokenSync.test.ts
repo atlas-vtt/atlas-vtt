@@ -107,6 +107,31 @@ describe('StatblockTokenSync', () => {
     f.sync.destroy();
   });
 
+  it('takes the maximum of a resource\'s new statblock field when the rules change, without an undo step (#615)', async () => {
+    const f = setup();
+    f.store.getState().addToken(character({ resources: { hp: { current: 20, max: 20 } } }));
+    f.store.getState().addToken(character({ id: 'manual', resources: { hp: { current: 2, max: 7 } }, overriddenMax: ['hp'] }));
+    const history = getHistoryStore(f.store)!;
+    const before = history.getState().pastStates.length;
+    f.sync.followRules();
+    f.setDefinitions([{ ...HP, field: 'stress' }]);
+    f.sync.followRules();
+    await vi.waitFor(() => expect(f.store.getState().objects.tokens.hero?.resources?.hp).toEqual({ current: 6, max: 6 }));
+    expect(f.store.getState().objects.tokens.manual?.resources?.hp).toEqual({ current: 2, max: 7 });
+    expect(history.getState().pastStates).toHaveLength(before);
+    f.sync.destroy();
+  });
+
+  it('reads no statblock again when rules change that read the same fields', async () => {
+    const f = setup();
+    f.store.getState().addToken(character({ resources: { hp: { current: 20, max: 20 } } }));
+    f.sync.followRules();
+    f.sync.followRules();
+    await Promise.resolve();
+    expect(f.links.readStatblockRecord).not.toHaveBeenCalled();
+    f.sync.destroy();
+  });
+
   it('does not initialize resources in a player view', () => {
     const f = setup(true);
     f.store.getState().addToken(character());

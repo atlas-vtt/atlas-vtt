@@ -11,6 +11,8 @@ describe('valueMisfit: a value after its field\'s type changed', () => {
   it('flags what a number field cannot read as a number, in plain words', () => {
     expect(valueMisfit(field('number'), 'fast')).toEqual({ label: 'Not a number', problem: '“fast” isn\'t a number.' });
     expect(valueMisfit(field('number'), [3, 4])).toEqual({ label: 'Not a number', problem: '“3, 4” isn\'t a number.' });
+    expect(valueMisfit(field('number'), '+7 adv')).toBeNull();
+    expect(valueMisfit(field('number'), 'fast dis')).toEqual({ label: 'Not a number', problem: '“fast dis” isn\'t a number.' });
     expect(label('number', true)).toBe('Not a number');
     expect(label('number', 14)).toBeNull();
     expect(label('number', '14')).toBeNull();

@@ -1,3 +1,4 @@
+import { imageMimeType } from '../../../imageProcessing/imageDimensions';
 import type { TesseraRef } from '../../../pixi/mosaicCanvas/pyramid';
 import type { StoreTrouble } from './storeClient.ts';
 import type { AssetStoreClient } from './storeClient.ts';
@@ -59,7 +60,11 @@ export async function uploadPyramid(job: PyramidJob, deps: { client: Pick<AssetS
       if (deps.signal.aborted || batches.failed) return { end: 'stopped', next };
       const blobs = await deps.blobs(job.hash, batch.tiles);
       if (blobs.length !== batch.tiles.length || blobs.some((blob) => blob === null)) return { end: 'changed', next };
-      const parts: FormPart[] = batch.tiles.map((tile, index) => ({ name: partName(tile), bytes: new Uint8Array(blobs[index] ?? new ArrayBuffer(0)), type: 'image/webp' }));
+      // A tile is named by what its bytes are: WebP, or PNG from a device whose canvases encode no WebP.
+      const parts: FormPart[] = batch.tiles.map((tile, index) => {
+        const blob = blobs[index] ?? new ArrayBuffer(0);
+        return { name: partName(tile), bytes: new Uint8Array(blob), type: imageMimeType(blob) };
+      });
       if (batch.manifest && batches.manifest !== null) parts.unshift({ name: 'manifest.json', bytes: batches.manifest, type: 'application/json' });
       const { body, contentType } = multipartBody(parts, deps.boundary());
       if (deps.signal.aborted) return { end: 'stopped', next };

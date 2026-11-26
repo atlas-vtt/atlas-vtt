@@ -1,14 +1,18 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Container, Graphics, Text } from 'pixi.js';
+import { Container, Graphics, Text, Texture } from 'pixi.js';
 import { createStore } from 'zustand/vanilla';
-import { DrawingLayer } from '../../src/app/pixi/drawingLayer';
+import { readDrawing, readText } from '../../src/app/annotations/annotationList';
+import type { DrawingAnnotation } from '../../src/app/annotations/annotationTypes';
+import { createStampSprite, paintDrawing, placeStamp, StampTextures } from '../../src/app/pixi/drawingLayer';
 import { DoorIcons, type DoorIconsState } from '../../src/app/pixi/lighting/DoorIcons';
 import { createTextElementView, TEXT_CONTENT_LABEL, updateTextElementView } from '../../src/app/pixi/textElementView';
 import { entryTokenOf, listedForPlayers, playerInitiativeList, renderPlayerInitiative, type PlayerInitiativeEntry } from '../../src/app/services/playerInitiativeList';
 import type { DrawingStroke, TextElement, TokenEntity } from '../../src/app/types';
 import type { InitiativeRules } from '../../src/app/types/initiativeRulesTypes';
 import { HP_RESOURCE } from '../../src/app/resources/resourceDefinitions';
+import { withPlayerAudience } from '../../src/app/resources/playerAudience';
+import type { ResourceDefinition } from '../../src/app/resources/resourceTypes';
 import { DEFAULT_SCENE_LIGHTING } from '../../src/app/types/lightingTypes';
 import type { WallSegment } from '../../src/app/types/wallTypes';
 import { stubJsdomGraphics } from '../mocks/jsdomGraphics';
@@ -24,26 +28,68 @@ afterEach(() => {
   cleanup = null;
 });
 
-function stroke(id: string, x: number): DrawingStroke {
-  return { id, kind: 'drawing', timestamp: 1, type: 'pen', points: [{ x, y: 0 }, { x: x + 10, y: 10 }], color: '#ff0000', width: 4, opacity: 1 };
-}
+const read = (drawing: Partial<DrawingStroke>): DrawingAnnotation => {
+  const annotation = readDrawing('d', { id: 'd', kind: 'drawing', timestamp: 1, type: 'pen', points: [{ x: 0, y: 0 }, { x: 10, y: 10 }], color: '#ff0000', width: 4, opacity: 1, ...drawing });
+  if (!annotation) throw new Error('Expected a drawing');
+  return annotation;
+};
 
-describe('the drawing layer', () => {
-  it('keeps one node per drawing, reuses it while the record is unchanged and removes what is gone', () => {
-    const container = new Container();
-    const layer = new DrawingLayer(container);
-    const a = stroke('a', 0);
-    layer.sync({ a, b: stroke('b', 50) });
-    expect(container.children).toHaveLength(2);
-    const first = container.children[0];
-    layer.sync({ a });
-    expect(container.children).toEqual([first]);
-    layer.sync({ a: { ...a, color: '#00ff00' } });
-    expect(container.children).toEqual([first]);
-    layer.sync({ a, icon: { ...stroke('icon', 20), type: 'icon', icon: 'skull', points: [{ x: 20, y: 30 }], width: 40 } });
-    expect(container.children).toHaveLength(2);
-    expect(container.children[1]?.position).toMatchObject({ x: 20, y: 30 });
-    layer.destroy();
+describe('a drawing as it is drawn', () => {
+  it('draws a line, a fill and a dot into one graphics, in place of what it held', () => {
+    cleanup = stubJsdomGraphics();
+    const graphics = new Graphics();
+    paintDrawing(graphics, read({}), 0.2);
+    const line = graphics.context.instructions.map(({ action }) => action);
+    expect(line).toEqual(['stroke']);
+    const room = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }, { x: 0, y: 0 }];
+    paintDrawing(graphics, read({ type: 'rectangle', points: room, fill: 'soft' }), 0.2);
+    expect(graphics.context.instructions.map(({ action }) => action)).toEqual(['fill', 'stroke']);
+    paintDrawing(graphics, read({ points: [{ x: 5, y: 5 }] }), 0.2);
+    expect(graphics.context.instructions.map(({ action }) => action)).toEqual(['fill']);
+    graphics.destroy();
+  });
+
+  it('shows a stamp at its place, as wide as its footprint, turned, and tells when its symbol comes in', async () => {
+    const textures = new StampTextures();
+    const sprite = createStampSprite();
+    const changed = vi.fn();
+    const stamp = read({ type: 'icon', icon: 'skull', points: [{ x: 20, y: 30 }], width: 40, opacity: 0.5, rotation: 90 });
+    placeStamp(sprite, stamp, textures, changed);
+    expect(sprite.position).toMatchObject({ x: 20, y: 30 });
+    expect(sprite.alpha).toBe(0.5);
+    expect(sprite.rotation).toBeCloseTo(Math.PI / 2);
+    await vi.waitFor(() => expect(changed).toHaveBeenCalledOnce());
+    expect([sprite.width, sprite.height]).toEqual([40, 40]);
+    // A stamp that only moved or grew keeps its symbol: nothing comes in again.
+    placeStamp(sprite, read({ type: 'icon', icon: 'skull', points: [{ x: 60, y: 30 }], width: 80, opacity: 0.5 }), textures, changed);
+    expect(sprite.position.x).toBe(60);
+    expect(sprite.width).toBe(80);
+    expect(changed).toHaveBeenCalledOnce();
+    sprite.destroy();
+    textures.destroy();
+  });
+
+  it('tints a stamp with its colour, so stamps of one symbol share its white picture whatever their colours', async () => {
+    const textures = new StampTextures();
+    const [red, blue] = [createStampSprite(), createStampSprite()];
+    const changed = vi.fn();
+    placeStamp(red, read({ type: 'icon', icon: 'skull', points: [{ x: 0, y: 0 }], width: 70, color: '#e93147' }), textures, changed);
+    await vi.waitFor(() => expect(changed).toHaveBeenCalledOnce());
+    placeStamp(blue, read({ type: 'icon', icon: 'skull', points: [{ x: 0, y: 0 }], width: 70, color: '#086ddd' }), textures, changed);
+    // The symbol was there already: nothing comes in late.
+    expect(blue.texture).toBe(red.texture);
+    expect([red.tint, blue.tint]).toEqual([0xe93147, 0x086ddd]);
+    // Another colour is another tint of the same picture.
+    placeStamp(red, read({ type: 'icon', icon: 'skull', points: [{ x: 0, y: 0 }], width: 70, color: '#ffffff' }), textures, changed);
+    expect(red.tint).toBe(0xffffff);
+    expect(red.texture).toBe(blue.texture);
+    expect(changed).toHaveBeenCalledOnce();
+    // A symbol this Atlas does not know shows nothing.
+    placeStamp(red, read({ type: 'icon', icon: 'dragon', points: [{ x: 0, y: 0 }], width: 70 }), textures, changed);
+    expect(red.texture).toBe(Texture.EMPTY);
+    red.destroy();
+    blue.destroy();
+    textures.destroy();
   });
 });
 
@@ -52,12 +98,12 @@ describe('a text view', () => {
 
   it('draws a text at its place, turned and scaled, and follows its edits', () => {
     cleanup = stubJsdomGraphics();
-    const view = createTextElementView(element);
+    const view = createTextElementView(readText('t', element)!);
     expect(view.label).toBe('t');
     expect(view.position).toMatchObject({ x: 100, y: 50 });
     expect(view.rotation).toBeCloseTo(Math.PI / 2);
     expect(view.scale.x).toBe(2);
-    updateTextElementView(view, { ...element, text: 'Door', x: 10, rotation: undefined, scale: undefined });
+    updateTextElementView(view, readText('t', { ...element, text: 'Door', x: 10, rotation: undefined, scale: undefined })!);
     expect((view.getChildByLabel(TEXT_CONTENT_LABEL) as Text).text).toBe('Door');
     expect(view.position.x).toBe(10);
     expect(view.rotation).toBe(0);
@@ -100,28 +146,39 @@ describe("the players' initiative list", () => {
 
   it('lists every combatant whose token is not hidden, in turn order, with hit points only where shown', () => {
     const fight = { entries, isActive: true, round: 3 };
-    const list = playerInitiativeList(fight, tokenOf, TURN_ORDER, false);
+    const list = playerInitiativeList(fight, tokenOf, TURN_ORDER);
     expect(list.combatants.map(({ entry: listed }) => listed.tokenId)).toEqual(['hero', 'ogre']);
     expect(list.combatants[0]?.token).toMatchObject({ hp: null, side: 'players' });
-    expect(playerInitiativeList(fight, tokenOf, TURN_ORDER, true).combatants[0]?.token.hp).toEqual({ current: 4, max: 10 });
     expect(list).toMatchObject({ bySides: false, round: 3, activeSide: null });
   });
 
+  it('shows hit points on the tokens players see them on, by side', () => {
+    const wounded = { ...tokens, ogre: { ...tokens.ogre!, resources: { hp: { current: 7, max: 30 } } } };
+    const hpOf = (definition: ResourceDefinition) => (id: string): unknown => entryTokenOf(wounded[id], [definition]).hp;
+    const party = hpOf(withPlayerAudience({ ...HP_RESOURCE }, 'party'));
+    const foes = hpOf(withPlayerAudience({ ...HP_RESOURCE }, 'opponents'));
+    const all = hpOf(withPlayerAudience({ ...HP_RESOURCE }, 'everyone'));
+    expect([party('hero'), party('ogre')]).toEqual([{ current: 4, max: 10 }, null]);
+    expect([foes('hero'), foes('ogre')]).toEqual([null, { current: 7, max: 30 }]);
+    expect([all('hero'), all('ogre')]).toEqual([{ current: 4, max: 10 }, { current: 7, max: 30 }]);
+  });
+
   it('groups by side as a fight by sides runs, or as the rules say without one', () => {
-    expect(playerInitiativeList({ entries, isActive: false, round: 0 }, tokenOf, SIDES, false)).toMatchObject({ bySides: true, firstSide: 'opponents' });
+    expect(playerInitiativeList({ entries, isActive: false, round: 0 }, tokenOf, SIDES)).toMatchObject({ bySides: true, firstSide: 'opponents' });
     const running = { entries, isActive: true, round: 1, sides: { first: 'players' as const, active: 'opponents' as const } };
-    expect(playerInitiativeList(running, tokenOf, TURN_ORDER, false)).toMatchObject({ bySides: true, firstSide: 'players', activeSide: 'opponents' });
+    expect(playerInitiativeList(running, tokenOf, TURN_ORDER)).toMatchObject({ bySides: true, firstSide: 'players', activeSide: 'opponents' });
   });
 
   it('draws the turn, the round and names only where they are shown', () => {
     const container = createDiv();
-    const list = playerInitiativeList({ entries, isActive: true, round: 2 }, tokenOf, TURN_ORDER, true);
+    const list = playerInitiativeList({ entries, isActive: true, round: 2 }, tokenOf, TURN_ORDER);
     renderPlayerInitiative(container, list, { showNames: false, mapShowsNameplates: true, portraitSrc: () => null });
-    expect(container.querySelectorAll('.atlas-player-initiative__card')).toHaveLength(2);
-    expect(container.querySelector('.atlas-player-initiative__card--active')?.textContent).toContain('18');
-    expect(container.querySelector('.atlas-player-initiative__name')).toBeNull();
-    expect(container.querySelector('.atlas-player-initiative__round')?.textContent).toContain('2');
-    expect(container.querySelector('progress')?.getAttribute('value')).toBe('4');
+    expect(container.querySelectorAll('.atlas-initiative-card')).toHaveLength(2);
+    expect(container.querySelector('.atlas-initiative-card--active')).not.toBeNull();
+    // Initiative numbers stay on the GM's screen
+    expect(container.querySelector('.atlas-initiative-panel__list')?.textContent).not.toMatch(/18|12/);
+    expect(container.querySelector('.atlas-initiative-card__name')).toBeNull();
+    expect(container.querySelector('.atlas-initiative-panel__round')?.textContent).toContain('2');
     const empty = createDiv();
     renderPlayerInitiative(empty, { ...list, combatants: [] }, { showNames: true, mapShowsNameplates: true, portraitSrc: () => null });
     expect(empty.childElementCount).toBe(0);
@@ -131,10 +188,10 @@ describe("the players' initiative list", () => {
     const own = { ...tokens, ogre: { ...tokens.ogre!, showNameplate: true } };
     const ownOf = (listed: PlayerInitiativeEntry): ReturnType<typeof entryTokenOf> | null =>
       (listedForPlayers(own[listed.tokenId]) ? entryTokenOf(own[listed.tokenId], []) : null);
-    const list = playerInitiativeList({ entries, isActive: true, round: 1 }, ownOf, TURN_ORDER, false);
+    const list = playerInitiativeList({ entries, isActive: true, round: 1 }, ownOf, TURN_ORDER);
     const container = createDiv();
     renderPlayerInitiative(container, list, { showNames: true, mapShowsNameplates: false, portraitSrc: () => 'art.png' });
-    const names = [...container.querySelectorAll('.atlas-player-initiative__name')].map((name) => name.textContent);
+    const names = [...container.querySelectorAll('.atlas-initiative-card__name')].map((name) => name.textContent);
     expect(names).toEqual(['Unknown Creature', 'ogre']);
     expect(container.textContent).not.toContain('hero');
   });
@@ -144,16 +201,17 @@ describe("the players' initiative list", () => {
     const fallenOf = (listed: PlayerInitiativeEntry): ReturnType<typeof entryTokenOf> | null =>
       (listedForPlayers(fallen[listed.tokenId]) ? entryTokenOf(fallen[listed.tokenId], [{ ...HP_RESOURCE }]) : null);
     const waiting = [{ ...entry('ogre', 1, 12), imagePath: 'ogre.png' }, { ...entry('hero', 0, 18), isActive: false, delayed: true as const }];
-    const list = playerInitiativeList({ entries: waiting, isActive: true, round: 1 }, fallenOf, TURN_ORDER, false);
+    const list = playerInitiativeList({ entries: waiting, isActive: true, round: 1 }, fallenOf, TURN_ORDER);
     expect(list.combatants.map(({ token }) => token.defeated)).toEqual([false, true]);
 
     const container = createDiv();
     renderPlayerInitiative(container, list, { showNames: true, mapShowsNameplates: true, portraitSrc: () => 'art.png' });
-    const cards = [...container.querySelectorAll('.atlas-player-initiative__card')];
-    expect(cards.map((card) => card.textContent)).toEqual(['12ogre', '18hero']);
-    expect(cards[0]!.classList.contains('atlas-player-initiative__card--defeated')).toBe(true);
-    expect(cards[0]!.querySelector('.atlas-player-initiative__defeated--over')?.getAttribute('aria-label')).toBe('Defeated');
-    expect(cards[1]!.classList.contains('atlas-player-initiative__card--delayed')).toBe(true);
+    const cards = [...container.querySelectorAll('.atlas-initiative-card')];
+    // The art names a combatant; one without art shows its name, and neither its number
+    expect(cards.map((card) => card.textContent)).toEqual(['', 'hero']);
+    expect(cards[0]!.classList.contains('atlas-initiative-card--defeated')).toBe(true);
+    expect(cards[0]!.querySelector('.atlas-initiative-card__defeated-overlay')?.getAttribute('aria-label')).toBe('Defeated');
+    expect(cards[1]!.classList.contains('atlas-initiative-card--delayed')).toBe(true);
     expect(cards[1]!.parentElement?.getAttribute('aria-label')).toBe('Delayed');
   });
 });

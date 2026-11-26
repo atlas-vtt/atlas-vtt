@@ -13,15 +13,15 @@ interface CardTimers {
   leaving: boolean;
 }
 
-const ENTER_DURATION = 350;
-const AUTO_DISMISS = 7000;
+/** The card's entry (`atlas-dice-toast-enter`, 220 ms); how long it stands is its own (`DiceToast`). */
+const ENTER_DURATION = 220;
 const EXIT_DURATION = 300;
 
 function clearTimers(card: CardTimers): void {
   card.timers.forEach((timer) => window.clearTimeout(timer));
 }
 
-/** Result cards: each enters, stays a while and leaves, or leaves early on click. */
+/** Result cards: each enters, and leaves when its own timer ends (`DiceToast`), on its close button or on Escape. */
 export function useDiceToasts(): {
   toasts: ToastEntry[];
   addToast: (roll: PreparedDiceRoll) => void;
@@ -63,12 +63,9 @@ export function useDiceToasts(): {
     setToasts((prev) => [...prev, { ...roll, id, phase: 'entering' }]);
     cards.current.set(id, {
       leaving: false,
-      timers: [
-        window.setTimeout(() => setPhase(id, 'visible'), ENTER_DURATION),
-        window.setTimeout(() => dismissToast(id), AUTO_DISMISS),
-      ],
+      timers: [window.setTimeout(() => setPhase(id, 'visible'), ENTER_DURATION)],
     });
-  }, [setPhase, dismissToast]);
+  }, [setPhase]);
 
   const dismissAllToasts = useCallback((): void => {
     for (const toast of toasts) dismissToast(toast.id);

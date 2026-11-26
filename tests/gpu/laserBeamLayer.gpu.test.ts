@@ -47,6 +47,13 @@ describe('the laser beam inside a viewport', () => {
     return missed;
   }
 
+  it('asks for highp fragments: its distances are in world units, and mediump is 16 bits on Mesa', async () => {
+    // SwiftShader computes mediump in 32 bits, so only the request shows here (on AMD the beam was drawn in blocks)
+    const { beam } = await setup();
+    const fragment = (beam as unknown as { shader: { shader: { glProgram: { fragment: string } } } }).shader.shader.glProgram.fragment;
+    expect(fragment).toMatch(/precision highp float/);
+  });
+
   it('shows the beam everywhere', async () => {
     expect(missedPlaces(await setup())).toEqual([]);
   });

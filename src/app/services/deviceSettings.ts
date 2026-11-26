@@ -2,6 +2,9 @@ import type { App } from 'obsidian';
 import type { NavigationInputMode } from './atlasSettings';
 import { isLightingQualityLevel, type LightingQualityLevel } from '../lighting/lightingQuality';
 import { parseGraphicsChoice, type GraphicsChoice } from '../lighting/graphicsSettings';
+import type { DrawToolChoices } from '../annotations/annotationTypes';
+import { drawToolFrom, rememberedDrawTool } from '../annotations/drawToolMemory';
+import { readGmFogOpacity } from '../fog/gmFogOpacity';
 
 /**
  * Facts about this device, which Atlas keeps in the vault's local storage: they never sync,
@@ -16,16 +19,18 @@ export const GRAPHICS_STORAGE_KEY = 'atlas-vtt:graphics';
 export const PICKED_LIGHTING_QUALITY_STORAGE_KEY = 'atlas-vtt:lighting-quality-picked';
 /** Whether animated maps play on this device; unset follows the system's reduced motion (`animateMapsOn`). */
 export const ANIMATE_MAPS_STORAGE_KEY = 'atlas-vtt:animate-maps';
-/** Whether the initiative tracker is collapsed on this device: `collapsed` or `expanded`, never a falsy value Obsidian would drop. */
-export const INITIATIVE_COLLAPSED_STORAGE_KEY = 'atlas-vtt:initiative-tracker';
 /** Whether this device renders the player view with up to 4K pixels: `4k`, else the default budget. */
 export const PLAYER_VIEW_4K_STORAGE_KEY = 'atlas-vtt:player-view-4k';
+/** The Draw tool's last style on this device (`RememberedDrawTool` as JSON). */
+export const DRAW_TOOL_STORAGE_KEY = 'atlas-vtt:draw-tool';
+/** How opaque fog is in the GM's view on this device: a number from 0 to 1 as text, never a falsy value Obsidian would drop. */
+export const GM_FOG_OPACITY_STORAGE_KEY = 'atlas-vtt:gm-fog-opacity';
 
 /**
  * The vault's local storage. Obsidian stores a value only when it is truthy: `false`, `0` and `''`
  * remove the key, and read back as never chosen. Store every fact as a value that is never falsy.
  */
-type DeviceStorage = Pick<App, 'loadLocalStorage' | 'saveLocalStorage'>;
+export type DeviceStorage = Pick<App, 'loadLocalStorage' | 'saveLocalStorage'>;
 
 export const isInputMode = (value: unknown): value is NavigationInputMode => value === 'mouse' || value === 'trackpad';
 
@@ -149,20 +154,125 @@ export function savePlayerView4k(storage: DeviceStorage, on: boolean): void {
   }
 }
 
-/** Whether the GM collapsed the initiative tracker on this device; expanded until chosen. */
-export function loadInitiativeCollapsed(storage: DeviceStorage): boolean {
+/** Whether the bar above a selection shows on this device under a mouse too: `shown`, else only under a finger. */
+export const SELECTION_BAR_STORAGE_KEY = 'atlas-vtt:selection-bar';
+
+/** Whether the bar above a selection shows on this device under a mouse too; off until chosen. */
+export function loadSelectionBarShown(storage: DeviceStorage): boolean {
   try {
-    return storage.loadLocalStorage(INITIATIVE_COLLAPSED_STORAGE_KEY) === 'collapsed';
+    return storage.loadLocalStorage(SELECTION_BAR_STORAGE_KEY) === 'shown';
   } catch (error) {
-    console.error('[Atlas] Could not read how this device shows the initiative tracker', error);
+    console.error('[Atlas] Could not read whether this device shows the selection bar', error);
     return false;
   }
 }
 
-export function saveInitiativeCollapsed(storage: DeviceStorage, collapsed: boolean): void {
+export function saveSelectionBarShown(storage: DeviceStorage, shown: boolean): void {
   try {
-    storage.saveLocalStorage(INITIATIVE_COLLAPSED_STORAGE_KEY, collapsed ? 'collapsed' : 'expanded');
+    // Off removes the key: under a finger only again
+    storage.saveLocalStorage(SELECTION_BAR_STORAGE_KEY, shown ? 'shown' : null);
   } catch (error) {
-    console.error('[Atlas] Could not save how this device shows the initiative tracker', error);
+    console.error('[Atlas] Could not save whether this device shows the selection bar', error);
+  }
+}
+
+/** The Draw tool's choices as it starts on this device: the style it was last given, the defaults where none was. */
+export function loadDrawTool(storage: DeviceStorage): DrawToolChoices {
+  try {
+    const stored: unknown = storage.loadLocalStorage(DRAW_TOOL_STORAGE_KEY);
+    return drawToolFrom(typeof stored === 'string' ? JSON.parse(stored) : null);
+  } catch (error) {
+    console.error('[Atlas] Could not read the draw tool\'s choices of this device', error);
+    return drawToolFrom(null);
+  }
+}
+
+export function saveDrawTool(storage: DeviceStorage, choices: DrawToolChoices): void {
+  try {
+    storage.saveLocalStorage(DRAW_TOOL_STORAGE_KEY, JSON.stringify(rememberedDrawTool(choices)));
+  } catch (error) {
+    console.error('[Atlas] Could not save the draw tool\'s choices of this device', error);
+  }
+}
+
+/** How opaque fog is in the GM's view on this device; the default until chosen, and where what is stored is no opacity. */
+export function loadGmFogOpacity(storage: DeviceStorage): number {
+  try {
+    return readGmFogOpacity(storage.loadLocalStorage(GM_FOG_OPACITY_STORAGE_KEY));
+  } catch (error) {
+    console.error('[Atlas] Could not read the fog opacity of this device', error);
+    return readGmFogOpacity(null);
+  }
+}
+
+export function saveGmFogOpacity(storage: DeviceStorage, opacity: number): void {
+  try {
+    storage.saveLocalStorage(GM_FOG_OPACITY_STORAGE_KEY, String(readGmFogOpacity(opacity)));
+  } catch (error) {
+    console.error('[Atlas] Could not save the fog opacity of this device', error);
+  }
+}
+
+/** A pen has touched a map on this device: `seen`, never a falsy value Obsidian would drop. */
+export const PEN_SEEN_STORAGE_KEY = 'atlas-vtt:pen-seen';
+/** What a finger does in a drawing tool on a device with a pen: `tool` or `pan`. */
+export const FINGER_USE_STORAGE_KEY = 'atlas-vtt:finger-use';
+
+/** Whether a finger in a drawing tool is the tool, as the pen is, or pans the map and leaves drawing to the pen. */
+export type FingerUse = 'tool' | 'pan';
+
+export function loadPenSeen(storage: DeviceStorage): boolean {
+  try {
+    return storage.loadLocalStorage(PEN_SEEN_STORAGE_KEY) === 'seen';
+  } catch (error) {
+    console.error('[Atlas] Could not read whether this device has a pen', error);
+    return false;
+  }
+}
+
+export function savePenSeen(storage: DeviceStorage): void {
+  try {
+    storage.saveLocalStorage(PEN_SEEN_STORAGE_KEY, 'seen');
+  } catch (error) {
+    console.error('[Atlas] Could not save that this device has a pen', error);
+  }
+}
+
+/** What fingers do on this device, or null when it was never chosen. */
+export function loadFingerUse(storage: DeviceStorage): FingerUse | null {
+  try {
+    const stored: unknown = storage.loadLocalStorage(FINGER_USE_STORAGE_KEY);
+    return stored === 'tool' || stored === 'pan' ? stored : null;
+  } catch (error) {
+    console.error('[Atlas] Could not read what fingers do on this device', error);
+    return null;
+  }
+}
+
+export function saveFingerUse(storage: DeviceStorage, use: FingerUse): void {
+  try {
+    storage.saveLocalStorage(FINGER_USE_STORAGE_KEY, use);
+  } catch (error) {
+    console.error('[Atlas] Could not save what fingers do on this device', error);
+  }
+}
+
+/** Whether the map shows its zoom buttons on this device while a mouse points: `shown`, never a falsy value Obsidian would drop. */
+export const ZOOM_BUTTONS_STORAGE_KEY = 'atlas-vtt:zoom-buttons';
+
+export function loadZoomButtons(storage: DeviceStorage): boolean {
+  try {
+    return storage.loadLocalStorage(ZOOM_BUTTONS_STORAGE_KEY) === 'shown';
+  } catch (error) {
+    console.error('[Atlas] Could not read whether this device shows the zoom buttons', error);
+    return false;
+  }
+}
+
+export function saveZoomButtons(storage: DeviceStorage, shown: boolean): void {
+  try {
+    storage.saveLocalStorage(ZOOM_BUTTONS_STORAGE_KEY, shown ? 'shown' : null);
+  } catch (error) {
+    console.error('[Atlas] Could not save whether this device shows the zoom buttons', error);
   }
 }

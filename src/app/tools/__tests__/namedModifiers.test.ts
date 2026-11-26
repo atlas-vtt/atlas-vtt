@@ -4,7 +4,7 @@ import { DEFAULT_DICE_RULES } from '../../gameSystems/diceRules';
 import { rollDiceFormula, type DiceRollInputs } from '../DiceTool';
 import { namedDiceLine, rollLine } from '../diceLabels';
 import {
-  formulaWithNamedTerms, keptModifiersText, labelledConstant, modifierSteps, modifiersText, namedModifiersOf, plainModifier, withoutConstantLabels,
+  keptModifiersText, labelledConstant, modifierSteps, namedModifiersOf, plainModifier, withoutConstantLabels,
 } from '../namedModifiers';
 import { rollTestFormula as rollFormula } from './rollTestFormula';
 
@@ -48,28 +48,17 @@ describe('labelled constants', () => {
 describe('how a roll writes its modifiers', () => {
   const roll = { formula: '1d20+3+2[Stealth]', modifiers: 5, namedModifiers: [{ label: 'Stealth', value: 2 }], rolls: [] };
 
-  it('names each labelled one after the plain sum, a subtracted one with a minus sign', () => {
+  it('writes the whole sum without labels, kept with the last die', () => {
     expect(plainModifier(roll)).toBe(3);
-    expect(modifiersText(roll)).toBe(' + 3 + 2 Stealth');
-    expect(modifiersText({ modifiers: -1, namedModifiers: [{ label: 'Bane', value: -1 }] })).toBe(' − 1 Bane');
-    expect(modifiersText({ modifiers: 0, namedModifiers: [{ label: 'Luck', value: 0 }] })).toBe(' + 0 Luck');
-    expect(modifiersText({ modifiers: 3 })).toBe(' + 3');
+    expect(keptModifiersText(roll)).toBe('\u00a0+\u00a05');
+    expect(keptModifiersText({ modifiers: -1, namedModifiers: [{ label: 'Bane', value: -1 }] })).toBe('\u00a0\u2212\u00a01');
+    expect(keptModifiersText({ modifiers: 0, namedModifiers: [{ label: 'Luck', value: 0 }] })).toBe('');
   });
 
-  it('breaks a line only before a labelled term\'s sign', () => {
-    expect(keptModifiersText(roll)).toBe(' + 3 + 2 Stealth');
-  });
-
-  it('rewrites the formula\'s labelled constants as terms of their own', () => {
-    expect(formulaWithNamedTerms(roll)).toBe('1d20+3 +\u00a02\u00a0Stealth');
-    expect(rollLine(roll)).toBe('1d20+3 +\u00a02\u00a0Stealth');
+  it('writes the formula without the labels of its constants', () => {
+    expect(rollLine(roll)).toBe('1d20+3+2');
     // Dice labels are no constants.
-    expect(formulaWithNamedTerms({ ...roll, formula: '2d6[fire]+2[Stealth]' })).toBe('2d6[fire] +\u00a02\u00a0Stealth');
-  });
-
-  it('keeps the formula where it does not end in the roll\'s labelled constants', () => {
-    expect(formulaWithNamedTerms({ ...roll, formula: '1d20+5' })).toBe('1d20+5');
-    expect(formulaWithNamedTerms({ ...roll, formula: '1d20+2[Stealth]+3' })).toBe('1d20+2[Stealth]+3');
+    expect(rollLine({ ...roll, formula: '2d6[fire]+2[Stealth]' })).toBe('2d6[fire]+2');
   });
 
   it('writes a labelled constant as a formula holds it', () => {
@@ -83,17 +72,16 @@ describe('how a roll writes its modifiers', () => {
     expect(modifierSteps({ modifiers: 5 }, 'Modifier')).toEqual([{ label: 'Modifier', value: 5 }]);
   });
 
-  it('names the labelled ones after dice a set named', () => {
+  it('adds the whole sum after dice a set named, without labels', () => {
     const rolls = [{ value: 9, name: 'Hope' }, { value: 4, name: 'Fear' }];
     expect(namedDiceLine(rolls, { modifiers: 3, namedModifiers: [{ label: 'Survival', value: 2 }] }))
-      .toBe('Hope 9 · Fear 4 + 1 + 2 Survival');
+      .toBe('Hope\u00a09 · Fear\u00a04\u00a0+\u00a03');
   });
 
   it('reads a saved log of an older version, and leaves out entries it cannot read', () => {
     expect(namedModifiersOf({ modifiers: 2 })).toEqual([]);
     const damaged = { modifiers: 4, namedModifiers: [{ label: 'Ok', value: 1 }, { label: '', value: 2 }, { label: 'NaN', value: Number.NaN }, null] };
     expect(namedModifiersOf(damaged as never)).toEqual([{ label: 'Ok', value: 1 }]);
-    expect(modifiersText(damaged as never)).toBe(' + 3 + 1 Ok');
   });
 });
 

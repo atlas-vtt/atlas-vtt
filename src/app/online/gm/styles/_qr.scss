@@ -65,7 +65,7 @@ $qr-light: #fff;
     padding: $spacing-s;
     transform-origin: bottom left;
     @include atlas-elevated-surface;
-    @include atlas-panel-radius($radius-2xl);
+    @include atlas-panel-radius($surface-radius);
 
     // Over the control's end in a view too narrow to hold both: a press closes it.
     &.is-over {

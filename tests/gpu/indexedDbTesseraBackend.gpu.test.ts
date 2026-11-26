@@ -5,6 +5,7 @@ import {
   tesseraDatabaseName,
 } from '../../src/app/pixi/mosaicCanvas/indexedDbTesseraBackend';
 import { TESSERA_SPEC } from '../../src/app/pixi/mosaicCanvas/pyramid';
+import { TESSERA_BUILD } from '../../src/app/pixi/mosaicCanvas/tesseraStore';
 import type { PyramidManifest } from '../../src/app/pixi/mosaicCanvas/tesseraStore';
 
 const APP_ID = `tessera-backend-test-${Date.now()}`;
@@ -25,7 +26,7 @@ function deleteDatabase(name: string): Promise<void> {
 }
 
 function manifest(hash: string, bytes: number): PyramidManifest {
-  return { hash, spec: TESSERA_SPEC, width: 1200, height: 800, decodedScale: 1, complete: false, bytes, lastUsed: 7 };
+  return { hash, spec: TESSERA_SPEC, build: TESSERA_BUILD, width: 1200, height: 800, decodedScale: 1, complete: false, bytes, lastUsed: 7 };
 }
 
 function bytes(...values: number[]): Blob {

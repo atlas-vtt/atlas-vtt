@@ -4,6 +4,7 @@ import type { UpdateWatch } from '../updates/UpdateWatch';
 import { updateSettingsRows } from '../updates/updateSettingsRows';
 import type { AtlasSettingSection } from './settingSections';
 import { t } from '../i18n';
+import { addSettingButton } from '../ui/atlasButton';
 
 export function changelogSettingsSection(settings: SettingsService, changelog: ChangelogService, version: string, updates: UpdateWatch): AtlasSettingSection {
   return {
@@ -15,7 +16,7 @@ export function changelogSettingsSection(settings: SettingsService, changelog: C
         desc: t('settings.updates.changelogDesc', { version }),
         aliases: ['release notes', 'what is new', 'history', 'version'],
         render: setting => {
-          setting.addButton(button => button.setButtonText(t('settings.updates.viewChangelog')).onClick(() => changelog.open()));
+          addSettingButton(setting, { text: t('settings.updates.viewChangelog'), onClick: () => changelog.open() });
         },
       },
       {

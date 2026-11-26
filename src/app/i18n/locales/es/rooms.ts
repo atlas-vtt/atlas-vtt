@@ -1,0 +1,25 @@
+import type { Translation } from '../../types';
+
+export const rooms: Translation = {
+  'rooms.carve': 'Excavar',
+  'rooms.fill': 'Rellenar',
+  'rooms.door': 'Puerta',
+  'rooms.rectangle': 'Rectángulo',
+  'rooms.points': 'Puntos',
+  'rooms.lasso': 'Lazo',
+  'rooms.brush': 'Pincel',
+  'rooms.brushSize': 'Tamaño del pincel',
+  'rooms.bucket': 'Cubo',
+  'rooms.bucketTip': 'Haz clic o arrastra dentro de una sala para excavar su suelo hasta los muros dibujados',
+  'rooms.bucketRadius': 'Radio del cubo',
+  'rooms.bucketSensitivity': 'Sensibilidad de bordes',
+  'rooms.stabilize': 'Estabilización',
+  'rooms.experimental.label': 'Cubo de salas',
+  'rooms.experimental.hint': 'El Cubo del modo de salas de la herramienta de iluminación: haz clic o arrastra sobre un mapa pintado y se encuentra el suelo hasta los muros que dibuja, y se excava. Desactivado, el cubo está oculto.',
+  'rooms.bucketFoundNothing': 'El cubo no encontró suelo aquí. Prueba otro punto u otra sensibilidad',
+  'rooms.carveTip': 'Excava una sala en la roca. Mantén Alt para rellenar',
+  'rooms.fillTip': 'Vuelve a rellenar con roca. Mantén Alt para excavar',
+  'rooms.rectangleTip': 'Mantén Shift para ajustar a la cuadrícula',
+  'rooms.pointsTip': 'Haz clic en las esquinas y de nuevo en la primera para cerrar. Shift ajusta a la cuadrícula',
+  'rooms.doorHint': 'Arrastra a través de una abertura. Mantén Alt para una puerta secreta',
+};

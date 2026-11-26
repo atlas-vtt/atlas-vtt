@@ -69,6 +69,20 @@ describe('suggestions', () => {
     expect(filterSuggestions('gob', 3, sources)).toBeNull();
   });
 
+  it('offer a filter first where a plain word begins one of its values', () => {
+    const words = { ...sources, wordFacets: facets };
+    const beast = filterSuggestions('beast', 5, words);
+    expect(beast?.items[0]).toMatchObject({ kind: 'filter', insert: 'type:beast', count: 2 });
+    expect(filterSuggestions('red hum', 7, words)?.items[0]).toMatchObject({ kind: 'filter', insert: 'type:humanoid' });
+    // A value named exactly before a longer one, then the commonest.
+    expect(filterSuggestions('dragon', 6, words)?.items.map((item) => (item.kind === 'filter' ? item.insert : item.kind))).toEqual(['type:dragon']);
+    // Names, tags, short fragments and exclusions stay plain words.
+    expect(filterSuggestions('gob', 3, words)).toBeNull();
+    expect(filterSuggestions('forest', 6, words)).toBeNull();
+    expect(filterSuggestions('be', 2, words)).toBeNull();
+    expect(filterSuggestions('-beast', 6, words)?.items.some((item) => item.kind === 'filter') ?? false).toBe(false);
+  });
+
   it('offer the keywords that can exclude after a minus', () => {
     const suggestions = filterSuggestions('-t', 2, sources);
     expect(suggestions?.heading).toBe('Exclude');

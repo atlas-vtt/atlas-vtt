@@ -15,6 +15,7 @@ import type { CampaignParties } from './useCampaignParties';
 import type { RecentScene } from './useRecentScenes';
 import { GameIcon } from '../GameIcon';
 import { DASHBOARD_ICON_PATHS } from '../../../types/dashboardIconPaths';
+import { DashboardTour } from '../../../onboarding/DashboardTour';
 
 export interface HomePageProps {
   app: App;
@@ -32,6 +33,8 @@ export interface HomePageProps {
   onCreateMap: () => void;
   onOpenAssetManager: () => void;
   onOpenCampaign: (id: string) => void;
+  /** The start page's element, which its tour points within. */
+  root: HTMLElement | null;
 }
 
 /**
@@ -57,7 +60,7 @@ export function HomePage(props: HomePageProps): React.JSX.Element {
             Atlas<span>VTT</span>
           </h1>
           <div className="dashboard-topbar__actions">
-            <Button variant="ghost" className="dashboard-topbar__action" onClick={onOpenAssetManager}>
+            <Button variant="ghost" className="dashboard-topbar__action dashboard-topbar__action--assets" onClick={onOpenAssetManager}>
               <GameIcon path={DASHBOARD_ICON_PATHS['open-chest']} />
               <span>{t('dashboard.assets')}</span>
             </Button>
@@ -86,6 +89,7 @@ export function HomePage(props: HomePageProps): React.JSX.Element {
 
         <RecentScenes scenes={scenes.slice(1)} isLoading={scenesLoading} onOpenScene={onOpenScene} />
       </main>
+      {!scenesLoading && <DashboardTour app={app} root={props.root} hasScene={last !== null} onCreateScene={onCreateMap} />}
     </>
   );
 }

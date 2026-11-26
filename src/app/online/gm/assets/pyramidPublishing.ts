@@ -61,8 +61,8 @@ export class PyramidPublishing {
     return !this.undrawable.has(hash);
   }
 
-  /** A pyramid of the image at `path`, of the shape its header gives; nothing runs before it is started. */
-  make(hash: string, path: string, shape: Pyramid): LivePyramid {
+  /** A pyramid of the image at `path`, of the shape its header gives, looked at as `offFloor` while it is on no floor; nothing runs before it is started. */
+  make(hash: string, path: string, shape: Pyramid, offFloor?: MapStanding): LivePyramid {
     return new LivePyramid(hash, path, shape, {
       level: (of, level, signal) => this.ports.source.level(of, level, signal),
       want: (pyramid) => this.builds.want(pyramid),
@@ -79,19 +79,19 @@ export class PyramidPublishing {
         if (entry !== undefined) this.ports.withdraw(entry);
       },
       timers: this.ports.timers,
-    });
+    }, offFloor);
   }
 
   /**
-   * A map noted in the queue (new, or asked for again): its standing (its floor's, else presented where
-   * players were handed it, staged where not) and rank; a pyramid is started unless the store holds it,
+   * A map noted in the queue (new, or asked for again): its standing (its floor's, else its own off a
+   * floor where players were handed it, staged where not) and rank; a pyramid is started unless the store holds it,
    * so its levels are being cut while it is offered.
    */
   noted(entry: QueueEntry): void {
     const pyramid = entryPyramid(entry);
     const path = pyramid?.path ?? entry.map;
     if (path === undefined) return;
-    const standing = this.standings.get(path) ?? (entry.handed ? 'presented' : 'staged');
+    const standing = this.standings.get(path) ?? (entry.handed ? (pyramid?.offFloor ?? 'presented') : 'staged');
     if (pyramid === null) return void (entry.rank = pyramidRank(standing, false));
     pyramid.standing = standing;
     this.rank(entry);

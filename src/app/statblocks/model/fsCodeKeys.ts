@@ -1,5 +1,6 @@
 import { BLOCK_CATALOGUE } from './blockCatalogue';
 import type { BlockType, StatblockTemplate } from './templateTypes';
+import { isPlainRecord } from '../values/fieldValueOf';
 
 /**
  * A key under which Fantasy Statblocks keeps JavaScript. Without `blockType`
@@ -43,10 +44,6 @@ export function isCodeKey(key: string, context: CodeContext = {}): boolean {
     && (rule.list === undefined || rule.list === context.list));
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Object.prototype.toString.call(value) === '[object Object]';
-}
-
 /** The FS type a record stands for: an Atlas block's export type, else its own `type`. */
 function fsTypeOf(record: Record<string, unknown>): string | undefined {
   const type = record.type;
@@ -80,7 +77,7 @@ function collect(value: unknown, path: CodePath, place: Place, depth: number, fo
     value.forEach((item, index) => collect(item, [...path, index], { list, blockType: undefined }, depth + 1, found));
     return;
   }
-  if (!isRecord(value)) return;
+  if (!isPlainRecord(value)) return;
   if (depth >= MAX_DEPTH || isScriptBlock(value)) { found.push(path); return; }
   const blockType = fsTypeOf(value) ?? place.blockType;
   for (const [key, child] of Object.entries(value)) {
@@ -108,7 +105,7 @@ function strip(value: unknown, key: string | undefined, place: Place, depth: num
       .map((item) => strip(item, undefined, { list: key, blockType: undefined }, depth + 1))
       .filter((item) => item !== DROP);
   }
-  if (!isRecord(value)) return value;
+  if (!isPlainRecord(value)) return value;
   if (depth >= MAX_DEPTH || isScriptBlock(value)) return DROP;
   const blockType = fsTypeOf(value) ?? place.blockType;
   const copy: Record<string, unknown> = {};

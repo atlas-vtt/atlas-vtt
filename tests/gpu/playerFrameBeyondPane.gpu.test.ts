@@ -51,7 +51,7 @@ async function populate(s: PlayerViewScene, perception: TokenPerception | undefi
     hole: fogRectangle({ id: 'hole', timestamp: 3, isErasing: true, x: 9.5 * CELL, y: 6.6 * CELL, width: CELL / 4, height: CELL / 2 }),
   });
   // Kept measurements: from tokens players see, from ones they may not and from hidden ones, left and right of the pane
-  s.events.emit('measure-persistence-changed', true);
+  s.store.getState().setMeasureTool({ keep: true });
   s.store.getState().setActiveTool('measure');
   for (const [column, row] of [[4, 5], [9, 5], [5, 6], [8, 6], [4, 6], [9, 6]] as const) {
     const [x, y] = [centre(column), centre(row)];

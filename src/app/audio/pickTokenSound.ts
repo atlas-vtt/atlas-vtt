@@ -29,7 +29,7 @@ export function tokenSoundChoices(files: readonly TFile[], recent: readonly stri
 async function mayTake(app: App, file: TFile): Promise<boolean> {
   const problem = tokenSoundProblem(await tokenSoundSeconds(app.vault, file), file.stat.size);
   if (!problem) return true;
-  showNotice(t(problem === 'too-long' ? 'tokenSound.tooLong' : 'tokenSound.tooLarge', { name: soundName(file.path) }));
+  showNotice(t(problem === 'too-long' ? 'audio.token.tooLong' : 'audio.token.tooLarge', { name: soundName(file.path) }));
   return false;
 }
 
@@ -41,7 +41,7 @@ async function mayTake(app: App, file: TFile): Promise<boolean> {
  */
 export function pickTokenSound(app: App, onPicked: (sound: Required<TokenSound>) => void): void {
   const choices = tokenSoundChoices(app.vault.getFiles(), recentSounds(app));
-  pickSoundFile(app, choices, t('tokenSound.pickPlaceholder'), (path) => {
+  pickSoundFile(app, choices, t('audio.token.pickPlaceholder'), (path) => {
     const file = app.vault.getFileByPath(path);
     if (!file) return;
     runInBackground((async (): Promise<void> => {

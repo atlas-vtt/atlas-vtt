@@ -9,7 +9,7 @@ import type { SoundDirector } from '../../../../soundDirector/SoundDirector';
 import { MoodStore } from '../../../../soundLibrary/MoodStore';
 import { confirmAction } from '../../../../ui/confirmDialog';
 import { showNotice, showNoticeWithAction } from '../../../../ui/notice';
-import { useContextMenu, type ContextMenuEntry } from '../../../root/ContextMenuContext';
+import { useContextMenu, type ContextMenuController, type ContextMenuEntry } from '../../../root/ContextMenuContext';
 import { IconAction } from './IconAction';
 import { CutTooltip } from './CutTooltip';
 import { announceSound } from './SoundLiveRegion';
@@ -27,9 +27,11 @@ interface DeskHeaderProps {
 /** Long enough to read the notice and reach its Undo. */
 const UNDO_NOTICE_MS = 8000;
 
-function belowAnchor(anchor: HTMLElement): { x: number; y: number } {
+/** Opens a menu under its button, which shows itself open (`aria-expanded`) for as long as the menu stands. */
+function openBelow(menu: ContextMenuController, anchor: HTMLElement, entries: ContextMenuEntry[], label: string): void {
   const box = anchor.getBoundingClientRect();
-  return { x: box.left, y: box.bottom };
+  anchor.setAttribute('aria-expanded', 'true');
+  menu.open(entries, { x: box.left, y: box.bottom }, { returnFocus: anchor, label, onClose: () => anchor.setAttribute('aria-expanded', 'false') });
 }
 
 /** Who hears it, in one line; while a table runs online, also the way to what is sent. */
@@ -42,10 +44,10 @@ function PlayersLine({ director }: { director: SoundDirector }): React.JSX.Eleme
   const { sounds } = director.players;
   if (sounds === null) return audience === null ? null : <span className="atlas-sound-who"><i aria-hidden="true" /><span>{audience}</span></span>;
   const open = (anchor: HTMLElement): void => {
-    menu.open([
+    openBelow(menu, anchor, [
       { type: 'item', label: t('audio.players.send'), checked: sounds.sending, onClick: () => sounds.setSending(!sounds.sending) },
       { type: 'item', label: t('audio.players.prepare'), disabled: !sounds.sending, onClick: () => sounds.prepare() },
-    ], belowAnchor(anchor), { returnFocus: anchor, label: t('audio.players.menuLabel') });
+    ], t('audio.players.menuLabel'));
   };
   const row = (
     <button type="button" className="atlas-sound-who" aria-haspopup="menu" data-off={!sounds.sending || undefined} data-stopped={stopped || undefined} onClick={(event) => open(event.currentTarget)}>
@@ -64,13 +66,13 @@ function OutputButton({ director }: { director: SoundDirector }): React.JSX.Elem
   const menu = useContextMenu();
   const open = async (anchor: HTMLElement): Promise<void> => {
     const devices = await listOutputDevices();
-    menu.open([
+    openBelow(menu, anchor, [
       { type: 'item', label: t('audio.outputDefault'), checked: output === null, onClick: () => director.setOutput(null) },
       ...devices.map((device, index) => {
         const label = device.label || t('audio.outputNumbered', { n: index + 1 });
         return { type: 'item' as const, label, checked: output?.id === device.id, onClick: () => director.setOutput({ id: device.id, label }) };
       }),
-    ], belowAnchor(anchor), { returnFocus: anchor, label: t('audio.outputNamed', { device: output?.label ?? t('audio.outputDefault') }) });
+    ], t('audio.outputNamed', { device: output?.label ?? t('audio.outputDefault') }));
   };
   const device = output ? output.label || t('audio.outputUnnamed') : t('audio.outputDefault');
   return (
@@ -87,7 +89,7 @@ function RoomButton({ director }: { director: SoundDirector }): React.JSX.Elemen
   const menu = useContextMenu();
   const Icon = ROOM_ICONS[room];
   const open = (anchor: HTMLElement): void => {
-    menu.open(ROOM_IDS.map((id) => ({ type: 'item' as const, label: roomName(id), checked: id === room, onClick: () => director.desk.setRoom(id) })), belowAnchor(anchor), { returnFocus: anchor, label: t('audio.room.choose', { room: roomName(room) }) });
+    openBelow(menu, anchor, ROOM_IDS.map((id) => ({ type: 'item' as const, label: roomName(id), checked: id === room, onClick: () => director.desk.setRoom(id) })), t('audio.room.choose', { room: roomName(room) }));
   };
   return (
     <button type="button" className="atlas-sound-output atlas-sound-room" aria-haspopup="menu" aria-label={t('audio.room.choose', { room: roomName(room) })} onClick={(event) => open(event.currentTarget)}>
@@ -148,7 +150,7 @@ export function DeskHeader({ app, director, moods, holdsSound, onSaveAs }: DeskH
     const others = moods.filter((other) => other.id !== mood?.id && !store.isReadOnly(other.id));
     if (others.length > 0) entries.push({ type: 'submenu', label: t('audio.saveToOther'), children: others.map((other) => ({ type: 'item' as const, label: other.name, onClick: () => void saveIntoOther(other) })) });
     entries.push({ type: 'item', label: t('audio.clearMix'), destructive: true, onClick: () => void clearMix() });
-    menu.open(entries, belowAnchor(anchor), { returnFocus: anchor, label: t('audio.mixMenu') });
+    openBelow(menu, anchor, entries, t('audio.mixMenu'));
   };
 
   const canSaveToMood = mood !== null && changed && !store.isReadOnly(mood.id);

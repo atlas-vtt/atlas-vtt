@@ -12,14 +12,15 @@ beforeEach(() => { vi.useFakeTimers(); });
 afterEach(() => { vi.useRealTimers(); });
 
 describe('useDiceToasts', () => {
-  it('enters, stays, leaves and is removed on its own', () => {
+  it('enters, stays until dismissed (its card holds its own clock), leaves and is removed', () => {
     const { result } = renderHook(() => useDiceToasts());
     act(() => result.current.addToast(ROLL));
     expect(result.current.toasts.map((toast) => toast.phase)).toEqual(['entering']);
 
-    act(() => { vi.advanceTimersByTime(350); });
+    act(() => { vi.advanceTimersByTime(220); });
     expect(result.current.toasts.map((toast) => toast.phase)).toEqual(['visible']);
-    act(() => { vi.advanceTimersByTime(6650); });
+    expect(vi.getTimerCount()).toBe(0);
+    act(() => result.current.dismissToast(result.current.toasts[0]!.id));
     expect(result.current.toasts.map((toast) => toast.phase)).toEqual(['exiting']);
     act(() => { vi.advanceTimersByTime(300); });
     expect(result.current.toasts).toEqual([]);

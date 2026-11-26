@@ -4,9 +4,10 @@ import { HP_RESOURCE } from '../../resources/resourceDefinitions';
 import { builtInPresetId, conditionsOf } from './presetHelpers';
 
 /**
- * Call of Cthulhu 7th Edition has no grid: firearm ranges, blast radii and the
- * optional combat movement (MOV × 5 yards) are all in yards, so a square is one
- * yard and the ruler measures the exact distance. Conditions are the states on
+ * Call of Cthulhu 7th Edition has no grid: firearm ranges, blast radii and
+ * movement in a fight (MOV yards a round and still act, five times MOV for one
+ * who only runs) are all in yards, so a square is one yard and the ruler
+ * measures the exact distance. Conditions are the states on
  * the official character sheet (Major Wound, Dying, Unconscious, Temporary and
  * Indefinite Insanity) plus death, a bout of madness, Prone from a major wound
  * and Stunned from stun weapons.
@@ -22,6 +23,12 @@ export const CALL_OF_CTHULHU: SystemPreset = {
       measurementMode: 'metric',
       diagonalRule: 'euclidean',
       abstractRangeBands: [],
+    },
+    // A round's move is MOV yards with an action left, and five times MOV at a sprint. A human's MOV is 8.
+    movement: {
+      steps: [{ name: 'Move', multiple: 1, color: '#22c55e' }, { name: 'Sprint', multiple: 5, color: '#f59e0b' }],
+      countPerTurn: true,
+      speed: 8,
     },
     // Percentile skill rolls: 01 is a critical success, 100 a fumble.
     dice: { defaultRoll: '1d100', crit: 'roll-under' },

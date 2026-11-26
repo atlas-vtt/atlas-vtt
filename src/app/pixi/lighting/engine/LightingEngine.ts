@@ -5,10 +5,10 @@ import type { UnlitGrid } from '../../../grid/gridLightingMark';
 import { destroyTree } from '../../utils/destroyTree';
 import { BackBufferHold } from './backBuffer';
 import { createCompositeFilter, NO_BELOW, type BelowPictures, type CompositeFilter, type CompositeStack, type LightingMode } from './compositeFilter';
-import { contextLost, glOf } from './gpu';
 import { createEngineWorld, type EngineWorld } from './engineWorld';
 import { ambientLift, darkLooks } from './senseDrawing';
-import { describeShaderFailures, failedEngineShaders } from './shaderCheck';
+import { contextLost } from './gpu';
+import { EngineDeviceCheck } from './engineDeviceCheck';
 import { SceneSightLayers } from './SceneSightLayers';
 import type { EngineScene, SceneFrame } from './types';
 import type { Box } from '../../../vision/polygonBounds';
@@ -41,7 +41,8 @@ const NOTHING_BELOW: BelowShown = { pictures: NO_BELOW, dim: 1 };
  * only while lighting is enabled.
  *
  * The engine never takes its caller down. Before it draws on a context it asks the driver
- * whether its shaders link (`failedEngineShaders`); it draws nothing while the context is lost;
+ * whether its shaders link (`failedEngineShaders`) and whether it renders into the engine's
+ * texture formats (`unrenderableEngineTargets`); it draws nothing while the context is lost;
  * and an error thrown by a pass stops it for good (`failed`): the layer is hidden, the world and
  * the back buffer are released, and every later call does nothing. A restored context is only
  * noted in PIXI's runner; the world is rebuilt from the last scene at the engine's next call.
@@ -69,8 +70,7 @@ export class LightingEngine {
   private grid: UnlitGrid | null = null;
   private enabled = false;
   private stopped = false;
-  /** The shaders link on the current context. */
-  private verified = false;
+  private readonly device: EngineDeviceCheck;
   /** The context was restored: the world's textures are blank until it is rebuilt. */
   private stale = false;
   private restoreUnreported = false;
@@ -89,6 +89,7 @@ export class LightingEngine {
     this.paced = options.paced ?? false;
     this.backBuffer = options.backBuffer === false ? null : new BackBufferHold(renderer);
     this.levelIndex = options.levelIndex ?? 0;
+    this.device = new EngineDeviceCheck(renderer);
     this.layer.eventMode = 'none';
     this.layer.addChild(this.boundsRect, this.sightLayers.view);
     renderer.runners.contextChange.add(this.contextListener);
@@ -108,6 +109,15 @@ export class LightingEngine {
     const restored = this.restoreUnreported;
     this.restoreUnreported = false;
     return restored;
+  }
+
+  /**
+   * Hands the driver the shaders the first build checks (`ready`) to compile and link now, while
+   * a scene loads, so the browser's graphics process works on them meanwhile and the check finds
+   * them done. Nothing where they are checked on this context already, or the engine stopped.
+   */
+  prepareShaders(): void {
+    if (!this.stopped && !this.stale) this.device.prepare(this.quality.picture ?? 'traced');
   }
 
   /** Does nothing while disabled: the next update after `setEnabled(true)` builds everything. */
@@ -293,6 +303,7 @@ export class LightingEngine {
 
   destroy(): void {
     this.renderer.runners.contextChange.remove(this.contextListener);
+    this.device.release();
     this.dropWorld();
     this.sightLayers.destroy();
     destroyTree(this.layer);
@@ -311,10 +322,8 @@ export class LightingEngine {
   }
 
   /**
-   * Whether the context is there and links the engine's shaders. After a restored context the
-   * world goes (its textures are blank) and the shaders are checked again on the new one.
-   * Another renderer than WebGL (PIXI's Canvas or WebGPU renderer, which a browser without
-   * WebGL gets) has no pipe for the engine's meshes: the engine stops before it draws anything.
+   * Whether the context is there and can run the picture (`EngineDeviceCheck`); one that cannot stops the engine
+   * before it draws anything. After a restored context the world goes (its textures are blank) and the device is asked again.
    */
   private ready(): boolean {
     if (contextLost(this.renderer)) return false;
@@ -323,25 +332,11 @@ export class LightingEngine {
       this.dropWorld();
       this.scene = scene;
       this.stale = false;
-      this.verified = false;
+      this.device.forget();
     }
-    if (this.verified) return true;
-    const gl = glOf(this.renderer);
-    if (!gl) {
-      console.error(`Atlas: dynamic lighting needs WebGL, and this view draws with PIXI's ${this.renderer.name} renderer`);
-      this.stop();
-      return false;
-    }
-    const failures = failedEngineShaders(gl);
-    // Lost while compiling: the logs say nothing about the device. Wait for the restore.
-    if (contextLost(this.renderer)) return false;
-    if (failures.length > 0) {
-      console.error(`Atlas: dynamic lighting cannot run on this graphics device. These shaders did not compile:\n${describeShaderFailures(failures)}`);
-      this.stop();
-      return false;
-    }
-    this.verified = true;
-    return true;
+    const verdict = this.device.check(this.quality.picture ?? 'traced');
+    if (verdict === 'failed') this.stop();
+    return verdict === 'ready';
   }
 
   /**

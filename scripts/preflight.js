@@ -10,6 +10,7 @@ const { execSync } = require('child_process');
 const { parseVersion } = require('./release-channel');
 const { fontNoticeProblems, fontFaceCountProblems, scriptFontProblems } = require('./font-notices');
 const { rootHasProblems } = require('./root-has');
+const { hostModuleProblems, loadProblems } = require('./bundle-host');
 
 const root = path.resolve(__dirname, '..');
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
@@ -90,10 +91,11 @@ if (!exists('dist/main.js')) {
   for (const [label, pattern] of Object.entries(blocking)) if (pattern.test(bundle)) errors.push(`dist/main.js contains ${label}`);
   for (const [label, pattern] of Object.entries(scorecard)) if (pattern.test(bundle)) warnings.push(`dist/main.js contains ${label}`);
   for (const problem of scriptFontProblems(bundle)) errors.push(`dist/main.js ${problem}`);
+  // Obsidian's mobile apps have no Node: the bundle names only Obsidian's modules and loads without Node's globals.
+  for (const problem of [...hostModuleProblems(bundle), ...loadProblems(bundle)]) errors.push(`dist/main.js ${problem}`);
   const hosts = [...new Set((bundle.match(/https?:\/\/[a-z0-9.-]+\.[a-z]{2,}/gi) || []))]
     .filter((host) => !/w3\.org|reactjs\.org|react\.dev|github\.com|mozilla\.org|pixijs\.(com|download|io)|radix-ui\.com|lucide\.dev|fb\.me|feross\.org|howlerjs\.com|goldfirestudios\.com|motion\.dev|example\.com|bit\.ly|stuartk\.com|stuk\.github\.io/.test(host));
   if (hosts.length) warnings.push(`dist/main.js references hosts that must be disclosed in README: ${hosts.join(', ')}`);
-  if (Buffer.byteLength(bundle) > 5 * 1024 * 1024) warnings.push('dist/main.js is larger than 5 MB');
 }
 if (exists('dist/styles.css')) {
   const css = read('dist/styles.css');
@@ -103,10 +105,20 @@ if (exists('dist/styles.css')) {
   if (has) warnings.push(`styles.css uses :has() ${has} times`);
   // styles.css is the only copy of the fonts users get, so it must carry their notice and hold only the fonts the list names.
   for (const problem of [...fontNoticeProblems(css), ...fontFaceCountProblems(css)]) errors.push(`styles.css: ${problem}`);
+  // main.scss wraps every file in .atlas-vtt-plugin, so a nested `[x] > &` compiles to `[x]>.atlas-vtt-plugin .y`, which never matches.
+  const wrapped = [...new Set((css.match(/[^{},]*>\.atlas-vtt-plugin [^{,]*/g) ?? []).map((selector) => selector.split("\n").pop()?.trim() ?? selector))];
+  if (wrapped.length) errors.push(`styles.css has selectors that put .atlas-vtt-plugin behind a child combinator, which never match (write the parent out instead of \`> &\`): ${wrapped.join(' | ')}`);
   // One such rule makes Chromium restyle the whole of Obsidian for every element that comes or goes.
   for (const problem of rootHasProblems(css)) errors.push(`styles.css ${problem}`);
 } else {
   errors.push('dist/styles.css is missing');
+}
+
+// --- Bundle size ---------------------------------------------------------------
+const budgetFile = 'scripts/bundle-budget.json';
+for (const [file, budget] of Object.entries(JSON.parse(read(budgetFile)))) {
+  const size = exists(file) ? fs.statSync(path.join(root, file)).size : 0;
+  if (size > budget) errors.push(`${file} is ${size} bytes, budget ${budget} (${budgetFile}). Find what grew before raising the budget.`);
 }
 
 // --- Dungeon drawings ---------------------------------------------------------

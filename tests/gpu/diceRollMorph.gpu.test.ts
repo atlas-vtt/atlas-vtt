@@ -17,6 +17,7 @@ const LAYOUT = `
   .atlas-dice-rolls { width: 336px; display: flex; flex-direction: column; gap: 8px; }
   .atlas-dice-roll { width: 100%; display: flex; flex-direction: column; }
   .atlas-dice-roll__sheet { position: relative; display: flex; flex-direction: column; overflow: hidden; border: 2px solid; border-radius: 24px; }
+  .atlas-dice-roll__clip { transition: height 420ms cubic-bezier(0.23, 1, 0.32, 1); }
   .atlas-dice-roll__content { display: flex; flex-direction: column; }
   .atlas-dice-roll__floor { width: 100%; aspect-ratio: 16 / 10; }
   .atlas-dice-roll__row { min-height: 54px; }

@@ -8,6 +8,7 @@ import { ensureFolder, isPathTaken } from '../../../plugin/vaultFolders';
 import { collectionFolderPath } from '../../../services/assetPaths';
 import { freePathIn } from '../../../services/collectionBundle/pathRemap';
 import { t } from '../../../i18n';
+import { generatedMapLimits } from '../../../platform/generatedMapLimits';
 
 /**
  * Saving a dungeon as files: the map of one floor as PNG or SVG, and the whole model as JSON.
@@ -54,6 +55,12 @@ async function pngOf(rendered: DungeonRendered): Promise<Blob> {
   return canvas.convertToBlob({ type: 'image/png' });
 }
 
+/** What a tablet draws of a map; nothing where the generator's own limits are all there is, so a desktop's job stays as it was. */
+function deviceLimits(): { maxPixels?: number; maxSide?: number } {
+  const { maxPixels, maxSide } = generatedMapLimits();
+  return { ...(Number.isFinite(maxPixels) && { maxPixels }), ...(Number.isFinite(maxSide) && { maxSide }) };
+}
+
 async function contentOf(deps: DungeonExportDeps, kind: DungeonExportKind, input: DungeonExportInput): Promise<string | Blob> {
   const { request, model, style, view } = input;
   const floor = input.floor ? { floor: input.floor } : {};
@@ -64,7 +71,7 @@ async function contentOf(deps: DungeonExportDeps, kind: DungeonExportKind, input
         model,
         style,
         view,
-        output: { kind: 'map', pxPerCell: input.pxPerCell ?? 70, ...(input.transparent ? { transparent: true } : {}), ...floor },
+        output: { kind: 'map', pxPerCell: input.pxPerCell ?? 70, ...deviceLimits(), ...(input.transparent ? { transparent: true } : {}), ...floor },
       }));
     case 'svg': {
       const { image } = await deps.render({ request, model, style, view, output: { kind: 'map', pxPerCell: SVG_PX_PER_CELL, svg: true, ...floor } });

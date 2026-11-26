@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import type { TemplateBlock, TemplateField } from '../../../../src/app/statblocks/model/templateTypes';
-import { blockEl, renderSheet, templateOf } from './sheetTestKit';
+import { blockEl, renderSheet, templateOf, valueOf } from './sheetTestKit';
 
 const FIELDS: TemplateField[] = [
   { key: 'name', label: 'Name', type: 'text' },
@@ -47,5 +47,34 @@ describe('StatblockSheet: tracked numbers', () => {
   it('show a tracked number whose maximum another field holds though its own field is empty', () => {
     const { container } = renderSheet(templateOf(FIELDS, [{ id: 'metric02', type: 'metric', fields: ['hit_dice'] }]), { name: 'Mira', level: 2 });
     expect(tracked(container, 'metric02')).toEqual(['2 / 2']);
+  });
+
+  describe('with a pattern of their own', () => {
+    const GLORY: TemplateField[] = [
+      { key: 'name', label: 'Name', type: 'text' },
+      { key: 'glory', label: 'Glory', type: 'number', tracks: { counts: 'up' } },
+      { key: 'renown', label: 'Renown', type: 'number' },
+      { key: 'favour', label: 'Favour', type: 'number', tracks: { counts: 'down', max: 'renown' } },
+    ];
+    const RANKS = { ranks: { '0': 'Squire', '1': 'Knight', '2': 'Lord', '3': 'Paragon' } };
+    const PATTERNED: TemplateBlock[] = [
+      { id: 'statrank', type: 'stat', field: 'glory', label: 'Rank', pattern: '{glory|lookup:ranks}' },
+      { id: 'statfavr', type: 'stat', field: 'favour', label: 'Favour', pattern: '{favour} of {renown}' },
+    ];
+    const template = templateOf(GLORY, PATTERNED, RANKS);
+
+    it('write the pattern with the current value where it starts', () => {
+      const { container } = renderSheet(template, { name: 'Mira', glory: 3, renown: 2 });
+      expect(valueOf(container, 'statrank')).toBe('Squire');
+      expect(valueOf(container, 'statfavr')).toBe('2 of 2');
+      expect(tracked(container, 'statrank')).toEqual([]);
+    });
+
+    it('write the pattern with the token\'s current value', () => {
+      const token = { id: 't1', name: 'Mira', resources: { glory: { current: 2, max: 3 }, favour: { current: 1, max: 2 } } };
+      const { container } = renderSheet(template, { name: 'Mira', glory: 3, renown: 2 }, { token });
+      expect(valueOf(container, 'statrank')).toBe('Lord');
+      expect(valueOf(container, 'statfavr')).toBe('1 of 2');
+    });
   });
 });

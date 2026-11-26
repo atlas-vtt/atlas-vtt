@@ -5,6 +5,7 @@ import { MAX_MAP_FEATURES } from '../mapFeatures/mapFeatures';
 import type { MapFeature, MapFeatureChanges, MapFeatureInput } from '../types/mapFeatureTypes';
 import type { ViewState } from '../types/viewState';
 import { isRecord } from '../utils/guards';
+import { newId } from '../utils/ids';
 
 export interface MapFeaturesSlice {
   /**
@@ -20,10 +21,6 @@ export interface MapFeaturesSlice {
 type FeaturesDraft = Pick<ViewState, 'levels' | 'viewedLevel' | 'objects'>;
 
 type ImmerSet = (fn: (draft: FeaturesDraft) => void) => void;
-
-function newFeatureId(): string {
-  return `feature_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
-}
 
 /** The level a feature counts on for the limit: the one it stands on ('' in a scene without levels). */
 function levelKey(feature: MapFeature, draft: FeaturesDraft): string {
@@ -50,7 +47,7 @@ export function createMapFeaturesActions(set: ImmerSet): MapFeaturesSlice {
         }
         const placed = placedOnViewedLevel(draft);
         for (const input of data) {
-          const feature: MapFeature = { id: newFeatureId(), kind: 'map-feature', ...placed, ...input };
+          const feature: MapFeature = { id: newId('feature'), kind: 'map-feature', ...placed, ...input };
           const level = levelKey(feature, draft);
           const count = counts.get(level) ?? 0;
           if (count >= MAX_MAP_FEATURES) continue;

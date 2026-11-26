@@ -6,7 +6,8 @@ import type { ConditionGlyph } from '../../utils/conditionGlyph';
 const GLYPH_TEXTURE_SIZE = 128;
 /** Widget icons are drawn on a 512×512 canvas. */
 const ICON_SPACE = 512;
-const GLYPH_FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
+/** The face every badge's letters and numbers are set in. */
+export const GLYPH_FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
 
 /**
  * Glyphs are rasterised in white and tinted per badge, so every badge that shows the

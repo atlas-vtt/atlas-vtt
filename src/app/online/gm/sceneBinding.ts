@@ -6,13 +6,15 @@ import { levelObjects } from '../../levels/levelObjects';
 import { difficultCells } from '../../mapFeatures/featureIndex';
 import { mapFeatureList } from '../../mapFeatures/mapFeatures';
 import { diceSourceOf } from './atlasDice.ts';
-import { accentColour, atlasPlayerSettings, lightingSourceOf, measurementOf } from './atlasLighting.ts';
-import { mapLayerSourceOf, rulesLookupOf, showsViewedLevel } from './atlasMapLayers.ts';
+import { accentColour, atlasPlayerSettings, lightingSourceOf, measurementOf, tabAreaMap } from './atlasLighting.ts';
+import { mapLayerSourceOf, pictureBasisOf, rulesLookupOf, showsViewedLevel } from './atlasMapLayers.ts';
 import { asTokenSource, call, drawnTokenPlaces, tokenRulesOf, type PlayerTokenSource, type SceneStore } from './atlasView.ts';
 import { bookSceneOf, type BookScene } from './book/bookScene.ts';
 import { ResourceWrites } from './book/resourceWrites.ts';
 import { companionTimers } from './companionTimers.ts';
 import { dragRulerOf } from './dragRulers.ts';
+import { tokenMovesOf } from './moveShare.ts';
+import { decodeMaskAlpha } from './exploredMaskAlpha.ts';
 import { GmMarks } from './gmMarks.ts';
 import type { GmMessage, RollRequestAnswer } from '../protocol/index.ts';
 import type { LoggedRoll, RollRequest } from './log/TableLog.ts';
@@ -23,7 +25,11 @@ import { SceneShare } from './SceneShare.ts';
 import type { AtlasTab, TabBinding } from './sharedTab.ts';
 import type { VaultImage } from './TokenShare.ts';
 import type { AssetStoring } from './assets/assetUses.ts';
+import type { MemoryPorts } from './memory/memoryPorts.ts';
+import { pixiRendererOf, TextureRasters } from './memory/TextureRasters.ts';
 import { showNotice } from '../../ui/notice';
+import { bumpOnTab, showDoorAsk } from './doors/doorAskDesk.ts';
+import type { NotePin } from '../../types';
 
 /** A shared view's scene and the GM's marks on it. */
 export interface SceneBinding extends TabBinding {
@@ -45,6 +51,8 @@ export interface SceneBindingPorts {
   readImage(path: string): Promise<VaultImage | null>;
   /** How players are handed assets the store keeps for them; without it they are handed none. */
   readonly stored?: AssetStoring | undefined;
+  /** Where players' own explored memories are kept; the tab's renderer stamps them. Without it a player remembers only what their page saw. */
+  readonly memory?: Omit<MemoryPorts, 'rasters'> | undefined;
   /** Whether the binding is still the table's and its tab the same objects. */
   isLive(binding: SceneBinding): boolean;
   randomId(): string;
@@ -56,6 +64,8 @@ export interface SceneBindingPorts {
   rollRequest(from: string, answer: RollRequestAnswer): RollRequest | null;
   /** The entry of the table's log that tells who found a readable pin of a map, or null while nobody has. */
   foundPin(mapPath: string, pinId: string): string | null;
+  /** The shared map's pins whenever the GM changed them, so found pins can follow the notes they link now. */
+  pinsChanged(mapPath: string, pins: Readonly<Record<string, NotePin>>): void;
 }
 
 /** The renderer as the books' token source, the tokens the players see read on each token's own floor. */
@@ -85,12 +95,14 @@ export function bindScene(ports: SceneBindingPorts, tab: AtlasTab, presented: Pr
   const shownRenderer = (): unknown => (shown() ? renderer : null);
   const measurement = lastWhileShown(shown, () => measurementOf(renderer) ?? lightingSourceOf(renderer)?.measurement() ?? null);
   const liveRenderer = (): unknown => (live() ? renderer : null);
+  const rasters = new TextureRasters(() => pixiRendererOf(liveRenderer()));
   const marks: GmMarks = new GmMarks(ports.app, liveRenderer, tab.store, () => {
     const grid = call(liveRenderer(), 'getGridOptions') as GridGeometry | null | undefined;
     if (grid === null || grid === undefined) return null;
     const state = tab.store.getState();
     const difficult = difficultCells(mapFeatureList(levelObjects(state).mapFeatures));
-    return { grid, measurement: measurement() ?? resolveMeasurementSettings(undefined, state.grid), difficult } satisfies MeasureRules;
+    // The areas players measure stop at the walls the GM's own do.
+    return { grid, measurement: measurement() ?? resolveMeasurementSettings(undefined, state.grid), difficult, areas: tabAreaMap(liveRenderer()) } satisfies MeasureRules;
   }, (tokenId): string | undefined => share.draggerOf(tokenId));
   // Players' marks leave the GM's canvas as the hold begins: it is about to show another scene.
   const store = new PresentedStore(tab.store, presented, () => {
@@ -98,6 +110,7 @@ export function bindScene(ports: SceneBindingPorts, tab: AtlasTab, presented: Pr
     marks.showPlayers({ lasers: [], measures: [] });
     marks.showPlayerDrags([]);
     marks.showPlayerCursors([]);
+    marks.showPlayerStrokes([]);
   });
   const share: SceneShare = new SceneShare(store, {
     tokenSource: () => asTokenSource(shownRenderer()),
@@ -108,14 +121,19 @@ export function bindScene(ports: SceneBindingPorts, tab: AtlasTab, presented: Pr
     showPlayerDrags: (drags) => shown() && marks.showPlayerDrags(drags),
     gmDragRuler: () => dragRulerOf(shownRenderer()),
     showPlayerCursors: (cursors) => shown() && marks.showPlayerCursors(cursors),
+    showPlayerStrokes: (strokes) => shown() && marks.showPlayerStrokes(strokes),
     nameOf: (player) => ports.nameOf(player),
     accent: lastWhileShown(shown, () => accentColour(leaf.view.containerEl.ownerDocument)),
     atlasSettings: () => atlasPlayerSettings(ports.app),
     dice: () => (shown() ? diceSourceOf(leaf) : null),
     mapLayers: () => (shown() ? mapLayerSourceOf(renderer, leaf.view) : null),
+    pictureBasis: () => (shown() ? pictureBasisOf(renderer) : null),
     showNames: () => atlasPlayerSettings(ports.app).showNames,
     tokenRules: () => tokenRulesOf(shownRenderer()),
+    tokenMoves: () => tokenMovesOf(shownRenderer()),
     readImage: (path) => ports.readImage(path),
+    decodeMask: decodeMaskAlpha,
+    playerMemory: ports.memory === undefined ? undefined : { ...ports.memory, rasters },
     stored: ports.stored,
     send: (body, to) => live() && ports.send(body, to),
     sendLive: (body, key, to) => live() && ports.sendLive(body, key, to),
@@ -125,9 +143,12 @@ export function bindScene(ports: SceneBindingPorts, tab: AtlasTab, presented: Pr
     randomId: () => ports.randomId(),
     logRoll: (roll) => live() && ports.logRoll(roll),
     foundPin: (mapPath, pinId) => ports.foundPin(mapPath, pinId),
+    pinsChanged: (mapPath, pins) => live() && ports.pinsChanged(mapPath, pins),
     presentedLevel: () => store.presentedLevel,
     rendererCurrent: () => shown() && showsViewedLevel(renderer, tab.store.getState()),
     rollRequest: (from, answer) => (shown() ? ports.rollRequest(from, answer) : null),
+    askDoor: (asked) => (live() ? showDoorAsk({ app: ports.app, leaf, view: tab.view, renderer, store: tab.store, presented: store }, asked) : () => undefined),
+    bumpToken: (tokenId, dx, dy) => shown() && bumpOnTab(renderer, tokenId, dx, dy),
     now: () => timers.now(),
     setTimer: (run, ms) => timers.setTimer(() => live() && run(), ms),
     clearTimer: (timer) => timers.clearTimer(timer),
@@ -157,6 +178,7 @@ export function bindScene(ports: SceneBindingPorts, tab: AtlasTab, presented: Pr
       share.stop();
       store.dispose();
       marks.dispose();
+      rasters.dispose();
     },
   };
   return binding;

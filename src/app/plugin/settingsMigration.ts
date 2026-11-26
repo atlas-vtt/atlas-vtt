@@ -1,5 +1,5 @@
 import type { App } from 'obsidian';
-import { isRecord } from '../services/atlasSettings';
+import { isRecord } from '../utils/guards';
 import { foreignHotkeys, readHotkeyOverrides } from '../keyboard/hotkeyOverrides';
 import { isInputMode, loadInputMode, saveInputMode } from '../services/deviceSettings';
 import type { PluginDataStore } from '../services/SettingsService';

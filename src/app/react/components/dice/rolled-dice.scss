@@ -1,6 +1,7 @@
 // What a roll that kept some of its dice, or took advantage, shows: in the
-// result card and the dice log alike the kept dice stand out; a dropped die is
-// struck through by the badge's own `--dropped` state (`dieStates`).
+// result card, the 3D panel and the dice log alike the kept dice stand out and a
+// dropped die stands lighter and in brackets (`(4)`), never struck: a strike
+// across a 1 reads as a 4.
 
 .atlas-die-badge--kept {
   font-weight: $font-weight-bold;
@@ -18,8 +19,9 @@
 }
 
 .atlas-rolled-dice__die--dropped {
-  color: var(--text-faint);
-  text-decoration-thickness: 1px;
+  // Lighter than the kept dice (bold, the text's own colour), yet readable: it is information.
+  color: color-mix(in srgb, var(--text-muted) 50%, var(--text-normal));
+  font-weight: $font-weight-normal;
 }
 
 .atlas-rolled-dice__hidden {
@@ -38,4 +40,74 @@
   &--disadvantage {
     color: var(--text-muted);
   }
+}
+
+// A result's close button (the 3D panel's and the card's) under a coarse pointer: a 44 px hit area drawn
+// by nothing, from the button's top right corner towards the surface's inside, so the surface's round,
+// clipped corner never cuts it. The button keeps the panels' close button's size.
+.atlas-dice-roll__close,
+.atlas-dice-toast__close {
+  @media (pointer: coarse) {
+    &::before {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: $touch-target;
+      height: $touch-target;
+      content: '';
+    }
+  }
+}
+
+// "Critical success" / "Critical failure" in small caps, like the side of advantage: a crit
+// is named in words, never told by its tint alone.
+.atlas-roll-crit {
+  align-self: flex-start;
+  font-size: 10px;
+  font-weight: $font-weight-semibold;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-normal);
+
+  &--high {
+    color: color-mix(in oklch, var(--color-yellow) 45%, var(--text-normal));
+  }
+
+  &--low {
+    color: color-mix(in oklch, var(--color-red) 70%, var(--text-normal));
+  }
+}
+
+// Whether players saw the GM's roll: an eye, or a crossed-out eye, in the muted ink.
+.atlas-roll-audience {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
+}
+
+// A total in the dice face (RollDigits): one box per digit, since the face has no tabular figures
+// and a total that counts up must not change width. Its digits are 0.51em wide (the 1 0.24, the 7
+// 0.68, which may overhang its box a little).
+.atlas-roll-digits__digit {
+  display: inline-block;
+  width: 0.54em;
+  text-align: center;
+
+  &::before {
+    content: attr(data-digit);
+  }
+}
+
+// The number the boxes draw, once, for screen readers and whoever reads the text. Never seen; set
+// in tabular figures, as the boxes it stands for are.
+.atlas-roll-digits__text {
+  @include atlas-visually-hidden;
+  font-family: var(--font-interface);
+  font-variant-numeric: tabular-nums lining-nums;
 }

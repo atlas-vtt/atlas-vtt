@@ -1,10 +1,10 @@
-import { UNDO_BAR_ID } from '../../../../toolbar/toolbarCatalog'
+import { isSideBarId } from '../../../../toolbar/toolbarCatalog'
 import type { ToolbarFocusTarget, ToolbarHandleGroup } from './toolbarEditContext'
 
 /**
  * Where the editor's parts find each other in the document: the bar and the
  * editor (with its tray) are siblings in the bottom toolbar row, and the
- * undo/redo bar's slot is in the row's start slot. Children are walked rather
+ * bars beside the toolbar stand in the row's lead, start and end slots (`SideBarSlot`). Children are walked rather
  * than matched with `:scope`, which jsdom resolves against the wrong element
  * once another query used it.
  */
@@ -19,9 +19,9 @@ function childWithClass(parent: Element | null | undefined, className: string): 
   return isHtmlElement(child) ? child : null
 }
 
-/** The element that holds the bar and the editor, found from any part of either or of the undo/redo bar. */
+/** The element that holds the bar and the editor, found from any part of either or of a bar beside it. */
 export function editorRowOf(element: Element | null | undefined): Element | null {
-  const part = element?.closest('.atlas-main-toolbar, .atlas-toolbar-editor, .atlas-bottom-toolbar-row__start')
+  const part = element?.closest('.atlas-main-toolbar, .atlas-toolbar-editor, .atlas-bottom-toolbar-row__lead, .atlas-bottom-toolbar-row__start, .atlas-bottom-toolbar-row__end')
   return part?.parentElement ?? null
 }
 
@@ -33,9 +33,18 @@ export function trayOf(row: Element): HTMLElement | null {
   return childWithClass(row, 'atlas-toolbar-editor')?.querySelector<HTMLElement>('.atlas-toolbar-tray') ?? null
 }
 
-/** The undo/redo bar's slot, laid out or not; none where the row has no undo/redo bar (the player view). */
-export function undoSlotOf(row: Element): HTMLElement | null {
-  return childWithClass(row, 'atlas-bottom-toolbar-row__start')?.querySelector<HTMLElement>('.atlas-undo-bar') ?? null
+/** The row's slots that hold bars beside the toolbar, left to right. */
+type RowSlot = 'lead' | 'start' | 'end'
+const ROW_SLOTS: readonly RowSlot[] = ['lead', 'start', 'end']
+
+/** The slots of the bars beside the toolbar in one of the row's slots, left to right; none in the player view. */
+function sideSlotsIn(row: Element, end: RowSlot): HTMLElement[] {
+  return Array.from(childWithClass(row, `atlas-bottom-toolbar-row__${end}`)?.querySelectorAll<HTMLElement>('.atlas-side-bar') ?? [])
+}
+
+/** A bar beside the toolbar's slot, laid out or not; none where the row has no such bar. */
+export function sideSlotOf(row: Element, id: string): HTMLElement | null {
+  return ROW_SLOTS.flatMap(end => sideSlotsIn(row, end)).find(slot => slot.dataset.sideBar === id) ?? null
 }
 
 /** A slot that is shown and not on its way out. */
@@ -45,19 +54,20 @@ function isSettledSlot(item: Element, className: string): item is HTMLElement {
 
 /**
  * A group's handles in order. Only tools shown in their group count: those in
- * "More tools", hidden or closing take no focus. The undo/redo bar, left of
- * the bar, comes first in the bar's group.
+ * "More tools", hidden or closing take no focus. The bars beside the toolbar
+ * join the bar's group where they stand: those of the row's lead and start
+ * first, those of its end last.
  */
 export function groupHandles(row: Element, group: ToolbarHandleGroup): HTMLElement[] {
   const [parent, className] = group === 'tray' ? [trayOf(row), 'atlas-toolbar-tray__item'] : [mainToolbarOf(row), 'atlas-toolbar-item']
-  const undo = group === 'bar' ? undoSlotOf(row) : null
-  const items = [...(undo && isSettledSlot(undo, 'atlas-undo-bar') ? [undo] : []), ...Array.from(parent?.children ?? []).filter(item => isSettledSlot(item, className))]
+  const sides = (end: RowSlot): HTMLElement[] => group === 'bar' ? sideSlotsIn(row, end).filter(slot => isSettledSlot(slot, 'atlas-side-bar')) : []
+  const items = [...sides('lead'), ...sides('start'), ...Array.from(parent?.children ?? []).filter(item => isSettledSlot(item, className)), ...sides('end')]
   return items.flatMap(item => childWithClass(item, 'atlas-toolbar-handle') ?? [])
 }
 
-/** A control's slot in the bar (the undo/redo bar's own slot for it), laid out or not. */
+/** A control's slot in the bar (a side bar's own slot for it), laid out or not. */
 export function barSlotOf(row: Element, id: string): HTMLElement | null {
-  if (id === UNDO_BAR_ID) return undoSlotOf(row)
+  if (isSideBarId(id)) return sideSlotOf(row, id)
   const slot = Array.from(mainToolbarOf(row)?.children ?? []).find(item => isHtmlElement(item) && item.dataset.toolbarItem === id)
   return isHtmlElement(slot) ? slot : null
 }

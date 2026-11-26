@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitest/config';
 import { playwright } from '@vitest/browser-playwright';
 import { fileURLToPath } from 'node:url';
+import { lazyInlineWorkers } from './vite/lazy-inline-workers.mts';
 
 const alias = {
   '@': '/src',
@@ -46,6 +47,8 @@ export default defineConfig({
   define: {
   },
   resolve: { alias },
+  // The tests run inline workers with the bundle's `sharedWorker` export (`vite/lazy-inline-workers.mts`).
+  plugins: [lazyInlineWorkers()],
   test: {
     projects: [
       {
@@ -106,6 +109,7 @@ export default defineConfig({
           browser: {
             enabled: true,
             headless: true,
+            // Scrollbars are shown: a hidden one takes no room, so a layout shift it causes could not be measured.
             provider: playwright({ launchOptions: { channel: 'chromium', ignoreDefaultArgs: ['--hide-scrollbars'] } }),
             instances: [{ browser: 'chromium' }],
           },
@@ -118,6 +122,22 @@ export default defineConfig({
           name: 'sound-webkit',
           setupFiles: ['./tests/setup/obsidianDom.ts', './tests/setup/domHost.ts'],
           include: ['tests/gpu/sound/{soundSeams,soundTransitions,soundFiles,soundRealTime}.gpu.test.ts'],
+          testTimeout: 600_000,
+          browser: {
+            enabled: true,
+            headless: true,
+            provider: playwright(),
+            instances: [{ browser: 'webkit' }],
+          },
+        },
+      },
+      {
+        extends: true,
+        // What a tablet's engine does differently (it encodes no WebP), on Playwright's WebKit: local only, as the gpu project.
+        test: {
+          name: 'webkit',
+          setupFiles: ['./tests/setup/obsidianDom.ts', './tests/setup/domHost.ts'],
+          include: ['tests/gpu/derivedImageEncoding.gpu.test.ts'],
           testTimeout: 600_000,
           browser: {
             enabled: true,

@@ -13,7 +13,7 @@ vi.mock('../../src/app/services/ServiceManager', () => ({
     getUIOverlay(): unknown { return { mount: vi.fn() }; }
   },
 }));
-vi.mock('../../src/app/storeFactory', () => ({ createViewAtlasStore: () => ({ getState: () => ({ setMapLoading }) }) }));
+vi.mock('../../src/app/storeFactory', () => ({ createViewAtlasStore: () => ({ getState: () => ({ setMapLoading }), subscribe: () => () => undefined }) }));
 
 const rootSplit = { id: 'root' };
 

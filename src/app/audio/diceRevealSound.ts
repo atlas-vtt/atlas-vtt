@@ -1,5 +1,6 @@
 import type { DiceCrit } from '../tools/diceCrit';
 import { dataUrlToArrayBuffer } from './dataUrl';
+import { resumeOnGesture } from '../sound/engine/audioUnlock';
 import { followOutputDevice, forgetOutputFollower } from '../sound/engine/outputDevice';
 import throw1 from '../sounds/dice-sfx/dice-throw-1.mp3?inline';
 import throw2 from '../sounds/dice-sfx/dice-throw-2.mp3?inline';
@@ -164,6 +165,7 @@ export async function playDiceReveal(crit: DiceCrit, volume: number): Promise<vo
   if (typeof AudioContext === 'undefined') return;
   if (!context) {
     context = new AudioContext();
+    resumeOnGesture(context);
     followOutputDevice(context);
     master = context.createGain();
     master.connect(context.destination);

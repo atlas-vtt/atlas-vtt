@@ -50,7 +50,7 @@ export function MapPreview({ preview, view, onFrame, onHideWing, onShowHiddenWin
 
   return (
     <div ref={setFrame} className="atlas-dungeon-preview" tabIndex={-1} onContextMenu={onContextMenu}>
-      <PreviewCanvas picture={picture} drawing={preview.drawing} failed={preview.failed} canvasRef={canvasRef} className="atlas-dungeon-preview__stage">
+      <PreviewCanvas picture={picture} drawing={preview.drawing} canvasRef={canvasRef} className="atlas-dungeon-preview__stage">
         {children}
       </PreviewCanvas>
     </div>

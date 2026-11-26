@@ -1,4 +1,4 @@
-import { difference, EndType, FillRule, inflatePaths, intersect, JoinType, union, type Path64, type Paths64 } from 'clipper2-ts';
+import { booleanOpWithPolyTree, ClipType, difference, EndType, FillRule, inflatePaths, intersect, JoinType, PolyTree64, union, type Path64, type Paths64, type PolyPath64 } from 'clipper2-ts';
 import { Q_SCALE, type Q, type QPolygon, type QShape } from '../types/shapeTypes';
 import { canonicalForm } from './canonicalForm';
 import { assertQ, quantizeCoordinate } from './quantizedPoint';
@@ -52,12 +52,25 @@ export function inflateShape(shape: QShape, deltaQ: Q, join: 'round' | 'miter' =
 
 /** Round caps/joins at one eighth-pixel arc tolerance (or `arcToleranceQ`); integer cleanup has its own rounding. */
 export function inflatePolyline(points: QPolygon, radiusQ: Q, arcToleranceQ = 1): QShape {
-  const input = pathOf(points);
+  return inflatePolylines([points], radiusQ, arcToleranceQ);
+}
+
+/**
+ * Several open lines widened by `radiusQ` to either side with round joins and round ends, as one
+ * shape: where lines cross or a line crosses itself the area is covered once. A line of one point
+ * (or of one point repeated) is a disc.
+ */
+export function inflatePolylines(lines: readonly QPolygon[], radiusQ: Q, arcToleranceQ = 1): QShape {
   assertQ(radiusQ);
   if (radiusQ < 0) throw new RangeError('A brush radius cannot be negative');
-  const path = input.filter((point, index) => index === 0 || point.x !== input[index - 1]!.x || point.y !== input[index - 1]!.y);
-  if (radiusQ === 0 || path.length === 0) return [];
-  const inflated = inflatePaths([path], radiusQ, JoinType.Round, EndType.Round, 2, arcToleranceQ);
+  const paths: Paths64 = [];
+  for (const line of lines) {
+    const input = pathOf(line);
+    const path = input.filter((point, index) => index === 0 || point.x !== input[index - 1]!.x || point.y !== input[index - 1]!.y);
+    if (path.length > 0) paths.push(path);
+  }
+  if (radiusQ === 0 || paths.length === 0) return [];
+  const inflated = inflatePaths(paths, radiusQ, JoinType.Round, EndType.Round, 2, arcToleranceQ);
   for (const ring of inflated) {
     for (const point of ring) {
       assertQ(point.x);
@@ -66,6 +79,40 @@ export function inflatePolyline(points: QPolygon, radiusQ: Q, arcToleranceQ = 1)
   }
   // Integer offsetting can leave a crossing. Normalize the raw result before cleaning its rings.
   return canonicalOutput(union(inflated, FillRule.NonZero));
+}
+
+/** One area of a shape: its outer ring and the holes cut out of it. */
+export interface QShapePart {
+  readonly outline: QPolygon;
+  readonly holes: readonly QPolygon[];
+}
+
+/**
+ * A shape as its separate areas, each with its own holes, for whoever fills or stores one area at
+ * a time. An island inside a hole is an area of its own. Rings are cleaned as a union cleans them;
+ * an area whose ring comes to nothing is left out, as is such a hole.
+ */
+export function shapeParts(shape: QShape): QShapePart[] {
+  const tree = new PolyTree64();
+  booleanOpWithPolyTree(ClipType.Union, shape.map(pathOf), null, tree, FillRule.NonZero);
+  const parts: QShapePart[] = [];
+  const ringOf = (node: PolyPath64): QPolygon | undefined => canonicalOutput(node.polygon ? [node.polygon] : [])[0];
+  const visit = (node: PolyPath64): void => {
+    for (let i = 0; i < node.count; i++) {
+      const area = node.child(i);
+      const outline = ringOf(area);
+      const holes: QPolygon[] = [];
+      for (let j = 0; j < area.count; j++) {
+        const hole = area.child(j);
+        const ring = ringOf(hole);
+        if (outline && ring) holes.push(ring);
+        visit(hole);
+      }
+      if (outline) parts.push({ outline, holes });
+    }
+  };
+  visit(tree);
+  return parts;
 }
 
 /**

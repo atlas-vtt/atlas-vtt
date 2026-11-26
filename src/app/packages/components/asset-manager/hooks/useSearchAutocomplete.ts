@@ -13,7 +13,7 @@ export interface SearchAutocomplete {
   highlight: number;
   setHighlight: (index: number) => void;
   pick: (item: FilterSuggestion) => void;
-  inputProps: Pick<InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'onFocus' | 'onBlur' | 'onSelect' | 'role' | 'aria-autocomplete' | 'aria-expanded' | 'aria-controls' | 'aria-activedescendant'>;
+  inputProps: Pick<InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'onFocus' | 'onBlur' | 'onSelect' | 'onPointerDown' | 'role' | 'aria-autocomplete' | 'aria-expanded' | 'aria-controls' | 'aria-activedescendant'>;
   /** Handles the keys the suggestions use; returns whether it did. */
   onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => boolean;
 }
@@ -68,8 +68,11 @@ export function useSearchAutocomplete(
       placeCursor(context.start + replacement.length);
       return;
     }
-    if (context.kind !== 'value') return;
-    const text = search.slice(0, context.valueStart) + item.insert + search.slice(context.end);
+    // A word that names a filter's value becomes that filter in its place.
+    const text = item.kind === 'filter'
+      ? search.slice(0, context.start) + item.insert + search.slice(context.end)
+      : context.kind === 'value' ? search.slice(0, context.valueStart) + item.insert + search.slice(context.end) : null;
+    if (text === null) return;
     const remaining = query.commit(text);
     onSearch(remaining);
     setHighlight(0);
@@ -128,6 +131,7 @@ export function useSearchAutocomplete(
         setCursor(event.target.selectionStart ?? 0);
         setOpen(true);
       },
+      onPointerDown: () => setOpen(true),
       onSelect: (event) => setCursor(event.currentTarget.selectionStart ?? 0),
       onBlur: () => {
         blurTimer.current = window.setTimeout(() => {

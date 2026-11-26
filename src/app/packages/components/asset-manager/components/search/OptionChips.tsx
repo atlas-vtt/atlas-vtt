@@ -1,7 +1,9 @@
 import React, { useRef } from 'react';
+import { Check } from 'lucide-react';
 import type { FacetOption } from '../../../../../creatures/creatureFilterEngine';
 import type { OptionState } from '../../../../../types/creatureFilterTypes';
 import { Button } from '../../../primitives/button';
+import { lastInputWasTouch } from '../../../primitives/lastInput';
 
 interface OptionChipsProps {
   options: readonly FacetOption[];
@@ -14,8 +16,20 @@ interface OptionChipsProps {
 const excluding = (state: OptionState): OptionState => (state === 'exclude' ? null : 'exclude');
 
 /**
+ * What a click makes of an option: required or cleared, and with Alt excluded or cleared. A finger
+ * holds no Alt and its double tap is not a double click everywhere, so its taps go round all three:
+ * required, excluded, cleared.
+ */
+export function nextOptionState(state: OptionState, alt: boolean, touch: boolean): OptionState {
+  if (alt) return excluding(state);
+  if (touch) return state === null ? 'include' : state === 'include' ? 'exclude' : null;
+  return state === null ? 'include' : null;
+}
+
+/**
  * The options of a filter as chips with counts. A click requires an option or
- * clears it; a double-click (or Alt-click) excludes it or clears the exclusion.
+ * clears it; a double-click (or Alt-click) excludes it or clears the exclusion,
+ * and a finger's second tap excludes it (`nextOptionState`).
  * Options no asset in view has are dimmed but stay pickable. The chips shown
  * are chosen by whoever holds the list (`OptionFilter`: the most common, or a search's matches).
  */
@@ -26,7 +40,7 @@ export function OptionChips({ options, label, onChange }: OptionChipsProps): Rea
   const click = (option: FacetOption, event: React.MouseEvent): void => {
     if (event.detail > 1) return;
     beforeFirstClick.current.set(option.key, option.state);
-    onChange(option.key, event.altKey ? excluding(option.state) : option.state === null ? 'include' : null);
+    onChange(option.key, nextOptionState(option.state, event.altKey, lastInputWasTouch()));
   };
 
   const doubleClick = (option: FacetOption): void => {
@@ -45,7 +59,10 @@ export function OptionChips({ options, label, onChange }: OptionChipsProps): Rea
           onClick={(event) => click(option, event)}
           onDoubleClick={() => doubleClick(option)}
         >
-          <span className="atlas-filter-chip__label">{option.label}</span>
+          {/* A required option carries a tick, as an excluded one its strikethrough: told apart by more than hue. */}
+          {option.state === 'include' && <Check className="atlas-filter-chip__tick" aria-hidden="true" />}
+          {/* The space is not drawn in the flex row; it keeps the visible text "Solo 22", as the name says it. */}
+          <span className="atlas-filter-chip__label">{option.label}</span>{' '}
           <span className="atlas-filter-chip__count">{option.count}</span>
         </Button>
       ))}

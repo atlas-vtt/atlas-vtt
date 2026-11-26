@@ -1,4 +1,5 @@
 import type { MarkdownViewModeType } from 'obsidian';
+import { isRecord } from '../utils/guards';
 
 /**
  * Pinned note previews, saved per map so they reopen where the user left them
@@ -52,10 +53,6 @@ export function createPinnedNotePreviewActions(
       delete draft.pinnedNotePreviews[anchorId];
     }),
   };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function isNoteViewState(value: unknown): value is NoteViewState {

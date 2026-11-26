@@ -1,8 +1,7 @@
 import React, { useId, useRef, useState } from 'react';
 import { ImageOff, ImagePlus } from 'lucide-react';
-import type { CoverCandidate, CoverChoice, CurrentCover } from '../../../../services/collectionBundle/collectionCover';
+import { makesCover, type CoverCandidate, type CoverChoice, type CurrentCover } from '../../../../services/collectionBundle/collectionCover';
 import { RevealImage } from '../../primitives/RevealImage';
-import { useScrollActivity } from '../../primitives/useScrollActivity';
 import { CoverCard } from './CoverCard';
 import { t } from '../../../../i18n';
 
@@ -14,22 +13,33 @@ interface CoverPickerProps {
   upload?: { image: Blob; url: string } | undefined;
   onUpload: (image: File) => void;
   onChange: (choice: CoverChoice) => void;
+  /** `rail` stacks the cards in a dialog's side column; `row` lays them side by side in a form. */
+  layout?: 'rail' | 'row';
+  /** The cover's shape: a banner's (16:9), or a record sleeve's. */
+  shape?: 'wide' | 'square';
+  /** What the header and "No cover" say where the cover is not an export's. */
+  hint?: string;
+  noneHint?: string;
 }
 
-/** Side rail of large cover cards: upload an image, keep the current cover, use a map's or scene's artwork, or none. */
-export function CoverPicker({ value, current, candidates, upload, onUpload, onChange }: CoverPickerProps): React.JSX.Element {
+/** Large cover cards: upload an image, keep the current cover, use a map's or scene's artwork, or none. */
+export function CoverPicker({ value, current, candidates, upload, onUpload, onChange, layout = 'rail', shape = 'wide', hint = t('cover.hint'), noneHint = t('cover.noneHint') }: CoverPickerProps): React.JSX.Element {
   const inputRef = useRef<HTMLInputElement>(null);
   const titleId = useId();
-  const [list, setList] = useState<HTMLDivElement | null>(null);
-  useScrollActivity(list);
+  /** The name of a file just refused, which no cover can be made from. */
+  const [refused, setRefused] = useState<string | null>(null);
+  const take = (image: File): void => {
+    setRefused(null);
+    void makesCover(image).then((usable) => (usable ? onUpload(image) : setRefused(image.name)));
+  };
   const isArtwork = (path: string): boolean => value.kind === 'artwork' && value.path === path;
   return (
-    <section className="atlas-transfer-covers" aria-labelledby={titleId}>
+    <section className="atlas-transfer-covers" data-layout={layout} data-shape={shape} aria-labelledby={titleId}>
       <div className="atlas-transfer-covers__header">
         <span id={titleId} className="atlas-transfer-eyebrow">{t('cover.title')}</span>
-        <span className="atlas-transfer-covers__hint">{t('cover.hint')}</span>
+        <span className="atlas-transfer-covers__hint">{hint}</span>
       </div>
-      <div ref={setList} className="atlas-transfer-covers__list" role="radiogroup" aria-labelledby={titleId}>
+      <div className="atlas-transfer-covers__list" role="radiogroup" aria-labelledby={titleId}>
         <CoverCard label={t('cover.upload')} hint={t('cover.uploadHint')} variant="action" isOption={false} onSelect={() => inputRef.current?.click()}>
           <ImagePlus aria-hidden="true" />
         </CoverCard>
@@ -48,10 +58,11 @@ export function CoverPicker({ value, current, candidates, upload, onUpload, onCh
             <RevealImage src={candidate.previewUrl} alt="" lazy />
           </CoverCard>
         ))}
-        <CoverCard label={t('cover.none')} hint={t('cover.noneHint')} variant="action" selected={value.kind === 'none'} onSelect={() => onChange({ kind: 'none' })}>
+        <CoverCard label={t('cover.none')} hint={noneHint} variant="action" selected={value.kind === 'none'} onSelect={() => onChange({ kind: 'none' })}>
           <ImageOff aria-hidden="true" />
         </CoverCard>
       </div>
+      {refused !== null && <p className="atlas-transfer-covers__problem" role="alert">{t('cover.unreadable', { name: refused })}</p>}
       <input
         ref={inputRef}
         type="file"
@@ -61,7 +72,7 @@ export function CoverPicker({ value, current, candidates, upload, onUpload, onCh
         onChange={(event) => {
           const image = event.target.files?.[0];
           event.target.value = '';
-          if (image) onUpload(image);
+          if (image) take(image);
         }}
       />
     </section>

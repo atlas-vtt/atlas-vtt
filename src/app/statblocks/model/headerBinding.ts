@@ -4,15 +4,17 @@
  * a key of its own, and labels it so, gets that field shown as the level once
  * the part is renamed after it: the meaning moves to that field, the part's
  * former field goes where no block shows it, and a block that repeated the
- * field leaves the layout as any header duplicate does. Pure.
+ * field leaves the layout as any header duplicate does. Where the template
+ * has no such field but the statblocks hold the key, the part's own field
+ * takes that key (`rekeyHeaderPart`). Pure.
  */
 
 import { bindsFieldType } from './blockCatalogue';
 import { fieldByKey, labelToKey } from './fieldKeys';
-import { removeField, updateField } from './fieldOps';
+import { removeField, renameFieldKey, updateField } from './fieldOps';
 import { withoutHeaderDuplicates } from './headerDuplicates';
 import { HEADER_PARTS, headerKey, headerParts } from './templateHeader';
-import { HEADER_PART_IDS, type HeaderPartId, type StatblockTemplate, type TemplateField } from './templateTypes';
+import { HEADER_PART_IDS, type FieldKey, type HeaderPartId, type StatblockTemplate, type TemplateField } from './templateTypes';
 
 /** The field a label names, other than `except`: by its label, ignoring case, else by the key the label makes. */
 export function fieldNamedBy(fields: readonly TemplateField[], label: string, except: string): TemplateField | undefined {
@@ -42,4 +44,20 @@ export function bindHeaderPart(template: StatblockTemplate, id: HeaderPartId, ke
   next = updateField(next, key, { meaning });
   next = removeField(next, part.key);
   return withoutHeaderDuplicates(next);
+}
+
+/**
+ * The template with the field of part `id` kept under `key`: the key the
+ * statblocks themselves keep the value under (a level they call Tier, written
+ * `tier`). The field keeps its label and settings and carries the part's
+ * meaning; the key it had stays readable as a former key, so no statblock
+ * loses its value. The very template for a part found by no meaning, a part
+ * without a field, and a key another field has or had.
+ */
+export function rekeyHeaderPart(template: StatblockTemplate, id: HeaderPartId, key: FieldKey): StatblockTemplate {
+  const meaning = HEADER_PARTS[id].meaning;
+  const field = fieldByKey(template.fields, headerKey(template.fields, id));
+  if (!meaning || !field || field.key === key) return template;
+  const renamed = renameFieldKey(template, field.key, key);
+  return renamed === template ? template : updateField(renamed, key, { meaning });
 }

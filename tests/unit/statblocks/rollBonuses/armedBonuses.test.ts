@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ArmedBonuses } from '../../../../src/app/statblocks/rollBonuses/armedBonuses';
 import { bonusId } from '../../../../src/app/statblocks/rollBonuses/armableValues';
-import { armedValues, formulaLabel, withArmedBonuses } from '../../../../src/app/statblocks/rollBonuses/bonusFormula';
+import { armedValues, withArmedBonuses } from '../../../../src/app/statblocks/rollBonuses/bonusFormula';
+import { formulaLabel } from '../../../../src/app/tools/namedModifiers';
 import { statblockBonusKey } from '../../../../src/app/statblocks/rollBonuses/rollBonusContext';
 import { parseFormula } from '../../../../src/app/tools/parseFormula';
 

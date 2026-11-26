@@ -68,7 +68,7 @@ export async function recordRelease(
 ): Promise<void> {
   const { collection } = manifest;
   let collectionId = exportedFrom.id;
-  if (cover) await storeCover(app, cover);
+  if (cover) await storeCover(app, cover, exportedFrom.coverPath);
   if (collection.uid !== exportedFrom.uid) {
     // A fork takes its new name, and with it a folder of that name.
     await deleteInstallRecord(app, exportedFrom);

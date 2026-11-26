@@ -7,7 +7,7 @@ import { InteractionController } from '../../src/app/pixi/token-renderer/Interac
 import { SpriteFactory } from '../../src/app/pixi/token-renderer/SpriteFactory';
 import { collectMapObjects } from '../../src/app/clipboard/mapObjectContent';
 import { getHistoryStore } from '../../src/app/stores/history';
-import { placeTokens, raiseTokens } from '../../src/app/stores/tokenStacking';
+import { pilePlaces, placeTokens, raiseTokens } from '../../src/app/stores/tokenStacking';
 import type { TokenEntity } from '../../src/app/types';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 
@@ -69,6 +69,14 @@ describe('raiseTokens', () => {
     const tokens = record(token('a', SQUARE), token('b', SQUARE));
     raiseTokens(tokens, ['drawing_1', 'a']);
     expect(stack(tokens)).toEqual(['b', 'a']);
+  });
+});
+
+describe('pilePlaces', () => {
+  it('piles tokens by layer, and tokens of one layer in the order the map lists them', () => {
+    const tokens = record(token('high', SQUARE, 5), token('first', SQUARE), token('low', ELSEWHERE, -1), token('second', SQUARE, 0));
+    const places = pilePlaces(tokens);
+    expect([...places.keys()].sort((a, b) => places.get(a)! - places.get(b)!)).toEqual(['low', 'first', 'second', 'high']);
   });
 });
 

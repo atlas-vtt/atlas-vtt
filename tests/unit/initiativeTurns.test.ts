@@ -95,13 +95,11 @@ describe('clearing the initiative', () => {
     expect(store.getState().initiative).not.toHaveProperty('sides');
   });
 
-  it('keeps the tracker open and its settings', () => {
+  it('keeps the tracker open', () => {
     const store = fight();
     store.getState().setInitiativeTrackerOpen(true);
-    store.getState().setInitiativeConfig({ autoSort: false });
     store.getState().resetInitiative();
     expect(store.getState().initiativeTrackerOpen).toBe(true);
-    expect(store.getState().initiative.config.autoSort).toBe(false);
   });
 });
 

@@ -8,6 +8,7 @@ import { LabelTooltip } from '../../packages/components/primitives/tooltip';
 import { DEFAULT_TIMER_COLOR, formatTimerTime, resetTimer, startedTimer, timerAt, timerRun } from '../../utils/timerWidget';
 import { useTimerClock } from '../hooks/useTimerClock';
 import { t } from '../../i18n';
+import { widgetMotionMark } from '../../initiative/motion/turnMotion';
 
 interface TimerWidgetDisplayProps {
   widget: TimerWidget;
@@ -176,6 +177,7 @@ export function TimerWidgetDisplay({
     <div
       ref={rootRef}
       className={widgetClasses}
+      {...widgetMotionMark(widget.id)}
       style={{ '--widget-color': color, '--pulse-intensity': pulseIntensity } as React.CSSProperties}
     >
       <div className="atlas-widget-icon-wrapper">
@@ -187,7 +189,7 @@ export function TimerWidgetDisplay({
           {/* GM-only controls: play/pause */}
           {!isPlayerView && (
             <LabelTooltip label={isRunning ? t('timer.pause') : t('timer.start')}>
-              <button
+              <button type="button"
                 onClick={handlePlayPause}
                 className="atlas-timer-btn"
               >
@@ -222,7 +224,7 @@ export function TimerWidgetDisplay({
           {/* GM-only controls: reset */}
           {!isPlayerView && (
             <LabelTooltip label={t('common.reset')}>
-              <button
+              <button type="button"
                 onClick={handleReset}
                 className="atlas-timer-btn"
               >

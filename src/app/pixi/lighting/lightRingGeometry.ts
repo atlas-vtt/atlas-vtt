@@ -1,11 +1,12 @@
 import { RANGE_FIELDS, type RangeField } from '../../lighting/lightRanges';
 import type { Point } from '../../types/visionTypes';
 import type { VisionCone } from '../../vision/visionCone';
+import { pointerReach } from '../utils/pointerReach';
 
 /** What can be dragged on the rings of the open light: a range, or the way its beam faces. */
 export type RingHandle = RangeField | 'rotation';
 
-/** Screen pixels. */
+/** Screen pixels, for a mouse; a finger reaches further (`pointerReach`). */
 export const HANDLE_HIT_RADIUS = 11;
 /** How far beyond the dim arc the handle that turns a beam sits, so it never meets a range handle. */
 export const ROTATION_HANDLE_OFFSET = 22;
@@ -83,7 +84,7 @@ export function ringHandlePoints(geometry: RingGeometry, zoom: number): Point[] 
 /** The handle at the world `point` at viewport `zoom`; the nearest one where several are in reach. */
 export function ringHandleAt(geometry: RingGeometry, point: Point, zoom: number): RingHandle | null {
   let nearest: RingHandle | null = null;
-  let best = HANDLE_HIT_RADIUS / zoom;
+  let best = pointerReach(HANDLE_HIT_RADIUS) / zoom;
   for (const [handle, center] of handles(geometry, zoom)) {
     const distance = Math.hypot(point.x - center.x, point.y - center.y);
     if (distance <= best) {

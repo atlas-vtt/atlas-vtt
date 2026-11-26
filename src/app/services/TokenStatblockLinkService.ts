@@ -1,6 +1,6 @@
 import { StatblockTokenImportService } from './StatblockTokenImportService';
 import { App, TFile } from 'obsidian';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../utils/typedEmitter';
 import { AssetService, type TokenAsset } from './AssetService';
 import { difficultyLabel } from '../creatures/statblockRating';
 import { mapResources } from '../resources/collectionResources';
@@ -19,6 +19,7 @@ import type { NotePatch } from '../statblocks/notes/patchTypes';
 import type { BaseToken, Character } from '../types';
 import { t } from '../i18n';
 import { showNotice } from '../ui/notice';
+import { sameTokenImage, tokenImageKey } from './tokenImagePaths';
 
 export interface TokenStatblockLink {
   tokenImagePath: string;
@@ -74,6 +75,8 @@ export class TokenStatblockLinkService extends EventEmitter {
   private static instance: TokenStatblockLinkService | null = null;
   private app: App;
   private assetService: AssetService;
+  /** A read of the token assets under way, shared by whoever asks meanwhile: a map's tokens all ask at once as it loads. */
+  private tokenAssetsRead: Promise<TokenAsset[]> | null = null;
   
   private constructor(app: App) {
     super();
@@ -240,21 +243,31 @@ export class TokenStatblockLinkService extends EventEmitter {
     if (!(statblockFile instanceof TFile)) return;
     const currentImage = this.readStatblockImage(statblockFile);
     // Path comparison handles differing formats (app:// URLs, relative paths).
-    if (!currentImage || !this.arePathsEquivalent(currentImage, tokenImagePath)) return;
+    if (!currentImage || !sameTokenImage(currentImage, tokenImagePath)) return;
     const [remaining] = await this.getTokensLinkedToStatblock(statblockPath);
     if (remaining) await this.updateStatblockImage(statblockPath, remaining);
     else await this.updateStatblockImage(statblockPath, tokenImagePath, false);
   }
   
-  /**
-   * Gets the statblock linked to a token.
-   */
   async getStatblockLinkedToToken(tokenImagePath: string): Promise<string | null> {
-    const tokenAssets = await this.assetService.getTokenAssets();
+    const tokenAssets = await this.sharedTokenAssets();
     const linked = tokenAssets.find(asset => asset.imagePath === tokenImagePath && asset.statblockPath);
     return linked?.statblockPath ?? null;
   }
   
+  /** The token assets, read once for every caller that asks while a read is under way. */
+  private sharedTokenAssets(): Promise<TokenAsset[]> {
+    if (!this.tokenAssetsRead) {
+      const read = this.assetService.getTokenAssets();
+      const done = (): void => {
+        if (this.tokenAssetsRead === read) this.tokenAssetsRead = null;
+      };
+      this.tokenAssetsRead = read;
+      void read.then(done, done);
+    }
+    return this.tokenAssetsRead;
+  }
+
   /** The image paths of every token asset linked to a statblock, in index order. */
   async getTokensLinkedToStatblock(statblockPath: string): Promise<string[]> {
     const tokenAssets = await this.assetService.getTokenAssets();
@@ -325,7 +338,7 @@ export class TokenStatblockLinkService extends EventEmitter {
         return value === undefined ? [] : [{ op: 'delete', path: [key], base: value }];
       });
       const token = frontmatter?.token;
-      return typeof token === 'string' && this.arePathsEquivalent(token, tokenImagePath)
+      return typeof token === 'string' && sameTokenImage(token, tokenImagePath)
         ? [...cleared, { op: 'delete', path: ['token'], base: token }]
         : cleared;
     });
@@ -428,76 +441,16 @@ export class TokenStatblockLinkService extends EventEmitter {
   }
   
   /**
-   * Normalizes a resource path for comparison by extracting the essential file path.
-   */
-  private normalizeResourcePath(path: string): string {
-    if (!path) return '';
-    
-    // Handle resource URLs (app://) - extract the actual file path
-    if (path.startsWith('app://')) {
-      // Find the start of the actual file path (after the protocol and ID)
-      // Pattern: app://[hash]/[actual-path]?[timestamp]
-      const match = path.match(/app:\/\/[^/]+\/(.+?)(?:\?.*)?$/);
-      if (match && match[1]) {
-        const extractedPath = match[1];
-        // Check if it contains atlas-vtt path - find the LAST occurrence to handle nested paths
-        if (extractedPath.includes('/atlas-vtt/')) {
-          // Find the last atlas-vtt anchor point to handle paths like /test-vault/atlas-vtt/
-          const atlasIndex = extractedPath.lastIndexOf('/atlas-vtt/');
-          if (atlasIndex !== -1) {
-            const normalizedPath = extractedPath.substring(atlasIndex + 1); // Remove leading slash
-            return normalizedPath;
-          }
-        }
-        
-        // Also check for atlas-vtt without leading slash
-        if (extractedPath.includes('atlas-vtt/')) {
-          const atlasIndex = extractedPath.lastIndexOf('atlas-vtt/');
-          if (atlasIndex !== -1) {
-            const normalizedPath = extractedPath.substring(atlasIndex);
-            return normalizedPath;
-          }
-        }
-        
-        // If no atlas-vtt anchor, return as-is (might already be normalized)
-        return extractedPath;
-      }
-    }
-    
-    // For regular paths, ensure they start with atlas-vtt/ if they don't already
-    let normalized = path;
-    if (normalized.startsWith('/')) {
-      normalized = normalized.substring(1);
-    }
-    
-    return normalized;
-  }
-  
-  /**
-   * Compares two paths to determine if they reference the same file.
-   * Handles resource URLs vs file paths and timestamp differences.
-   */
-  public arePathsEquivalent(path1: string, path2: string): boolean {
-    if (!path1 || !path2) return path1 === path2;
-    
-    const normalized1 = this.normalizeResourcePath(path1);
-    const normalized2 = this.normalizeResourcePath(path2);
-    
-    const result = normalized1 === normalized2;
-    return result;
-  }
-  
-  /**
    * The token asset an image path names, in any path format (resource URL or
    * file path); null when the image is no token's art.
    */
   async findAssetByAnyPath(path: string): Promise<TokenAsset | null> {
     const tokenAssets = await this.assetService.getTokenAssets();
-    const normalizedSearchPath = this.normalizeResourcePath(path);
+    const normalizedSearchPath = tokenImageKey(path);
     
     for (const tokenAsset of tokenAssets) {
       if (tokenAsset.imagePath) {
-        const assetNormalized = this.normalizeResourcePath(tokenAsset.imagePath);
+        const assetNormalized = tokenImageKey(tokenAsset.imagePath);
         // Try both direct path match and normalized path match
         if (tokenAsset.imagePath === path || assetNormalized === normalizedSearchPath) {
           return tokenAsset;

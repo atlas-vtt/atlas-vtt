@@ -1,0 +1,12 @@
+// Zoom buttons - zoom in, zoom out and fit the map, at the map's right edge
+// A bar like the toolbar's (`.atlas-vtt-toolbar` gives it the surface, the inset and its buttons'
+// corners), standing upright at mid-height, opposite the level switcher at the left edge.
+.atlas-zoom-cluster {
+  position: absolute;
+  right: $spacing-s;
+  top: 50%;
+  transform: translateY(-50%);
+  flex-direction: column;
+  // A bar of the map, below the main toolbar's row and its overlays, like the level switcher
+  z-index: $z-dropdown - 1;
+}

@@ -25,7 +25,7 @@ function savedRule(rule: AdvantageRule | undefined): AdvantageRule | null | unde
 }
 
 /** The rules of both sides as a set is made with them. */
-function advantageRules(draft: LabDraft): Pick<RollingDice, 'advantage' | 'disadvantage'> {
+export function advantageRules(draft: LabDraft): Pick<RollingDice, 'advantage' | 'disadvantage'> {
   const advantage = savedRule(draft.advantage);
   const disadvantage = savedRule(draft.disadvantage);
   return { ...(advantage && { advantage }), ...(disadvantage && { disadvantage }) };
@@ -56,7 +56,7 @@ function draftOf(set: DiceSet | null, start: NewSetStart): LabDraft {
 }
 
 /** Which parts of a draft can be written: a part that cannot waits, and the others go ahead. */
-interface Writable {
+export interface Writable {
   name: boolean;
   dice: boolean;
   explode: boolean;
@@ -64,7 +64,7 @@ interface Writable {
   disadvantage: boolean;
 }
 
-function writable(draft: LabDraft, nameError: string | null): Writable {
+export function writable(draft: LabDraft, nameError: string | null): Writable {
   return {
     name: nameError === null,
     dice: draft.dice.length > 0 && diceLimit(draft.dice) === null,

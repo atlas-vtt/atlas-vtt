@@ -18,7 +18,7 @@ class FakeWorker {
 
 vi.mock('@/app/sound/codec/soundImportWorker?worker&inline', () => ({ default: class { constructor() { return new FakeWorker(); } } }));
 
-const JOB: SoundImportJob = { source: new Blob(['x']), kind: 'music', loop: false };
+const JOB: SoundImportJob = { source: new Blob(['x']), key: 'a'.repeat(64), from: 'x.mp3', kind: 'music', loop: false };
 const MINUTE = 60_000;
 
 describe('a conversion', () => {
@@ -36,7 +36,7 @@ describe('a conversion', () => {
     await vi.advanceTimersByTimeAsync(0);
     // Each runs in its own worker at once: how many at a time is the queue's to say.
     expect(FakeWorker.made).toHaveLength(2);
-    const result = { bytes: new Blob(), frames: 1, channels: 1, lufs: 0, truePeakDb: 0 };
+    const result = { bytes: new Blob(), frames: 1, channels: 1, lufs: 0, truePeakDb: 0, peaks: new Uint8Array(0) };
     FakeWorker.made[1]?.say({ type: 'done', result });
     await expect(next).resolves.toBe(result);
     await vi.advanceTimersByTimeAsync(2 * MINUTE);
@@ -56,7 +56,7 @@ describe('a conversion', () => {
     }
     expect(FakeWorker.made[0]?.terminated).toBe(false);
     expect(seen).toHaveLength(10);
-    const result = { bytes: new Blob(), frames: 1, channels: 1, lufs: 0, truePeakDb: 0 };
+    const result = { bytes: new Blob(), frames: 1, channels: 1, lufs: 0, truePeakDb: 0, peaks: new Uint8Array(0) };
     FakeWorker.made[0]?.say({ type: 'done', result });
     await expect(done).resolves.toBe(result);
     await vi.advanceTimersByTimeAsync(10 * MINUTE);

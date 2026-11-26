@@ -31,7 +31,7 @@ describe('file import review', () => {
     render(<PasteTableDialog folder="tables" onSave={() => undefined} onImport={async () => undefined} onClose={() => undefined} />);
     fireEvent.click(screen.getByRole('radio', { name: 'Import file' }));
     choose({ ...file('Rope,1 gp\nTorch,1 cp'), name: 'Gear.csv' });
-    const checkbox = await screen.findByRole('checkbox', { name: 'First row contains column headers' });
+    const checkbox = await screen.findByRole('switch', { name: 'First row contains column headers' });
     fireEvent.click(checkbox);
     expect(screen.getByText('Rope')).toBeTruthy();
     expect(screen.getByText('Torch')).toBeTruthy();

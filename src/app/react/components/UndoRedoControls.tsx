@@ -3,7 +3,7 @@ import { Undo2, Redo2 } from 'lucide-react';
 import { useMapHotkeys, useHotkeyLabels } from '../../keyboard/useMapHotkeys';
 import { ToolButton } from '../../packages/components/primitives/ToolButton';
 import { TooltipProvider } from '../../packages/components/primitives/tooltip';
-import { UndoBarSlot } from '../../packages/components/toolbar/UndoBarSlot';
+import { SideBarSlot } from '../../packages/components/toolbar/SideBarSlot';
 import { useUndoRedo } from '../hooks/useUndoRedo';
 import { t } from '../../i18n';
 
@@ -19,10 +19,10 @@ export const UndoRedoControls: React.FC<UndoRedoControlsProps> = ({ viewId }): R
 
   return (
     <TooltipProvider delayDuration={300}>
-      <UndoBarSlot>
+      <SideBarSlot id="undo" contentClassName="atlas-vtt-toolbar atlas-undo-redo-controls">
         <ToolButton icon={Undo2} label={t('history.undo')} shortcut={hotkeyLabel('undo')} isActive={false} disabled={!canUndo} onClick={undo} />
         <ToolButton icon={Redo2} label={t('history.redo')} shortcut={hotkeyLabel('redo')} isActive={false} disabled={!canRedo} onClick={redo} />
-      </UndoBarSlot>
+      </SideBarSlot>
     </TooltipProvider>
   );
 };

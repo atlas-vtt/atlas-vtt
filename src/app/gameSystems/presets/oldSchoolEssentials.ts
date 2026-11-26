@@ -1,4 +1,4 @@
-import { D20_DICE_SET_ID } from '../builtInDiceSets';
+import { PLAIN_D20_DICE_SET_ID } from '../builtInDiceSets';
 import type { SystemPreset } from '../../types/systemPresetTypes';
 import { OLD_SCHOOL_ESSENTIALS_LIGHTS } from '../lightPresets/oldSchoolEssentials';
 import { HP_RESOURCE } from '../../resources/resourceDefinitions';
@@ -25,8 +25,15 @@ export const OLD_SCHOOL_ESSENTIALS: SystemPreset = {
       diagonalRule: 'equidistant',
       abstractRangeBands: [],
     },
+    // A statblock states the base movement rate first, 120' (40'). In an encounter a creature
+    // moves a third of it each round, and all of it while it runs. One that states none moves 120'.
+    movement: {
+      steps: [{ name: 'Move', multiple: 1 / 3, color: '#22c55e' }, { name: 'Run', multiple: 1, color: '#f59e0b' }],
+      countPerTurn: true,
+      speed: 120,
+    },
     dice: { defaultRoll: '1d20', crit: 'natural' },
-    diceSetId: D20_DICE_SET_ID,
+    diceSetId: PLAIN_D20_DICE_SET_ID,
     // Group initiative: every round each side rolls 1d6, the higher acts first, and equal rolls act at once.
     initiative: { mode: 'sides', roll: '1d20', firstSide: 'players', sideRoll: '1d6' },
     conditions: conditionsOf('ose', [

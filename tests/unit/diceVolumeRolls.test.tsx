@@ -36,7 +36,7 @@ describe('dice volume and thrown dice', () => {
     const subscribe: DiceRollSubscription = (handler) => { onRoll = handler; return () => { onRoll = undefined; }; };
     render(React.createElement(AtlasUIContext.Provider, { value: { app, view: null, pixiApp: null, renderer: null } },
       React.createElement(DiceRollDisplay, { container: document.body, subscribe })));
-    const roll = (id: string): void => act(() => onRoll?.({ id, rolls: [], crit: null, total: 1 } as unknown as DiceRollResult, { muted: false }));
+    const roll = (id: string): void => act(() => onRoll?.({ id, formula: '1d20', rolls: [], crit: null, total: 1 } as unknown as DiceRollResult, { muted: false }));
 
     roll('loud');
     act(() => settings.setDiceVolume(0));

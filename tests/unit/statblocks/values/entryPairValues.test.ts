@@ -43,6 +43,23 @@ describe('entries', () => {
     expect(entryTextKeyOf({ name: 'x', text: ' ', desc: 'This.' }, DAGGERHEART)).toBe('desc');
   });
 
+  it('reads `text` where a field that names no text key holds nothing under `desc`, and writes it back there', () => {
+    // A statblock written for another layout and given a template whose list names no text key
+    const entry = { name: 'Drag Under', text: 'Pulls one foe beneath the water.' };
+    expect(entryText(entry)).toBe('Pulls one foe beneath the water.');
+    expect(entryTextKeyOf(entry)).toBe('text');
+    expect(entryTextKeyOf({ name: 'x', desc: 'Own.', text: 'not this' })).toBe('desc');
+    expect(entryTextKeyOf({ name: 'x', desc: ' ', text: 'This.' })).toBe('text');
+    expect(entryTextKeyOf({ name: 'x' })).toBe('desc');
+  });
+
+  it('never takes a key the shape reads as the name or as an extra for the text', () => {
+    const noted: EntryShape = { extras: [{ key: 'text', label: 'Note', type: 'text' }] };
+    expect(entryText({ name: 'x', text: 'A note.' }, noted)).toBeUndefined();
+    expect(entryTextKeyOf({ name: 'x', text: 'A note.' }, noted)).toBe('desc');
+    expect(entryText({ text: 'Named so.' }, { nameKey: 'text' })).toBeUndefined();
+  });
+
   it('reads an entry written as text as text without a name', () => {
     expect(entryName('Pack Tactics. Advantage.')).toBeUndefined();
     expect(entryText('Pack Tactics. Advantage.')).toBe('Pack Tactics. Advantage.');

@@ -1,8 +1,12 @@
-import { movementWalls, stopAtWalls, type MoveWalls, type Point } from '../movement/index.ts';
-import { MAX_COORDINATE, type PlayerMove } from '../protocol/index.ts';
+import { movementWalls, reaches, stopAtWalls, type MoveWalls, type Point } from '../movement/index.ts';
+import { MAX_COORDINATE, type MoveRefusedReason, type PlayerMove } from '../protocol/index.ts';
+import { snapTokenCenter } from '../../grid/gridPlacement';
+import { cellCentreAt } from '../../measure/measureGrid';
 import type { TokenEntity } from '../../types';
+import type { GridState } from '../../types/gridTypes';
 import type { WallSegment } from '../../types/wallTypes';
 import { wallList } from '../../vision/wallList';
+import { snapGridOf } from './scenePicture.ts';
 import { stairSides, withStairSides, type StairsOfTokens } from './stairSides.ts';
 
 /** The map's size in world pixels, from (0, 0): its image's own size, or the box Atlas draws it into turned, stretched and placed (`floorWorldSize`). */
@@ -25,11 +29,20 @@ export interface MoveContext {
   readonly walls: MoveWalls | null;
   /** Whether a token that fights may not move now, for it does not hold the turn (`movesOutOfTurn`); none are without. */
   outOfTurn?(tokenId: string): boolean;
+  /** Whether the GM paused play (`tableControlsStore`): no player's token moves then. Unset is never. */
+  paused?(): boolean;
+  /** How far a drop from `from` to `to` moves the token, in game units, where the map counts movement per turn; null (or unset) where nothing is counted. */
+  turnMove?(tokenId: string, from: Point, to: Point): number | null;
 }
 
 export type MoveVerdict =
   | { readonly ok: true; readonly tokenId: string; readonly x: number; readonly y: number }
-  | { readonly ok: false; readonly reason: 'scene' | 'token' | 'owner' | 'turn' | 'place' };
+  | { readonly ok: false; readonly reason: 'scene' | 'token' | 'owner' | 'paused' | 'turn' | 'place' };
+
+/** What a page is told of a refusal: why, where it is the turn or a pause; every other refusal names no reason. */
+export function refusalReason(verdict: MoveVerdict): MoveRefusedReason | undefined {
+  return !verdict.ok && (verdict.reason === 'turn' || verdict.reason === 'paused') ? verdict.reason : undefined;
+}
 
 const within = (value: number, max: number): boolean => Number.isFinite(value) && value >= 0 && value <= max;
 
@@ -42,8 +55,8 @@ export function insideMap(x: number, y: number, map: MapSize | null): boolean {
 /**
  * Whether the GM takes a player's move: the move names the shared scene and a token of the list
  * players see (so not hidden, not under fog), the token is not hidden now, it is the sender's
- * (by the id the relay stamped), it is not out of its turn where the GM chose that players move
- * only on their turn, and its centre lands inside the map.
+ * (by the id the relay stamped), the GM has not paused play, it is not out of its turn where the GM
+ * chose that players move only on their turn, and its centre lands inside the map.
  */
 export function checkMove(from: string, move: Omit<PlayerMove, 't'>, context: MoveContext): MoveVerdict {
   if (context.scene === null || move.scene !== context.scene) return { ok: false, reason: 'scene' };
@@ -51,6 +64,7 @@ export function checkMove(from: string, move: Omit<PlayerMove, 't'>, context: Mo
   const token = tokenId === undefined ? undefined : context.tokens[tokenId];
   if (tokenId === undefined || token === undefined || token.isHidden === true) return { ok: false, reason: 'token' };
   if (context.ownerOf(tokenId) !== from) return { ok: false, reason: 'owner' };
+  if (context.paused?.() === true) return { ok: false, reason: 'paused' };
   if (context.outOfTurn?.(tokenId) === true) return { ok: false, reason: 'turn' };
   if (!insideMap(move.x, move.y, context.map)) return { ok: false, reason: 'place' };
   return { ok: true, tokenId, x: move.x, y: move.y };
@@ -61,14 +75,61 @@ export function sceneWalls(walls: Record<string, WallSegment>, lit: boolean, map
   return lit ? movementWalls(wallList(walls), map) : null;
 }
 
+/** The walls a player's token `tokenId` stops at: the scene's (on a lit scene) and the sides of walked stairs on its level (on any scene: `stairSides`). */
+function wallsOf(context: Pick<MoveContext, 'walls' | 'map'>, state: StairsOfTokens, tokenId: string): MoveWalls | null {
+  return withStairSides(context.walls, stairSides(state, tokenId, context.map));
+}
+
 /**
  * Where a player's token `tokenId` moving from `from` towards `to` comes to rest: at `to`, or just
  * before the first wall in its way (on a lit scene) or side of walked stairs on its level (on any
  * scene: `stairSides`, so it steps on and off stairs only at their ground end), slid along it (`stopAtWalls`).
  */
 export function landing(context: Pick<MoveContext, 'walls' | 'map'>, state: StairsOfTokens, tokenId: string, from: Point, to: Point): Point {
-  const walls = withStairSides(context.walls, stairSides(state, tokenId, context.map));
+  const walls = wallsOf(context, state, tokenId);
   return walls === null ? to : stopAtWalls(walls, from, to);
+}
+
+/** What a drop reads of the store: the stairs, and the grid tokens snap to. */
+export type DropState = StairsOfTokens & { readonly grid?: GridState | null };
+
+/** Around a place no drop can end on, the places a drop snaps to are looked for one cell away in this many directions (a hex grid's six and a square grid's four among them). */
+const NEIGHBOUR_DIRECTIONS = 12;
+
+/**
+ * Where a player's token put down at `to` ends, having stood at its own place: where the GM's own
+ * drop would put it. The move comes to rest as any move does (`landing`), and from there the token
+ * goes to the place a drop snaps it to (`snapTokenCenter`, on the grid players are sent,
+ * `snapGridOf`) when no wall lies between; else to the nearest place a drop snaps to around it that
+ * it reaches, so it never stays pressed against a wall off its cell; a place off the map is none it
+ * reaches. Null when it reaches none. On a scene whose grid does not snap it ends where it came to rest.
+ */
+export function dropPlace(context: Pick<MoveContext, 'walls' | 'map'>, state: DropState, token: Pick<TokenEntity, 'id' | 'x' | 'y' | 'size'>, to: Point): Point | null {
+  const walls = wallsOf(context, state, token.id);
+  const rest = walls === null ? to : stopAtWalls(walls, token, to);
+  const grid = snapGridOf(state.grid ?? null);
+  if (grid === null) return rest;
+  const snap = (point: Point): Point => snapTokenCenter(point, token.size || 1, grid.type, grid.size, (at) => cellCentreAt(grid, at));
+  const reached = (place: Point): boolean => insideMap(place.x, place.y, context.map) && (walls === null || reaches(walls, rest, place));
+  const snapped = snap(rest);
+  if (reached(snapped)) return snapped;
+  let nearest: Point | null = null;
+  let distance = Number.POSITIVE_INFINITY;
+  for (let direction = 0; direction < NEIGHBOUR_DIRECTIONS; direction += 1) {
+    const angle = (direction / NEIGHBOUR_DIRECTIONS) * 2 * Math.PI;
+    const place = snap({ x: rest.x + Math.cos(angle) * grid.size, y: rest.y + Math.sin(angle) * grid.size });
+    const away = Math.hypot(place.x - rest.x, place.y - rest.y);
+    if (away < distance && reached(place)) {
+      nearest = place;
+      distance = away;
+    }
+  }
+  return nearest;
+}
+
+/** Whether two places are one to the players, whose places come rounded to a hundredth of a pixel: a place the player's page snapped itself may be a rounding off the GM's. */
+export function samePlace(a: Point, b: Point): boolean {
+  return Math.abs(a.x - b.x) < 0.01 && Math.abs(a.y - b.y) < 0.01;
 }
 
 /** Moves a player may make: a burst of `MOVE_BURST`, then `MOVES_PER_SECOND` (a held movement key steps 5 times a second). */

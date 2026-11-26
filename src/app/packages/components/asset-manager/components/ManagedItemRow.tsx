@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { Tag, FolderOpen, MoreVertical, Check, X } from 'lucide-react';
+import { Tag, MoreVertical, Check, X } from 'lucide-react';
+import { CollectionGlyph } from './collectionGlyph';
 import { Button } from '../../primitives/button';
 import { LabelTooltip } from '../../primitives/tooltip';
 import { t } from '../../../../i18n';
@@ -83,7 +84,7 @@ export function ManagedItemRow({
       ) : (
         <>
           <span className="atlas-item-name">
-            {kind === 'tag' ? <Tag size={14} /> : <FolderOpen size={14} />}
+            {kind === 'tag' ? <Tag size={14} /> : <CollectionGlyph size={14} />}
             {item.name}
           </span>
           <div className="atlas-item-actions">

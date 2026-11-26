@@ -17,6 +17,8 @@ export interface RosterPorts {
   kick(playerId: string): void;
   /** Takes a newcomer off the table without barring them: they may knock again. */
   turnAway(playerId: string): void;
+  /** A player was removed from the campaign: what the campaign kept of them goes. */
+  removed?(playerId: string): void;
   /** The table's join code, which no player's own code may be. */
   joinCode(): string;
   /** Where new codes are drawn from; the cryptographic source by default. */
@@ -111,9 +113,11 @@ export class TableRoster {
     if (this.write((stored) => withPlayerFields(stored, playerId, { code }))) this.link.sendCode({ t: 'your-code', code, first: false }, playerId);
   }
 
-  /** Removes a player from the campaign: the relay forgets them, then they are taken off the table. */
+  /** Removes a player from the campaign: the relay forgets them, then they are taken off the table, and what the campaign kept of them goes. */
   remove(playerId: string): void {
-    if (this.seats.codeOf(playerId) !== null && this.write((stored) => withoutPlayer(stored, playerId))) this.ports.kick(playerId);
+    if (this.seats.codeOf(playerId) === null || !this.write((stored) => withoutPlayer(stored, playerId))) return;
+    this.ports.kick(playerId);
+    this.ports.removed?.(playerId);
   }
 
   private ids(): Set<string> {

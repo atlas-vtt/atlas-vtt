@@ -16,14 +16,34 @@
   .atlas-tab-button {
     @include atlas-tab-button;
 
+    // The Armarium's tab is its icon alone: square, as tall as the tabs beside it.
+    &.atlas-tab-button--icon {
+      justify-content: center;
+      aspect-ratio: 1;
+      padding: 0;
+
+      // Alone, the icon takes the size of the header's other icons.
+      svg {
+        width: $icon-s;
+        height: $icon-s;
+      }
+    }
+
+    // A count is information, so it reads at AA (the shared tab mixin's is faint).
     .atlas-tab-count {
       min-width: 2ch;
       text-align: left;
-    }
-
-    &.atlas-active .atlas-tab-count {
       color: var(--text-muted);
     }
+  }
+
+  // The Armarium is a place beside the library, not an asset type: a hairline sets it apart from the tabs before it.
+  .atlas-tab-divider {
+    flex-shrink: 0;
+    width: $border-width-s;
+    height: $icon-s;
+    margin-inline: $spacing-xs;
+    background-color: var(--background-modifier-border);
   }
 }
 
@@ -35,7 +55,7 @@
 .atlas-am-tab-menu-trigger {
   &.btn {
     gap: $spacing-xs;
-    height: $control-height;
+    height: $header-control-height;
     padding: 0 $spacing-s 0 $spacing-m;
     border-radius: $radius-m;
     background: var(--background-secondary);
@@ -60,7 +80,7 @@
   }
 
   .atlas-tab-count {
-    color: var(--text-faint);
+    color: var(--text-muted);
     font-size: $font-ui-smaller;
     font-weight: $font-weight-normal;
     font-variant-numeric: tabular-nums;
@@ -105,15 +125,16 @@
   // The same on every tab: room for typed filters and the filter button. Its
   // width is the toolbar's track (`_header.scss`), which narrows before the
   // asset type tabs give up their room.
-  height: $control-height;
+  height: $header-control-height;
+  // The buttons at its end sit $spacing-xs from the border above, below and beside them.
   padding: 0 $spacing-xs 0 $spacing-s;
   background: var(--background-modifier-form-field);
-  border: $border-width-s solid var(--background-modifier-border);
+  border: $border-width-s solid $am-control-border;
   border-radius: $radius-m;
   transition: border-color $transition-fast $transition-ease;
 
   &:focus-within {
-    border-color: var(--background-modifier-border-focus);
+    border-color: $am-control-border-focus;
   }
 
   > svg {
@@ -141,17 +162,28 @@
     }
   }
 
+  // The face fills what the field's height leaves inside that inset; a hit area around a face smaller than 24 px
+  // gives the smallest target WCAG 2.2 accepts.
   .atlas-am-icon-btn {
     &.btn,
     &.btn--icon {
-      width: 20px;
-      height: 20px;
-      border-radius: $radius-s;
+      $face: calc(#{$header-control-height} - 2 * (#{$border-width-s} + #{$spacing-xs}));
+      position: relative;
+      width: $face;
+      height: $face;
+      flex-shrink: 0;
+      border-radius: $search-field-button-radius;
+
+      &::before {
+        position: absolute;
+        inset: min(0px, calc((100% - #{$search-button-size}) / 2));
+        content: '';
+      }
     }
 
     svg {
-      width: 12px;
-      height: 12px;
+      width: $icon-xs;
+      height: $icon-xs;
     }
   }
 }
@@ -204,8 +236,8 @@
 .atlas-asset-manager-create-btn {
   &.btn,
   &.btn--icon {
-    width: $control-height;
-    height: $control-height;
+    width: $header-control-height;
+    height: $header-control-height;
     border-radius: $radius-m;
     @include atlas-concentric-corner(top-right, $window-radius, $window-corner-inset);
     flex-shrink: 0;
@@ -225,5 +257,41 @@
 
   &.atlas-active svg {
     transform: rotate(45deg);
+  }
+}
+
+// ── Armarium ────────────────────────────────────────────────────────────────
+// While the store is shown its Reload and Open in browser stand where the search and Create do, ghost buttons of
+// Create's size; the last one takes the window's corner as Create does.
+
+.atlas-am-toolbar-right--armarium {
+  grid-template-columns: none;
+}
+
+.atlas-am-armarium-actions {
+  @include atlas-flex-row($gap: $spacing-xs);
+}
+
+.atlas-am-header-action {
+  &.btn,
+  &.btn--icon {
+    width: $header-control-height;
+    height: $header-control-height;
+    flex-shrink: 0;
+    border-radius: $radius-m;
+    color: var(--text-muted);
+  }
+
+  // Each button is followed by its tooltip's hidden label.
+  &:last-of-type {
+    &.btn,
+    &.btn--icon {
+      @include atlas-concentric-corner(top-right, $window-radius, $window-corner-inset);
+    }
+  }
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
   }
 }

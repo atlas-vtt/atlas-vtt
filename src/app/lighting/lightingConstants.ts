@@ -137,6 +137,17 @@ export const DARKNESS = {
 } as const;
 
 /**
+ * The GM's picture is never darker than this: where no light, ambient or a lamp's, shows the map,
+ * the GM still reads it at `shown` of its own brightness as the screen shows it (a share of its
+ * sRGB values, as a black overlay of that opacity would leave it, so a dark map keeps its contrast
+ * as a bright one does), in the cool grey of low light, so it reads as dark and never as lit floor.
+ * It is a floor under the light, not light: wherever the light shows more, the picture is exactly
+ * what it is without the floor, and the players' picture never has it. Under magical darkness
+ * `inDarkness` of it is left, so the map there lies darker under the GM's veil than unlit floor.
+ */
+export const GM_FLOOR = { shown: 0.4, inDarkness: 0.5 } as const;
+
+/**
  * Reflected light: what a light's lit floor gives back into the shadows next to it, one bounce,
  * so a room round a corner from a torch is dimly lit and a token standing there is seen.
  * *Rule*: the floor along the edges of the light's shadows reflects; a point with a clear line to
@@ -165,6 +176,7 @@ export const BOUNCE = {
   cascades: 4,
   emitTexel: 4,
   spread: 250,
+  /** Low enough that past a light's dim radius, where the rules count no light, its bounce stays under a fiftieth of its bright level on a mid-grey floor. */
   floorGain: 0.001,
   wallGain: 0.6,
   gain: 1,
@@ -246,7 +258,8 @@ export function tileWallReach(texel: number): number {
 /**
  * Wall ends closer than this to another wall are joined by a bridge, for light and sight
  * alike: wider than any gap the field closes by itself (two capsules with their bilinear
- * margin, plus the tile's contact fade), so light and sight always agree on what is closed.
+ * margin, plus a texel on either side: twice `wallBand`), so light and sight always agree on
+ * what is closed.
  */
 export function sealTolerance(texel: number): number {
   return 2 * (wallRadius(texel) + fieldMargin(texel)) + 2 * texel;

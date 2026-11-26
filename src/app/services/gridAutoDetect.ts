@@ -30,6 +30,9 @@ export interface DetectionShow {
  * shows and is snapped to. The renderer follows the store's grid, so writing the store is
  * all that is needed, except for the map's stretch (`GridState.mapStretch`), which a load
  * shows itself: the caller draws the map with it.
+ * The flag goes when the search begins, not when it ends: a scene is searched once in its
+ * life, also one the GM leaves, closes or quits before the answer (a large map without a grid
+ * is searched for a minute and more), which then has no grid until the GM aligns one.
  * Detection reads the map's pixels from the tile worker and runs in a worker of its own: nothing is
  * written once `isCurrent` says the load was overtaken meanwhile. It runs once the scene is shown,
  * so what it writes is no step of the GM's to undo.
@@ -51,12 +54,14 @@ export async function autoDetectGridOnFirstLoad(
     return 'skipped';
   }
 
+  // Until a grid is found the map has none: the grid a new scene starts with says nothing about its map.
+  runUntracked(store, () => setGrid({ ...settled, visible: false, snapToGrid: false }));
+
   const outcome = await detectGrid(background, show);
   if (!isCurrent()) return 'skipped';
   const detected = outcome.result;
   if (!detected) {
     show.none?.();
-    runUntracked(store, () => setGrid({ ...settled, visible: false, snapToGrid: false }));
     return 'none';
   }
 

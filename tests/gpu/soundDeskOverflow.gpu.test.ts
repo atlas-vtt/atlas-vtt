@@ -63,8 +63,8 @@ describe('the desk’s strips at a narrow width', () => {
 
     expect(row.scrollWidth).toBeGreaterThan(row.clientWidth + 100);
     expect(getComputedStyle(row).overflowX).toBe('auto');
-    // This browser's scrollbar takes room, and none of it from a fader: the row's strips end where Master does.
-    expect(row.offsetHeight - row.clientHeight).toBeGreaterThan(0);
+    // The row's scrollbar is Atlas' overlay one and takes no room: the row's strips end where Master does.
+    expect(row.offsetHeight - row.clientHeight).toBe(0);
     expect(box('.atlas-sound-strips__mix .atlas-sound-strip').bottom).toBe(master.bottom);
     expect(box('.atlas-sound-strips__mix .atlas-sound-strip').top).toBe(master.top);
     expect(fades(row)).toEqual({ start: '0px', end: '40px', masked: true });

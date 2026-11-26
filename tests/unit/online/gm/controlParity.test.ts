@@ -116,7 +116,7 @@ describe('the rest of a token, as the scene holds it', () => {
     await settle();
     const ogre = tokens().get('ogre1');
     expect(ogre).toMatchObject({ cells: 2, rotation: 90, ring: { colour: '#336699' } });
-    expect(ogre?.ui?.conditions).toEqual([{ colour: '#a855f7', glyph: { kind: 'text', text: 'F' }, value: 3 }]);
+    expect(ogre?.ui?.conditions).toEqual([{ colour: '#a855f7', glyph: { kind: 'text', text: 'F' }, value: 3, name: 'Frightened' }]);
     expect(ogre?.ui?.bars[0]).toMatchObject({ current: 5, max: 31 });
     store.getState().updateTokens([{ id: 'ogre1', changes: { showRing: false } }]);
     await settle();
@@ -159,7 +159,8 @@ describe("Atlas's player window rules, read from its source at the pin", () => {
     expect(ui).toContain('const forPlayers = playerSettings !== undefined || this.playersView;');
     expect(ui).toContain("const viewer: ResourceViewer = forPlayers ? 'player' : 'dm';");
     expect(ui).toContain('const hidden = forPlayers ? [] : tokenSettings?.hiddenResources ?? [];');
-    expect(ui).toContain('const showNameplate = playerSettings ? nameplateShownToPlayers(token, mapShowsNameplates, playerSettings.showTokenNameplates) : isNameplateVisible(token, mapShowsNameplates);');
+    expect(ui).toContain('const playersSeeNames = playerSettings?.showTokenNameplates ?? (this.playersView ? this.tableNameplates?.() : undefined);');
+    expect(ui).toContain('const showNameplate = playersSeeNames === undefined ? isNameplateVisible(token, mapShowsNameplates) : nameplateShownToPlayers(token, mapShowsNameplates, playersSeeNames);');
     expect(vendor('pixi/token-renderer/UIManager.ts')).toContain('ui.update(token, sprite.tokenSize || 70, settings);');
   });
 });

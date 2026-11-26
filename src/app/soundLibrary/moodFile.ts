@@ -1,6 +1,7 @@
 import type { Mood, MoodLayer, MoodMusic, RoomId } from '../sound/soundTypes';
 import { MAX_MOOD_LAYERS, ROOM_IDS } from '../sound/soundTypes';
 import { readRecordText, recordText, type StoredRecord } from '../services/recordFiles/recordLayout';
+import { CHANNEL_DB_RANGE } from '../services/soundSettings';
 import { isFiniteNumber, isRecord } from '../utils/guards';
 import { readMoodIcon, readMoodTone } from './moodLook';
 
@@ -16,12 +17,10 @@ export const MOOD_LIMITS = {
   nameChars: 200,
   tracks: 500,
   maxFadeSeconds: 120,
-  minLevelDb: -60,
-  maxLevelDb: 12,
 } as const;
 
 const readLevel = (value: unknown): number =>
-  (isFiniteNumber(value) ? Math.max(MOOD_LIMITS.minLevelDb, Math.min(MOOD_LIMITS.maxLevelDb, value)) : 0);
+  (isFiniteNumber(value) ? Math.max(CHANNEL_DB_RANGE.min, Math.min(CHANNEL_DB_RANGE.max, value)) : 0);
 
 /** A reverb amount, 0 to 1; dry where there is none. */
 const readReverb = (value: unknown): { reverb?: number } => (isFiniteNumber(value) && value > 0 ? { reverb: Math.min(1, value) } : {});

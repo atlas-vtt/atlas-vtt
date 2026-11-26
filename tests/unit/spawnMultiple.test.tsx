@@ -63,14 +63,17 @@ describe('typing a spawn count', () => {
   it('steps the card counter to absolute counts', () => {
     const onSpawnCountChange = vi.fn();
     const handlers: AssetCardHandlers = {
-      onSelect: vi.fn(), onContextMenu: vi.fn(), onOpen: vi.fn(), onDragStart: vi.fn(), onDragEnd: vi.fn(),
-      onSpawnCountChange, onOpenStatblock: vi.fn(),
+      onSelect: vi.fn(), onContextMenu: vi.fn(), onOpen: vi.fn(), onDelete: vi.fn(), onDragStart: vi.fn(), onDragEnd: vi.fn(),
+      onSpawnCountChange, onOpenStatblock: vi.fn(), onArtNeeded: vi.fn(),
     };
     render(<TooltipProvider><AssetCard asset={goblin} isSelected={false} isDragging={false} spawnCount={3} {...handlers} /></TooltipProvider>);
-    fireEvent.click(screen.getByText('+'));
-    fireEvent.click(screen.getByText('−'));
+    // The badge draws its words from `data-label`; it lies in the card's hidden art well.
+    const step = (label: string): HTMLElement => document.querySelector<HTMLElement>(`.atlas-asset-spawn-badge [data-label="${label}"]`)!;
+    expect(step('×3')).not.toBeNull();
+    fireEvent.click(step('+'));
+    fireEvent.click(step('−'));
     expect(onSpawnCountChange.mock.calls).toEqual([['goblin', 4], ['goblin', 2]]);
-    fireEvent.click(screen.getByText('Go'));
+    fireEvent.click(step('Go'));
     expect(handlers.onOpen).toHaveBeenCalledWith(goblin, 3);
   });
 });
@@ -112,16 +115,17 @@ describe('spawning and dragging out copies', () => {
     expect(getHistoryStore(store)!.getState().pastStates.length).toBe(steps + 1);
   });
 
-  it('Alt-drag copies selected drawings too and keeps the moving group selected', () => {
+  it('Alt-drag copies selected drawings and texts too and keeps the moving group selected', () => {
     const store = createStore();
     const [token] = store.getState().addTokens([{ x: 25, y: 25, imagePath: 'tokens/goblin.png' }]);
     const drawing = store.getState().addDrawing({ type: 'line', points: [{ x: 0, y: 0 }, { x: 50, y: 0 }], color: '#fff', width: 2, opacity: 1 });
-    store.getState().setSelection([token!, drawing]);
+    const text = store.getState().addText({ x: 60, y: 60, text: 'Gate', fontSize: 24, fontFamily: 'Arial', color: '#ffffff' });
+    store.getState().setSelection([token!, drawing, text]);
 
-    const copies = copyDragSelection(store, [token!, drawing], { [token!]: { x: 25, y: 25 } })!;
+    const copies = copyDragSelection(store, [token!, drawing, text], { [token!]: { x: 25, y: 25 } })!;
 
-    const drawings = Object.keys(store.getState().objects.drawings);
-    expect(drawings).toHaveLength(2);
-    expect(store.getState().selectedIds).toEqual([...copies.ids, drawing]);
+    expect(Object.keys(store.getState().objects.drawings)).toHaveLength(2);
+    expect(Object.keys(store.getState().objects.texts)).toHaveLength(2);
+    expect(store.getState().selectedIds).toEqual([...copies.ids, drawing, text]);
   });
 });

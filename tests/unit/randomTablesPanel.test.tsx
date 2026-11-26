@@ -138,7 +138,7 @@ describe('the Random tables window', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Roll 🗣️ Rumours in the Taproom' }));
     await waitFor(() => expect(store.getState().lootRoller.lastRoll?.results).toHaveLength(1));
 
-    act(() => store.getState().updateLootRoller({ pane: 'history' }));
+    act(() => { store.getState().updateLootRoller({ pane: 'history' }); });
     await waitFor(() => expect(document.querySelectorAll('.atlas-loot-history__roll')).toHaveLength(2));
     const counts = [...document.querySelectorAll('.atlas-loot-history__count')].map((count) => count.textContent);
     expect(counts).toEqual(['1 result', '1 item']);
@@ -223,7 +223,7 @@ describe('the Random tables window', () => {
     const gone: RandomTableSource = { path: 'Gone.md', index: 0, kind: 'text' };
     const { app, collectionId } = await mount([gone, GEAR], ['Loot/Items.base']);
     await waitFor(() => fakeQueries.of('Weapons'));
-    act(() => fakeQueries.of('Weapons').listener.onSnapshot({ entries: [], order: [], displayNames: {} }));
+    act(() => { fakeQueries.of('Weapons').listener.onSnapshot({ entries: [], order: [], displayNames: {} }); });
     const sidebar = await screen.findByRole('complementary');
     const options = (): HTMLElement[] => within(sidebar).getAllByRole('button', { name: 'Table options' });
     await waitFor(() => expect(options()).toHaveLength(3));
@@ -340,7 +340,7 @@ describe('New table', () => {
     const assets = AssetService.getInstance(app);
     const other = await act(async () => assets.createCollection('Other'));
     fireEvent.click(await screen.findByRole('button', { name: 'New table' }));
-    act(() => store.setState({ mapPath: `atlas-vtt/collections/${other.id}/scenes/Other.atlasmap` }));
+    act(() => { store.setState({ mapPath: `atlas-vtt/collections/${other.id}/scenes/Other.atlasmap` }); });
     const text = '## Weather\n| d4 | Result |\n| --- | --- |\n| 1-4 | Rain |';
     fireEvent.change(screen.getByRole('textbox', { name: 'Table to paste' }), { target: { value: text } });
     fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), { target: { value: 'Weather' } });

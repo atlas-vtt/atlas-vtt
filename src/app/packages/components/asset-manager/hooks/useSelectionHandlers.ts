@@ -6,6 +6,8 @@ import { applyClickSelection, resolveSelectAll } from '../utils/clickSelection';
 import { clampSpawnCount } from '../utils/spawnCount';
 import { resolveSortOption, sortOptionsFor } from '../utils/assetSort';
 import { isTextEntryTarget } from '../../../../keyboard/textEntry';
+import { movedFolderPathOf, type PathMove } from '../../../../services/renamedPaths';
+import { useStableCallback } from '../../../../react/hooks/useStableCallback';
 
 /** IDs currently rendered, in display order, so Shift-click can span them. */
 export interface VisibleIds {
@@ -41,8 +43,17 @@ export interface SelectionState {
   handleNavigateBack: () => void;
   handleNavigateForward: () => void;
   handleNavigateToFolder: (folderId: string | null) => void;
+  /**
+   * Folders have another id now (renamed, or moved into another folder), each given by the id it had and the id it
+   * has: Back, Forward and the open folder lead to them, and to the folders in them, where they are.
+   */
+  followFolderMoves: (moves: readonly PathMove[]) => void;
+  /** A folder is gone: where it was open its parent is (null: the tab's top level), and Back and Forward no longer lead to it. */
+  leaveDeletedFolder: (folderId: string, parentId: string | null) => void;
   handleTagSelect: (tagId: string) => void;
   handleClearSelection: () => void;
+  /** Selects everything in view, or clears a selection that already holds it all: what Mod+A does. */
+  handleSelectAll: () => void;
   /** Back at the root with nothing selected, as a new tab or collection starts. */
   resetForTab: () => void;
   /** Sets how many copies spawning the asset places; 1 clears the counter. */
@@ -54,7 +65,9 @@ export function useSelectionHandlers(
   visibleIds: React.RefObject<VisibleIds>,
   folders: Folder[],
   activeTab: Tab,
-  isOpen: boolean
+  isOpen: boolean,
+  /** An element of the asset manager: Mod+A is listened for in its document. */
+  windowRef: React.RefObject<HTMLElement | null>,
 ): SelectionState {
   const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([]);
   const [selectedFolderIds, setSelectedFolderIds] = useState<string[]>([]);
@@ -135,6 +148,18 @@ export function useSelectionHandlers(
     }
   };
 
+  const followFolderMoves = (moves: readonly PathMove[]): void => {
+    // A folder's id is its vault path behind a prefix, so the ids at and below a moved folder move as paths do.
+    const moved = movedFolderPathOf(moves);
+    navigationHistory.follow(moved);
+    setSelectedFolderId((folderId) => moved(folderId) ?? folderId);
+  };
+
+  const leaveDeletedFolder = (folderId: string, parentId: string | null): void => {
+    navigationHistory.leave(folderId, parentId);
+    setSelectedFolderId((open) => (open === folderId ? parentId : open));
+  };
+
   const handleTagSelect = (tagId: string): void => {
     setSelectedTagIds((prev) =>
       prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]
@@ -180,20 +205,25 @@ export function useSelectionHandlers(
     return path;
   };
 
+  const handleSelectAll = useStableCallback((): void => {
+    const next = resolveSelectAll({ visible: visibleIds.current, selectedAssetIds, selectedFolderIds });
+    setSelectedAssetIds(next.assets);
+    setSelectedFolderIds(next.folders);
+  });
+
   // ── Select-all shortcut ───────────────────────────────────────
   useEffect(() => {
     if (!isOpen) return;
     const handler = (event: KeyboardEvent): void => {
       if ((event.metaKey || event.ctrlKey) && event.key === 'a' && !isTextEntryTarget(event.target)) {
         event.preventDefault();
-        const next = resolveSelectAll({ visible: visibleIds.current, selectedAssetIds, selectedFolderIds });
-        setSelectedAssetIds(next.assets);
-        setSelectedFolderIds(next.folders);
+        handleSelectAll();
       }
     };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
-  }, [isOpen, visibleIds, selectedAssetIds, selectedFolderIds]);
+    const doc = windowRef.current?.doc ?? activeDocument;
+    doc.addEventListener('keydown', handler);
+    return () => doc.removeEventListener('keydown', handler);
+  }, [isOpen, handleSelectAll]);
 
   const sortBy = resolveSortOption(chosenSortBy, activeTab);
   const sortOptions = sortOptionsFor(activeTab);
@@ -205,7 +235,7 @@ export function useSelectionHandlers(
     setSpawnCounts, setSortBy, setSortOrder,
     handleAssetSelect, handleFolderSelect, handleFolderSelection,
     handleFolderDoubleClick, handleNavigateBack, handleNavigateForward,
-    handleNavigateToFolder, handleTagSelect, handleClearSelection, resetForTab, handleSpawnCountChange,
+    handleNavigateToFolder, followFolderMoves, leaveDeletedFolder, handleTagSelect, handleClearSelection, handleSelectAll, resetForTab, handleSpawnCountChange,
     getFolderPath,
   };
 }

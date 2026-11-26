@@ -1,7 +1,9 @@
 import { readRecordText, recordText, type StoredRecord } from '../services/recordFiles/recordLayout';
 import { clampTrim } from '../sound/codec/soundInfo';
 import type { SoundKind, SoundRecord } from '../sound/soundTypes';
+import { MAX_CROSSFADE_SECONDS } from '../services/soundSettings';
 import { isFiniteNumber, isRecord } from '../utils/guards';
+import { isAudioPath } from './soundFiles';
 import { isWithin, movedRelative, nameOfRelative, stemOf } from './soundPaths';
 
 /** Under this length a file named like a loop is ambience. */
@@ -54,7 +56,7 @@ export const isNewerSound = (stored: StoredRecord): boolean => isFiniteNumber(st
  * cannot be read here reads as unset; the file keeps what it holds, for the version that wrote it.
  */
 export function soundRecordOf(stored: StoredSound): SoundRecord {
-  const { id, name, audioPath, audioSize, tags, kind, trimDb } = stored;
+  const { id, name, audioPath, audioSize, tags, kind, trimDb, crossfadeSeconds } = stored;
   const loop = readLoop(stored.loop);
   return {
     id,
@@ -65,6 +67,8 @@ export function soundRecordOf(stored: StoredSound): SoundRecord {
     tags: Array.isArray(tags) ? tags.filter((tag) => typeof tag === 'string') : [],
     ...(loop && { loop }),
     ...(isFiniteNumber(trimDb) && { trimDb: clampTrim(trimDb) }),
+    ...(isFiniteNumber(crossfadeSeconds) && { crossfadeSeconds: Math.min(MAX_CROSSFADE_SECONDS, Math.max(0, crossfadeSeconds)) }),
+    ...(stored.startAtLoopIn === true && { startAtLoopIn: true as const }),
   };
 }
 
@@ -81,9 +85,14 @@ export function withChanges(stored: StoredSound, changes: SoundChanges, now: num
   return next;
 }
 
-/** A record once its file or folder moved: its path, its name where that was the file's, and its kind where it changed root. Null where the move has nothing to do with it. */
+/**
+ * A record once its file or folder moved: its path, its name where that was the file's, and its kind where it changed
+ * root. Null where the move has nothing to do with it, and where its file went to a name that is no sound: a file set
+ * aside while an update is written (`.atlas-old`), or renamed to another kind of file, leaves its record waiting.
+ */
 export function soundAfterMove(stored: StoredSound, from: string, to: string, now: number, kind: SoundKind = stored.kind): StoredSound | null {
   const moved = movedRelative(stored.audioPath, from, to);
+  if (moved !== null && !isAudioPath(moved)) return null;
   // A record the vault's rename event has reached already takes the kind alone.
   if (moved === null && !isWithin(to, stored.audioPath)) return null;
   if (moved === null && stored.kind === kind) return null;

@@ -42,6 +42,8 @@ async function open(local: Partial<Record<SoundKind, string>>, shared: SharedSou
     onSharedChange: () => () => undefined,
     local: (kind) => local[kind] ?? null,
     setLocal: (kind, value) => { if (value) local[kind] = value; else delete local[kind]; },
+    localOriginals: () => null,
+    setLocalOriginals: () => undefined,
     vaultBase: () => '/vault',
     realPath: async (value) => value,
   });
@@ -421,7 +423,7 @@ it('a root above Atlas\' own folders never lists its moods and records, and neit
   expect(listing?.folders.map((folder) => folder.name)).toEqual(['music']);
   expect(listing?.files).toEqual([]);
   let shared: SharedSoundRoots = {};
-  const roots = new SoundRoots({ shared: () => shared, setShared: (next) => { shared = next; }, onSharedChange: () => () => undefined, local: () => null, setLocal: () => undefined, vaultBase: () => '/vault', realPath: async (value) => value });
+  const roots = new SoundRoots({ shared: () => shared, setShared: (next) => { shared = next; }, onSharedChange: () => () => undefined, local: () => null, setLocal: () => undefined, localOriginals: () => null, setLocalOriginals: () => undefined, vaultBase: () => '/vault', realPath: async (value) => value });
   expect(roots.linkVault('music', 'atlas-vtt/sounds/moods')).toBe('reserved');
   expect(roots.linkVault('music', 'atlas-vtt/sounds/records/deep')).toBe('reserved');
   expect(await roots.linkChosen('music', '/vault/atlas-vtt/sounds/records')).toBe('reserved');

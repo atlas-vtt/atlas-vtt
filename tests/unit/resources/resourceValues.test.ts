@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clampValue, defeatedResources, isDefeated, isSpent, resetLabel, resourceUpdate, restedResources, startingValue, withCurrent } from '../../../src/app/resources/resourceValues';
+import { clampValue, defeatedResources, isDefeated, isSpent, resourceUpdate, restedResources, startingValue, withCurrent } from '../../../src/app/resources/resourceValues';
 import type { ResourceDefinition } from '../../../src/app/resources/resourceTypes';
 import { ARMOR, HP, STR, STRESS } from '../../mocks/resourceFixtures';
 
@@ -61,17 +61,6 @@ describe('resource values', () => {
   it('leaves a token without resources without any', () => {
     expect(defeatedResources({}, [drains])).toBeUndefined();
     expect(restedResources({}, [drains])).toBeUndefined();
-  });
-});
-
-describe('resetLabel', () => {
-  it('reads as it always did where the collection has only the two bars every map had', () => {
-    expect(resetLabel([HP])).toBe('Reset (Full HP, Clear Status)');
-    expect(resetLabel([HP, STRESS])).toBe('Reset (Full HP, Clear Status)');
-  });
-
-  it('names resources once the collection defines others', () => {
-    expect(resetLabel([HP, STR])).toBe('Reset (Restore Resources, Clear Status)');
   });
 });
 

@@ -84,7 +84,7 @@ describe('the body class that lifts Obsidian menus above the asset manager', () 
     expect(overlays()).toBe(1);
     expect(marked()).toBe(true);
 
-    await expect.poll(overlays).toBe(0);
+    await expect.poll(() => overlays()).toBe(0);
     expect(marked()).toBe(false);
   });
 
@@ -96,7 +96,7 @@ describe('the body class that lifts Obsidian menus above the asset manager', () 
     flushSync(() => reopened.root.render(<Overlay isOpen />));
     expect(overlays()).toBe(2);
 
-    await expect.poll(overlays).toBe(1);
+    await expect.poll(() => overlays()).toBe(1);
     expect(marked()).toBe(true);
 
     flushSync(() => reopened.root.unmount());

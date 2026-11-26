@@ -95,7 +95,7 @@ describe('one ability typed at a time (spec §6.3)', () => {
   it('opens only the clicked ability; the rest of the list stays drawn as the card draws it', async () => {
     const { harness } = await pane();
     openFirstAction(harness);
-    expect(lines(harness)).toEqual(['editing', 'LashIt lashes.']);
+    expect(lines(harness)).toEqual(['editing', 'Lash It lashes.']);
     expect(harness.result.container.querySelectorAll('textarea')).toHaveLength(0);
   });
 

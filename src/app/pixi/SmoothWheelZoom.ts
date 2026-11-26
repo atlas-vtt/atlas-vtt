@@ -10,6 +10,9 @@ const SETTLE_DOUBLINGS = 1e-4;
 /** Most zoom (in doublings) one wheel event may add, so accelerated wheel flicks stay controllable. */
 const MAX_EVENT_DOUBLINGS = 1;
 
+/** What a notch of a mouse wheel reports as its `deltaY`, in pixels (Chromium on Windows and Linux). */
+const WHEEL_NOTCH_PX = 100;
+
 type WheelZoomOptions = Pick<Required<IWheelOptions>, 'percent' | 'reverse' | 'lineHeight'>;
 
 /**
@@ -54,18 +57,31 @@ export class SmoothWheelZoom extends Wheel {
       return super.wheel(event);
     }
 
+    this.zoomBy(wheelZoomDoublings(event, this.options), this.parent.input.getPointerPosition(event));
+
+    this.parent.emit('wheel-start', { event, viewport: this.parent });
+    return !this.parent.options.passiveWheel;
+  }
+
+  /** How far one notch of a mouse wheel zooms, in doublings: the step of the zoom buttons. */
+  get notchDoublings(): number {
+    return Math.abs(wheelZoomDoublings({ deltaY: WHEEL_NOTCH_PX, deltaMode: 0 }, this.options));
+  }
+
+  /**
+   * Zooms by `doublings` about `anchor`, a point of the screen, with the wheel's glide and within
+   * its limits: what a notch of the wheel does, for input that is no wheel (a double tap, a zoom button).
+   */
+  zoomBy(doublings: number, anchor: Point): void {
     const { min, max } = this.scaleLimits();
     const from = this.targetScale ?? this.parent.scale.x;
-    this.targetScale = Math.max(min, Math.min(max, from * 2 ** wheelZoomDoublings(event, this.options)));
-    this.anchor = this.parent.input.getPointerPosition(event);
+    this.targetScale = Math.max(min, Math.min(max, from * 2 ** doublings));
+    this.anchor = anchor;
     this.appliedScale = this.parent.scale.x;
     if (prefersReducedMotion(this.parent.options.events.domElement)) {
       this.zoomAround(this.targetScale, this.anchor);
       this.stop();
     }
-
-    this.parent.emit('wheel-start', { event, viewport: this.parent });
-    return !this.parent.options.passiveWheel;
   }
 
   /** pixi-viewport passes the frame's elapsed milliseconds, though `Wheel` declares no parameter. */
@@ -89,6 +105,11 @@ export class SmoothWheelZoom extends Wheel {
   override pause(): void {
     this.stop();
     super.pause();
+  }
+
+  /** Ends the glide where it is: something else has the camera (fingers, whose press the plugin never hears). */
+  halt(): void {
+    this.stop();
   }
 
   private stop(): void {

@@ -1,6 +1,7 @@
 import type { CollectionMetadata } from '../../../../services/AssetService';
 import React, { useEffect, useRef, useState } from 'react';
-import { Check, ChevronDown, Folder, Search } from 'lucide-react';
+import { Check, ChevronDown, Search } from 'lucide-react';
+import { CollectionGlyph } from '../components/collectionGlyph';
 import { cn } from '../../../../../utils/cn';
 import { t } from '../../../../i18n';
 
@@ -23,8 +24,9 @@ export function CollectionSelect({ value, options, onChange }: CollectionSelectP
     const handlePointerDown = (event: MouseEvent): void => {
       if (!rootRef.current?.contains(event.target as Node)) close();
     };
-    document.addEventListener('mousedown', handlePointerDown);
-    return () => document.removeEventListener('mousedown', handlePointerDown);
+    const doc = rootRef.current?.doc ?? activeDocument;
+    doc.addEventListener('pointerdown', handlePointerDown);
+    return () => doc.removeEventListener('pointerdown', handlePointerDown);
   }, [isOpen]);
 
   const close = (): void => {
@@ -49,7 +51,7 @@ export function CollectionSelect({ value, options, onChange }: CollectionSelectP
         aria-expanded={isOpen}
       >
         <span className="atlas-collection-selected">
-          <Folder />
+          <CollectionGlyph />
           <span>{options.find(c => c.id === value)?.name ?? value}</span>
         </span>
         <ChevronDown className={cn('atlas-collection-chevron', isOpen && 'atlas-rotated')} />
@@ -80,7 +82,7 @@ export function CollectionSelect({ value, options, onChange }: CollectionSelectP
                 onClick={() => select(collection.id)}
               >
                 <div className="atlas-collection-option-content">
-                  <Folder className="atlas-collection-option-icon" />
+                  <CollectionGlyph className="atlas-collection-option-icon" />
                   <span className="atlas-collection-option-text">{collection.name}</span>
                 </div>
                 <Check className="atlas-collection-check" />

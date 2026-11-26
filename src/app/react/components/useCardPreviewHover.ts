@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import type { InitiativeEntry } from '../../types/initiativeTypes';
 import { isModHeld, isModKey } from '../../keyboard/modKey';
+import { isElementShown } from '../../platform/elementShown';
 
 /** The pointer handlers a card hands its element. */
 export interface CardHoverHandlers {
@@ -36,7 +37,7 @@ export function useCardPreviewHover(
       if (!isModKey(event)) return;
       isModifierKeyDownRef.current = true;
       // A card hidden with its map view (another tab took over) never got its mouseleave.
-      if (isPointerInsideRef.current && cardRef.current?.checkVisibility()) triggerPreviewIfEligible();
+      if (isPointerInsideRef.current && isElementShown(cardRef.current)) triggerPreviewIfEligible();
     };
     const handleKeyUp = (event: KeyboardEvent): void => {
       if (isModKey(event)) isModifierKeyDownRef.current = false;

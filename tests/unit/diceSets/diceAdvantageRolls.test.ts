@@ -6,7 +6,7 @@ import type { DiceSet } from '../../../src/app/types/diceSetTypes';
 
 const builtIn = (id: string): DiceSet => BUILT_IN_DICE_SETS.find((set) => set.id === id)!;
 const d20 = builtIn('builtin:d20');
-const rollUnder = builtIn('builtin:d20-roll-under');
+const rollUnder: DiceSet = { ...builtIn('builtin:d20-roll-under'), advantage: { kind: 'keep' }, disadvantage: { kind: 'keep' } };
 const percentile = builtIn('builtin:d100-roll-under');
 const powerRoll = builtIn('builtin:power-roll');
 const set = (fields: Partial<DiceSet>): DiceSet => ({ id: 'set', name: 'Set', builtIn: false, crit: 'natural', dice: [{ count: 1, sides: 20 }], ...fields });
@@ -147,5 +147,25 @@ describe('when advantage changes a roll', () => {
     expect(rollDiceFormula('100d20', d20, hundred, undefined, 'advantage')).toBeNull();
     expect(hundred.onFormulaError).toHaveBeenCalledWith({ ok: false, code: 'dice' });
     expect(hundred.drawn()).toBe(0);
+  });
+});
+
+describe('the critical look of a whole roll', () => {
+  it('belongs to the set die alone, with advantage and constants, and never to a mixed pool', () => {
+    expect(rollDiceFormula('1d20+5', d20, inputs([20, 20]))!.crit).toBe('high');
+    expect(rollDiceFormula('+5', d20, inputs([4, 20], [20, 20]), undefined, 'advantage')!.crit).toBe('high');
+    expect(rollDiceFormula('+5', d20, inputs([1, 20], [17, 20]), undefined, 'disadvantage')!.crit).toBe('low');
+    expect(rollDiceFormula('2d20kh1+3', d20, inputs([3, 20], [20, 20]))!.crit).toBe('high');
+    // An attack thrown with a bless die or its damage is no test of the d20.
+    expect(rollDiceFormula('1d20+1d4+5', d20, inputs([20, 20], [2, 4]))!.crit).toBeNull();
+    expect(rollDiceFormula('1d20+2d6', d20, inputs([1, 20], [3, 6], [4, 6]))!.crit).toBeNull();
+    expect(rollDiceFormula('1d20+1dF', d20, inputs([20, 20], [3, 3]))!.crit).toBeNull();
+  });
+
+  it('keeps an exploding die and its chain one die', () => {
+    const exploding = set({ dice: [{ count: 1, sides: 10 }], explode: { dice: 'default', repeats: false, highFaces: 1, lowFaces: 0 } });
+    const chain = rollDiceFormula('', exploding, inputs([10, 10], [4, 10]))!;
+    expect(chain.rolls.some((die) => die.exploded)).toBe(true);
+    expect(chain.crit).toBe('high');
   });
 });

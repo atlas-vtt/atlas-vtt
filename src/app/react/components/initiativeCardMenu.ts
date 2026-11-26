@@ -7,8 +7,9 @@ import type { SideId } from '../../types/initiativeRulesTypes';
 import { playerVision } from '../../characters/playerVision';
 import { isOffMap } from '../../tokens/offMap';
 import { t } from '../../i18n';
+import { previewEntry } from '../../services/previewByHand';
 
-interface CardMenuActions {
+export interface CardMenuActions {
   roll: () => void;
   moveToFront: () => void;
   moveToBack: () => void;
@@ -21,8 +22,12 @@ interface CardMenuActions {
   actNow: () => void;
   /** Puts a combatant kept beside the map on it. */
   placeOnMap: () => void;
+  /** Shows the combatant's statblock beside its card, as Mod held over the card does; unset where it has none. */
+  preview?: (() => void) | undefined;
   /** Takes the combatant out of the tracker; one kept beside the map goes with its token. */
   remove: () => void;
+  /** Hides the combatant from the players' list, or shows it there again (`hiddenFromPlayers`). */
+  setHiddenFromPlayers: (hidden: boolean) => void;
 }
 
 /** Moves a token to `side`; one moved to the players' side sees by default (`playerVision`), and nothing switches vision off. */
@@ -54,8 +59,19 @@ export function initiativeCardMenu(
   token: TokenEntity | undefined,
   mode: CardMenuMode,
   actions: CardMenuActions,
+  /** The combatant's conditions (`combatantConditionsMenu`); none where the map defines none. */
+  conditions: ContextMenuEntry | null = null,
 ): ContextMenuEntry[] {
-  const hidden = token?.isHidden ?? false;
+  // A player at the table rolls their own number and is always on the players' side; an enemy added by name
+  // has no token either, so it is never moved to another side. Any of them can be hidden from the players' list
+  const isParty = entry.partyMemberId !== undefined;
+  const hidden = token?.isHidden === true || entry.hiddenFromPlayers === true;
+  // Hiding leaves the map alone; showing shows a hidden token on it too, or the list would still leave it out
+  const toggleHidden = (): void => {
+    if (!hidden) return actions.setHiddenFromPlayers(true);
+    if (entry.hiddenFromPlayers) actions.setHiddenFromPlayers(false);
+    if (token?.isHidden) actions.updateToken({ isHidden: false });
+  };
   const current = sideOf(token, mode.sides.map((side) => side.id));
   const item = (label: string, icon: string, onClick: () => void): ContextMenuEntry => ({ type: 'item', label, icon, onClick });
   const sitOut = entry.sitsOut
@@ -95,15 +111,17 @@ export function initiativeCardMenu(
   const numbered = !mode.bySides && !mode.cards;
 
   return [
-    ...(numbered ? [item(t('initiative.roll'), 'dice', actions.roll)] : []),
+    ...(numbered && !isParty ? [item(t('initiative.roll'), 'dice', actions.roll)] : []),
     item(t('initiative.toFront'), 'arrow-up-to-line', actions.moveToFront),
     item(t('initiative.toBack'), 'arrow-down-to-line', actions.moveToBack),
-    ...(mode.bySides ? [moveToSide] : []),
+    ...(mode.bySides && token ? [moveToSide] : []),
     ...(numbered ? [item(t('initiative.edit'), 'pencil', actions.edit)] : []),
     ...(mode.cards && entry.card !== undefined && mode.swapTargets.length > 0 ? [swapCard] : []),
     ...(mode.fightRuns ? [sitOut, ...(numbered ? [delay] : [])] : []),
+    ...(actions.preview ? [previewEntry(actions.preview)] : []),
     ...(isOffMap(token) ? [item(t('initiative.placeOnMap'), 'map-pin', actions.placeOnMap)] : []),
-    item(hidden ? t('initiative.showToPlayers') : t('initiative.hideFromPlayers'), hidden ? 'eye' : 'eye-off', () => actions.updateToken({ isHidden: !hidden })),
+    item(hidden ? t('initiative.showToPlayers') : t('initiative.hideFromPlayers'), hidden ? 'eye' : 'eye-off', toggleHidden),
+    ...(conditions ? [conditions] : []),
     { type: 'item', label: t('initiative.remove'), icon: 'trash-2', destructive: true, onClick: actions.remove },
   ];
 }

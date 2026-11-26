@@ -1,0 +1,27 @@
+import type { Translation } from '../../types';
+
+export const uvttFloors: Translation = {
+  'uvttFloors.fileProblem': '{file}：{problem}',
+  'uvttFloors.failed': '无法导入这些文件。',
+  'uvttFloors.tooMany': '一个场景最多 {count} 个楼层。',
+  'uvttFloors.tooLarge': '这些文件加起来超过 {size} MB。',
+  'uvttFloors.tooManyWalls': '这些文件加起来超过 {count} 段墙。',
+  'uvttFloors.tooManyLights': '这些文件加起来超过 {count} 个光源。',
+  'uvttFloors.otherGrid': '{file} 的格子宽 {size} 像素，{other} 的格子宽 {otherSize} 像素，因此它们不共用一个网格。',
+  'uvttFloors.mapName': '{scene}，{level}',
+  'uvttFloors.reading': '正在读取 {files}…',
+  'uvttFloors.importing': '正在导入「{name}」，共 {count} 个楼层…',
+  'uvttFloors.couldNot': '无法导入「{name}」。{problem}',
+  'uvttFloors.imported': { other: '已导入「{name}」，共 {count} 个楼层：{contents}。' },
+  'uvttFloors.walls': { other: '{count} 面墙' },
+  'uvttFloors.doors': { other: '{count} 扇门' },
+  'uvttFloors.lights': { other: '{count} 个光源' },
+  'uvttFloors.lightsOff': '图片中已画出光晕的光源会被关闭。',
+  'uvttFloors.scaledDown': '{files} 的图片已缩小到地图能保留的最大尺寸。',
+  'uvttFloors.title': '导入 {count} 张地图',
+  'uvttFloors.sceneName': '场景名称',
+  'uvttFloors.levels': '楼层，从最高层开始',
+  'uvttFloors.asScenes': '导入为 {count} 个场景',
+  'uvttFloors.asLevels': '导入为一个场景',
+  'uvttFloors.separately': '每个文件都各自成为一个场景。{reason}',
+};

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { BAND_MAX_PIXELS, bandDecodable, DECODED_MAX_PIXELS, DECODER_MAX_SIDE, decodable, jpegScaledSize, scaledJpegDecodeSize } from '../../src/app/imageProcessing/decodeLimits';
 import { IMAGE_PRESETS } from '../../src/app/imageProcessing/imageProcessing';
-import { decodedSizeCost, MAX_DECODED_LEVELS_BYTES, MAX_SOURCE_PIXELS } from '../../src/app/pixi/mosaicCanvas/decodedLevels';
+import { checkDecodable, decodedSizeCost, MAX_DECODED_LEVELS_BYTES, MAX_SOURCE_PIXELS, maxSourcePixelsFor, OpenError } from '../../src/app/pixi/mosaicCanvas/decodedLevels';
+import { DESKTOP_BUDGETS, MOBILE_BUDGETS } from '../../src/app/platform/deviceBudgets';
 
 describe('decodable', () => {
   it('takes images below 2^28 pixels, where Chromium 156 ends the renderer', () => {
@@ -53,5 +54,25 @@ describe('the tessera worker’s limit on a source', () => {
     expect(bandDecodable({ format: 'jpeg', width: 65536, height: 100 })).toBe(false);
     expect(maxPixels).toBe(BAND_MAX_PIXELS);
     expect(maxWidth).toBeLessThanOrEqual(DECODER_MAX_SIDE);
+  });
+
+  it('is the desktop\'s own on a desktop, and what a tablet decodes whole on a tablet', () => {
+    expect(maxSourcePixelsFor(DESKTOP_BUDGETS.imageSourceBytes)).toBe(MAX_SOURCE_PIXELS);
+    expect(maxSourcePixelsFor(MOBILE_BUDGETS.imageSourceBytes)).toBe(8192 * 8192);
+    // The largest map a tablet's import keeps has its levels within the decoded-levels budget's reach.
+    expect(decodedSizeCost(8192, 8192)).toBeLessThan(2 * MOBILE_BUDGETS.decodedLevelsBudget);
+  });
+
+  it('refuses a source past the device\'s limit as too large, naming that limit', () => {
+    const limit = maxSourcePixelsFor(MOBILE_BUDGETS.imageSourceBytes);
+    expect(() => checkDecodable({ width: 8192, height: 8192 }, limit)).not.toThrow();
+    expect(() => checkDecodable({ width: 8193, height: 8192 })).not.toThrow();
+    let failure: unknown;
+    try {
+      checkDecodable({ width: 8193, height: 8192 }, limit);
+    } catch (error) {
+      failure = error instanceof OpenError ? error.failure : error;
+    }
+    expect(failure).toEqual({ kind: 'too-large', width: 8193, height: 8192, maxSide: DECODER_MAX_SIDE, maxPixels: limit });
   });
 });

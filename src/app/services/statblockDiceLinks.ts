@@ -7,8 +7,8 @@
  *
  * - `linkDiceIn` rewrites text nodes into clickable spans. It must ONLY be used
  *   on static DOM that Atlas produced and owns — the output of Obsidian's
- *   MarkdownRenderer and the DOM a layout's `javascript` block returns, both
- *   rebuilt wholesale on every render.
+ *   MarkdownRenderer (a note's text included, `noteDice/`) and the DOM a
+ *   layout's `javascript` block returns, both rebuilt wholesale on every render.
  *   Never point it at DOM owned by React or Svelte: those frameworks hold
  *   references to the text nodes it replaces, and throw on their next update.
  * - `attachDiceRolling` only listens for clicks, so it is safe on any container.
@@ -71,44 +71,47 @@ function abilityNameFor(node: Node): string | undefined {
   return name?.trim().replace(/[:.]$/, '') || undefined;
 }
 
-function isSkipped(node: Node): boolean {
+function isSkipped(node: Node, skip: string | undefined): boolean {
   const parent = node.parentElement;
   if (!parent) return true;
   if (parent.closest(`.${LINK_CLASS}`)) return true;
+  if (skip && parent.closest(skip)) return true;
   return SKIPPED_TAGS.has(parent.tagName);
 }
 
-function linkTextNode(textNode: Text): void {
+/** A clickable span that rolls `formula`, showing `text`. */
+export function createDiceLink(text: string, formula: string): HTMLElement {
+  const link = createSpan({ cls: LINK_CLASS, text });
+  link.dataset.formula = formula;
+  link.setAttribute('role', 'button');
+  link.setAttribute('tabindex', '0');
+  link.setAttribute('aria-label', t('dice.rollFormula', { formula }));
+  return link;
+}
+
+/** Whether the text node held a roll, now linked. */
+function linkTextNode(textNode: Text): boolean {
   const text = textNode.nodeValue ?? '';
   const segments = splitDiceSegments(text);
-  if (!segments.some((segment) => segment.dice)) return;
+  if (!segments.some((segment) => segment.dice)) return false;
 
   const fragment = createFragment();
   for (const { text: matched, dice } of segments) {
-    if (!dice) {
-      fragment.append(matched);
-      continue;
-    }
-    const link = createSpan();
-    link.className = LINK_CLASS;
-    link.textContent = matched;
-    link.dataset.formula = toRollFormula(matched);
-    link.setAttribute('role', 'button');
-    link.setAttribute('tabindex', '0');
-    link.setAttribute('aria-label', t('dice.rollFormula', { formula: link.dataset.formula ?? '' }));
-    fragment.append(link);
+    fragment.append(dice ? createDiceLink(matched, toRollFormula(matched)) : matched);
   }
   textNode.replaceWith(fragment);
+  return true;
 }
 
 /**
- * Wraps dice notation in `root` with clickable spans.
+ * Wraps dice notation in `root` with clickable spans, leaving the text inside elements that match
+ * `skip` alone. Whether any was linked.
  * Only safe on static, Atlas-owned DOM — see the note at the top of this file.
  */
-export function linkDiceIn(root: HTMLElement): void {
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+export function linkDiceIn(root: HTMLElement, skip?: string): boolean {
+  const walker = root.ownerDocument.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
     acceptNode: (node) =>
-      isSkipped(node) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT,
+      isSkipped(node, skip) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT,
   });
 
   const targets: Text[] = [];
@@ -118,7 +121,22 @@ export function linkDiceIn(root: HTMLElement): void {
     current = walker.nextNode();
   }
 
-  targets.forEach((textNode) => linkTextNode(textNode));
+  return targets.map((textNode) => linkTextNode(textNode)).some(Boolean);
+}
+
+/** What a container's roll links do beyond rolling. */
+export interface DiceRollingOptions {
+  /** Receives dice on the hit-points line in place of the ordinary roll, without advantage. */
+  onRollHitPoints?: HitPointsRollHandler | undefined;
+  /** Read at each roll: where it shows rolls no map on screen shows. */
+  offMap?: (() => OffMapRolls | null) | undefined;
+  /** Shows a roll link's right-click menu. */
+  openMenu?: RollMenuOpener | undefined;
+  /**
+   * Links inside an element this matches are left to the surface around it, which rolls them as its
+   * own: a note's text drawn inside a statblock leaves its links to the statblock.
+   */
+  leaves?: string | undefined;
 }
 
 /**
@@ -126,17 +144,14 @@ export function linkDiceIn(root: HTMLElement): void {
  * themselves are produced by the renderer (or by `linkDiceIn` on static DOM),
  * so this never mutates the container. Returns a disposer.
  *
- * Dice on the hit-points line go to `onRollHitPoints` when one is given, and
- * roll without advantage. `offMap` is read at each roll: where it shows rolls
- * no map on screen shows. `openMenu` shows a roll link's right-click menu.
+ * See `DiceRollingOptions` for hit dice, rolls shown off the map, the menu and
+ * links left to another surface.
  */
 export function attachDiceRolling(
   el: HTMLElement,
   app: App,
   getSource: () => DiceRollSource,
-  onRollHitPoints?: HitPointsRollHandler,
-  offMap?: () => OffMapRolls | null,
-  openMenu?: RollMenuOpener,
+  { onRollHitPoints, offMap, openMenu, leaves }: DiceRollingOptions = {},
 ): () => void {
   const hitDice = (link: HTMLElement, formula: string): boolean =>
     onRollHitPoints !== undefined && /d\d/i.test(formula) && link.closest(HIT_POINTS_SELECTOR) !== null;
@@ -156,8 +171,10 @@ export function attachDiceRolling(
     rollStatblockDice(app, formula, { ...getSource(), abilityName, rolledBonus }, offMap?.(), side);
   };
 
-  const linkOf = (event: Event): HTMLElement | null =>
-    (event.target as HTMLElement | null)?.closest<HTMLElement>(`.${LINK_CLASS}`) ?? null;
+  const linkOf = (event: Event): HTMLElement | null => {
+    const link = (event.target as HTMLElement | null)?.closest<HTMLElement>(`.${LINK_CLASS}`) ?? null;
+    return link && leaves && link.closest(leaves) ? null : link;
+  };
 
   const onClick = (event: MouseEvent): void => {
     const link = linkOf(event);

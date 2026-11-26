@@ -1,5 +1,6 @@
 import { App, TFile } from 'obsidian';
 import { ATLAS_VIEW_TYPE, isAtlasView } from '../atlasViewType';
+import { dropAurasOf } from '../measure/auraUpkeep';
 import { isPersistedMapEnvelope } from './MapPersistence';
 import { runHistoryTransaction } from '../stores/history';
 import { normalizeImagePath } from '../utils/pathUtils';
@@ -31,11 +32,13 @@ export async function findTokenPlacements(app: App, imagePaths: readonly string[
 
 function stripTokensFromMapJson(content: string, images: Set<string>): string {
   const raw: unknown = JSON.parse(content);
-  const tokens = isPersistedMapEnvelope(raw) ? raw.state?.objects?.tokens : undefined;
-  if (!tokens) return content;
-  for (const [id, token] of Object.entries(tokens)) {
-    if (placesImage(images, token.imagePath)) delete tokens[id];
-  }
+  const objects = isPersistedMapEnvelope(raw) ? raw.state?.objects : undefined;
+  const tokens = objects?.tokens;
+  if (!objects || !tokens) return content;
+  const removed = Object.entries(tokens).filter(([, token]) => placesImage(images, token.imagePath)).map(([id]) => id);
+  for (const id of removed) delete tokens[id];
+  // A token's auras go with it, as in an open map.
+  dropAurasOf({ measures: objects.measures, tokens }, removed);
   return JSON.stringify(raw, null, 2);
 }
 

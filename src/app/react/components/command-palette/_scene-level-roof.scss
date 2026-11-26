@@ -8,14 +8,10 @@
   @include atlas-flex-row($spacing-xs);
   padding: $spacing-xs;
   margin-left: $spacing-l;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   background: var(--background-secondary);
   font-size: $font-ui-small;
   color: var(--text-normal);
-
-  &--alone {
-    margin-left: 0;
-  }
 }
 
 .atlas-scene-level__roof-icon {
@@ -34,8 +30,11 @@
   white-space: nowrap;
 }
 
-.atlas-scene-level__roof-pick {
+// Above Atlas' small button (`.atlas-vtt-plugin .btn--sm`), whose corner it changes.
+.atlas-scene-level__roof .atlas-scene-level__roof-pick.btn {
   flex-shrink: 0;
   height: var(--input-height);
+  // $surface-inset inside the row, concentric with its corner where it ends the row.
+  border-radius: $control-inset-radius;
   font-size: $font-ui-small;
 }

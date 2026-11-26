@@ -84,7 +84,18 @@ describe('a player\'s change of their Counters', () => {
     const bare = NOTE.replace(/slots:[\s\S]*?(?=---\n# Ana)/, '');
     const fresh = inputsOf(bare);
     expect(slotsAfter(bare, checkFieldEdit(fresh, edit([{ name: '1st level', max: 2, used: 1, reset: null, regain: null }], { was: undefined }))))
-      .toEqual([{ name: '1st level', max: 2, used: 1 }]);
+      .toEqual([{ name: '1st level', max: 2, used: 1, templateMax: 2 }]);
+  });
+
+  it('takes uses up to the template\'s maximum of a row that follows it, and a maximum the player sets as the note\'s own', () => {
+    const follows = NOTE.replace('max: 4\n    used: 1', 'max: 1\n    used: 1\n    templateMax: 1');
+    const was = [{ ...ROWS[0]!, max: 1, templateMax: 1 }, ROWS[1]!];
+    const shown = { ...SENT[0]!, max: 2, templateMax: 1 };
+    // The page shows the row at the template's two uses and sends the rows it was handed
+    expect(slotsAfter(follows, checkFieldEdit(inputsOf(follows), edit([{ ...shown, used: 2 }, SENT[1]!], { was }))))
+      .toEqual([{ ...ROWS[0], max: 2, used: 2, templateMax: 2 }, ROWS[1]]);
+    expect(slotsAfter(follows, checkFieldEdit(inputsOf(follows), edit([{ ...shown, max: 5 }, SENT[1]!], { was }))))
+      .toEqual([{ ...ROWS[0], max: 5 }, ROWS[1]]);
   });
 
   it('refuses a changed name, recovery button or formula, another order or number of rows, and uses that are no whole number up to the maximum', () => {

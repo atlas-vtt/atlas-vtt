@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { t } from '../../../../i18n';
 import { Button } from '../../../../packages/components/primitives/button';
@@ -7,7 +7,7 @@ import { useDialogEscape } from '../../../../packages/components/primitives/useD
 import { DEFAULT_ROOM, ROOM_IDS, type Mood, type RoomId } from '../../../../sound/soundTypes';
 import { roomName } from './useRoomName';
 import { MoodLookPicker } from './MoodLookPicker';
-import { placeUnderTile, type PopoverPlace } from './moodPopoverPlacement';
+import { usePlaceAtTile } from './usePlaceAtTile';
 import { portalHost } from '../../../../host/portalHost';
 
 type MusicChoice = 'list' | 'keep' | 'none';
@@ -27,36 +27,6 @@ const MUSIC_OPTIONS = [
   { value: 'keep', label: t('audio.mood.musicKeep') },
   { value: 'none', label: t('audio.mood.musicNone') },
 ] as const;
-
-/** Keeps the popover at its tile while the page scrolls or the window changes size, and closes it on a press elsewhere. */
-function usePlaceAtTile(ref: React.RefObject<HTMLDivElement | null>, anchor: HTMLElement, onClose: () => void): PopoverPlace | null {
-  const [place, setPlace] = useState<PopoverPlace | null>(null);
-  useLayoutEffect(() => {
-    const doc = anchor.ownerDocument;
-    const win = doc.defaultView ?? window;
-    const measure = (): void => {
-      const box = ref.current;
-      if (!box) return;
-      const tile = anchor.getBoundingClientRect();
-      setPlace(placeUnderTile(tile, { width: box.offsetWidth, height: box.offsetHeight }, { width: win.innerWidth, height: win.innerHeight }));
-    };
-    const press = (event: Event): void => {
-      const target = event.target as Node | null;
-      if (target && (ref.current?.contains(target) || anchor.contains(target))) return;
-      onClose();
-    };
-    measure();
-    win.addEventListener('resize', measure);
-    doc.addEventListener('scroll', measure, true);
-    doc.addEventListener('pointerdown', press, true);
-    return () => {
-      win.removeEventListener('resize', measure);
-      doc.removeEventListener('scroll', measure, true);
-      doc.removeEventListener('pointerdown', press, true);
-    };
-  }, [anchor, onClose, ref]);
-  return place;
-}
 
 /**
  * A mood's own facts, in a popover under its tile: name, tone, crest and what its music does. What

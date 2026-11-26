@@ -8,6 +8,7 @@ import { AreaLightPictures } from './AreaLightPictures';
 import type { DarknessMap, PierceShape } from './DarknessMap';
 import { ENGINE_SHADERS } from './engineShaders';
 import { PolygonLightMap, type PolygonDrawn } from './PolygonLightMap';
+import { ReflectionPictures, type ReflectingLight } from './ReflectionPictures';
 import { NO_ZONES, SceneMaps, byPriority, sameLights } from './SceneMaps';
 import type { EngineLight, EngineZone } from './types';
 import { WallBand } from './WallBand';
@@ -20,10 +21,11 @@ const NO_PARTS: NonNullable<EngineLight['parts']> = [];
  * drawn and nothing traced. Each light is the polygon of its reach (`LightReach`, handed on by the
  * scene model as `EngineLight.area`, else traced here as the rule traces it) drawn into the light
  * map with the traced picture's falloff; an area light is its area and the reaches of its outline
- * (`AreaLightPictures`); a darkness erases; zones are flat fills. No light tile, wall field,
- * bounce, reflected light or flicker: the light map is drawn again only when the walls or the
- * lights change. The texels within a wall's capsule radius of its centre line hold no light and
- * no zone of the floor (`WallBand`), so no bilinear read carries either past a wall.
+ * (`AreaLightPictures`); a light's reflected light is the rule's own parts (`ReflectionPictures`);
+ * a darkness erases; zones are flat fills. No light tile, wall field, bounce or flicker: the light
+ * map is drawn again only when the walls or the lights change. The texels within a wall's capsule
+ * radius of its centre line hold no light and no zone of the floor (`WallBand`), so no bilinear
+ * read carries either past a wall.
  */
 export class PolygonWorld {
   readonly picture = 'polygons';
@@ -34,6 +36,7 @@ export class PolygonWorld {
   private bandDrawn = 0;
   private readonly maps: SceneMaps;
   private readonly areaPictures: AreaLightPictures;
+  private readonly reflectionPictures: ReflectionPictures;
   /** The reaches of lights that come without the rule's (`EngineLight.area`), traced as the rule traces them. */
   private readonly reaches = new LightReaches();
   /** The reaches beams would have shining all around: their shadows' soft edges are those of the light all around. */
@@ -47,6 +50,7 @@ export class PolygonWorld {
     this.band = new WallBand(renderer, bounds, this.texel);
     this.lightMap = new PolygonLightMap(renderer, bounds, this.texel, this.band);
     this.areaPictures = new AreaLightPictures(renderer, bounds, this.texel, this.band);
+    this.reflectionPictures = new ReflectionPictures(renderer, bounds, this.texel, this.band);
     // The composite reads a zone at the texel a pixel lies in, whose centre lies within half its diagonal.
     this.maps = new SceneMaps(renderer, bounds, this.texel, { shader: ENGINE_SHADERS.flatZone, wallReach: this.texel * Math.SQRT1_2 * 1.001 });
   }
@@ -117,6 +121,7 @@ export class PolygonWorld {
   destroy(): void {
     this.lightMap.destroy();
     this.areaPictures.destroy();
+    this.reflectionPictures.destroy();
     this.maps.destroy();
     this.band.destroy();
   }
@@ -127,18 +132,32 @@ export class PolygonWorld {
     const areas = shining.filter((light) => light.surface).map((light) => ({ light, parts: light.parts ?? traced.get(light.key)?.parts ?? NO_PARTS }));
     const pictures = this.areaPictures.sync(areas, this.bandDrawn);
     const shadows = this.shadowsOfBeams(shining, walls);
+    const reachOf = (light: EngineLight): LightReach['polygon'] | undefined => light.area ?? traced.get(light.key)?.polygon;
+    const reflecting = shining.flatMap((light): ReflectingLight[] => {
+      if (!light.reflection?.length) return [];
+      const area = areas.find((entry) => entry.light === light);
+      if (area) return [{ light, lit: { parts: area.parts } }];
+      const reach = reachOf(light);
+      return reach ? [{ light, lit: { reach } }] : [];
+    });
+    const reflections = this.reflectionPictures.sync(reflecting, this.bandDrawn);
     const drawn: PolygonDrawn[] = [];
     for (const light of byPriority(this.lights)) {
       if (light.darkness) {
         drawn.push(this.maps.darknessOf(light));
-      } else if (light.surface) {
+        continue;
+      }
+      if (light.surface) {
         const picture = pictures.get(light.key);
         if (picture) drawn.push({ light, picture });
       } else {
-        const polygon = light.area ?? traced.get(light.key)?.polygon;
+        const polygon = reachOf(light);
         const shadowed = shadows.get(light.key);
         if (polygon && polygon.length >= 3) drawn.push({ light, polygon, ...(shadowed && { shadows: shadowed }) });
       }
+      // Right after its light, so a darkness that swallows the light swallows its reflection too.
+      const reflection = reflections.get(light.key);
+      if (reflection) drawn.push({ light, picture: reflection });
     }
     this.lightMap.draw(drawn);
   }

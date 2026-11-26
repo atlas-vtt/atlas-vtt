@@ -118,7 +118,7 @@ $pill-height: calc(#{$log-quote-disc} + 2 * #{$pill-pad});
     font-weight: $font-weight-semibold;
   }
 
-  // What arrived in the rest of the log meanwhile, as the unread tab counts it.
+  // What arrived in the rest of the log meanwhile, as the log's tab counts it.
   .atlas-online-log__thread-unseen {
     min-width: 16px;
     height: 16px;

@@ -20,7 +20,7 @@ interface Lip {
   outer: Vec[];
 }
 
-function lerp(a: Vec, b: Vec, t: number): Vec {
+function lerpPoint(a: Vec, b: Vec, t: number): Vec {
   return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
 }
 
@@ -33,8 +33,8 @@ function cut(ring: readonly Vec[], outer: readonly Vec[]): Lip {
     const length = Math.hypot(ring[j]!.x - ring[i]!.x, ring[j]!.y - ring[i]!.y);
     const pieces = Math.max(1, Math.ceil(length / PIECE));
     for (let k = 0; k < pieces; k++) {
-      cutInner.push(lerp(ring[i]!, ring[j]!, k / pieces));
-      cutOuter.push(lerp(outer[i]!, outer[j]!, k / pieces));
+      cutInner.push(lerpPoint(ring[i]!, ring[j]!, k / pieces));
+      cutOuter.push(lerpPoint(outer[i]!, outer[j]!, k / pieces));
     }
   }
   cutInner.push(cutInner[0]!);

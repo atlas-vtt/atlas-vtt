@@ -3,7 +3,7 @@ import type { AtlasView } from '../atlas-view';
 import type { ViewAtlasStore } from '../storeFactory';
 import { useMapHotkeys } from '../keyboard/useMapHotkeys';
 import { runInBackground } from '../utils/backgroundTask';
-import { copySelection, cutSelection, duplicateSelection, pasteClipboard } from './mapClipboardActions';
+import { copySelection, cutSelection, duplicateSelection, pasteClipboard, viewCentre } from './mapClipboardActions';
 import type { Point } from './mapObjectContent';
 
 function mapCanvas(view: AtlasView | null): HTMLCanvasElement | null {
@@ -23,7 +23,7 @@ function pasteTarget(view: AtlasView | null, pointer: Point | null): Point | nul
     const rect = canvas.getBoundingClientRect();
     return viewport.toWorld(pointer.x - rect.left, pointer.y - rect.top);
   }
-  return viewport.toWorld(viewport.screenWidth / 2, viewport.screenHeight / 2);
+  return viewCentre(viewport);
 }
 
 /** Copy, cut, paste and duplicate shortcuts for the map's selected objects. */

@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { Platform, WorkspaceLeaf } from 'obsidian';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import { NotePreviewUIManager } from '../../src/app/services/NotePreviewUIManager';
+import { OPEN_PREVIEW_EVENT } from '../../src/app/services/previewByHand';
 
 const VIEW_ID = 'hover-context-test';
 
@@ -125,5 +126,38 @@ describe('NotePreviewUIManager hover replay', () => {
     pressModifier();
 
     expect(harness.showPreview).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('NotePreviewUIManager preview opened from a menu', () => {
+  let harness: ManagerHarness;
+  const pin = { id: 'pin-1', notePath: 'Notes/Tavern.md', x: 0, y: 0 };
+
+  beforeEach(() => {
+    Platform.isMacOS = true;
+    harness = createHarness();
+  });
+
+  afterEach(() => {
+    harness.manager.destroy();
+  });
+
+  it('opens without Mod, where the menu was opened', () => {
+    harness.eventBus.emit(OPEN_PREVIEW_EVENT, { pin, screenX: 240, screenY: 180 });
+    expect(harness.showPreview).toHaveBeenCalledTimes(1);
+    expect(harness.showPreview.mock.calls[0]?.slice(0, 3)).toEqual([pin, 240, 180]);
+  });
+
+  it('stays while the pointer leaves its pin, and goes at a press outside it', () => {
+    const hide = vi.spyOn(harness.manager, 'hideAllUnpinnedPreviews');
+    const hideOne = vi.spyOn(harness.manager, 'hidePreview');
+    harness.eventBus.emit(OPEN_PREVIEW_EVENT, { pin, screenX: 240, screenY: 180 });
+    harness.eventBus.emit('pin-hide-preview', { pin });
+    expect(hideOne).not.toHaveBeenCalled();
+    document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    expect(hide).toHaveBeenCalledTimes(1);
+    // The press ended it: the next hover's end hides as ever.
+    harness.eventBus.emit('pin-hide-preview', { pin });
+    expect(hideOne).toHaveBeenCalledWith('pin-1', false);
   });
 });

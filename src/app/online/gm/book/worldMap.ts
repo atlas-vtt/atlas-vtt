@@ -2,22 +2,25 @@ import { sha256Hex } from '../assetServe.ts';
 import type { AssetStoring } from '../assets/assetUses.ts';
 import type { VaultImage } from '../TokenShare.ts';
 import { AskedAnswer } from './askedAnswer.ts';
-import { MapImages, type FileStat, type MapImage, type MapImageProblem } from './mapImages.ts';
-import type { WorldMapTree } from './worldMapGate.ts';
+import { MapImages, type FileStat, type MapForm, type MapImage, type MapImageProblem } from './mapImages.ts';
+import type { WorldMapAnswer, WorldMapTree } from './worldMapGate.ts';
 import { worldMapOf, type WorldMapFile } from './worldMapLevels.ts';
 import { t } from '../../../i18n';
 
-export type { FileStat, MapImageProblem } from './mapImages.ts';
+export type { FileStat, MapForm, MapImageProblem } from './mapImages.ts';
 export type { WorldMapFile } from './worldMapLevels.ts';
-export type { WorldMapTree } from './worldMapGate.ts';
+export type { WorldMapAnswer, WorldMapTree } from './worldMapGate.ts';
+
+/** Why players get no world map: its image cannot be sent (`MapImageProblem`), or the map or scene chosen shows none. */
+export type WorldMapProblem = MapImageProblem | 'no-image';
 
 export interface WorldMapPorts {
   /** The file at a vault path as it is now, or null when there is none. */
   stat(path: string): FileStat | null;
   /** The image at a vault path, or null when it is missing or of a type players cannot be sent. */
   readImage(path: string): Promise<VaultImage | null>;
-  /** The world map that may be shown now with the maps it leads into, or null: Atlas answers from the campaign being played. */
-  source(): Promise<WorldMapTree | null>;
+  /** The world map that may be shown now with the maps it leads into (`WorldMapAnswer`): Atlas answers from the campaign being played. */
+  source(): Promise<WorldMapAnswer>;
   /** A map that was being looked up or read is known now. */
   read(): void;
   /** How players are handed images the store keeps for them. */
@@ -25,7 +28,8 @@ export interface WorldMapPorts {
 }
 
 /** What the GM is told when the world map's image cannot be sent to players. */
-export const WORLD_MAP_PROBLEM_TEXT: Readonly<Record<MapImageProblem, string>> = {
+export const WORLD_MAP_PROBLEM_TEXT: Readonly<Record<WorldMapProblem, string>> = {
+  'no-image': t('online.worldMap.noImage'),
   missing: t('online.worldMap.missing'),
   'too-large': t('online.worldMap.tooLarge'),
   unreadable: t('online.worldMap.unreadable'),
@@ -43,19 +47,20 @@ async function mapId(key: string): Promise<string> {
   return (await sha256Hex(new Uint8Array(new TextEncoder().encode(`atlas-book-map\n${key}`)))).slice(0, 24);
 }
 
-async function named(tree: WorldMapTree | null): Promise<NamedTree | null> {
-  if (tree === null) return null;
+async function named(tree: WorldMapAnswer): Promise<NamedTree | 'no-image' | null> {
+  if (tree === null || tree === 'no-image') return tree;
   const ids = new Map(await Promise.all(tree.levels.map(async (level) => [level.key, await mapId(level.key)] as const)));
   return { tree, ids };
 }
 
 /**
  * The campaign's world map as players are sent it, with every map its GM's pins lead into: each
- * image by hash with its size in pixels (`MapImages`). Which maps they are is asked once and again
- * after `forget`; an image is read once and kept while its file stays as it is.
+ * image by hash with its size in pixels (`MapImages`), as its tile pyramid for a page that draws one
+ * and as one image for any other. Which maps they are is asked once and again after `forget`; an
+ * image is read once per form and kept while its file stays as it is.
  */
 export class WorldMaps {
-  private readonly tree: AskedAnswer<NamedTree | null>;
+  private readonly tree: AskedAnswer<NamedTree | 'no-image' | null>;
   private readonly images: MapImages;
 
   constructor(ports: WorldMapPorts) {
@@ -63,17 +68,17 @@ export class WorldMaps {
     this.images = new MapImages({ stat: (path) => ports.stat(path), readImage: (path) => ports.readImage(path), stored: ports.stored, read: () => ports.read() });
   }
 
-  /** The world map: null for none, undefined while it is being looked up or read (`read` hears when it has been). */
-  get(): WorldMapFile | null | undefined {
+  /** The world map in `form`: null for none, undefined while it is being looked up or read (`read` hears when it has been). */
+  get(form: MapForm = 'tiles'): WorldMapFile | null | undefined {
     const asked = this.tree.get();
     if (asked === undefined) return undefined;
-    if (asked === null) return null;
+    if (asked === null || asked === 'no-image') return null;
     const paths = new Set(asked.tree.levels.map((level) => level.image));
     this.images.keepOnly(paths);
     const images = new Map<string, MapImage | null>();
     let reading = false;
     for (const path of paths) {
-      const image = this.images.get(path);
+      const image = this.images.get(path, form);
       if (image === undefined) reading = true;
       else images.set(path, image);
     }
@@ -81,13 +86,19 @@ export class WorldMaps {
   }
 
   /**
-   * Why the world map's own image cannot be sent, or null where it can, none is chosen, or it is
-   * still being read: the maps it leads into are left out without a word, the world map never.
+   * Why the world map chosen or its own image cannot be sent, or null where it can, none is chosen,
+   * or it is still being read: the maps it leads into are left out without a word, the world map never.
    */
-  problem(): MapImageProblem | null {
+  problem(): WorldMapProblem | null {
     const asked = this.tree.get();
+    if (asked === 'no-image') return asked;
     const root = asked?.tree.levels.find((level) => level.key === asked.tree.root);
     return root === undefined ? null : this.images.problemOf(root.image);
+  }
+
+  /** No page holds the maps as images any more: what was made only for such pages is let go of. */
+  releaseWhole(): void {
+    this.images.releaseWhole();
   }
 
   /** Reads every image again: the store may no longer keep one players were sent. */

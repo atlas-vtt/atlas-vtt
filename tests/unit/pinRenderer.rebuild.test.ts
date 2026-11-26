@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Texture, type Container, type EventSystem } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { PinRenderer } from '../../src/app/pixi/PinRenderer';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import { createInMemoryApp } from '../mocks/inMemoryVault';

@@ -1,4 +1,4 @@
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { vi } from 'vitest';
 import { TFile } from 'obsidian';
 import type { Character } from '../../src/app/types';

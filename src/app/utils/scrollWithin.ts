@@ -1,19 +1,108 @@
+type Edges = Record<'top' | 'bottom' | 'left' | 'right', number>;
+type EdgesOf = (element: Element) => Edges;
+
+const screenEdges: EdgesOf = (element) => element.getBoundingClientRect();
+
+/**
+ * Where an element lies in the page's layout, before any transform: a list turned to face players at
+ * another edge scrolls along its own axes, which the screen's no longer are.
+ */
+export function layoutEdges(element: Element): Edges {
+  const own = element as HTMLElement;
+  let left = own.offsetLeft;
+  let top = own.offsetTop;
+  for (let parent = own.offsetParent as HTMLElement | null; parent; parent = parent.offsetParent as HTMLElement | null) {
+    left += parent.offsetLeft + parent.clientLeft;
+    top += parent.offsetTop + parent.clientTop;
+  }
+  for (let parent = own.parentElement; parent; parent = parent.parentElement) {
+    left -= parent.scrollLeft;
+    top -= parent.scrollTop;
+  }
+  return { left, top, right: left + own.offsetWidth, bottom: top + own.offsetHeight };
+}
+
 /**
  * Scrolls `container`, and nothing else, until `element` shows: with its top at the container's
  * (`start`), or no farther than it takes (`nearest`). `scrollIntoView` scrolls every ancestor
  * that can scroll, the map view around a panel included. Include up to `followingSiblings`
- * after the element where they fit, without scrolling the element itself out of view.
+ * after the element where they fit, without scrolling the element itself out of view. A list that
+ * runs as a row scrolls along `x` (its left edge for the top). The element's `scroll-margin` stays in view before it,
+ * and the container's `scroll-padding` is taken as covered (a shade over its ends), as `scrollIntoView` takes it.
  */
-export function scrollWithin(container: HTMLElement, element: Element, block: 'start' | 'nearest', followingSiblings = 0): void {
-  const box = container.getBoundingClientRect();
-  const rect = element.getBoundingClientRect();
+export function scrollWithin(container: HTMLElement, element: Element, block: 'start' | 'nearest', followingSiblings = 0, axis: 'x' | 'y' = 'y', edgesOf: EdgesOf = screenEdges): void {
+  const box = edgesOf(container);
+  const rect = edgesOf(element);
   let last = element;
   for (let index = 0; index < followingSiblings && last.nextElementSibling; index++) {
     last = last.nextElementSibling;
   }
-  const fromTop = rect.top - box.top;
-  const pastBottom = last.getBoundingClientRect().bottom - box.bottom;
-  if (block === 'start' || fromTop < 0) container.scrollTop += fromTop;
+  const [start, end] = axis === 'y' ? (['top', 'bottom'] as const) : (['left', 'right'] as const);
+  const scroll = axis === 'y' ? 'scrollTop' : 'scrollLeft';
+  // The room the element keeps before it (CSS `scroll-margin`, as `scrollIntoView` keeps it): badges standing over a card's top
+  const style = element.ownerDocument?.defaultView?.getComputedStyle(element);
+  const margin = Number.parseFloat((axis === 'y' ? style?.scrollMarginTop : style?.scrollMarginLeft) ?? '') || 0;
+  const own = container.ownerDocument?.defaultView?.getComputedStyle(container);
+  const coveredStart = Number.parseFloat((axis === 'y' ? own?.scrollPaddingTop : own?.scrollPaddingLeft) ?? '') || 0;
+  const coveredEnd = Number.parseFloat((axis === 'y' ? own?.scrollPaddingBottom : own?.scrollPaddingRight) ?? '') || 0;
+  const fromStart = rect[start] - margin - (box[start] + coveredStart);
+  const pastEnd = edgesOf(last)[end] - (box[end] - coveredEnd);
+  if (block === 'start' || fromStart < 0) container[scroll] += fromStart;
   // Keep the active element visible even when the following siblings do not all fit.
-  else if (pastBottom > 0) container.scrollTop += Math.min(pastBottom, fromTop);
+  else if (pastEnd > 0) container[scroll] += Math.min(pastEnd, fromStart);
+}
+
+const SCROLLS = /^(auto|scroll)$/;
+
+function scrollsAlong(container: HTMLElement, axis: 'x' | 'y'): boolean {
+  const style = container.ownerDocument?.defaultView?.getComputedStyle(container);
+  if (axis === 'y') return SCROLLS.test(style?.overflowY ?? '') && container.scrollHeight > container.clientHeight;
+  return SCROLLS.test(style?.overflowX ?? '') && container.scrollWidth > container.clientWidth;
+}
+
+/**
+ * Brings `element` into view in the list it lies in, the nearest ancestor that scrolls, no farther than it takes
+ * and along the axes that list scrolls. Nothing around the list moves; an element in no such list stays where it is.
+ */
+export function revealInList(element: Element): void {
+  for (let list = element.parentElement; list; list = list.parentElement) {
+    const along = (['y', 'x'] as const).filter((axis) => scrollsAlong(list, axis));
+    if (along.length === 0) continue;
+    const edgesOf = unscaledEdges(list);
+    for (const axis of along) {
+      if (!revealLonger(list, element, axis, edgesOf)) scrollWithin(list, element, 'nearest', 0, axis, edgesOf);
+    }
+    return;
+  }
+}
+
+/**
+ * Screen edges in the list's own pixels: a panel still growing into place is drawn scaled, and distances measured
+ * on the screen would then fall short of what the list must scroll.
+ */
+function unscaledEdges(list: HTMLElement): EdgesOf {
+  const box = list.getBoundingClientRect();
+  const x = list.offsetWidth > 0 && box.width > 0 ? box.width / list.offsetWidth : 1;
+  const y = list.offsetHeight > 0 && box.height > 0 ? box.height / list.offsetHeight : 1;
+  return (element) => {
+    const rect = element.getBoundingClientRect();
+    return { top: rect.top / y, bottom: rect.bottom / y, left: rect.left / x, right: rect.right / x };
+  };
+}
+
+/**
+ * An element longer than its list, as `scrollIntoView` takes it: one that fills the list stays where it is, and
+ * otherwise the edge that lies inside the list goes to the list's far edge, so as much of it shows as fits.
+ */
+function revealLonger(list: HTMLElement, element: Element, axis: 'x' | 'y', edgesOf: EdgesOf): boolean {
+  const [start, end] = axis === 'y' ? (['top', 'bottom'] as const) : (['left', 'right'] as const);
+  const box = edgesOf(list);
+  const rect = edgesOf(element);
+  if (rect[end] - rect[start] <= box[end] - box[start]) return false;
+  const before = rect[start] - box[start];
+  const after = rect[end] - box[end];
+  const scroll = axis === 'y' ? 'scrollTop' : 'scrollLeft';
+  if (before < 0 && after <= 0) list[scroll] += after;
+  else if (after > 0 && before >= 0) list[scroll] += before;
+  return true;
 }

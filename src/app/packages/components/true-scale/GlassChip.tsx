@@ -1,28 +1,35 @@
 import React, { useRef } from "react"
 import { useStore } from "zustand"
-import { Bookmark, Pin, PinOff, Play, Tv, X } from "lucide-react"
+import { Bookmark, Move, Pin, PinOff, Play, Tv, X } from "lucide-react"
 import type { AtlasView } from "../../../atlas-view"
 import { playerWindowStore } from "../../../stores/playerWindowStore"
+import { PlayerWindowService } from "../../../services/PlayerWindowService"
+import { useAtlasSettings } from "../../../keyboard/useMapHotkeys"
 import { ToolButton } from "../primitives/ToolButton"
 import { LabelTooltip, TooltipProvider } from "../primitives/tooltip"
 import { t } from "../../../i18n"
 import { useGlass, type GlassShown } from "./useGlass"
 import { SavedFrameChip } from "./SavedFrameChip"
+import { PlayersFrameChip } from "./PlayersFrameChip"
 import "./glass.scss"
 
 /**
- * The handle of the glass (GM only, while the player window is open): a small capsule on the top
+ * The handle of the glass (GM only, while the player window is open and TrueScale is on): a small capsule on the top
  * edge of what players see on this map, as small as it can be since it stands over the map at any
  * zoom, so it holds words only on a ghost. Dragging it stages a frame, snapped to the grid's cells
  * (Alt frees it), while players stay where they are, dotted; its play button glides them there and
  * its bookmark saves it on the scene, and its cross forgets it. Its pin keeps players where they are or lets them follow the GM, and its
  * bookmark saves the frame on the scene, and is lit while they see a saved frame, which it then
  * takes back. On a map players do not see, it stands on a dimmer ghost of their frame and brings
- * them here. Frames saved on the map have a chip of their own (`SavedFrameChip`).
+ * them here. Frames saved on the map have a chip of their own (`SavedFrameChip`). The live grip
+ * moves players with the pointer at once, on the glass where nothing is staged and, while a frame
+ * is staged, on the dashed frame where they are (`PlayersFrameChip`).
  */
 export function GlassChip({ view }: { view: AtlasView | null }): React.ReactElement | null {
   const isOpen = useStore(playerWindowStore, (state) => state.isOpen)
-  if (!isOpen || !view) return null
+  // Follows the TrueScale switch, which lives in the settings
+  useAtlasSettings()
+  if (!isOpen || !view || !PlayerWindowService.getInstance()?.isTrueScale()) return null
   return <OpenGlassChip view={view} />
 }
 
@@ -35,7 +42,8 @@ function chipLabel(shown: GlassShown | null): string {
 function OpenGlassChip({ view }: { view: AtlasView }): React.ReactElement {
   const chipRef = useRef<HTMLDivElement>(null)
   const savedRef = useRef<HTMLDivElement>(null)
-  const { shown, togglePin, save, bring, discard, pointerDown, saved } = useGlass(view, chipRef, savedRef)
+  const playersRef = useRef<HTMLDivElement>(null)
+  const { shown, togglePin, save, bring, discard, pointerDown, liveDown, playersDown, saved } = useGlass(view, chipRef, savedRef, playersRef)
   const ghost = shown?.look === "ghost"
   const staged = shown?.staged ?? false
   const label = chipLabel(shown)
@@ -83,9 +91,15 @@ function OpenGlassChip({ view }: { view: AtlasView }): React.ReactElement {
               onClick={togglePin}
               tooltipSide="bottom"
             />
+            <LabelTooltip label={t("glass.liveHint")} side="bottom" describe>
+              <span className="atlas-glass-chip__grip atlas-glass-chip__grip--end" data-glass-grip="live" onPointerDown={liveDown}>
+                <Move className="atlas-glass-chip__icon" aria-hidden="true" />
+              </span>
+            </LabelTooltip>
           </>
         )}
       </div>
+      <PlayersFrameChip ref={playersRef} staged={staged} onPointerDown={playersDown} />
       <SavedFrameChip ref={savedRef} controls={saved} />
     </TooltipProvider>
   )

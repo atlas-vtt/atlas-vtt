@@ -29,10 +29,10 @@ function mount(levels: SceneLevel[] | undefined, element: React.ReactElement): V
 describe('a level\'s roof in Scene levels', () => {
   it('opens under the level\'s row, names its image, and removes it as a scene setting, no undo step', () => {
     const store = mount([level('ground', 0), level('upper', 1, 'maps/roofs/upper roof.png')], <SceneLevelsPanel />);
-    act(() => fireEvent.click(screen.getByRole('button', { name: 'Roof of Upper' })));
+    act(() => { fireEvent.click(screen.getByRole('button', { name: 'Roof of Upper' })); });
     expect(screen.getByText('upper roof.png')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Replace…' })).toBeTruthy();
-    act(() => fireEvent.click(screen.getByRole('button', { name: 'Remove the roof of Upper' })));
+    act(() => { fireEvent.click(screen.getByRole('button', { name: 'Remove the roof of Upper' })); });
     expect(store.getState().levels![1]).not.toHaveProperty('foreground');
     expect(screen.getByText('No roof')).toBeTruthy();
     expect(getHistoryStore(store)!.getState().pastStates).toHaveLength(0);
@@ -50,7 +50,7 @@ describe('the GM\'s Roofs on the level switcher', () => {
     const store = mount([level('ground', 0), level('upper', 1, 'maps/roof.png')], <LevelSwitcher />);
     const roofs = screen.getByRole('button', { name: /roofs/i });
     expect(roofs.getAttribute('aria-pressed')).toBe('true');
-    act(() => fireEvent.click(roofs));
+    act(() => { fireEvent.click(roofs); });
     expect(store.getState().roofsHidden).toBe(true);
     expect(screen.getByRole('button', { name: /roofs/i }).getAttribute('aria-pressed')).toBe('false');
     expect(screen.getAllByRole('tab')).toHaveLength(2);
@@ -58,14 +58,14 @@ describe('the GM\'s Roofs on the level switcher', () => {
 
   it('hides nothing in session view, which shows the players\' roofs: it stands disabled and keeps the GM\'s choice', () => {
     const store = mount([level('ground', 0, 'maps/roof.png')], <LevelSwitcher />);
-    act(() => store.getState().setRoofsHidden(true));
-    act(() => store.setState({ isGMView: false }));
+    act(() => { store.getState().setRoofsHidden(true); });
+    act(() => { store.setState({ isGMView: false }); });
     const roofs = screen.getByRole('button', { name: /roofs/i });
     expect(roofs.getAttribute('aria-disabled')).toBe('true');
     expect(roofs.getAttribute('aria-pressed')).toBe('true');
-    act(() => fireEvent.click(roofs));
+    act(() => { fireEvent.click(roofs); });
     expect(store.getState().roofsHidden).toBe(true);
-    act(() => store.setState({ isGMView: true }));
+    act(() => { store.setState({ isGMView: true }); });
     const back = screen.getByRole('button', { name: /roofs/i });
     expect(back.getAttribute('aria-disabled')).toBeNull();
     expect(back.getAttribute('aria-pressed')).toBe('false');

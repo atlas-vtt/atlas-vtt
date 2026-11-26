@@ -18,9 +18,14 @@ declare module 'obsidian' {
       plugins: Record<string, Plugin>;
       enabledPlugins: Set<string>;
     };
-    /** Active theme name, empty for the default theme. */
+    /** Active theme name, empty for the default theme; the elements holding the theme's CSS and the enabled snippets'. */
     customCss?: {
       theme?: string;
+      /** Installed community themes, by name. */
+      themes?: Record<string, unknown>;
+      setTheme?(name: string): void;
+      styleEl?: HTMLStyleElement | null;
+      extraStyleEls?: HTMLStyleElement[];
     };
     /** Renders `![[file]]` embeds and hover previews of non-markdown files, by extension. */
     embedRegistry?: EmbedRegistry;
@@ -78,9 +83,30 @@ declare module 'obsidian' {
     revealInFolder(file: TAbstractFile): void;
   }
 
+  interface MarkdownPostProcessorContext {
+    /** The renderer's sizer, inside the view, embed or hover popover it draws in; a section is post-processed before it is attached there. */
+    containerEl?: HTMLElement;
+  }
+
   interface MarkdownPreviewView {
     /** Knows which lines of the note a drawn element came from. */
     renderer?: { getSectionInfo(element: HTMLElement): { lineStart: number } | null };
+  }
+
+  interface TextFileView {
+    /** Set by a change, until the view's save (two seconds later, or asked for) has started. */
+    dirty?: boolean;
+    /** Whether a save of the view is being written to its file. */
+    readonly saving?: boolean;
+  }
+
+  interface Vault {
+    /** A setting of the vault's `app.json` or `appearance.json` (`accentColor`: a hex colour, `''` for the theme's own). */
+    getConfig?(key: string): unknown;
+    /** Writes a setting and applies it as Obsidian's own settings do (`accentColor` recolours every window). */
+    setConfig?(key: string, value: unknown): void;
+    /** A setting changed: written by `setConfig` or read from its file after another device's sync. */
+    on(name: 'config-changed', callback: (key: string) => unknown, ctx?: unknown): EventRef;
   }
 
   interface WorkspaceLeaf {

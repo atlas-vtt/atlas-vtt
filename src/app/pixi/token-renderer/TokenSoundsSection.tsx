@@ -35,12 +35,12 @@ function SoundRow({ sound, onVolumeChange, onPlay, onRemove }: SoundRowProps): R
         thumbLabels={[t('editToken.soundVolume', { name })]}
         getValueText={(percent) => `${percent}%`}
       />
-      <LabelTooltip label={t('editToken.playSound', { name })}>
+      <LabelTooltip label={t('audio.playTrack', { name })}>
         <Button variant="ghost" size="icon" className="atlas-edit-token__sound-button" onClick={onPlay}>
           <Play />
         </Button>
       </LabelTooltip>
-      <LabelTooltip label={t('editToken.removeSound', { name })}>
+      <LabelTooltip label={t('audio.remove', { name })}>
         <Button variant="ghost" size="icon" className="atlas-edit-token__sound-button" onClick={onRemove}>
           <X />
         </Button>

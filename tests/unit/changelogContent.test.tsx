@@ -15,20 +15,22 @@ afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 describe('release history accordion', () => {
   it('supports every update, feature updates only, and no automatic announcements', () => {
     const options = props(); render(<ChangelogContent {...options} />);
-    const enabled = screen.getByRole('checkbox', { name: 'Show changelog after updates' }) as HTMLInputElement;
-    const major = screen.getByRole('checkbox', { name: 'Feature updates only' }) as HTMLInputElement;
+    const enabled = screen.getByRole('switch', { name: 'Show changelog after updates' });
+    const major = screen.getByRole('switch', { name: 'Feature updates only' });
+    const on = (toggle: HTMLElement): boolean => toggle.getAttribute('aria-checked') === 'true';
+    const disabled = (toggle: HTMLElement): boolean => toggle.getAttribute('aria-disabled') === 'true';
     expect(major.getAttribute('aria-describedby')).toBeTruthy();
     expect(document.getElementById(major.getAttribute('aria-describedby')!)!.textContent).toMatch(/1\.2\.1/);
-    expect(enabled.checked).toBe(true);
-    expect(major.checked).toBe(false);
+    expect(on(enabled)).toBe(true);
+    expect(on(major)).toBe(false);
     fireEvent.click(major);
     expect(options.onMajorUpdatesChange).toHaveBeenCalledWith(true);
     fireEvent.click(enabled);
-    expect(major.disabled).toBe(true);
+    expect(disabled(major)).toBe(true);
     expect(options.onPreferenceChange).toHaveBeenCalledWith(false);
     fireEvent.click(enabled);
-    expect(major.disabled).toBe(false);
-    expect(major.checked).toBe(true);
+    expect(disabled(major)).toBe(false);
+    expect(on(major)).toBe(true);
   });
   it('opens the current entry, renders older notes on demand, and permits multiple expanded entries', async () => {
     const options = props();
@@ -68,7 +70,7 @@ describe('release history accordion', () => {
   });
   it('offers a labeled opt-out and a close action', () => {
     const options = props(); render(<ChangelogContent {...options} />);
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Show changelog after updates' }));
+    fireEvent.click(screen.getByRole('switch', { name: 'Show changelog after updates' }));
     expect(options.onPreferenceChange).toHaveBeenCalledWith(false);
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
     expect(options.onClose).toHaveBeenCalledOnce();

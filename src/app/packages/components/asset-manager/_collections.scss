@@ -6,39 +6,54 @@
 // Asset Manager – Collections picker
 // ═══════════════════════════════════════════════════════════════════════════
 
+$picker-row-height: 28px;
+// The widest the sidebar's collection list grows for a long name.
+$picker-max-width: 360px;
+
+// The sidebar's first row: the picker and the collection's ⋯ menu. It stands in the header's controls row, its
+// controls as tall as the search and Create there, so both halves of the window share one top edge and centre line.
 .atlas-asset-manager-sidebar .atlas-collections {
-  @include atlas-flex-col($gap: $spacing-s);
+  @include atlas-flex-row($gap: $spacing-s);
   position: relative;
   z-index: 100;
   flex-shrink: 0;
 
-  .atlas-collections-heading-row {
-    @include atlas-flex-row($gap: $spacing-s);
-    justify-content: space-between;
-    height: 24px;
+  .atlas-collection-dropdown {
+    flex: 1;
+    min-width: 0;
   }
 
-  .atlas-collections-heading-actions {
-    @include atlas-flex-row($gap: 2px);
+  .atlas-collection-dropdown-trigger {
+    height: $header-control-height;
+    // The control nearest the window's top-left corner, as Manage is at its bottom-left.
+    @include atlas-concentric-corner(top-left, $window-radius, $window-corner-inset);
   }
 
-  .atlas-collection-row {
-    @include atlas-flex-row($gap: $spacing-xs);
+  .atlas-collection-more-btn {
+    @include atlas-control-icon-button;
 
-    .atlas-collection-dropdown {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .atlas-collection-header-btn {
-      &.btn,
-      &.btn--icon {
-        width: $control-height;
-        height: $control-height;
-        border-radius: $radius-m;
-      }
+    &.btn,
+    &.btn--icon {
+      width: $header-control-height;
+      height: $header-control-height;
     }
   }
+
+  // The ⋯ menu hangs from the whole row, not from its button, so its edges are the picker's left and the button's right.
+  .atlas-am-menu-root {
+    position: static;
+  }
+
+  .atlas-am-menu {
+    left: 0;
+    right: 0;
+    min-width: 0;
+  }
+}
+
+// Floating, the sidebar is a card with corners of its own, not the window's.
+.atlas-asset-manager-sidebar.atlas-floating .atlas-collections .atlas-collection-dropdown-trigger {
+  border-top-left-radius: $radius-m;
 }
 
 .atlas-collection-dropdown {
@@ -51,6 +66,15 @@
 
 .atlas-collection-dropdown-trigger {
   @include atlas-select-trigger($control-height);
+  border-color: $am-control-border !important;
+
+  &:hover {
+    border-color: $am-control-border-hover !important;
+  }
+
+  &.atlas-open {
+    border-color: $am-control-border-focus !important;
+  }
 
   .atlas-collection-selected {
     flex: 1;
@@ -84,13 +108,33 @@
 
 .atlas-collection-dropdown-content {
   @include atlas-select-popover;
+  // The context menus' language: rows $spacing-xs inside the border, concentric with its corner.
+  @include atlas-panel-radius($surface-radius, $border-width-s);
+}
+
+// The sidebar's picker: portaled out of the sidebar, which clips, into the window's container, and placed under its
+// trigger (usePickerPlacement).
+// It grows to the longest name, from the trigger's width up to a cap; a name longer than that is cut and its row's
+// tooltip says it whole.
+.atlas-collection-dropdown-content--anchored {
+  top: var(--atlas-picker-top);
+  left: var(--atlas-picker-left);
+  right: auto;
+  width: max-content;
+  min-width: var(--atlas-picker-min-width);
+  max-width: min(#{$picker-max-width}, var(--atlas-picker-room));
+
+  // Measured in the frame it hangs in before it is shown.
+  &:not([data-placed]) {
+    visibility: hidden;
+  }
 }
 
 .atlas-collection-search {
   @include atlas-flex-row($gap: $spacing-s);
+  flex-shrink: 0;
   height: 36px;
   padding: 0 $spacing-m;
-  border-bottom: $border-width-s solid var(--divider-color);
 
   .atlas-collection-search-icon {
     width: $icon-xs;
@@ -120,12 +164,16 @@
 .atlas-collection-options {
   overflow-y: auto;
   flex: 1;
+  min-height: 0;
   padding: $spacing-xs;
-  @include atlas-flex-col($gap: 2px);
+  @include atlas-flex-col($gap: var(--size-2-1));
 }
 
 .atlas-collection-option {
-  @include atlas-select-option($control-height);
+  @include atlas-select-option($picker-row-height);
+  // A column that runs out of room would squeeze its rows instead of scrolling them.
+  flex-shrink: 0;
+  @include atlas-panel-inset-radius($spacing-xs);
 
   .atlas-collection-option-content {
     @include atlas-flex-row($gap: $spacing-s);
@@ -165,6 +213,11 @@
 .atlas-collection-no-results {
   padding: $spacing-m;
   text-align: center;
-  color: var(--text-faint);
+  color: var(--text-muted);
   font-size: $font-ui-small;
+}
+
+// The row the arrow keys are on: focus stays in the search field (aria-activedescendant).
+.atlas-collection-option.atlas-active {
+  background-color: var(--background-modifier-hover) !important;
 }

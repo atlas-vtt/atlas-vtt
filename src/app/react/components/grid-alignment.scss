@@ -26,7 +26,7 @@
 // ── Floating control panel ──────────────────────────────────────────────
 .atlas-grid-alignment-panel {
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
   @include atlas-flex-col($spacing-m);
   @include atlas-panel-padding;
 
@@ -100,7 +100,7 @@
 
 .atlas-grid-alignment-hint {
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
   @include atlas-flex-row($spacing-m);
   @include atlas-panel-padding;
 

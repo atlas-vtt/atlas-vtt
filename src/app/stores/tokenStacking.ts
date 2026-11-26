@@ -2,9 +2,21 @@ import type { TokenEntity } from '../types';
 import { linkLandings } from '../levels/levelLinks';
 import { floorBelow, type ArtFloors } from '../levels/levelSurfaces';
 import { resolveLevel, type SceneLevels } from '../levels/sceneLevels';
+import { aurasToTokenLevels } from '../measure/auraUpkeep';
+import type { KeptMeasure } from '../measure/measureTypes';
 import type { LevelLink, LevelSurface } from '../types/sceneLevelTypes';
 
 const layerOf = (token: TokenEntity): number => token.layer ?? 0;
+
+/**
+ * Each token's place in the pile, 0 at the bottom: by `layer`, tokens of one layer in the order the
+ * map lists them. A token's art and everything it shows around itself take this place, so a pile
+ * looks the same however its art arrived.
+ */
+export function pilePlaces(tokens: Readonly<Record<string, TokenEntity>>): Map<string, number> {
+  const pile = Object.values(tokens).sort((a, b) => layerOf(a) - layerOf(b));
+  return new Map(pile.map((token, place) => [token.id, place]));
+}
 
 /**
  * Puts the tokens on top of every other token of the map, in the order they lie in among
@@ -37,7 +49,13 @@ export interface TokenPlace {
 
 /** What putting tokens down writes: the tokens, and the flag that tells spatial audio a token moved; and the stairs and openings it reads. */
 export interface PlacedTokensState {
-  objects: { tokens: Record<string, TokenEntity>; levelLinks?: Record<string, LevelLink> | undefined; levelSurfaces?: Record<string, LevelSurface> | undefined };
+  objects: {
+    tokens: Record<string, TokenEntity>;
+    levelLinks?: Record<string, LevelLink> | undefined;
+    levelSurfaces?: Record<string, LevelSurface> | undefined;
+    /** A token that changes level takes its auras along. */
+    measures?: Record<string, KeptMeasure> | undefined;
+  };
   levels?: SceneLevels;
   _audioDirty: boolean;
 }
@@ -49,14 +67,16 @@ export interface PlacedTokensState {
  * write; where they offer several, it stays and the caller may offer the choice (`linkChoice`). A
  * token that ends where its level has no floor (an opening, or where the view draws its map
  * transparent: `art`, `floorBelow`) falls to the first level below that has, in the same write; over
- * a chasm it stays. Changes only what the scene saves and undoes (the tokens' places, order and
- * levels) and the audio flag; letting go of held tokens is pointer state, which `dropTokens` does.
+ * a chasm it stays. A token that changes level takes its auras along. Changes only what the scene
+ * saves and undoes (the tokens' places, order and levels, and their auras' levels) and the audio
+ * flag; letting go of held tokens is pointer state, which `dropTokens` does.
  * Tokens not listed keep their objects. Changes `state` in place (a store draft); returns nothing,
  * so a recipe may hand its call on.
  */
 export function placeTokens(state: PlacedTokensState, positions: readonly TokenPlace[], art?: ArtFloors): void {
   const { tokens } = state.objects;
   const landings = linkLandings(state, positions);
+  const levelsBefore = positions.map(({ id }) => tokens[id]?.level);
   for (const { id, x, y, rotation } of positions) {
     const token = tokens[id];
     if (token) {
@@ -75,6 +95,8 @@ export function placeTokens(state: PlacedTokensState, positions: readonly TokenP
     const below = token && from !== null ? floorBelow(state, from, { x, y }, art) : null;
     if (token && below !== null) token.level = below;
   }
+  const climbed = positions.filter(({ id }, index) => tokens[id]?.level !== levelsBefore[index]).map(({ id }) => id);
+  if (climbed.length > 0) aurasToTokenLevels(state.objects, climbed);
   raiseTokens(tokens, positions.map(({ id }) => id));
   state._audioDirty = true;
 }

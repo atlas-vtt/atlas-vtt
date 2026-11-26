@@ -1,4 +1,4 @@
-import { field, type Http } from './http.ts';
+import { field, type Http } from '../../../account/http.ts';
 
 /** The signed-in account as the dock names it. */
 export interface AccountInfo {
@@ -87,15 +87,5 @@ export class RelayAccount {
     } catch {
       return { status: 0, json: null };
     }
-  }
-}
-
-/** Signs a token out at the account service; whether it answered (the token is forgotten either way). */
-export async function signOutToken(http: Http, origin: string, token: string): Promise<boolean> {
-  try {
-    const response = await http({ url: `${origin}/auth/sign-out`, method: 'POST', authorization: `Bearer ${token}` });
-    return response.status === 200;
-  } catch {
-    return false;
   }
 }

@@ -1,3 +1,5 @@
+@use '../../../../../styles/tokens' as *;
+
 // Token portrait: circular art inset 5% under the ring image, matching the
 // canvas ring-to-token ratio (78:70).
 .atlas-token-portrait {
@@ -6,9 +8,11 @@
 }
 
 .atlas-token-ring {
-  // Declared here, not inline: the ring is a 230 KB data URI, which every card
+  // Declared here, not inline: the ring is a 75 KB data URI, which every card
   // that set it inline made the browser parse again (#137).
-  --atlas-token-ring-image: url('../../../assets/token-ring.webp');
+  // The canvas' ring at half its size: no portrait is wider than 256 px (an asset
+  // card in a one-column grid), and the 1024 px ring would be inlined here a second time.
+  --atlas-token-ring-image: url('../../../assets/token-ring-small.webp');
   position: absolute;
   inset: 0;
   // Multiplying the ring image with a colour reproduces the canvas sprite
@@ -24,7 +28,7 @@
   inset: 5%;
   border-radius: 50%;
   overflow: hidden;
-  box-shadow: 0 2px 6px color-mix(in oklch, var(--mono-0) 35%, transparent);
+  box-shadow: 0 2px 6px color-mix(in oklch, #{$shadow-color} 35%, transparent);
 
   img {
     display: block;

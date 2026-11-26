@@ -40,6 +40,14 @@
   align-content: start;
 }
 
+// Room for one column only: it keeps a tile's width rather than stretch into a bar, its heading with it.
+@container atlas-sound-moods (max-width: #{2 * 190px + $card-inset - 1px}) {
+  .atlas-sound-moods__head,
+  .atlas-sound-moods__grid {
+    max-width: $sound-mood-tile-max;
+  }
+}
+
 .atlas-sound-mood {
   --atlas-sound-tone: var(--atlas-sound-tone-light);
   position: relative;
@@ -52,6 +60,12 @@
   &[data-dragging] {
     opacity: 0.6;
   }
+}
+
+// A tile while the moods are read: the tile's own corner, filling its cell of the grid.
+.atlas-sound-mood__wait {
+  height: 100%;
+  border-radius: $card-radius;
 }
 
 .atlas-sound-mood__press {
@@ -71,7 +85,8 @@
   background: var(--background-primary-alt);
   text-align: start;
   white-space: normal;
-  touch-action: none;
+  // A finger scrolls the moods by their tiles; one that rests lifts the tile (`useListDrag`'s `restBeforeDrag`).
+  touch-action: pan-y;
   transition: background-color $transition-normal $press-ease, transform $press-ms $press-ease;
   @include pressable(0.985);
 
@@ -93,6 +108,11 @@
 
 .atlas-sound-mood__press:hover .atlas-sound-mood__crest {
   opacity: 0.2;
+}
+
+// The thumbnail's place while it is read: the shape it rises in from the tile's right edge.
+.atlas-sound-mood__scene-wait {
+  mask-image: linear-gradient(to right, transparent 45%, rgba(0, 0, 0, 0.35) 72%, #000 100%);
 }
 
 // A linked scene's thumbnail: it rises from the tile's right edge, so the name and its lines keep the
@@ -287,7 +307,6 @@
   border-radius: $cap-radius;
   background: var(--background-primary-alt);
   color: var(--text-normal);
-  @include atlas-corner-shape;
 
   &[data-players='nowhere'] svg {
     color: var(--text-warning);

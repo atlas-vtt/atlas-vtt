@@ -1,0 +1,25 @@
+import type { Translation } from '../../types';
+
+export const playerBar: Translation = {
+  'playerBar.bar': '玩家窗口',
+  'playerBar.fullScreen': '在电视上全屏',
+  'playerBar.fullScreenHint': '让玩家窗口铺满你的第二块屏幕',
+  'playerBar.leaveFullScreen': '退出全屏',
+  'playerBar.connectScreen': '连接第二块屏幕',
+  'playerBar.curtainDown': '隐藏地图',
+  'playerBar.curtainUp': '显露地图',
+  'playerBar.toggleCurtain': '在玩家窗口上隐藏或显露地图',
+  'playerBar.playersSee': '游戏桌设置',
+  'playerBar.close': '关闭玩家窗口',
+  'playerBar.freeze': '暂停玩家视图',
+  'playerBar.unfreeze': '继续：玩家视图重新跟随你',
+  'playerBar.freezeTrueScale': '开启 TrueScale 时，把玩家固定在你地图上的画框中',
+  'playerBar.takeBack': '收回资料',
+  'playerBar.openHint': '同时在桌边的屏幕上显示当前展示的场景',
+  'playerBar.freezeOnline': '暂停期间，在线玩家无法移动自己的棋子',
+  'playerBar.playMode': '游戏模式',
+  'playerBar.modeTable': '棋子控制',
+  'playerBar.modeRemote': '遥控',
+  'playerBar.modeTableHint': '每位玩家在自己的地图上移动自己的棋子',
+  'playerBar.modeRemoteHint': '手机作为共享屏幕的遥控器',
+};

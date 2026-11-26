@@ -1,11 +1,12 @@
 @use '../../../../../styles/tokens' as *;
 @use '../../../../../styles/mixins' as *;
+@use 'variables' as *;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Asset Manager – Modals (Move, Create Scene, Base)
 // ═══════════════════════════════════════════════════════════════════════════
 
-// ── Move to Collection Modal ────────────────────────────────────────────────
+// ── Move to folder, Move or Copy to collection, New folder (`PickerDialog`) ──
 
 .atlas-asset-manager-move-modal {
   @include atlas-modal-overlay;
@@ -15,8 +16,6 @@
 .atlas-asset-manager-move-container {
   @include atlas-modal-window;
   width: 420px;
-  // Let the folder dropdown extend beyond the dialog's footer.
-  overflow: visible;
 }
 
 .atlas-asset-manager-move-header {
@@ -25,11 +24,12 @@
 
 .atlas-asset-manager-move-body {
   @include atlas-modal-body;
-  overflow: visible;
 }
 
 .atlas-asset-manager-move-info {
   @include atlas-help-text;
+  @include am-hint-text;
+  margin: 0;
 }
 
 .atlas-asset-manager-move-label {
@@ -42,34 +42,30 @@
 
 .atlas-asset-manager-move-collections {
   @include atlas-flex-col($gap: $spacing-s);
-  position: relative;
 }
 
 .atlas-move-folder-list {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(100% + #{$spacing-xs});
+  // In the dialog's flow, under its field: the dialog grows to hold it and nothing hangs past its edge; a long list
+  // scrolls inside its cap. Rows $spacing-xs inside its border, concentric with its corner.
+  flex-shrink: 0;
   max-height: 220px;
   overflow-y: auto;
-  z-index: 10;
   padding: $spacing-xs;
-  @include atlas-flex-col($gap: 2px);
-  background: var(--menu-background);
-  border: var(--menu-border-width, #{$border-width-s}) solid var(--menu-border-color);
-  border-radius: $radius-xl;
-  box-shadow: var(--menu-shadow, #{$shadow-md});
-  transform-origin: top left;
-  transition: opacity 150ms $transition-ease-out, transform 150ms $transition-ease-out;
+  @include atlas-flex-col($gap: 0);
+  background: var(--background-primary);
+  border: $border-width-s solid var(--background-modifier-border);
+  border-radius: calc(#{$radius-m} + #{$spacing-xs} + #{$border-width-s});
+  transition: opacity 150ms $transition-ease-out;
 
   @starting-style {
     opacity: 0;
-    transform: scale(0.96);
   }
 }
 
 .atlas-move-folder-item {
   @include atlas-flex-row;
+  // Rows keep their height in a list longer than its cap, which scrolls instead of squeezing them (18 collections).
+  flex-shrink: 0;
   height: var(--input-height);
   padding: 0 $spacing-s;
   border-radius: $radius-m;
@@ -87,7 +83,7 @@
 
   &.is-selected {
     background-color: color-mix(in oklch, var(--interactive-accent) 14%, transparent);
-    color: var(--text-accent);
+    @include atlas-accent-text;
   }
 
   .atlas-move-folder-check {
@@ -95,15 +91,46 @@
     flex-shrink: 0;
   }
 
+  // A subfolder stands one step in from its parent, so nested folders with long names stay apart.
+  padding-left: calc(#{$spacing-s} + var(--atlas-move-folder-depth, 0) * #{$spacing-l});
+
   span {
     @include atlas-truncate;
     flex: 1;
     min-width: 0;
   }
 
+  // While a search narrows the list: the folders this one lies in, after its name, giving way first.
+  .atlas-move-folder-parent {
+    flex: 0 1000 auto;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+  }
+
+  .atlas-move-folder-name {
+    flex: 0 1 auto;
+  }
+
+  // The folder the items are in: said whole however long the name before it is, which gives way instead.
+  .atlas-move-folder-current {
+    flex: 0 0 auto;
+    overflow: visible;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+  }
+
   svg {
     flex-shrink: 0;
   }
+}
+
+// The search left no row (Move or Copy to collection…): said in the list, in a row's place and height.
+.atlas-move-folder-empty {
+  @include atlas-flex-row;
+  height: var(--input-height);
+  padding: 0 $spacing-s;
+  color: var(--text-muted);
+  font-size: $font-ui-small;
 }
 
 .atlas-asset-manager-move-footer {
@@ -163,4 +190,29 @@
 
 .atlas-modal-footer {
   @include atlas-modal-footer;
+}
+
+// The folder row the arrow keys are on: focus stays in the search field (aria-activedescendant).
+.atlas-move-folder-item.atlas-active:not(.is-selected) {
+  background-color: var(--background-modifier-hover);
+}
+
+// The Move dialog's first folder, made in place (decision #28): the button sits at the field's start, the name field
+// and its Create button share a row.
+.atlas-move-new-folder {
+  align-self: flex-start;
+
+  // Its icon starts on the field's text edge above it: the field's padding and border (`atlas-text-input`).
+  &.btn {
+    padding-inline-start: calc(#{$spacing-s} + #{$border-width-s});
+  }
+}
+
+.atlas-move-new-folder-row {
+  @include atlas-flex-row;
+
+  .atlas-asset-manager-move-input {
+    flex: 1;
+    min-width: 0;
+  }
 }

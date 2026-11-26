@@ -1,4 +1,5 @@
 @use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
 
 // One menu row high, its text on the rows' edge: label left, − number + right.
 .atlas-loot-give-quantity {
@@ -29,6 +30,8 @@
   box-shadow: none;
   color: var(--text-muted);
   cursor: pointer;
+  // The step stays as small as the row's icons; under a finger it takes a target's hit area.
+  @include atlas-coarse-hit;
 
   &:hover:not(:disabled) {
     background: var(--background-modifier-hover);

@@ -1,6 +1,6 @@
 import { Container, Graphics } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
-import type { EventEmitter } from 'events';
+import type { EventEmitter } from '../../utils/typedEmitter';
 import type { NotePin } from '../../types';
 import type { ViewAtlasState, ViewAtlasStore } from '../../storeFactory';
 import { axialToPixel, hexCellExtent, hexVertices, pixelToAxial } from '../../grid/hexGeometry';

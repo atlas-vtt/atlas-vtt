@@ -1,5 +1,6 @@
 import { TFile, type App } from 'obsidian';
 import type { SoundRegistry } from './SoundRegistry';
+import { resumeOnGesture } from '../sound/engine/audioUnlock';
 
 /**
  * Lazy audio buffer cache. Decodes audio files on first use and caches
@@ -63,7 +64,10 @@ export class AudioBufferCache {
       arrayBuffer = await this.app.vault.readBinary(file);
     }
 
-    this.audioContext ??= this.createContext();
+    if (!this.audioContext) {
+      this.audioContext = this.createContext();
+      resumeOnGesture(this.audioContext);
+    }
     return this.audioContext.decodeAudioData(arrayBuffer);
   }
 

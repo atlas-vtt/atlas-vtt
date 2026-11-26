@@ -1,0 +1,26 @@
+import type { Translation } from '../../types';
+
+export const snapshots: Translation = {
+  'snapshots.deleteBody': 'Der Schnappschuss wird von dieser Karte entfernt. Die Karte selbst ändert sich nicht.',
+  'snapshots.deleteFailed': 'Der Schnappschuss konnte nicht gelöscht werden',
+  'snapshots.deleteTitle': '„{name}“ löschen?',
+  'snapshots.empty': 'Noch keine Schnappschüsse. Speichere die Karte so, wie sie jetzt ist, um sie später auf diesen Stand zurückzusetzen, etwa bevor ein Encounter beginnt.',
+  'snapshots.name': 'Name des Schnappschusses',
+  'snapshots.new': 'Neuer Schnappschuss',
+  'snapshots.overwriteBody': 'Der Schnappschuss wird durch die Karte in ihrem jetzigen Zustand ersetzt. Sein bisheriger Stand geht verloren.',
+  'snapshots.overwriteFailed': 'Der Schnappschuss konnte nicht überschrieben werden',
+  'snapshots.overwriteTitle': '„{name}“ überschreiben?',
+  'snapshots.overwriteWithCurrent': 'Mit aktueller Karte überschreiben',
+  'snapshots.renameFailed': 'Der Schnappschuss konnte nicht umbenannt werden',
+  'snapshots.renameNamed': '{name} umbenennen',
+  'snapshots.restoreBody': 'Tokens, Pins, Nebel, Zeichnungen, Initiative und alles andere auf dieser Karte kehren zu ihrem Stand in diesem Schnappschuss zurück.',
+  'snapshots.restoreFailed': 'Der Schnappschuss konnte nicht wiederhergestellt werden',
+  'snapshots.restoreNamed': '{name} wiederherstellen',
+  'snapshots.restoreTitle': '„{name}“ wiederherstellen?',
+  'snapshots.restoreWarning': 'Änderungen seitdem gehen verloren und lassen sich nicht rückgängig machen. Speichere zuerst einen Schnappschuss, um sie zu behalten.',
+  'snapshots.restored': '„{name}“ wiederhergestellt',
+  'snapshots.saveFailed': 'Der Schnappschuss konnte nicht gespeichert werden',
+  'snapshots.savedAt': 'Gespeichert {date}',
+  'snapshots.updatedAt': 'Aktualisiert {date}',
+  'snapshots.defaultName': 'Schnappschuss',
+};

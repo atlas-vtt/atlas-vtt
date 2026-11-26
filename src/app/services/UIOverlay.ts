@@ -1,7 +1,7 @@
 import { App } from 'obsidian';
 import type { Application } from 'pixi.js';
 import { mountUI, unmountUI } from '../react/index';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../utils/typedEmitter';
 import type { ViewAtlasStore } from '../storeFactory';
 import type { AtlasView } from '../atlas-view';
 import { createUILayers } from './uiLayers';

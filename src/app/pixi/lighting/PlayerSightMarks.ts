@@ -4,6 +4,7 @@ import { canvasBadgeColors, type CanvasBadgeColors } from '../utils/canvasBadgeC
 import { destroyTree } from '../utils/destroyTree';
 import { createLucideIconTexture } from '../utils/lucideIconTexture';
 import type { SightMark } from './sightMarks';
+import { batched } from '../utils/batchedGraphics';
 
 /** UI units (a medium token on a 70 px grid is 62 across): a small badge on the token's edge. */
 const SIGHT_MARK_RADIUS = 11;
@@ -28,20 +29,29 @@ interface Badge {
  * The GM's marks on tokens the players do not see now: a small badge in the pins' language on
  * the token's edge, an eye struck through for a token they do not perceive, a dashed circle for
  * one they only sense (its outline is all they get). The badges take the theme's colours and
- * scale like token UI. Every eye is a sprite of one white texture, tinted in the theme's ink,
- * made on first use and destroyed with the marks. Part of the GM's sight aids (`GmSightAids`).
+ * grow with their token, like its resize and rotate buttons. Every eye is a sprite of one white
+ * texture, tinted in the theme's ink, made on first use and destroyed with the marks. Part of
+ * the GM's sight aids (`GmSightAids`).
  */
 export class PlayerSightMarks {
   readonly view = new Container({ label: 'player-sight-marks', eventMode: 'none', interactiveChildren: false });
   private readonly badges = new Map<string, Badge>();
   private eye: Promise<Texture> | null = null;
 
-  /** Shows exactly `marks`, each badge `scale` world units per UI unit. */
-  sync(marks: readonly SightMark[], scale: number): void {
+  /**
+   * Shows exactly `marks`, each badge at its mark's scale. A badge whose token loses its mark is kept,
+   * transparent, while the token is on the map (`onMap`): tokens step in and out of the players' sight
+   * at every step of a drag, and a badge added or taken away makes PIXI pack every badge again.
+   */
+  sync(marks: readonly SightMark[], onMap: (tokenId: string) => boolean = () => false): void {
     const colors = canvasBadgeColors();
     const wanted = new Set(marks.map((mark) => mark.tokenId));
     for (const [id, badge] of this.badges) {
       if (wanted.has(id)) continue;
+      if (onMap(id)) {
+        badge.view.alpha = 0;
+        continue;
+      }
       destroyTree(badge.view);
       this.badges.delete(id);
     }
@@ -56,15 +66,16 @@ export class PlayerSightMarks {
         badge = { view: this.view.addChild(this.drawBadge(mark.kind, colors)), kind: mark.kind, background: colors.background };
         this.badges.set(mark.tokenId, badge);
       }
+      badge.view.alpha = 1;
       badge.view.position.set(mark.x, mark.y);
-      badge.view.scale.set(scale);
+      badge.view.scale.set(mark.scale);
     }
     this.view.visible = marks.length > 0;
   }
 
   /** The tokens marked now, with the kind of each mark. */
   shown(): Array<[string, SightMark['kind']]> {
-    return [...this.badges].map(([id, badge]) => [id, badge.kind]);
+    return [...this.badges].filter(([, badge]) => badge.view.alpha > 0).map(([id, badge]) => [id, badge.kind]);
   }
 
   destroy(): void {
@@ -76,7 +87,7 @@ export class PlayerSightMarks {
 
   private drawBadge(kind: SightMark['kind'], colors: CanvasBadgeColors): Container {
     const view = new Container();
-    const badge = view.addChild(new Graphics());
+    const badge = view.addChild(batched(new Graphics()));
     badge.scale.set(1 / DRAW_SCALE);
     const radius = SIGHT_MARK_RADIUS * DRAW_SCALE;
     // A dark hairline keeps the badge's edge on a map as light as the badge.

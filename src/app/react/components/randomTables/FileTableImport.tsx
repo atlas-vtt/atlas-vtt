@@ -1,8 +1,10 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { Button } from '../../../packages/components/primitives/button';
 import { SegmentedControl } from '../../../packages/components/primitives/SegmentedControl';
+import { ToggleLabel } from '../../../packages/components/primitives/Toggle';
 import { ProgressStatus } from '../../../packages/components/primitives/ProgressStatus';
 import { TABLE_FILE_ACCEPT } from '../../../randomTables/import/importFile';
+import { fileInputAccept } from '../../../platform/fileInputAccept';
 import { IMPORT_LIMITS } from '../../../randomTables/import/importModel';
 import { tablesOfNote } from '../../../randomTables/noteTables';
 import { tableNoteText } from '../../../randomTables/tableMarkdown';
@@ -29,7 +31,7 @@ export function FileTableImport({ folder, ...actions }: FileImportActions & { fo
   return <>
     <div className="atlas-paste-table__body atlas-file-tables__body">
       <div className="atlas-paste-table__input atlas-file-tables__input">
-        <input ref={fileInput} type="file" className="atlas-file-tables__file" accept={TABLE_FILE_ACCEPT} aria-label={t('tables.import.chooseFile')} disabled={locked}
+        <input ref={fileInput} type="file" className="atlas-file-tables__file" accept={fileInputAccept(TABLE_FILE_ACCEPT)} aria-label={t('tables.import.chooseFile')} disabled={locked}
           onChange={(event) => {
             const file = event.target.files?.[0];
             event.target.value = '';
@@ -71,10 +73,8 @@ export function FileTableImport({ folder, ...actions }: FileImportActions & { fo
             <SegmentedControl<RandomTableKind> value={active.kind} options={KINDS} ariaLabel={t('tables.paste.kind')} disabled={locked} onChange={(kind) => state.update(active.id, { kind })} />
           </div>
           {active.name.trim() === '' && <p className="atlas-file-tables__hint">{t('tables.import.nameRequired')}</p>}
-          {active.headerlessTable && <label className="atlas-file-tables__header-check">
-            <input type="checkbox" checked={active.usesHeader} disabled={locked} onChange={(event) => state.update(active.id, { usesHeader: event.target.checked })} />
-            {t('tables.import.headerRow')}
-          </label>}
+          {active.headerlessTable && <ToggleLabel label={t('tables.import.headerRow')} value={active.usesHeader} disabled={locked}
+            onChange={() => state.update(active.id, { usesHeader: !active.usesHeader })} />}
           <TablePreview table={preview} />
         </> : <p className="atlas-paste-table__empty">{t('tables.import.empty')}</p>}
       </div>

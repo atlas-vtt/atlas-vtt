@@ -64,7 +64,7 @@ function setup(initialInputOpen = true) {
 }
 
 function clickWithMouseDown(element: Element) {
-  fireEvent.mouseDown(element);
+  fireEvent.pointerDown(element);
   fireEvent.mouseUp(element);
   fireEvent.click(element);
 }
@@ -75,6 +75,16 @@ it('lets the collection input receive focus and clicks without dismissing the ma
   await waitFor(() => expect(document.activeElement).toBe(input));
   clickWithMouseDown(input);
   expect(onClose).not.toHaveBeenCalled();
+});
+
+it('names its field by the dialog title and ties an error to it', async () => {
+  setup();
+  const input = screen.getByRole('textbox', { name: 'Create New Collection' });
+  fireEvent.change(input, { target: { value: '   ' } });
+  fireEvent.keyDown(input, { key: 'Enter' });
+  const error = screen.getByRole('alert');
+  expect(input.getAttribute('aria-invalid')).toBe('true');
+  expect(input.getAttribute('aria-describedby')).toBe(error.id);
 });
 
 it.each(['Cancel', 'Close'])('%s dismisses only the collection dialog', async (name) => {
@@ -108,7 +118,7 @@ it('backdrop clicks dismiss only the child dialog and outside clicks work afterw
   clickWithMouseDown(screen.getByRole('textbox').closest('.atlas-modal-overlay')!);
   expect(onClose).not.toHaveBeenCalled();
   await waitFor(() => expect(screen.queryByRole('textbox')).toBeNull());
-  fireEvent.mouseDown(document.body);
+  fireEvent.pointerDown(document.body);
   expect(onClose).toHaveBeenCalledTimes(1);
 });
 
@@ -131,6 +141,6 @@ it.each([
   expect(onClose).not.toHaveBeenCalled();
   expect(screen.queryByText('Delete item')).toBeNull();
 
-  fireEvent.mouseDown(document.body);
+  fireEvent.pointerDown(document.body);
   expect(onClose).toHaveBeenCalledTimes(1);
 });

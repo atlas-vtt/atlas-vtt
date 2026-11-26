@@ -34,6 +34,11 @@ export function polygonBox(polygon: Polygon): Box {
   return box;
 }
 
+/** Notes `box` as the box around `polygon`, worked out where its points were made (the same as `polygonBox` would make). */
+export function knownPolygonBox(polygon: Polygon, box: Box): void {
+  polygonBoxes.set(polygon, box);
+}
+
 export function inBox(point: Point, box: Box): boolean {
   return point.x >= box.minX && point.x <= box.maxX && point.y >= box.minY && point.y <= box.maxY;
 }

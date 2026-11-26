@@ -4,6 +4,7 @@
  */
 
 import type { RecoveryButton } from '../../recovery/recoveryTypes';
+import type { ArmariumProvenance } from '../../types/armariumProvenance';
 
 export const TEMPLATE_FORMAT = 'atlas-statblock-template';
 export const TEMPLATE_VERSION = 1;
@@ -55,6 +56,8 @@ export interface StatblockTemplate {
   source?: TemplateSource;
   /** The FS layout it was imported from, and layout-level keys Atlas does not model. Code-bearing keys among the extras are code. */
   importedFrom?: { layoutId: string; layoutName: string; extras?: Record<string, unknown> };
+  /** The Armarium listing it was installed from; never exported, never part of its fingerprint, dropped from copies. */
+  armarium?: ArmariumProvenance;
 }
 
 export type FieldType =
@@ -79,13 +82,14 @@ export const FIELD_TYPES: readonly FieldType[] = [
 /**
  * What Atlas uses a field for when its key is not the conventional one. `display-name`: the name the header shows
  * where the statblock has one ("Aranea"), while `name` stays the statblock's identity ("Aranea (Cairn)").
+ * `speed`: how far the creature moves ("30 ft., fly 60 ft."), read with `statblockSpeeds`.
  */
 export type FieldMeaning =
   | 'hit-points' | 'armor' | 'rating' | 'size' | 'creature-type' | 'senses' | 'initiative' | 'traits' | 'description'
-  | 'display-name';
+  | 'display-name' | 'speed';
 
 export const FIELD_MEANINGS: readonly FieldMeaning[] = [
-  'hit-points', 'armor', 'rating', 'size', 'creature-type', 'senses', 'initiative', 'traits', 'description', 'display-name',
+  'hit-points', 'armor', 'rating', 'size', 'creature-type', 'senses', 'initiative', 'traits', 'description', 'display-name', 'speed',
 ];
 
 /**

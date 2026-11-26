@@ -1,7 +1,8 @@
-import type { EventEmitter } from 'events';
+import type { EventEmitter } from '../../utils/typedEmitter';
 import type { App } from 'obsidian';
 import { bindHoldHotkey } from '../../keyboard/holdHotkey';
 import { DEFAULT_MAP_HOTKEYS } from '../../keyboard/mapHotkeys';
+import { LIGHTING_PEEK_EVENT } from '../../lighting/lightingPeek';
 import { SettingsService } from '../../services/SettingsService';
 import { onLeavingView } from '../viewLeaving';
 
@@ -13,7 +14,7 @@ export interface LightingSceneEvents {
   resetExplored: () => void;
   /** The GM asked to mark the whole map as explored. */
   revealExplored: () => void;
-  /** The key that shows the players' lighting (`lightingPeek`) was pressed or let go. */
+  /** The key that shows the players' lighting (`lightingPeek`), or the toolbar's button for it, was pressed or let go. */
   peek: (held: boolean) => void;
   /** Ends whatever is being edited: a drag, a zone half drawn, a stroke, an open popover. */
   stopEditing: () => void;
@@ -35,6 +36,10 @@ export function listenToLightingSceneEvents({ eventBus, obsApp, viewId, resetExp
     eventBus.on(event, handler);
     cleanups.push(() => eventBus.off(event, handler));
   };
+  // The toolbar's hold button, which a finger has in the key's place (`PeekButton`).
+  const peekButton = (held: unknown): void => peek(held === true);
+  eventBus.on(LIGHTING_PEEK_EVENT, peekButton);
+  cleanups.push(() => eventBus.off(LIGHTING_PEEK_EVENT, peekButton));
   on('lighting-reset-explored', resetExplored);
   on('lighting-reveal-explored', revealExplored);
   on('map-unloading', beforeMapUnload);

@@ -1,4 +1,5 @@
 import { Color, Shader, UniformGroup } from 'pixi.js';
+import { HIGHP } from '../lighting/engine/gpu';
 
 const vertex = `
 in vec2 aPosition;
@@ -68,7 +69,8 @@ export interface LaserBeamShader {
 
 /**
  * Shader for the laser beam's capsules (`laserBeamGeometry.ts`). Atlas renders with WebGL, so it
- * ships a GLSL program only.
+ * ships a GLSL program only. Its distances are in world units, so it asks for highp: Mesa on AMD
+ * runs PIXI's default mediump as 16-bit floats, which drew the beam in blocks of several pixels.
  */
 export function createLaserBeamShader(): LaserBeamShader {
   const laserUniforms = new UniformGroup({
@@ -80,7 +82,7 @@ export function createLaserBeamShader(): LaserBeamShader {
   });
   const { uniforms } = laserUniforms;
   return {
-    shader: Shader.from({ gl: { vertex, fragment, name: 'atlas-laser-beam' }, resources: { laserUniforms } }),
+    shader: Shader.from({ gl: { vertex, fragment, name: 'atlas-laser-beam', preferredFragmentPrecision: HIGHP }, resources: { laserUniforms } }),
     update(color, pointer, radius, bodyShare): void {
       const rgb = new Color(color);
       uniforms.uLaserColor.set([rgb.red, rgb.green, rgb.blue]);

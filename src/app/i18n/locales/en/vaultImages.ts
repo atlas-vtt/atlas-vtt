@@ -1,5 +1,5 @@
 export const vaultImages = {
-  'vaultImages.source': 'From vault',
+  'vaultImages.source': 'Choose from vault…',
   'vaultImages.hint': 'Add images already in your vault to the same preview cards as uploaded images. Your files stay where they are.',
   'vaultImages.intro.token': 'Choose images from your vault to make tokens of. Crop, ring and name them in the preview cards.',
   'vaultImages.intro.map': 'Choose images from your vault to make maps of. Name them in the preview cards.',

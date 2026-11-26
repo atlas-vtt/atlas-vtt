@@ -42,7 +42,6 @@
   }
 
   .atlas-sb-templates__more.btn--icon {
-    @include atlas-corner-shape;
     flex-shrink: 0;
     width: $button-height-s;
     height: $button-height-s;

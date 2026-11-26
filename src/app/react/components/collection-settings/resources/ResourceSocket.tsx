@@ -2,6 +2,7 @@ import React from 'react';
 import { Plus } from 'lucide-react';
 import { cn } from '../../../../../utils/cn';
 import { t } from '../../../../i18n';
+import { releaseImplicitCapture } from '../../../../utils/pointerDrag';
 import type { ResourceDefinition } from '../../../../resources/resourceTypes';
 import { isComplete, SOCKET_SIZE, type SocketPlace } from './resourceSockets';
 
@@ -58,7 +59,11 @@ export function ResourceSocket({ place, resource, selected, lifted, dropTarget, 
       aria-invalid={resource && !isComplete(resource) ? true : undefined}
       onClick={onSelect}
       // The primary button only; a right or middle press drags nothing
-      onPointerDown={(event) => { if (resource && !(event.button > 0)) onPress(); }}
+      onPointerDown={(event) => {
+        if (!resource || event.button > 0) return;
+        releaseImplicitCapture(event);
+        onPress();
+      }}
       onPointerEnter={onEnter}
     >
       <span className="atlas-csm-socket__shape">

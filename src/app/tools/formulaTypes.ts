@@ -21,7 +21,8 @@ export const FORMULA_LIMITS = {
   total: 1_000_000_000,
 } as const;
 
-export type FormulaErrorCode = 'syntax' | 'length' | 'terms' | 'dice' | 'faces' | 'depth' | 'modifier' | 'total';
+/** `advantage`: a side written into the formula (`1d20 adv`) that its dice set has no rule for, or a roll without the set's dice. */
+export type FormulaErrorCode = 'syntax' | 'length' | 'terms' | 'dice' | 'faces' | 'depth' | 'modifier' | 'total' | 'advantage';
 export interface FormulaError { readonly ok: false; readonly code: FormulaErrorCode }
 
 /** Rolls a die again while it shows a face that meets `when`, at most `limit` times. */

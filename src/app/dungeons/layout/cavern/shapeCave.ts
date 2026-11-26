@@ -38,7 +38,7 @@ export interface ShapedCaves {
 /** A hub: three doors or more, where passages meet and a chamber grows largest. */
 const HUB_DOORS = 3;
 
-const lerp = (range: readonly [number, number], t: number): number => range[0] + (range[1] - range[0]) * t;
+const lerpRange = (range: readonly [number, number], t: number): number => range[0] + (range[1] - range[0]) * t;
 
 function shapeChambers(seed: number, index: number, shaping: CaveShaping, faults: readonly number[], floor: PlannedFloor, grid: CaveGrid, lane: ReadonlySet<string>): Map<DungeonRoom, ChamberField> {
   const fields = new Map<DungeonRoom, ChamberField>();
@@ -48,10 +48,10 @@ function shapeChambers(seed: number, index: number, shaping: CaveShaping, faults
     const rng = floorStream(seed, 'cave', index, `chamber:${room.id}`);
     const doors = floor.doors.filter((door) => door.from === room.id || door.to === room.id).length;
     const roll = rng();
-    const fill = doors >= HUB_DOORS || room === largest ? shaping.fill[1] : lerp(shaping.fill, roll);
+    const fill = doors >= HUB_DOORS || room === largest ? shaping.fill[1] : lerpRange(shaping.fill, roll);
     const { seeds, whole } = chamberSeeds(grid, room, lane);
     if (!whole) console.debug(`[Atlas] cave floor ${index} of seed ${seed}: chamber ${room.id} could not be joined round its stairwells`);
-    fields.set(room, growChamber(rng, grid, room, seeds, { gamma: lerp(shaping.gamma, rng()), stretch: shaping.stretch, fill, faults }));
+    fields.set(room, growChamber(rng, grid, room, seeds, { gamma: lerpRange(shaping.gamma, rng()), stretch: shaping.stretch, fill, faults }));
     smoothChamber(grid, room, new Set(seeds.map((c) => cellKey(c.x, c.y))), rng() < 0.5 ? 1 : 2);
   }
   return fields;

@@ -86,7 +86,7 @@ export function listSegments<T>(items: readonly T[], shape: ListShape<T>): ListS
 }
 
 /**
- * The first `count` combatants of a list, as a collapsed tracker shows them: the groups they
+ * The first `count` combatants of a list, as a players' list cut to its most cards shows them: the groups they
  * belong to and a divider they pass. Those that delayed their turn are not next and stay out. The
  * side whose turn it is stays even with nobody in it (a GM may track only the opponents), so the
  * turn still shows.

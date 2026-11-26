@@ -1,5 +1,5 @@
 import { GM_LEVEL, isRecord, levelIn } from '../protocol/index.ts';
-import type { Http } from './account/http.ts';
+import type { Http } from '../../account/http.ts';
 import { readCreated, type CreatedTable } from './createdTable.ts';
 import { t } from '../../i18n';
 

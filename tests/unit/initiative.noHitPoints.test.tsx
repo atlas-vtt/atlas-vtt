@@ -10,6 +10,7 @@ const state = vi.hoisted(() => ({
   initiative: { entries: [] as unknown[], isActive: false, round: 0 },
   objects: { tokens: {} as Record<string, unknown> },
   tokenSettings: { showInstanceBadges: true },
+  selectedIds: [] as string[],
   addToInitiative: vi.fn(),
   removeFromInitiative: vi.fn(),
   rollAllInitiative: vi.fn(),
@@ -31,7 +32,7 @@ vi.mock('../../src/app/react/root/AtlasUIContext', async () => ({
 
 vi.mock('../../src/app/react/ViewStoreContext', () => ({
   useAtlasStore: (selector: (storeState: typeof state) => unknown) => selector(state),
-  useViewStoreHook: () => ({ getState: () => state }),
+  useViewStoreHook: () => ({ getState: () => state, subscribe: () => () => undefined }),
 }));
 
 vi.mock('../../src/app/resources/useMapResources', async () => {
@@ -71,23 +72,23 @@ beforeEach(() => {
 });
 
 describe('initiative entries of tokens without hit points', () => {
-  it('shows the card of a token without hit points, without an HP bar', () => {
+  it('shows the card of a token without hit points, without the red of lost hit points', () => {
     state.initiative.entries = [entryOf('crate')];
     state.objects.tokens = { crate };
 
     const { container } = render(<InitiativeTracker />);
 
     expect(container.querySelectorAll('.atlas-initiative-card')).toHaveLength(1);
-    expect(container.querySelector('.atlas-initiative-card__hp-bar')).toBeNull();
+    expect(container.querySelector('.atlas-initiative-wound')).toBeNull();
   });
 
-  it('still shows the HP bar of a token with hit points', () => {
+  it('fills the art of a token with hit points with red by what it lost', () => {
     state.initiative.entries = [entryOf('orc')];
     state.objects.tokens = { orc: orc({ current: 5, max: 10 }) };
 
     const { container } = render(<InitiativeTracker />);
 
-    expect(container.querySelector<HTMLElement>('.atlas-initiative-card__hp-fill')?.style.width).toBe('50%');
+    expect(container.querySelector<HTMLElement>('.atlas-initiative-wound')?.style.getPropertyValue('--atlas-wound')).toBe('0.5');
   });
 
   it.each<[string, TokenEntity]>([
@@ -106,29 +107,29 @@ describe('initiative entries of tokens without hit points', () => {
 
     const { container } = render(<InitiativeTracker />);
 
-    expect(container.querySelector<HTMLElement>('.atlas-initiative-card__hp-fill')?.style.width).toBe('0%');
+    expect(container.querySelector<HTMLElement>('.atlas-initiative-wound')?.style.getPropertyValue('--atlas-wound')).toBe('1');
     expect(container.querySelector('.atlas-initiative-card--defeated')).not.toBeNull();
     expect(state.updateInitiativeEntry).not.toHaveBeenCalled();
   });
 
-  it('shows no bar and no defeat once the token has no hit points any more', () => {
+  it('shows no red and no defeat once the token has no hit points any more', () => {
     state.initiative.entries = [{ ...entryOf('orc'), hp: { current: 0, max: 7 }, isDefeated: true }];
     state.objects.tokens = { orc: orc() };
 
     const { container } = render(<InitiativeTracker />);
 
-    expect(container.querySelector('.atlas-initiative-card__hp-bar')).toBeNull();
+    expect(container.querySelector('.atlas-initiative-wound')).toBeNull();
     expect(container.querySelector('.atlas-initiative-card--defeated')).toBeNull();
   });
 
-  it('shows a killed creature as defeated with an empty bar', () => {
+  it('shows a killed creature as defeated, its art all red', () => {
     state.initiative.entries = [entryOf('orc')];
     // What the store's killTokens leaves on a token whose hit points defeat it
     state.objects.tokens = { orc: orc({ current: 0, max: 12 }) };
 
     const { container } = render(<InitiativeTracker />);
 
-    expect(container.querySelector<HTMLElement>('.atlas-initiative-card__hp-fill')?.style.width).toBe('0%');
+    expect(container.querySelector<HTMLElement>('.atlas-initiative-wound')?.style.getPropertyValue('--atlas-wound')).toBe('1');
     expect(container.querySelector('.atlas-initiative-card--defeated')).not.toBeNull();
   });
 });

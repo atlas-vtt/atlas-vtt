@@ -3,8 +3,6 @@
 /** The longest asset id a campaign refers to. */
 export const MAX_ASSET_ID = 200;
 
-export const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
-
 /** A time in milliseconds since the epoch. */
 export const isTime = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0;
 

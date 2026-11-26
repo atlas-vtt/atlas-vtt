@@ -31,6 +31,9 @@ function scene(stretch?: unknown, at: { readonly x: number; readonly y: number }
   return sceneState({ background: 'maps/cave.png', grid, objects: { ...sceneState().objects, tokens: { ana: token('ana', { x: at.x, y: at.y }) } } });
 }
 
+/** The scene with a grid that does not snap, so a player's move ends on the very place it names. */
+const unsnapped = (state: SceneState): SceneState => ({ ...state, grid: state.grid === null ? null : { ...state.grid, snapToGrid: false } });
+
 async function table(initial: SceneState, presented?: string): Promise<ShareHarness> {
   const share = shareHarness(initial, IMAGES, seats);
   share.presented = presented;
@@ -72,15 +75,48 @@ describe('the stretch of a shared map', () => {
     // No stretch, a level one, a grid without the field, and what Atlas itself reads as none.
     for (const stretch of [undefined, { x: 1, y: 1 }, { x: 1, y: 1, rotation: 0 }, { x: 2, y: 1 }, { x: 1.1, y: 1, rotation: 30 }, 'wide', { x: Number.NaN, y: 1 }]) {
       const share = await table(scene(stretch));
-      expect(Object.keys(lastScene(share.sent) ?? {}), JSON.stringify(stretch)).toEqual(['id', 'map', 'lit']);
+      expect(Object.keys(lastScene(share.sent) ?? {}), JSON.stringify(stretch)).toEqual(['id', 'map', 'lit', 'size']);
     }
     const ungridded = await table(sceneState({ background: 'maps/cave.png', grid: null }));
-    expect(Object.keys(lastScene(ungridded.sent) ?? {})).toEqual(['id', 'map', 'lit']);
+    expect(Object.keys(lastScene(ungridded.sent) ?? {})).toEqual(['id', 'map', 'lit', 'size']);
   });
 
   it('is left out for a scene without a map image, whatever its grid says', async () => {
     const share = await table({ ...scene(WIDE), background: null });
     expect(lastScene(share.sent)).toEqual({ id: expect.any(String) as string, map: null, lit: false });
+  });
+});
+
+describe("the size of a shared map's image", () => {
+  it('goes out with its map, as the page reads it, with the stretch it is drawn by', async () => {
+    const plain = await table(scene());
+    expect(wire(lastScene(plain.sent))?.size).toEqual(IMAGE);
+    const turned = wire(lastScene((await table(scene(TURNED))).sent));
+    expect(turned).toMatchObject({ size: IMAGE, stretch: TURNED });
+  });
+
+  it("is each floor's own image's, a fitted floor's too", async () => {
+    const levels: SceneLevel[] = [
+      { id: 'ground', name: 'Ground', elevation: { bottom: 0, top: 10 }, background: 'maps/cave.png' },
+      { id: 'tower', name: 'Tower', elevation: { bottom: 10, top: 20 }, background: 'maps/tower.png' },
+    ];
+    const state = scene(WIDE);
+    const tokens: Record<string, TokenEntity> = { ana: token('ana', START), ben: token('ben', { ...START, level: 'tower' }) };
+    const fitted: LevelAlignment = { scale: 2, offset: { x: 100, y: 0 }, stretch: NO_STRETCH };
+    const share = await table({ ...state, levels, viewedLevel: 'ground', levelAlignments: { tower: fitted }, objects: { ...state.objects, tokens } }, 'ground');
+    expect(lastScene(toPlayer(share.sent, ANA))?.size).toEqual(IMAGE);
+    expect(lastScene(toPlayer(share.sent, BEN))).toMatchObject({ size: { width: 500, height: 400 }, fit: { scale: 2 } });
+  });
+
+  it('is left out where players get no map, and where the image\'s header names no size', async () => {
+    expect(lastScene((await table({ ...scene(), background: null })).sent)?.size).toBeUndefined();
+    const headless = shareHarness(scene(), new Map([['maps/cave.png', new Uint8Array([1, 2, 3])]]), seats);
+    headless.share.start();
+    await headless.set(scene());
+    await headless.advance(TOKEN_INTERVAL_MS);
+    const sent = lastScene(headless.sent);
+    expect(sent?.map).not.toBeNull();
+    expect(sent?.size).toBeUndefined();
   });
 });
 
@@ -135,7 +171,7 @@ describe('a stretch that changes while the table is open', () => {
 
 describe("players' moves on a stretched map", () => {
   it('are kept on the map as it is drawn: the far strip a stretch adds is on it, and what lies beyond is not', async () => {
-    const share = await table(scene(WIDE));
+    const share = await table(unsnapped(scene(WIDE)));
     move(share, ANA, 1400, 300);
     await share.advance(TOKEN_INTERVAL_MS);
     expect(refused(share.sent)).toBe(0);
@@ -143,13 +179,13 @@ describe("players' moves on a stretched map", () => {
     move(share, ANA, 1501, 300);
     expect(refused(share.sent)).toBe(1);
 
-    const level = await table(scene());
+    const level = await table(unsnapped(scene()));
     move(level, ANA, 1400, 300);
     expect(refused(level.sent)).toBe(1);
   });
 
   it('reach the corner of the box that holds a turned map, where the image itself ends short of it', async () => {
-    const share = await table(scene(TURNED));
+    const share = await table(unsnapped(scene(TURNED)));
     const corner = imageToWorld({ x: IMAGE.width, y: IMAGE.height }, IMAGE, TURNED);
     expect(corner.x).toBeGreaterThan(IMAGE.width);
     move(share, ANA, corner.x - 1, corner.y - 20);
@@ -216,7 +252,7 @@ describe('the floors of a scene with a stretched map', () => {
   });
 
   it('keeps a player\'s moves on a fitted floor\'s own world', async () => {
-    const share = await table(floors(NO_STRETCH, TOWER), 'ground');
+    const share = await table(unsnapped(floors(NO_STRETCH, TOWER)), 'ground');
     // 100 px in, then the 500 px image twice its size, stretched a tenth and turned: past the frame's 1000 px.
     move(share, BEN, 1150, 300);
     await share.advance(TOKEN_INTERVAL_MS);

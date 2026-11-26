@@ -25,7 +25,8 @@ export const RULE_GAP = 8;
 /** How far a metric's badge rises over its top edge (half of it: recovery-stage.scss), which a card over the metric keeps clear of. */
 export const BADGE_RISE = 9;
 
-const clamp = (value: number, least: number, most: number): number => (least > most ? least : Math.max(least, Math.min(most, value)));
+/** `value` within `least` and `most`; where the two cross, `least`, whatever `value` is (the shared clamp hands a NaN on). */
+const clampOrLeast = (value: number, least: number, most: number): number => (least > most ? least : Math.max(least, Math.min(most, value)));
 
 /**
  * The card of `width` × `height` for the metric `metric` inside the stage `frame`: `RULE_GAP`
@@ -34,7 +35,7 @@ const clamp = (value: number, least: number, most: number): number => (least > m
  * fits there, so a card that grows does not jump. It never covers its metric.
  */
 export function placeRuleCard(width: number, height: number, metric: Box, frame: Box, kept?: RuleCardSide): RuleCardPlace {
-  const left = clamp(metric.left, frame.left + RULE_GAP, frame.right - RULE_GAP - width);
+  const left = clampOrLeast(metric.left, frame.left + RULE_GAP, frame.right - RULE_GAP - width);
   const fits: Record<RuleCardSide, boolean> = {
     below: metric.bottom + RULE_GAP + height <= frame.bottom,
     above: metric.top - BADGE_RISE - RULE_GAP - height >= frame.top,

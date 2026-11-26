@@ -14,16 +14,21 @@ import { pickFolder } from '../../../../../soundLibrary/SoundFolderPicker';
 import type { LibraryFile, SoundLibrary } from '../../../../../soundLibrary/SoundLibrary';
 import { SoundPathReservedError, SoundPathTakenError, SoundVaultPathError, TrashUnavailableError } from '../../../../../soundLibrary/soundLocation';
 import type { LinkOutcome } from '../../../../../soundLibrary/SoundRoots';
-import { defaultSoundKind, type SoundChanges, type StoredSound } from '../../../../../soundLibrary/soundRecords';
+import { defaultSoundKind, soundRecordOf, type SoundChanges, type StoredSound } from '../../../../../soundLibrary/soundRecords';
+import { loopText, parseLoopText } from '../../../../../soundLibrary/loopPoints';
 import { SoundRecordStore } from '../../../../../soundLibrary/SoundRecordStore';
 import { addTag, cleanTag, removeTag, renameTag, tagsOfFiles, toggleTag, tracksHolding, type TrackTags } from '../../../../../soundLibrary/soundTags';
 import { confirmAction } from '../../../../../ui/confirmDialog';
+import { fileInputAttrs } from '../../../../../platform/fileInputAccept';
 import { mayRelink, relinkSound, type MissingSound } from './relinkSound';
 import { stemOf } from '../../../../../soundLibrary/soundPaths';
 import { baseName } from '../../../../../utils/pathUtils';
 import { promptForText } from '../../../../../ui/textInputDialog';
 import { showNotice } from '../../../../../ui/notice';
 import { runInBackground } from '../../../../../utils/backgroundTask';
+import { shareMusicFiles } from '../../../../../armarium/share/openMusicShare';
+import { filesOfRows, rowsWithTags, shelfOf } from './rowModel';
+import { tagKey } from '../../../../../soundLibrary/soundTags';
 
 /** Tells why an operation on the library's files failed, in the GM's terms. */
 function failure(error: unknown): string {
@@ -57,6 +62,8 @@ export interface LibraryActions {
   relink: (sound: MissingSound) => void;
   mayRelink: (kind: SoundKind) => boolean;
   edit: (files: readonly LibraryFile[], changes: SoundChanges) => void;
+  /** Asks for a track's loop points as text; its copy must be made, since they are frames of it. */
+  askLoop: (file: LibraryFile, sound: StoredSound | null) => void;
   /** Files' tags as the records stand at this moment, for a menu that stays open through its own changes. */
   tagsOf: (files: readonly LibraryFile[]) => TrackTags[];
   onRecords: (listener: () => void) => () => void;
@@ -67,10 +74,14 @@ export interface LibraryActions {
   tracksWithTag: (tag: string) => number;
   askRenameTag: (tag: string) => void;
   askRemoveTag: (tag: string) => void;
+  /** Shares music files in the Armarium: one as a track, several as an album named `name`. */
+  share: (files: readonly LibraryFile[], name?: string) => void;
+  /** Shares the music root's tracks with a tag in the Armarium, as an album named after it. */
+  shareTag: (tag: string) => void;
 }
 
 function pickFiles(doc: Document, then: (files: File[]) => void): void {
-  const input = doc.body.createEl('input', { type: 'file', cls: 'atlas-hidden-file-input', attr: { accept: AUDIO_ACCEPT, multiple: true } });
+  const input = doc.body.createEl('input', { type: 'file', cls: 'atlas-hidden-file-input', attr: { ...fileInputAttrs(AUDIO_ACCEPT), multiple: true } });
   input.addEventListener('change', () => {
     const files = Array.from(input.files ?? []);
     input.remove();
@@ -155,6 +166,23 @@ export function useLibraryActions(app: App, library: SoundLibrary, director: Sou
         }), 'Forgetting a sound');
       },
       edit: (files, changes) => run(editFiles(records, library, files, changes), 'Changing sounds'),
+      askLoop: (file, sound) => {
+        const frames = sound ? director.shelf.infoOf(soundRecordOf(sound))?.frames : undefined;
+        if (!sound || frames === undefined) {
+          showNotice(t('audio.loopNeedsCopy'));
+          return;
+        }
+        const loop = soundRecordOf(sound).loop;
+        run(promptForText({ title: t('audio.loopPointsTitle', { name: sound.name }), confirmLabel: t('audio.library.save'), initialValue: loop ? loopText(loop) : '', placeholder: t('audio.loopPointsHint') }).then(async (text) => {
+          if (text === null && !loop) return;
+          const parsed = parseLoopText(text ?? '', frames);
+          if (parsed === 'invalid') {
+            showNotice(t('audio.loopInvalid'));
+            return;
+          }
+          await editFiles(records, library, [file], { loop: parsed ?? undefined });
+        }), 'Setting loop points');
+      },
       tagsOf: (files) => tagsOfFiles(records.all(), library, files),
       onRecords: (listener) => records.onChange(listener),
       tag: (files, tag) => run(addTag(records, library, files, tag), 'Tagging sounds'),
@@ -173,6 +201,12 @@ export function useLibraryActions(app: App, library: SoundLibrary, director: Sou
           renameTag(records, from, to);
           library.place.renameTag(from, to);
         }), 'Renaming a tag');
+      },
+      share: (files, name) => shareMusicFiles(app, files.filter((file) => file.kind === 'music'), name),
+      shareTag: (tag) => {
+        const sounds = records.all();
+        const { rows } = shelfOf(library, sounds, recordsByFile(sounds, library), 'music');
+        shareMusicFiles(app, filesOfRows(rowsWithTags(rows, [tagKey(tag)])), tag);
       },
       askRemoveTag: (tag) => {
         const count = tracksHolding(records.all(), library, tag);

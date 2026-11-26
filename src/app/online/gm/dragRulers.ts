@@ -5,6 +5,7 @@ import { snapTokenCenter } from '../../grid/gridPlacement';
 import { call, type SceneState } from './atlasView.ts';
 import { mapTokens } from '../../tokens/offMap';
 import { levelObjects } from '../../levels/levelObjects';
+import type { TokenEntity } from '../../types';
 
 /** The rulers of the drags under way, by GM token id: the points each runs through. */
 export type RulerPaths = ReadonlyMap<string, readonly Point[]>;
@@ -27,22 +28,31 @@ function snapGrid(grid: RulerState['grid']): FormationGrid | null {
 }
 
 /**
+ * A player's drag of `token` as its ruler measures it: from `start` to `landing`, both snapped as
+ * Atlas's ruler snaps them; null where the two are one place, so it measures nothing.
+ */
+export function playerRulerPath(state: Pick<RulerState, 'grid'>, token: TokenEntity, start: Point, landing: Point): readonly Point[] | null {
+  const grid = snapGrid(state.grid);
+  const snap = (point: Point): Point => (grid === null ? { x: point.x, y: point.y } : snapTokenCenter(point, token.size || 1, grid.type, grid.size, (at) => cellToWorld(grid, worldToCell(grid, at))));
+  const from = snap(start);
+  const to = snap(landing);
+  return samePoint(from, to) ? null : [from, to];
+}
+
+/**
  * The rulers of the drags under way on a scene: the GM's own (Atlas's drag ruler, which measures the
  * token taken alone) and each player's drag the GM follows (`starts`, where each token was taken
- * from), from its start to the place the token would land on now, both snapped as Atlas's ruler
- * snaps them. A ruler whose points all lie on its landing measures nothing and is left out.
+ * from), from its start to the place the token would land on now (`playerRulerPath`). A ruler whose
+ * points all lie on its landing measures nothing and is left out.
  */
 export function dragRulerPaths(state: RulerState, gm: GmRuler | null, starts: ReadonlyMap<string, Point>): Map<string, readonly Point[]> {
   const paths = new Map<string, readonly Point[]>();
   if (gm !== null && mapTokens(levelObjects(state))[gm.tokenId] !== undefined) paths.set(gm.tokenId, gm.points);
-  const grid = snapGrid(state.grid);
   for (const [tokenId, start] of starts) {
     const token = mapTokens(levelObjects(state))[tokenId];
     if (token === undefined || paths.has(tokenId)) continue;
-    const snap = (point: Point): Point => (grid === null ? { x: point.x, y: point.y } : snapTokenCenter(point, token.size || 1, grid.type, grid.size, (at) => cellToWorld(grid, worldToCell(grid, at))));
-    const from = snap(start);
-    const landing = snap(token);
-    if (!samePoint(from, landing)) paths.set(tokenId, [from, landing]);
+    const path = playerRulerPath(state, token, start, token);
+    if (path !== null) paths.set(tokenId, path);
   }
   return paths;
 }

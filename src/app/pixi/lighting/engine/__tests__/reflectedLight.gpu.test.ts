@@ -4,7 +4,9 @@ import type { WallSegment } from '../../../../types/wallTypes';
 import { LightReaches } from '../../../../vision/lightReaches';
 import { reflectedAt } from '../../../../vision/reflectedLight';
 import { pointInPolygon } from '../../../../vision/visibility';
+import { LIGHTING_QUALITY } from '../../../../lighting/lightingQuality';
 import { LightingWorld } from '../LightingWorld';
+import { PolygonWorld } from '../PolygonWorld';
 import type { EngineLight } from '../types';
 import { createTestRenderer, readFloats } from './gpuTestUtils';
 import { watchGl } from './strictGl';
@@ -24,8 +26,8 @@ const ROOMS = [
 const TORCH: EngineLight = { key: 'torch', x: 300, y: 250, bright: 200, dim: 400, flame: 20, color: [1, 1, 1], intensity: 1, animation: 'none' };
 
 /**
- * A light's reflection in the light map (`ReflectionTiles`, the light map's own pass): drawn under
- * the strict context, lit where the rule counts it, nothing past the walls, and gone with its light.
+ * A light's reflection in the light map (`ReflectionTiles` in the traced picture, `ReflectionPictures`
+ * in the polygon one): drawn under the strict context, lit where the rule counts it, nothing past the walls, and gone with its light.
  */
 describe('reflected light in the light map', () => {
   const cleanup: (() => void)[] = [];
@@ -33,7 +35,7 @@ describe('reflected light in the light map', () => {
     while (cleanup.length) cleanup.pop()!();
   });
 
-  it('lights the room round the corner where the rule counts it, past no wall, under a strict context', async () => {
+  it.each(['traced', 'polygons'] as const)('lights the room round the corner where the rule counts it, past no wall, under a strict context (%s picture)', async (picture) => {
     const renderer = await createTestRenderer(64);
     cleanup.push(() => renderer.destroy());
     const watch = watchGl(renderer.gl);
@@ -41,14 +43,15 @@ describe('reflected light in the light map', () => {
     const sampling = { spacing: CELL / 4, clearance: wallRadius(2) };
     const [reach] = new LightReaches().sync([TORCH], ROOMS, sampling, { ...sampling, reach: REFLECTION.cells * CELL });
     const light = { ...TORCH, reflection: reach!.reflection! };
-    const world = new LightingWorld(renderer, { width: MAP, height: MAP });
+    const bounds = { width: MAP, height: MAP };
+    const world = picture === 'traced' ? new LightingWorld(renderer, bounds) : new PolygonWorld(renderer, bounds, LIGHTING_QUALITY.saver);
     cleanup.push(() => world.destroy());
     world.update(ROOMS, [light], null);
     world.flush();
     expect(watch.findings).toEqual([]);
     const texels = readFloats(renderer, world.lightMap.texture);
     const width = world.lightMap.texture.source.pixelWidth;
-    const at = (x: number, y: number): number => texels[(Math.floor(y / 2) * width + Math.floor(x / 2)) * 4]!;
+    const at = (x: number, y: number): number => texels[(Math.floor(y / world.texel) * width + Math.floor(x / world.texel)) * 4]!;
     // In room B, round the corner, where only the reflection reaches: lit next to the points it comes from, fading towards its edge.
     expect(pointInPolygon({ x: 560, y: 330 }, reach!.polygon)).toBe(false);
     expect(reflectedAt({ x: 560, y: 330 }, light.reflection)).toBe(true);
@@ -65,6 +68,6 @@ describe('reflected light in the light map', () => {
     // Without its reflection the room round the corner is dark.
     world.update(ROOMS, [TORCH], null);
     world.flush();
-    expect(readFloats(renderer, world.lightMap.texture)[(Math.floor(330 / 2) * width + Math.floor(560 / 2)) * 4]).toBe(0);
+    expect(readFloats(renderer, world.lightMap.texture)[(Math.floor(330 / world.texel) * width + Math.floor(560 / world.texel)) * 4]).toBe(0);
   });
 });

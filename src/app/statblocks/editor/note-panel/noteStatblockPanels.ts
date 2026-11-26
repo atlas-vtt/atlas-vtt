@@ -57,7 +57,10 @@ export class NoteStatblockPanels implements PanelPrefsSource {
   /**
    * Follows the workspace. `file-open` fires only for the active leaf, so a
    * leaf that changes note while another has focus shows in `layout-change`;
-   * a note that gains or loses its template shows in the metadata cache.
+   * a note that gains or loses its template shows in the metadata cache. A
+   * popout that closes says so at once (`window-close`), a moment before its
+   * `layout-change`: until then the panels of its notes would be drawn, and
+   * animated, in a window that is gone.
    */
   start(): void {
     managers.set(this.app, this);
@@ -68,6 +71,7 @@ export class NoteStatblockPanels implements PanelPrefsSource {
       workspace.on('layout-change', refresh),
       workspace.on('active-leaf-change', refresh),
       workspace.on('file-open', refresh),
+      workspace.on('window-close', refresh),
     ];
     const metadataRef = metadataCache.on('changed', refresh);
     const stopSettings = SettingsService.forApp(this.app)?.onChange(refresh);

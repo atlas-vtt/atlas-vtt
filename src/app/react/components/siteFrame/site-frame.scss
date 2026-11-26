@@ -1,0 +1,71 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// Site frame — a page of atlas-vtt.dev in a frame (documentation window, the Armarium in the asset manager)
+// ═══════════════════════════════════════════════════════════════════════════
+// Imported inside the `.atlas-vtt-plugin` scope of styles/main.scss.
+// Each user draws its own skeleton inside `.atlas-site-frame__skeleton`.
+
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+.atlas-site-frame {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.atlas-site-frame__frame {
+  display: block;
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  border: none;
+  opacity: 0;
+  transition: opacity $transition-normal $transition-ease;
+
+  &.is-loaded {
+    opacity: 1;
+  }
+}
+
+// The page in outline, over the frame until its first page has loaded.
+.atlas-site-frame__skeleton {
+  @include atlas-flex-col($spacing-m);
+  position: absolute;
+  inset: 0;
+  padding: $spacing-m;
+}
+
+// ── Offline ────────────────────────────────────────────────────────────────
+.atlas-site-frame__offline {
+  @include atlas-flex-col($spacing-s);
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-xl;
+  text-align: center;
+}
+
+.atlas-site-frame__offline-icon {
+  display: flex;
+  color: var(--text-faint);
+
+  svg {
+    width: $icon-m;
+    height: $icon-m;
+  }
+}
+
+.atlas-site-frame__offline-title {
+  margin: 0;
+  font-weight: $font-weight-semibold;
+}
+
+.atlas-site-frame__offline-body {
+  max-width: 320px;
+  margin: 0 0 $spacing-s;
+  color: var(--text-muted);
+  font-size: $font-ui-smaller;
+  line-height: 1.5;
+}

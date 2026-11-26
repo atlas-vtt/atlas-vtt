@@ -8,10 +8,12 @@ import type { Vec } from '../render/geometry';
 import { visibleDungeon } from '../render/visibleDungeon';
 import { treeLine } from '../scene/forestWalls';
 import type { DungeonStyle, DungeonView } from '../style';
+import { drawingCanvas, learnCanvasLimit, nextCanvasStep, releaseCanvas } from '../../imageProcessing/canvasLimit';
+import { drawInBands } from './mapBands';
 
 /**
  * What the dungeon worker does: generate a dungeon (or take one as it is) and draw its floor plan
- * on an `OffscreenCanvas`. Runs in the worker, or in the window where no worker can start.
+ * on an `OffscreenCanvas`.
  */
 
 /** The picture size sizes of a map's strokes are judged against (`legibleStyle`). */
@@ -22,10 +24,11 @@ export type DungeonOutput =
    * The floor plan at `pxPerCell`, or less where the image would pass a map's limits; a PNG, a
    * bitmap, or with `svg` an SVG document. `transparent` leaves the paper out. `floor` is the
    * floor drawn, by index (the entry floor where unset); every floor's image has the same layout.
-   * `maxPixels` holds the image to fewer pixels than a map may have (`SCENE_MAP_PIXELS`).
-   * `treeLine` asks for a Forest floor's `treeLine` too, for its scene's walls.
+   * `maxPixels` holds the image to fewer pixels than a map may have (`SCENE_MAP_PIXELS`, or what
+   * the device draws), `maxSide` to a shorter side. `treeLine` asks for a Forest floor's `treeLine`
+   * too, for its scene's walls.
    */
-  | { kind: 'map'; pxPerCell: number; maxPixels?: number; bitmap?: boolean; svg?: boolean; transparent?: boolean; floor?: number; treeLine?: boolean }
+  | { kind: 'map'; pxPerCell: number; maxPixels?: number; maxSide?: number; bitmap?: boolean; svg?: boolean; transparent?: boolean; floor?: number; treeLine?: boolean }
   /** The floor plan fitted into `width` × `height` pixels, as a bitmap: the preview. */
   | { kind: 'preview'; width: number; height: number; floor?: number }
   /** A window of the dungeon, as a bitmap: a style's card in the gallery (`renderThumbnail`). */
@@ -81,28 +84,55 @@ function thumbnailOf(model: DungeonModel, job: DungeonJob, output: Extract<Dunge
   return { model, map: mapLayout(model, output.width / THUMBNAIL_CELLS_ACROSS, job.view), image: { type: 'bitmap', bitmap: canvas.transferToImageBitmap() } };
 }
 
+/**
+ * The cell size a map is drawn at: the size asked for where this realm draws a canvas of the whole
+ * map, else the largest it draws on (`canvasLimit.ts`: WebKit on a tablet leaves a canvas above
+ * its own size blank). Every floor of a dungeon gets the same answer.
+ */
+async function mapPxPerCell(model: DungeonModel, view: DungeonView, output: Extract<DungeonOutput, { kind: 'map' }>): Promise<number> {
+  await learnCanvasLimit();
+  for (let maxSide = output.maxSide; ;) {
+    const pxPerCell = suggestedPxPerCell(model, output.pxPerCell, view, output.maxPixels, maxSide);
+    const size = mapPixelSize(model, pxPerCell, view);
+    const canvas = drawingCanvas({ width: Math.max(1, size.width), height: Math.max(1, size.height) });
+    if (canvas) {
+      releaseCanvas(canvas);
+      return pxPerCell;
+    }
+    const step = nextCanvasStep(Math.max(size.width, size.height));
+    if (step === undefined) throw new Error('Could not draw the dungeon: no 2D canvas.');
+    maxSide = step;
+  }
+}
+
+async function pngOf(bitmap: ImageBitmap): Promise<Blob> {
+  const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+  const renderer = canvas.getContext('bitmaprenderer');
+  if (!renderer) throw new Error('Could not draw the dungeon: no canvas to encode it.');
+  renderer.transferFromImageBitmap(bitmap);
+  return canvas.convertToBlob({ type: 'image/png' });
+}
+
 export async function runDungeonJob(job: DungeonJob): Promise<DungeonRendered> {
   const { style, view, output } = job;
   const model = job.model ?? generateDungeon(job.request);
   if (output.kind === 'preview') return previewOf(model, job, output);
   if (output.kind === 'thumbnail') return thumbnailOf(model, job, output);
-  const pxPerCell = suggestedPxPerCell(model, output.pxPerCell, view, output.maxPixels);
-  const options = {
-    pxPerCell,
+  const look = {
     ...(output.transparent ? { transparent: true } : {}),
     ...(output.floor !== undefined && { floor: output.floor }),
   };
   if (output.svg) {
-    const { svg, layout } = renderMapSvg(model, style, view, options);
+    const pxPerCell = suggestedPxPerCell(model, output.pxPerCell, view, output.maxPixels, output.maxSide);
+    const { svg, layout } = renderMapSvg(model, style, view, { pxPerCell, ...look });
     return { model, map: layout, image: { type: 'svg', svg } };
   }
-  // The canvas must have the size of the layout renderMap draws
-  const size = mapPixelSize(model, pxPerCell, view);
-  const { canvas, ctx } = canvasOf(size.width, size.height);
-  const map = renderMap(ctx, model, style, view, options);
-  const image: RenderedImage = output.bitmap
-    ? { type: 'bitmap', bitmap: canvas.transferToImageBitmap() }
-    : { type: 'png', blob: await canvas.convertToBlob({ type: 'image/png' }) };
+  const pxPerCell = await mapPxPerCell(model, view, output);
+  const map = mapLayout(model, pxPerCell, view);
+  // In bands, read back as drawn: the bitmap lives in the worker's memory, not on the graphics card
+  const pixels = await drawInBands(map.widthPx, map.heightPx, (ctx) => renderMap(ctx, model, style, view, { pxPerCell, ...look }));
+  const bitmap = await createImageBitmap(pixels, { premultiplyAlpha: 'none' });
+  const image: RenderedImage = output.bitmap ? { type: 'bitmap', bitmap } : { type: 'png', blob: await pngOf(bitmap) };
   const floor = output.floor ?? 0;
   const trees = output.treeLine && model.floors[floor]?.forest ? treeLine(visibleDungeon(model, view, floor), style, viewBounds(map, 0)) : undefined;
   return { model, map, image, ...(trees && { treeLine: trees }) };

@@ -1,29 +1,42 @@
-import { Container, Graphics, Text, TextStyle } from 'pixi.js';
-import { getTokenRingCenterRadius } from './tokenRingMetrics';
-import type { TokenGroupContainer } from './types';
+import { Container, Text, TextStyle } from 'pixi.js';
 import { destroyTree } from '../utils/destroyTree';
+import { CONDITION_BADGE_REACH } from './ConditionBadge';
+import { GLYPH_FONT_FAMILY } from './conditionGlyphTexture';
+import { BADGE_KEYLINE, GRAPHITE, drawFlatDisc } from './flatBadge';
+import { getTokenRingCenterRadius } from './tokenRingMetrics';
+import { tokenUIScale } from './tokenSizing';
+import type { TokenGroupContainer } from './types';
 
 /** The badge in a token's group, its disc and its number. */
 const INSTANCE_BADGE_LABEL = 'instanceBadge';
 const BADGE_DISC_LABEL = 'badgeBg';
 const BADGE_TEXT_LABEL = 'badgeText';
 
-/** The badge's radius as a share of the token's size, on any grid. */
-const BADGE_SIZE_SHARE = 0.14;
+/** Where on the token's ring the badge sits: its upper right, clear of the conditions on its upper left. */
+const RING_ANGLE = -Math.PI / 4;
+/** The number's font size as a share of the disc's radius, and the widest it may be (several digits shrink to it). */
+const FONT_SHARE = 1.3;
+const MAX_WIDTH_SHARE = 1.2;
 /**
- * The badge is drawn once at this radius and scaled to its token, so a curve and a number stay
- * smooth at any size. The text's resolution holds about as many pixels per glyph as a medium
- * token's badge needs at the map's highest zoom.
+ * The number is set this many times larger than it shows and scaled down, so it stays sharp
+ * on a badge at the map's highest zoom; badges are a few UI units wide.
  */
-const DRAW_RADIUS = 32;
-const DRAW_FONT_SIZE = DRAW_RADIUS * 1.3;
-const DRAW_STROKE = DRAW_RADIUS * 0.17;
+const TEXT_DRAW_SCALE = 8;
 const TEXT_RESOLUTION = 2;
+/** System faces set digits a little above the middle of their line; this brings them down, as a share of the font size. */
+const DIGIT_DROP = 0.04;
+
+const DISC_RADIUS = CONDITION_BADGE_REACH - BADGE_KEYLINE;
+const NUMBER_STYLE = new TextStyle({
+  fill: 0xffffff,
+  fontSize: DISC_RADIUS * FONT_SHARE * TEXT_DRAW_SCALE,
+  fontWeight: '700',
+  fontFamily: GLYPH_FONT_FAMILY,
+});
 
 /**
- * Create or update the instance badge on a token container.
- * If the badge already exists, updates the number and visibility.
- * If it doesn't exist, creates it.
+ * Create or update the instance badge on a token container: a flat graphite disc on the
+ * token's ring with the token's number, in the look and at the size of its condition badges.
  */
 export function updateInstanceBadge(
   tokenGroup: TokenGroupContainer,
@@ -31,57 +44,46 @@ export function updateInstanceBadge(
   tokenSize: number,
   visible: boolean,
 ): void {
-  // Position badge centered on the token ring band
   const baseTokenSize = tokenGroup.tokenSize || tokenSize;
   const strokeWidth = tokenGroup.strokeWidth || 4;
   const ringScale = baseTokenSize > 0 ? tokenSize / baseTokenSize : 1;
   const ringRadius = getTokenRingCenterRadius(tokenSize, strokeWidth, ringScale);
-  const angle = (-45 * Math.PI) / 180;
-  const posX = ringRadius * Math.cos(angle);
-  const posY = ringRadius * Math.sin(angle);
 
-  let badge = tokenGroup.getChildByLabel(INSTANCE_BADGE_LABEL);
-
-  if (!badge) {
-    badge = new Container();
-    badge.label = INSTANCE_BADGE_LABEL;
-    badge.zIndex = 50;
-    badge.eventMode = 'none';
-    badge.interactive = false;
-
-    const bg = new Graphics();
-    bg.label = BADGE_DISC_LABEL;
-    bg.eventMode = 'none';
-    bg.circle(0, 0, DRAW_RADIUS);
-    bg.fill({ color: 0x000000 });
-    bg.circle(0, 0, DRAW_RADIUS);
-    bg.stroke({ color: 0x555555, width: DRAW_STROKE });
-    badge.addChild(bg);
-
-    const text = new Text({
-      text: String(instanceNumber),
-      style: new TextStyle({
-        fill: 0xffffff,
-        fontSize: DRAW_FONT_SIZE,
-        fontWeight: 'bold',
-        fontFamily: 'Arial, sans-serif',
-      }),
-      resolution: TEXT_RESOLUTION,
-    });
-    text.label = BADGE_TEXT_LABEL;
-    text.anchor.set(0.5, 0.5);
-    badge.addChild(text);
-
-    tokenGroup.addChild(badge);
-  }
-
-  badge.position.set(posX, posY);
-  badge.scale.set((tokenSize * BADGE_SIZE_SHARE) / DRAW_RADIUS);
+  const badge = tokenGroup.getChildByLabel(INSTANCE_BADGE_LABEL) ?? createBadge(tokenGroup);
+  badge.position.set(ringRadius * Math.cos(RING_ANGLE), ringRadius * Math.sin(RING_ANGLE));
+  badge.scale.set(tokenUIScale(tokenSize));
 
   const text = badge.getChildByLabel(BADGE_TEXT_LABEL) as Text;
-  text.text = String(instanceNumber);
-
+  const label = String(instanceNumber);
+  if (text.text !== label) {
+    text.text = label;
+    fitNumber(text);
+  }
   badge.visible = visible;
+}
+
+function createBadge(tokenGroup: TokenGroupContainer): Container {
+  const badge = new Container({ label: INSTANCE_BADGE_LABEL, zIndex: 50, eventMode: 'none', interactiveChildren: false });
+  const disc = drawFlatDisc(GRAPHITE, CONDITION_BADGE_REACH, false, true);
+  disc.label = BADGE_DISC_LABEL;
+  const text = new Text({
+    text: '',
+    style: NUMBER_STYLE,
+    resolution: TEXT_RESOLUTION,
+    anchor: 0.5,
+    label: BADGE_TEXT_LABEL,
+  });
+  badge.addChild(disc, text);
+  tokenGroup.addChild(badge);
+  return badge;
+}
+
+/** Shows the number at its size, shrunk to fit the disc where it has several digits. */
+function fitNumber(text: Text): void {
+  const drawnWidth = text.width / text.scale.x;
+  const fit = Math.min(1, (DISC_RADIUS * MAX_WIDTH_SHARE * TEXT_DRAW_SCALE) / drawnWidth);
+  text.scale.set(fit / TEXT_DRAW_SCALE);
+  text.y = DISC_RADIUS * FONT_SHARE * DIGIT_DROP;
 }
 
 /**

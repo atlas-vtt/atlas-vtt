@@ -4,11 +4,13 @@
  */
 
 import type { LevelScene } from '../levels/levelEdits';
-import { firstLevelId, isLevelOf, movesWithLevel, viewedLevelId } from '../levels/sceneLevels';
+import { exploredMaskOf, firstLevelId, isLevelOf, movesWithLevel, otherLevelsExplored, viewedLevelId } from '../levels/sceneLevels';
 import type { LevelAlignment, LevelLinkChanges, LevelLinkInput, SceneLevel } from '../types/sceneLevelTypes';
 import { isRecord } from '../utils/guards';
+import { newId } from '../utils/ids';
 import type { MapMove } from '../grid/mapStretch';
 import { objectsMovedWithMap } from '../grid/mapStretchObjects';
+import { aurasToTokenLevels } from '../measure/auraUpkeep';
 import type { ViewState } from '../types/viewState';
 
 export interface SceneLevelsSlice {
@@ -25,6 +27,14 @@ export interface SceneLevelsSlice {
    * on that level alone along (`objectsMovedWithMap`): one write, one undo step.
    */
   alignLevel: (levelId: string, alignment: LevelAlignment, move?: MapMove) => void;
+  /**
+   * Forgets the saved explored memory of every level but the one the view shows, whose memory the
+   * view's lighting forgets as an edit, and counts it (`exploredForgotten`). Returns the memories
+   * it took, by level id, for undo to put back.
+   */
+  forgetOtherLevelsExplored: () => Record<string, string>;
+  /** Puts back memories `forgetOtherLevelsExplored` took, by level id, where nothing was saved of the level since. */
+  restoreLevelsExplored: (masks: Readonly<Record<string, string>>) => void;
   /** Adds stairs (a level link) in one undo step and returns its id. */
   addLevelLink: (data: LevelLinkInput) => string;
   /** Changes stairs; a field given as undefined is removed. */
@@ -32,7 +42,7 @@ export interface SceneLevelsSlice {
   deleteLevelLink: (id: string) => void;
 }
 
-type LevelsDraft = Pick<ViewState, 'levels' | 'viewedLevel' | 'objects' | 'background' | 'exploredMask' | 'exploredMasks' | 'levelAlignments' | 'selectedIds' | 'lightPopover' | 'lightZonePopover' | 'levelLinkPopover'>;
+type LevelsDraft = Pick<ViewState, 'levels' | 'viewedLevel' | 'objects' | 'background' | 'exploredMask' | 'exploredMasks' | 'exploredForgotten' | 'levelAlignments' | 'selectedIds' | 'lightPopover' | 'lightZonePopover' | 'levelLinkPopover' | 'measurePopover'>;
 
 type ImmerSet = (fn: (draft: LevelsDraft) => void) => void;
 
@@ -60,6 +70,7 @@ export function createSceneLevelsActions(set: ImmerSet, get: () => LevelsDraft):
       draft.lightPopover = null;
       draft.lightZonePopover = null;
       draft.levelLinkPopover = null;
+      draft.measurePopover = null;
     }),
 
     setLevels: (levels) => set((draft) => {
@@ -86,8 +97,23 @@ export function createSceneLevelsActions(set: ImmerSet, get: () => LevelsDraft):
       });
     },
 
+    forgetOtherLevelsExplored: () => {
+      const taken = otherLevelsExplored(get());
+      set((draft) => {
+        for (const id of Object.keys(taken)) writeExploredMask(draft, null, id);
+        draft.exploredForgotten = (draft.exploredForgotten ?? 0) + 1;
+      });
+      return taken;
+    },
+
+    restoreLevelsExplored: (masks) => set((draft) => {
+      for (const [id, mask] of Object.entries(masks)) {
+        if (exploredMaskOf(draft, id) === null) writeExploredMask(draft, mask, id);
+      }
+    }),
+
     addLevelLink: (data) => {
-      const id = `levellink_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+      const id = newId('levellink');
       set((draft) => {
         // Whatever is in their place that is no record (a store filled by something else than a load) gives way.
         if (!isRecord(draft.objects.levelLinks)) draft.objects.levelLinks = {};
@@ -119,6 +145,8 @@ export function createSceneLevelsActions(set: ImmerSet, get: () => LevelsDraft):
         token.level = levelId;
         moved.add(id);
       }
+      // An aura lies on the level its token stands on.
+      aurasToTokenLevels(draft.objects, moved);
       if (moved.size > 0 && levelId !== viewedLevelId(draft)) draft.selectedIds = draft.selectedIds.filter((id) => !moved.has(id));
     }),
   };

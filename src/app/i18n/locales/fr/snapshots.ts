@@ -1,0 +1,26 @@
+import type { Translation } from '../../types';
+
+export const snapshots: Translation = {
+  'snapshots.deleteBody': 'L\'instantané est retiré de cette carte. La carte elle-même ne change pas.',
+  'snapshots.deleteFailed': 'Impossible de supprimer l\'instantané',
+  'snapshots.deleteTitle': 'Supprimer « {name} » ?',
+  'snapshots.empty': 'Pas encore d\'instantanés. Enregistrez la carte telle qu\'elle est pour la remettre plus tard dans cet état, par exemple avant le début d\'une rencontre.',
+  'snapshots.name': 'Nom de l\'instantané',
+  'snapshots.new': 'Nouvel instantané',
+  'snapshots.overwriteBody': 'L\'instantané est remplacé par la carte telle qu\'elle est maintenant. Son état précédent est perdu.',
+  'snapshots.overwriteFailed': 'Impossible d\'écraser l\'instantané',
+  'snapshots.overwriteTitle': 'Écraser « {name} » ?',
+  'snapshots.overwriteWithCurrent': 'Écraser avec la carte actuelle',
+  'snapshots.renameFailed': 'Impossible de renommer l\'instantané',
+  'snapshots.renameNamed': 'Renommer {name}',
+  'snapshots.restoreBody': 'Jetons, épingles, brouillard, dessins, initiative et tout le reste sur cette carte reviennent à leur état dans cet instantané.',
+  'snapshots.restoreFailed': 'Impossible de restaurer l\'instantané',
+  'snapshots.restoreNamed': 'Restaurer {name}',
+  'snapshots.restoreTitle': 'Restaurer « {name} » ?',
+  'snapshots.restoreWarning': 'Les modifications faites depuis sont perdues et ne peuvent pas être annulées. Enregistrez d\'abord un instantané pour les conserver.',
+  'snapshots.restored': '« {name} » restauré',
+  'snapshots.saveFailed': 'Impossible d\'enregistrer l\'instantané',
+  'snapshots.savedAt': 'Enregistré {date}',
+  'snapshots.updatedAt': 'Mis à jour {date}',
+  'snapshots.defaultName': 'Instantané',
+};

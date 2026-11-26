@@ -29,6 +29,7 @@ export function DiceRollStack({ rolls, muted, onClose, onDone, useAvatar }: Dice
           key={roll.result.id}
           result={roll.result}
           presentation={roll.sourcePresentation}
+          audience={roll.audience}
           scene={roll.scene}
           style={roll.style}
           compact={i !== large}
@@ -36,6 +37,7 @@ export function DiceRollStack({ rolls, muted, onClose, onDone, useAvatar }: Dice
           muted={muted || roll.muted === true}
           onClose={() => onClose(roll.result.id)}
           onDone={() => onDone(roll.result.id)}
+          onLanded={roll.release}
           useAvatar={useAvatar}
         />
       ))}

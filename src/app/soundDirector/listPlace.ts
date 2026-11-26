@@ -98,11 +98,14 @@ export function placeOf(play: MusicPlay, change: ListChange | null, key: string,
 }
 
 /** A play taking a list up at `listPlace`, coming in over `fadeMs`: its fade begins where it begins. */
-export function playAtPlace({ repeat: _repeat, listFrame: _listFrame, ...play }: MusicPlay, listPlace: ListPlace, startAt: number, fadeMs: number): MusicPlay {
+export function playAtPlace({ repeat: _repeat, listFrame: _listFrame, fromFrame: _fromFrame, ...play }: MusicPlay, listPlace: ListPlace, startAt: number, fadeMs: number): MusicPlay {
   return { ...play, ...listPlace, startAt, fade: { at: startAt, ms: fadeMs } };
 }
 
-/** How long two tracks of a list overlap: never over half of either, or a short track would be nothing but its fades. */
+/**
+ * How long two tracks of a list overlap: the ending track's own crossfade where the GM set one, else the setting's;
+ * never over half of either, or a short track would be nothing but its fades.
+ */
 export function joinFadeMs(ending: SoundInfo, coming: SoundInfo, crossfadeMs: number): number {
-  return ending.key === coming.key ? 0 : Math.min(crossfadeMs, Math.min(ending.frames, coming.frames) / FRAMES_PER_MS / 2);
+  return ending.key === coming.key ? 0 : Math.min(ending.crossfadeMs ?? crossfadeMs, Math.min(ending.frames, coming.frames) / FRAMES_PER_MS / 2);
 }

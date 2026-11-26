@@ -1,0 +1,27 @@
+import type { Translation } from '../../types';
+
+export const align: Translation = {
+  'align.analysing': 'Analizando el mapa…',
+  'align.checking': 'Se encontraron {type}. Comprobando el tamaño de casilla…',
+  'align.waitingForTiles': 'Esperando las teselas del mapa · {percent}%',
+  'align.cornerFirst': 'Haz clic en una esquina de una casilla.',
+  'align.cornerNext': 'Ahora en la siguiente esquina a la derecha.',
+  'align.find': 'Detectar',
+  'align.flat': 'Plano',
+  'align.flatHexes': 'hexágonos con lado plano arriba',
+  'align.freehandHint': 'Haz zoom hasta que una casilla de la vista previa cubra una casilla del mapa y luego haz clic.',
+  'align.gridType': 'Tipo de cuadrícula',
+  'align.hexCornerFirst': 'Haz clic en una esquina de un hexágono.',
+  'align.hexCornerNext': 'Ahora en una esquina vecina del mismo hexágono.',
+  'align.measureCount': 'Medición {done} de {total}',
+  'align.measureMore': 'Las líneas del mapa no bastaron. Mide una casilla más.',
+  'align.noGrid': 'No se encontró ninguna cuadrícula en la imagen del mapa. Alinéala a mano.',
+  'align.orByHand': 'O alinéala tú mismo',
+  'align.pointy': 'Punta',
+  'align.pointyHexes': 'hexágonos con punta arriba',
+  'align.square': 'Cuadrada',
+  'align.squares': 'cuadrados',
+  'align.tab.freehand': 'A mano alzada',
+  'align.tab.intersections': 'Medir',
+  'align.title': 'Alineación de cuadrícula',
+};

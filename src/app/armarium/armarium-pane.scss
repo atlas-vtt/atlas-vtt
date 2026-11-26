@@ -1,0 +1,63 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// Armarium — the store of atlas-vtt.dev in the asset manager's content area
+// ═══════════════════════════════════════════════════════════════════════════
+// Imported inside the `.atlas-vtt-plugin` scope of styles/main.scss.
+// The frame is `SiteFrame` (`site-frame.scss`); here the pane it fills and the store's skeleton.
+
+@use '../../../styles/tokens' as *;
+@use '../../../styles/mixins' as *;
+
+// Lies over the library in the body, under the header, to the window's edges, and fades in and out over it: opacity
+// alone, which the compositor draws however busy the page in the frame is. Hidden, it stays (so its page keeps its
+// place) and takes no pointer, focus or paint; the visibility follows the fade out, and leads the fade in.
+.atlas-armarium-pane {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background-color: var(--background-primary);
+  opacity: 1;
+  transition: opacity $transition-normal $transition-ease-out, visibility 0s;
+
+  @starting-style {
+    opacity: 0;
+  }
+
+  &.is-hidden {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity $transition-normal $transition-ease-out, visibility 0s linear $transition-normal;
+  }
+}
+
+.atlas-armarium-skeleton__heading {
+  width: 40%;
+  height: 28px;
+  border-radius: $radius-m;
+}
+
+.atlas-armarium-skeleton__search {
+  width: min(480px, 100%);
+  height: 36px;
+  border-radius: $radius-m;
+}
+
+// The listing cards: a cover and two lines each, as many to a row as the pane is wide.
+.atlas-armarium-skeleton__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: $spacing-m;
+}
+
+.atlas-armarium-skeleton__card {
+  @include atlas-flex-col($spacing-s);
+  min-width: 0;
+}
+
+.atlas-armarium-skeleton__cover {
+  aspect-ratio: 630 / 501;
+  border-radius: $radius-m;
+}

@@ -20,18 +20,21 @@ const advantaged: DiceRollResult = {
 };
 
 describe('a roll made with advantage, on its card', () => {
-  it('names the side and lists its dice, the kept one in bold and the dropped one struck through', () => {
+  it('names the side and lists its dice, the kept one in bold and the dropped one lighter in brackets', () => {
     const el = card(advantaged);
-    expect(screen.getByText('Advantage')).toBeTruthy();
+    expect(el.querySelector('.atlas-dice-toast__formula')?.textContent).toBe('1d20+5 · Advantage');
     expect(el.querySelector('.atlas-rolled-dice__die--kept')?.textContent).toBe('17');
-    expect(el.querySelector('s.atlas-rolled-dice__die--dropped')?.textContent).toBe('4 (dropped)');
-    expect(el.querySelector('.atlas-rolled-dice')?.textContent?.replace(/\u00a0/g, ' ')).toBe('4 (dropped) · 17 + 5');
+    expect(el.querySelector('.atlas-rolled-dice__die--dropped')?.textContent).toBe('(4) (dropped)');
+    expect(el.querySelector('s')).toBeNull();
+    expect(el.querySelector('.atlas-rolled-dice')?.textContent?.replace(/\u00a0/g, ' ')).toBe('(4) (dropped) · 17 + 5');
   });
 
   it('marks the dropped die among the details', () => {
     const el = card(advantaged);
     fireEvent.click(screen.getByText('Details'));
-    const badges = [...el.querySelectorAll('.atlas-dice-toast__die-badge')];
+    const badges = [...el.querySelectorAll('.atlas-dice-toast__die-badge:not(.atlas-dice-toast__die-badge--modifier)')];
+    // The modifier has its chip too, so the chips add up to the total.
+    expect([...el.querySelectorAll('.atlas-dice-toast__die-badge--modifier')].map((chip) => chip.textContent)).toEqual(['+5']);
     expect(badges.map((badge) => [badge.textContent, badge.classList.contains('atlas-dice-toast__die-badge--dropped')])).toEqual([['d20: (4)', true], ['d20: 17', false]]);
     expect(badges[1]?.classList.contains('atlas-die-badge--kept')).toBe(true);
   });

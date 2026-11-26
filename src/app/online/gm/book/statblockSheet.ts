@@ -27,20 +27,22 @@ export interface StatblockSheetInput {
   readonly resources: Readonly<Record<string, ResourceValue>> | undefined;
   /** The width of the GM's statblock panel, which the card is laid out at (`paneCardWidth`); unset, a default. */
   readonly panelWidth?: number;
+  /** The text a link in an ability's name names (`abilityLink`), from the note; null where there is none. Unset, links are not followed. */
+  readonly readLink?: (link: string) => Promise<string | null>;
 }
 
 /** The template's column width where it sets none (`StatblockSheet`). */
 const DEFAULT_COLUMN_WIDTH_EM = 22;
 
 /** A number within its range; `fallback` where it is none (a template or setting a newer Atlas wrote), so a card is never refused whole. */
-const clamp = (value: number, min: number, max: number, fallback = min): number => (Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : fallback);
+const clampOr = (value: number, min: number, max: number, fallback = min): number => (Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : fallback);
 
 /** The GM's card as the note panel lays it out: its width, the template's columns, and whether the header's description leads the sheet. */
 function sheetCard(template: StatblockTemplate, panelWidth: number | undefined, description: boolean): SheetCard {
-  const maxColumns = Math.round(clamp(template.layout.maxColumns, 1, MAX_CARD_COLUMNS, 1));
+  const maxColumns = Math.round(clampOr(template.layout.maxColumns, 1, MAX_CARD_COLUMNS, 1));
   return {
-    width: clamp(paneCardWidth(Number.isFinite(panelWidth) ? panelWidth ?? FALLBACK_PANEL_WIDTH : FALLBACK_PANEL_WIDTH, maxColumns), MIN_CARD_WIDTH, MAX_CARD_WIDTH, paneCardWidth(FALLBACK_PANEL_WIDTH, maxColumns)),
-    columnWidth: clamp(template.layout.columnWidth ?? DEFAULT_COLUMN_WIDTH_EM, MIN_COLUMN_WIDTH, MAX_COLUMN_WIDTH, DEFAULT_COLUMN_WIDTH_EM),
+    width: clampOr(paneCardWidth(Number.isFinite(panelWidth) ? panelWidth ?? FALLBACK_PANEL_WIDTH : FALLBACK_PANEL_WIDTH, maxColumns), MIN_CARD_WIDTH, MAX_CARD_WIDTH, paneCardWidth(FALLBACK_PANEL_WIDTH, maxColumns)),
+    columnWidth: clampOr(template.layout.columnWidth ?? DEFAULT_COLUMN_WIDTH_EM, MIN_COLUMN_WIDTH, MAX_COLUMN_WIDTH, DEFAULT_COLUMN_WIDTH_EM),
     maxColumns,
     description,
   };
@@ -125,13 +127,27 @@ export function statblockSheet(input: StatblockSheetInput, texts: SheetTexts = n
   };
 }
 
-/** The statblock drawn with every whole text it names by hash (drawn twice: hashing takes a promise), and those texts to store. */
+/** The texts the abilities' names link, read once a drawing named them (a drawing more: reading takes a promise). */
+async function linkedTexts(input: StatblockSheetInput): Promise<ReadonlyMap<string, string>> {
+  const { readLink } = input;
+  const asking = new SheetTexts();
+  if (readLink === undefined || statblockSheet(input, asking) === null || asking.links.size === 0) return new Map();
+  const links = [...asking.links];
+  const texts = await Promise.all(links.map((link) => readLink(link).catch((): null => null)));
+  return new Map(links.flatMap((link, index): [string, string][] => {
+    const text = texts[index]?.trim();
+    return text ? [[link, text]] : [];
+  }));
+}
+
+/** The statblock drawn with the texts its abilities link and every whole text it names by hash (drawn twice: hashing takes a promise), and those texts to store. */
 export async function drawnStatblock(input: StatblockSheetInput, stored?: AssetStoring): Promise<DrawnStatblock> {
-  const first = new SheetTexts();
+  const linked = await linkedTexts(input);
+  const first = new SheetTexts(new Map(), linked);
   const statblock = statblockSheet(input, first);
   if (statblock === null || first.wanted.size === 0) return { statblock, texts: [] };
   const assets = await first.hashed(stored);
-  const drawn = statblockSheet(input, new SheetTexts(new Map([...assets].map(([text, asset]) => [text, asset.ref]))));
+  const drawn = statblockSheet(input, new SheetTexts(new Map([...assets].map(([text, asset]) => [text, asset.ref])), linked));
   const named = new Set(namedTexts(drawn));
   return { statblock: drawn, texts: [...assets.values()].filter((asset) => named.has(asset.ref.hash)) };
 }

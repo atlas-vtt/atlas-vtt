@@ -1,6 +1,7 @@
 import { align } from './align';
 import { atlasLinks } from './atlasLinks';
 import { am } from './am';
+import { assetGrid } from './assetGrid';
 import { bundle } from './bundle';
 import { cleanup } from './cleanup';
 import { clock } from './clock';
@@ -18,6 +19,17 @@ import { campaign } from './campaign';
 import { quest } from './quest';
 import { dashboard } from './dashboard';
 import { dice } from './dice';
+import { docs } from './docs';
+import { siteFrame } from './siteFrame';
+import { armarium } from './armarium';
+import { itemBundle } from './itemBundle';
+import { itemReview } from './itemReview';
+import { armariumFindings } from './armariumFindings';
+import { armariumListing } from './armariumListing';
+import { armariumUpload } from './armariumUpload';
+import { armariumShare } from './armariumShare';
+import { armariumMusic } from './armariumMusic';
+import { account } from './account';
 import { diceLab } from './diceLab';
 import { diceRoll } from './diceRoll';
 import { diceSettings } from './diceSettings';
@@ -42,7 +54,9 @@ import { picker } from './picker';
 import { settings } from './settings';
 import { snapshots } from './snapshots';
 import { levels } from './levels';
+import { measure } from './measure';
 import { openings } from './openings';
+import { rooms } from './rooms';
 import { statblock } from './statblock';
 import { statblockEditor } from './statblockEditor';
 import { switcher } from './switcher';
@@ -59,16 +73,17 @@ import { search } from './search';
 import { senses } from './senses';
 import { sort } from './sort';
 import { tableTv } from './tableTv';
+import { table } from './table';
 import { glass } from './glass';
 import { toolbar } from './toolbar';
 import { toolbarEdit } from './toolbarEdit';
 import { hotkey } from './hotkey';
 import { pin } from './pin';
 import { laser } from './laser';
-import { text } from './text';
+import { downloads } from './downloads';
+import { remote } from './remote';
 import { audio } from './audio';
-import { tokenSound } from './tokenSound';
-import { drawing } from './drawing';
+import { draw } from './draw';
 import { dungeon } from './dungeon';
 import { dungeonProp } from './dungeonProp';
 import { dungeonScene } from './dungeonScene';
@@ -98,22 +113,31 @@ import { validation } from './validation';
 import { issue } from './issue';
 import { changelog } from './changelog';
 import { tour } from './tour';
+import { appearance } from './appearance';
 import { creatureFilter } from './creatureFilter';
 import { encounter } from './encounter';
 import { migration } from './migration';
 import { wall } from './wall';
 import { sceneLight } from './sceneLight';
 import { graphics } from './graphics';
+import { experimental } from './experimental';
 import { vision } from './vision';
 import { videoMap } from './videoMap';
 import { uvttFloors } from './uvttFloors';
 import { uvtt } from './uvtt';
+import { deviceFiles } from './deviceFiles';
+import { tabletDiag } from './tabletDiag';
+import { fog } from './fog';
+import { selection } from './selection';
 
 /** English, the source language: every key exists here, and other languages translate a subset of it. */
 export const en = {
   ...align,
+  ...deviceFiles,
+  ...tabletDiag,
   ...atlasLinks,
   ...am,
+  ...assetGrid,
   ...bundle,
   ...cleanup,
   ...clock,
@@ -131,6 +155,9 @@ export const en = {
   ...quest,
   ...dashboard,
   ...dice,
+  ...docs,
+  ...siteFrame,
+  ...armarium,
   ...diceLab,
   ...diceRoll,
   ...diceSettings,
@@ -155,7 +182,9 @@ export const en = {
   ...settings,
   ...snapshots,
   ...levels,
+  ...measure,
   ...openings,
+  ...rooms,
   ...statblock,
   ...statblockEditor,
   ...switcher,
@@ -172,16 +201,17 @@ export const en = {
   ...senses,
   ...sort,
   ...tableTv,
+  ...table,
   ...glass,
   ...toolbar,
   ...toolbarEdit,
   ...hotkey,
   ...pin,
   ...laser,
-  ...text,
+  ...downloads,
+  ...remote,
   ...audio,
-  ...tokenSound,
-  ...drawing,
+  ...draw,
   ...dungeon,
   ...dungeonProp,
   ...dungeonScene,
@@ -195,6 +225,7 @@ export const en = {
   ...image,
   'index.unreadable': 'Atlas VTT could not read its asset index ({path}) and left it untouched. Restart Obsidian to try again.',
   'index.rebuilding': 'Atlas VTT could not read its asset index and is rebuilding it from your collection files. The unreadable file was kept as {path}.',
+  'index.folderMoved': 'The Atlas folder was moved to "{path}". Atlas finds its library only in "{folder}" at the top of the vault: move the folder back there and your maps, scenes and tokens are back.',
   ...link,
   ...mapPreview,
   ...names,
@@ -213,14 +244,26 @@ export const en = {
   ...issue,
   ...changelog,
   ...tour,
+  ...appearance,
   ...creatureFilter,
   ...encounter,
   ...migration,
   ...wall,
   ...sceneLight,
   ...graphics,
+  ...experimental,
   ...vision,
   ...videoMap,
   ...uvttFloors,
   ...uvtt,
+  ...fog,
+  ...armariumFindings,
+  ...armariumListing,
+  ...armariumUpload,
+  ...armariumShare,
+  ...armariumMusic,
+  ...account,
+  ...selection,
+  ...itemBundle,
+  ...itemReview,
 } as const;

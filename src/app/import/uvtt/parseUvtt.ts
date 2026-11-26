@@ -6,7 +6,9 @@ import { UVTT_LIMITS, type UvttLight, type UvttMap, type UvttParseResult, type U
 const count = (value: number): string => value.toLocaleString('en-US');
 const capitalized = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1);
 
-export const UVTT_TOO_LARGE = `The file is larger than ${UVTT_LIMITS.fileBytes / 1024 / 1024} MB.`;
+/** The refusal of a file of more than `fileBytes`. */
+export const uvttTooLarge = (fileBytes: number): string => `The file is larger than ${fileBytes / 1024 / 1024} MB.`;
+export const UVTT_TOO_LARGE = uvttTooLarge(UVTT_LIMITS.fileBytes);
 const TOO_MANY_WALLS = `The file has more than ${count(UVTT_LIMITS.wallSegments)} wall segments.`;
 const TOO_MANY_LIGHTS = `The file has more than ${count(UVTT_LIMITS.lights)} lights.`;
 

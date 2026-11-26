@@ -72,7 +72,7 @@ const ONLY_SEPARATORS = /^[\s\p{P}]*$/u;
  * Whether a block strings several parts' values together and nothing else ("{tier} {type}"): the
  * header shows each, so the block repeats them all.
  */
-function joinsHeaderValues(block: TemplateBlock, keys: ReadonlySet<FieldKey>): boolean {
+export function joinsHeaderValues(block: TemplateBlock, keys: ReadonlySet<FieldKey>): boolean {
   if (!PLAIN.has(block.type)) return false;
   const pattern = 'pattern' in block ? block.pattern : undefined;
   if (pattern === undefined || WORKED_OUT.test(pattern) || findCode(block).length > 0) return false;

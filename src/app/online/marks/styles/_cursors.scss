@@ -1,3 +1,5 @@
+@use '../../../../../styles/tokens' as *;
+
 // Other people's cursors over a shared map (`CursorOverlay`, `RemoteCursors`): an arrow whose tip is
 // the pointer and a name tag beside it, in the owner's colour (`--atlas-online-player`), the same size
 // at every zoom. Each cursor is moved by a transform only; it fades and grows in from its tip.
@@ -74,7 +76,7 @@ $fade: 160ms;
   left: 12px;
   max-width: 180px;
   padding: 2px 7px;
-  border-radius: 3px 9px 9px 9px;
+  border-radius: $radius-s $radius-m $radius-m $radius-m;
   background: var(--atlas-online-player);
   color: var(--atlas-online-player-ink);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.24), 0 3px 10px rgba(0, 0, 0, 0.14);

@@ -62,15 +62,18 @@ export function mapPixelSize(model: DungeonModel, pxPerCell: number, view: Pick<
   return { width: layout.widthPx, height: layout.heightPx };
 }
 
-/** The most pixels per cell (whole pixels) that keep the image within both limits, and within `maxPixels` where given. */
-export function maxPxPerCell(model: DungeonModel, view: Pick<DungeonView, 'secrets'> = DEFAULT_VIEW, maxPixels = MAX_MAP_PIXELS): number {
+/**
+ * The most pixels per cell (whole pixels) that keep the image within both limits, and within
+ * `maxPixels` and `maxSide` where given: what a device draws on one canvas.
+ */
+export function maxPxPerCell(model: DungeonModel, view: Pick<DungeonView, 'secrets'> = DEFAULT_VIEW, maxPixels = MAX_MAP_PIXELS, maxSide = MAX_MAP_SIDE): number {
   const { cellsWide, cellsHigh } = mapLayout(model, 1, view);
-  const bySide = MAX_MAP_SIDE / Math.max(cellsWide, cellsHigh);
+  const bySide = Math.min(maxSide, MAX_MAP_SIDE) / Math.max(cellsWide, cellsHigh);
   const byArea = Math.sqrt(Math.min(maxPixels, MAX_MAP_PIXELS) / (cellsWide * cellsHigh));
   return Math.max(1, Math.floor(Math.min(bySide, byArea)));
 }
 
-/** The cell size to draw a map at: the one asked for, or less where the limits (and `maxPixels`) demand it. */
-export function suggestedPxPerCell(model: DungeonModel, wanted = DEFAULT_PX_PER_CELL, view: Pick<DungeonView, 'secrets'> = DEFAULT_VIEW, maxPixels?: number): number {
-  return Math.max(1, Math.min(Math.round(wanted), maxPxPerCell(model, view, maxPixels)));
+/** The cell size to draw a map at: the one asked for, or less where the limits (and `maxPixels`, `maxSide`) demand it. */
+export function suggestedPxPerCell(model: DungeonModel, wanted = DEFAULT_PX_PER_CELL, view: Pick<DungeonView, 'secrets'> = DEFAULT_VIEW, maxPixels?: number, maxSide?: number): number {
+  return Math.max(1, Math.min(Math.round(wanted), maxPxPerCell(model, view, maxPixels, maxSide)));
 }

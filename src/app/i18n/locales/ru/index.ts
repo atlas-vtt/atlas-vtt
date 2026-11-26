@@ -2,6 +2,7 @@ import type { Translation } from '../../types';
 import { align } from './align';
 import { atlasLinks } from './atlasLinks';
 import { am } from './am';
+import { assetGrid } from './assetGrid';
 import { bundle } from './bundle';
 import { cleanup } from './cleanup';
 import { clock } from './clock';
@@ -56,9 +57,9 @@ import { toolbarEdit } from './toolbarEdit';
 import { hotkey } from './hotkey';
 import { pin } from './pin';
 import { laser } from './laser';
-import { text } from './text';
+import { remote } from './remote';
+import { downloads } from './downloads';
 import { audio } from './audio';
-import { drawing } from './drawing';
 import { editToken } from './editToken';
 import { templateEditor } from './templateEditor';
 import { tables } from './tables';
@@ -89,6 +90,7 @@ import { validation } from './validation';
 import { issue } from './issue';
 import { changelog } from './changelog';
 import { tour } from './tour';
+import { appearance } from './appearance';
 import { creatureFilter } from './creatureFilter';
 import { encounter } from './encounter';
 import { migration } from './migration';
@@ -104,11 +106,36 @@ import { openings } from './openings';
 import { uvtt } from './uvtt';
 import { uvttFloors } from './uvttFloors';
 import { videoMap } from './videoMap';
+import { account } from './account';
+import { armarium } from './armarium';
+import { armariumFindings } from './armariumFindings';
+import { armariumListing } from './armariumListing';
+import { armariumShare } from './armariumShare';
+import { armariumMusic } from './armariumMusic';
+import { armariumUpload } from './armariumUpload';
+import { deviceFiles } from './deviceFiles';
+import { docs } from './docs';
+import { draw } from './draw';
+import { experimental } from './experimental';
+import { fog } from './fog';
+import { glass } from './glass';
+import { graphics } from './graphics';
+import { itemBundle } from './itemBundle';
+import { itemReview } from './itemReview';
+import { measure } from './measure';
+import { playerBar } from './playerBar';
+import { rooms } from './rooms';
+import { selection } from './selection';
+import { siteFrame } from './siteFrame';
+import { table } from './table';
+import { tableTv } from './tableTv';
+import { tabletDiag } from './tabletDiag';
 
 export const ru: Translation = {
   ...align,
   ...atlasLinks,
   ...am,
+  ...assetGrid,
   ...bundle,
   ...cleanup,
   ...clock,
@@ -152,6 +179,7 @@ export const ru: Translation = {
   ...transfer,
   ...view,
   ...widgets,
+  ...remote,
   ...sbImport,
   ...vaultImages,
   ...filters,
@@ -163,9 +191,8 @@ export const ru: Translation = {
   ...hotkey,
   ...pin,
   ...laser,
-  ...text,
+  ...downloads,
   ...audio,
-  ...drawing,
   ...editToken,
   ...hex,
   ...light,
@@ -176,6 +203,7 @@ export const ru: Translation = {
   ...image,
   'index.unreadable': 'Atlas VTT не смог прочитать индекс ресурсов ({path}) и не стал его менять. Перезапустите Obsidian, чтобы попробовать снова.',
   'index.rebuilding': 'Atlas VTT не смог прочитать индекс ресурсов и восстанавливает его по файлам коллекций. Нечитаемый файл сохранён как {path}.',
+  'index.folderMoved': 'Папка Atlas перемещена в «{path}». Atlas находит свою библиотеку только в папке «{folder}» в корне хранилища: верните папку туда, и ваши карты, сцены и токены вернутся.',
   ...link,
   ...mapPreview,
   ...names,
@@ -191,6 +219,7 @@ export const ru: Translation = {
   ...issue,
   ...changelog,
   ...tour,
+  ...appearance,
   ...creatureFilter,
   ...encounter,
   ...migration,
@@ -213,4 +242,28 @@ export const ru: Translation = {
   ...uvtt,
   ...uvttFloors,
   ...videoMap,
+  ...account,
+  ...armarium,
+  ...armariumFindings,
+  ...armariumListing,
+  ...armariumShare,
+  ...armariumMusic,
+  ...armariumUpload,
+  ...deviceFiles,
+  ...docs,
+  ...draw,
+  ...experimental,
+  ...fog,
+  ...glass,
+  ...graphics,
+  ...itemBundle,
+  ...itemReview,
+  ...measure,
+  ...playerBar,
+  ...rooms,
+  ...selection,
+  ...siteFrame,
+  ...table,
+  ...tableTv,
+  ...tabletDiag,
 };

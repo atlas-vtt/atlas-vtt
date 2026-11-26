@@ -1,0 +1,95 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// The place of a bar beside the main toolbar (SideBarSlot: undo/redo, keyboard
+// shortcuts, online play): hidden by the toolbar editor, opening and closing its
+// width, and arranged while the editor is open, under a handle over the whole bar
+// ═══════════════════════════════════════════════════════════════════════════
+// Imported inside the `.atlas-vtt-plugin` scope of styles/main.scss.
+
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+
+// The slot wraps the bar exactly; the row around it takes no pointer.
+.atlas-side-bar {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  pointer-events: auto;
+
+  &[hidden] {
+    display: none;
+  }
+
+  // Opening or closing its real width, the bar keeps its own, clipped.
+  &[data-animating] {
+    overflow: hidden;
+  }
+
+  &[data-collapsing] {
+    pointer-events: none;
+  }
+
+  // A ghost flying or settling here: the bar waits invisible until it lands.
+  &[data-settling] > .atlas-side-bar__content {
+    visibility: hidden;
+  }
+
+  // Dragged: its place stays open, empty, so the toolbar beside it keeps still.
+  &[data-lifted] {
+    > .atlas-side-bar__content {
+      visibility: hidden;
+    }
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: $surface-radius;
+      background: var(--background-modifier-hover);
+      pointer-events: none;
+      animation: atlas-toolbar-fade-in $transition-fast $transition-ease-out;
+    }
+  }
+
+  // Pressed before a drag, the bar gives a little under the pointer, as a tool does.
+  > .atlas-side-bar__content {
+    transition: border-color $transition-normal $transition-ease, transform $transition-press $transition-ease-out;
+  }
+
+  &[data-pressed] > .atlas-side-bar__content {
+    transform: scale(0.96);
+  }
+
+  // With reduced motion a dropped bar fades in where it landed.
+  &[data-revealing] > .atlas-side-bar__content {
+    animation: atlas-toolbar-fade-in $transition-fast $transition-ease-out;
+  }
+
+  // The bar's buttons have a surface of their own under them, so the handle lies over the whole
+  // bar: its hover fill and focus ring follow the bar's corners.
+  > .atlas-toolbar-handle {
+    z-index: 1;
+    border-radius: $surface-radius;
+
+    &:focus-visible {
+      outline: 2px solid var(--interactive-accent);
+      outline-offset: -2px;
+    }
+  }
+
+  > .atlas-toolbar-handle + .atlas-side-bar__content {
+    pointer-events: none;
+  }
+}
+
+// While the editor is open its stroke takes the accent, as the main toolbar's does; online play's
+// button draws its own surface.
+.atlas-side-bar__content.atlas-vtt-toolbar.is-editing,
+.atlas-side-bar__content.is-editing > .atlas-online-dock {
+  @include atlas-elevated-surface(editing);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-side-bar[data-pressed] > .atlas-side-bar__content {
+    transform: none;
+  }
+}

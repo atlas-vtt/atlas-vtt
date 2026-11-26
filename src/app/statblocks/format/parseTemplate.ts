@@ -17,7 +17,8 @@ import { isValidTemplateId } from '../model/templateIds';
 import { BlockIdAllocator } from './blockIds';
 import { danglingFieldProblems } from './fieldReferences';
 import { TEMPLATE_KEYS } from './formatKeys';
-import { describeValue, isRecord, own, parseJsonText } from './jsonValues';
+import { describeValue, own, parseJsonText } from './jsonValues';
+import { isRecord } from '../../utils/guards';
 import { ObjectReader } from './objectReader';
 import { parseLayout, type BlockContext } from './parseBlocks';
 import { parseField } from './parseFields';
@@ -26,6 +27,7 @@ import { readDerivedFrom, readHeader, readImportedFrom, readLookups, readPlayers
 import { JSON_OBJECT, asJsonRecord, asKey, asPositiveInteger, asString } from './valueReads';
 import { parseRecoveryButtons } from '../../recovery/parseRecovery';
 import type { RecoveryButton } from '../../recovery/recoveryTypes';
+import { readProvenance } from '../../services/itemBundle/itemProvenance';
 
 export type TemplateParseStatus = 'ok' | 'invalid' | 'newer' | 'reserved';
 
@@ -125,6 +127,7 @@ function readBody(file: Record<string, unknown>, version: number, id: string, pr
     ...readLookups(r),
     ...r.opt('sample', asJsonRecord, JSON_OBJECT),
     ...r.opt('recovery', asRecovery, 'a list of recovery buttons'),
+    ...r.opt('armarium', readProvenance, 'where it was installed from in the Armarium'),
   });
   problems.push(...danglingFieldProblems(template), ...counterProblems(template));
   return template;

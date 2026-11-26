@@ -3,11 +3,12 @@ import { recordsByFile, recordsForFiles, type RecordsSeam } from './libraryRecor
 import { parentOfRelative } from './soundPaths';
 import { withChanges, type StoredSound } from './soundRecords';
 import type { SoundRecordStore } from './SoundRecordStore';
+import { getLocale } from '../i18n';
 
 /** Longer is no row of the rail, and no tag anyone chose. */
 const MAX_TAG_LENGTH = 48;
 
-const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+const collator = new Intl.Collator(getLocale(), { numeric: true, sensitivity: 'base' });
 
 /** What two tags are compared by: never the locale's, or two devices would read one list differently. */
 export const tagKey = (tag: string): string => tag.trim().toLowerCase();
@@ -29,9 +30,14 @@ export interface TrackTags {
   folders: readonly string[];
 }
 
-export function tagsOfTrack(path: string, records: readonly StoredSound[]): TrackTags {
+/** The names of the folders a file lies in below its root: its folder tags. */
+export function folderTagsOf(path: string): string[] {
   const folder = parentOfRelative(path);
-  return { own: records.flatMap(tagsOfRecord), folders: folder === '' ? [] : folder.split('/') };
+  return folder === '' ? [] : folder.split('/');
+}
+
+export function tagsOfTrack(path: string, records: readonly StoredSound[]): TrackTags {
+  return { own: records.flatMap(tagsOfRecord), folders: folderTagsOf(path) };
 }
 
 const holds = (tags: readonly string[], key: string): boolean => tags.some((tag) => tagKey(tag) === key);
@@ -58,9 +64,14 @@ export interface RootTag {
 
 /** Every tag of a root's tracks, by name. A tag no track has is none: there is no list of tags besides the tracks. */
 export function rootTags(tracks: readonly TrackTags[]): RootTag[] {
+  return tagsOfNames(tracks.map(namesOfTrack));
+}
+
+/** `rootTags` of tracks whose names (`namesOfTrack`) were worked out before. */
+export function tagsOfNames(tracks: readonly (readonly string[])[]): RootTag[] {
   const tags = new Map<string, RootTag>();
-  for (const track of tracks) {
-    for (const name of namesOfTrack(track)) {
+  for (const names of tracks) {
+    for (const name of names) {
       const key = tagKey(name);
       const held = tags.get(key);
       if (held) held.count++;

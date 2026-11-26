@@ -1,0 +1,25 @@
+import type { Translation } from '../../types';
+
+export const rooms: Translation = {
+  'rooms.carve': '挖掘',
+  'rooms.fill': '填回',
+  'rooms.door': '门',
+  'rooms.rectangle': '矩形',
+  'rooms.points': '逐点',
+  'rooms.lasso': '套索',
+  'rooms.brush': '画笔',
+  'rooms.brushSize': '画笔大小',
+  'rooms.bucket': '油漆桶',
+  'rooms.bucketTip': '在房间内点击或拖动，把地面挖到所画的墙为止',
+  'rooms.bucketRadius': '油漆桶半径',
+  'rooms.bucketSensitivity': '边缘灵敏度',
+  'rooms.stabilize': '防抖',
+  'rooms.experimental.label': '房间油漆桶',
+  'rooms.experimental.hint': '照明工具房间模式中的油漆桶：在绘制的地图上点击或拖动，即可找到直到所绘墙壁的地面并将其挖出。关闭时，油漆桶会被隐藏。',
+  'rooms.bucketFoundNothing': '油漆桶在此处未找到地面。请换一个位置或调整灵敏度',
+  'rooms.carveTip': '从岩石中挖出房间。按住 Alt 改为填回',
+  'rooms.fillTip': '把岩石填回去。按住 Alt 改为挖掘',
+  'rooms.rectangleTip': '按住 Shift 吸附到网格',
+  'rooms.pointsTip': '点击各个角，再点第一个闭合。Shift 吸附到网格',
+  'rooms.doorHint': '拖过一个开口。按住 Alt 做成密门',
+};

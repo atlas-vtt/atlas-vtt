@@ -267,10 +267,12 @@ async function fuzz({ seed, trials, map = 2048, resolution = 1, quality, belowRe
 
       if (kind === 'floor') report.floors++;
       // A seen token below shows at its middle where sight sees it in the light.
-      for (const entry of seenTokens) {
+      for (const [i, entry] of seenTokens.entries()) {
         const at = new Matrix(scale, 0, 0, scale, x, y).apply({ x: entry.x, y: entry.y });
         const [sx, sy] = [Math.floor(at.x * resolution), Math.floor(at.y * resolution)];
         if (sx < 0 || sy < 0 || sx >= device || sy >= device || onBadge(entry)) continue;
+        // A seen token drawn over this one (a later one) may lie with its ring, which reaches 35 px, on this one's middle.
+        if (seenTokens.slice(i + 1).some((over) => Math.hypot(over.x - entry.x, over.y - entry.y) < 36)) continue;
         const level = lightLevelAt(entry, below.ambient, below.reaches);
         if ((level !== 'bright' && level !== 'dim') || perceive(entry, normal, level) !== 'seen' || toEdges(entry, lightEdges) < 40) continue;
         report.tokensLit++;

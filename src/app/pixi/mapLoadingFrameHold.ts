@@ -1,15 +1,14 @@
 import type { Application } from 'pixi.js';
 import type { ViewAtlasStore } from '../storeFactory';
 import { captureSceneTransition, type SceneTransition } from './sceneTransition';
-import { MOTION_NORMAL_MS } from '../utils/motion';
+import { MAP_LOADING_OVERLAY_FADE_MS } from './sceneLoadMotion';
+import { holdRenders } from './RenderScheduler';
 
 /**
  * How long a map load may take before the loading overlay fades in. Shorter loads
  * (most scene switches) never show a spinner.
  */
 export const MAP_LOADING_REVEAL_DELAY_MS = 250;
-/** Fade of the loading overlay in both directions. */
-export const MAP_LOADING_OVERLAY_FADE_MS = MOTION_NORMAL_MS;
 
 /**
  * Keeps the last rendered frame on screen while a map loads, so a scene switch
@@ -60,14 +59,19 @@ export function bindMapLoadingFrameHold(store: ViewAtlasStore, app: Application)
     pending = null;
   };
 
+  // Nothing of a scene being built is rendered: the held frame or the loading screen covers it,
+  // and each render of it was work the first render after the load does again.
+  holdRenders(app, store.getState().isMapLoading);
   const unsubscribe = store.subscribe((state, prevState) => {
     if (state.isMapLoading === prevState.isMapLoading) return;
     if (state.isMapLoading) hold();
-    else finish();
+    holdRenders(app, state.isMapLoading);
+    if (!state.isMapLoading) finish();
   });
 
   return (): void => {
     unsubscribe();
+    holdRenders(app, false);
     handOverToOverlay();
     fading?.cancel();
     fading = null;

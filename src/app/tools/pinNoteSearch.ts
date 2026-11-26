@@ -1,6 +1,6 @@
 import { App, TFile, setIcon } from 'obsidian';
 import { mayLinkFromScene } from '../services/sceneLinks';
-import { t } from '../i18n';
+import { getLocale, t } from '../i18n';
 import { baseName, parentPath } from '../utils/pathUtils';
 import { STANDING_LIST } from '../keyboard/tooltipEscape';
 import { runInBackground } from '../utils/backgroundTask';
@@ -8,9 +8,10 @@ import type { PinCreateEntry, PinLinkTarget } from './pinCreateEntries';
 import { encounterFoldersOf, type EncounterFolder } from '../encounters/encounterFolders';
 import { headingLink } from '../services/headingLinks';
 import { fillHeadingRow, matchingHeadings } from './pinHeadingRows';
+import { revealInList } from '../utils/scrollWithin';
 
 const RESULT_LIMIT = 30;
-const BY_NAME = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+const BY_NAME = new Intl.Collator(getLocale(), { numeric: true, sensitivity: 'base' });
 
 export interface PinNoteSearchOptions {
   app: App;
@@ -62,7 +63,7 @@ export function createPinNoteSearch(container: HTMLElement, options: PinNoteSear
     },
   });
 
-  const results = container.createDiv({ cls: 'pin-results', attr: { id: listId, role: 'listbox', ...STANDING_LIST } });
+  const results = container.createDiv({ cls: 'atlas-pin-results', attr: { id: listId, role: 'listbox', ...STANDING_LIST } });
 
   const footer = container.createDiv({ cls: 'pin-footer' });
   const footerHints: Array<[key: string, label: string]> = [['↑↓', t('pin.search.navigate')], ['Enter', t('pin.search.select')], ['Esc', t('pin.search.cancel')]];
@@ -112,7 +113,7 @@ export function createPinNoteSearch(container: HTMLElement, options: PinNoteSear
     active.element.addClass('is-active');
     active.element.setAttribute('aria-selected', 'true');
     search.setAttribute('aria-activedescendant', active.element.id);
-    active.element.scrollIntoView({ block: 'nearest' });
+    revealInList(active.element);
   };
 
   const addEntry = (choose: () => void): HTMLElement => {

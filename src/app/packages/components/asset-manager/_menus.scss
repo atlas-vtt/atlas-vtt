@@ -20,7 +20,7 @@
   z-index: $z-popover;
   background: var(--menu-background);
   border: var(--menu-border-width, #{$border-width-s}) solid var(--menu-border-color);
-  border-radius: $radius-xl;
+  border-radius: $surface-radius;
   box-shadow: var(--menu-shadow, #{$shadow-md});
 
   // Scale in from the trigger, not from centre
@@ -110,7 +110,7 @@
 }
 
 .atlas-am-menu-detail {
-  color: var(--text-faint);
+  color: var(--text-muted);
   font-size: $font-ui-smaller;
   font-variant-numeric: tabular-nums;
 }

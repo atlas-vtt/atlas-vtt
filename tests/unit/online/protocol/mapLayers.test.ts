@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_DRAWING_POINTS, parseGmMessage, type GmMessage } from '../../../../src/app/online/protocol/index.ts';
+import { parseGmMessage, type GmMessage } from '../../../../src/app/online/protocol/index.ts';
 
 const HASH = 'b'.repeat(64);
 const GRID = { type: 'hex-vertical', size: 70, offsetX: 3, offsetY: -2, colour: '#112233', alpha: 0.5, lineWidth: 2, lineType: 'dashed', numbers: { format: 'letter-number', opacity: 0.8 } };
@@ -30,11 +30,8 @@ describe("messages of the map's layers", () => {
       { t: 'doors', scene: 's', doors: [{ p: [0, 0, 1], open: true }] },
       { t: 'doors', scene: 's', doors: [{ p: [0, 0, 1, 1], open: true, locked: 'x', secret: 1 }].map(({ p, open }) => ({ p, open: open ? 'yes' : 'no' })) },
       { t: 'sensed', scene: 's', tokens: [{ x: Number.NaN, y: 0, size: 1 }] },
-      { t: 'annotations', scene: 's', drawings: [{ type: 'pen', points: [0], colour: '#ffffff', width: 1, opacity: 1 }], texts: [] },
-      { t: 'annotations', scene: 's', drawings: [{ type: 'icon', points: [0, 0], colour: '#ffffff', width: 1, opacity: 1, icon: '<svg>' }], texts: [] },
-      { t: 'annotations', scene: 's', drawings: [{ type: 'pen', points: Array.from({ length: MAX_DRAWING_POINTS * 2 + 2 }, () => 1), colour: '#ffffff', width: 1, opacity: 1 }], texts: [] },
-      { t: 'annotations', scene: 's', drawings: [], texts: [{ ...TEXT, fontFamily: 'x; } body { display: none' }] },
-      { t: 'annotations', scene: 's', drawings: [], texts: [{ ...TEXT, text: 'x'.repeat(2001) }] },
+      // Drawings and texts are read one by one (`annotations.test.ts`): only a message without their lists is refused.
+      { t: 'annotations', scene: 's', drawings: 'none', texts: [] },
       { t: 'initiative', scene: 's', list: { ...INITIATIVE, combatants: [{ ...COMBATANT, side: 'gm' }] } },
       { t: 'initiative', scene: 's', list: { ...INITIATIVE, combatants: [{ ...COMBATANT, ring: { colour: 'url(x)' } }] } },
       { t: 'initiative', scene: 's', list: { ...INITIATIVE, round: Number.POSITIVE_INFINITY } },

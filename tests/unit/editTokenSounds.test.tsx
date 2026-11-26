@@ -11,7 +11,6 @@ import type { TokenEntity } from '../../src/app/types';
 import type { TokenSound } from '../../src/app/types/audioTypes';
 import { FakeTokenSoundContext } from '../helpers/fakeTokenSoundContext';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
-import { withSound } from '../mocks/experimentalFeatures';
 
 const showNotice = vi.hoisted(() => vi.fn());
 vi.mock('../../src/app/ui/notice', () => ({ showNotice }));
@@ -22,8 +21,8 @@ vi.mock('../../src/app/soundLibrary/audioDuration', () => ({ readAudioSecondsAt:
 const MB = 1024 * 1024;
 let current: App | null = null;
 
-function open(sounds?: unknown, { sound = true, files = {} }: { sound?: boolean; files?: Record<string, string> } = {}): { app: App; store: ViewAtlasStore; saved: () => TokenEntity; section: () => HTMLElement } {
-  const { app: made } = createInMemoryApp({
+function open(sounds?: unknown, { files = {} }: { files?: Record<string, string> } = {}): { app: App; store: ViewAtlasStore; saved: () => TokenEntity; section: () => HTMLElement } {
+  const { app } = createInMemoryApp({
     files: {
       'Sounds/dragon-roar.mp3': 'audio:48000',
       'Sounds/wings.ogg': 'audio:24000',
@@ -32,8 +31,6 @@ function open(sounds?: unknown, { sound = true, files = {} }: { sound?: boolean;
       ...files,
     },
   });
-  // Token sounds belong to Sound, so Edit Token offers them only while the GM switched it on.
-  const app = sound ? withSound(made) : made;
   current = app;
   const store = createViewAtlasStore(app, `edit-token-sounds-${Math.random()}`);
   const token: TokenEntity = { id: 't', kind: 'token', imagePath: 't.png', x: 0, y: 0, ...(sounds !== undefined && { sounds: sounds as TokenSound[] }) };
@@ -97,15 +94,8 @@ afterEach(() => {
 });
 
 describe('the Sounds of Edit Token', () => {
-  it('has no Sounds section while Sound is switched off, and saving keeps the token\'s sounds', () => {
-    const { saved } = open([{ path: 'Sounds/wings.ogg', volume: 0.5 }], { sound: false });
-    expect(screen.queryByRole('region', { name: 'Sounds' })).toBeNull();
-    save();
-    expect(saved().sounds).toEqual([{ path: 'Sounds/wings.ogg', volume: 0.5 }]);
-  });
-
-  it('leaves sounds it cannot read as they are while Sound is switched off', () => {
-    const { saved } = open('junk', { sound: false });
+  it('leaves sounds it cannot read as they are', () => {
+    const { saved } = open('junk');
     save();
     expect(saved().sounds).toBe('junk');
   });
@@ -176,7 +166,7 @@ describe('the Sounds of Edit Token', () => {
       viewedLevel: 'ground',
     });
     await addSound('Sounds/wings.ogg');
-    act(() => store.getState().moveTokensToLevel(['t'], 'upper'));
+    act(() => void store.getState().moveTokensToLevel(['t'], 'upper'));
     expect(store.getState().viewedLevel).toBe('ground');
     save();
     expect(saved()).toMatchObject({ level: 'upper', sounds: [{ path: 'Sounds/wings.ogg', volume: 1 }] });

@@ -7,8 +7,10 @@ export interface TokenGestureEventDetail {
 
 /** A pin interaction the note pin tool should act on. */
 export interface PinActionEventDetail {
-  action: 'open' | 'edit';
+  action: 'open' | 'edit' | 'preview';
   pin: NotePin;
+  /** Where a preview opens, in client pixels (`preview`). */
+  at?: { x: number; y: number };
   /** The view store whose map holds the pin, so only that view's tool acts on it. */
   store: object;
 }

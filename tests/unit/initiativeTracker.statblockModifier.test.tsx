@@ -12,7 +12,7 @@ const showNotice = vi.hoisted(() => vi.fn());
 vi.mock('../../src/app/ui/notice', () => ({ showNotice }));
 vi.mock('../../src/app/resources/useMapResources', () => ({ useMapResources: () => [] }));
 const played = vi.hoisted(() => ({ campaign: null as { campaign: { name: string } } | null }));
-vi.mock('../../src/app/campaigns/usePlayedSystemCampaign', () => ({ usePlayedSystemCampaign: () => played.campaign }));
+vi.mock('../../src/app/campaigns/playedSystemCampaignName', () => ({ playedSystemCampaignName: () => played.campaign?.campaign.name }));
 vi.mock('../../src/app/pixi/utils/tokenHighlight', () => ({ zoomToTokenWithHighlight: vi.fn() }));
 vi.mock('../../src/app/react/components/StatblockHoverPreview', () => ({
   StatblockHoverPreview: () => null,
@@ -164,7 +164,7 @@ describe('rolling initiative with the statblocks\' modifiers', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Roll initiative' }));
     await waitFor(() => expect(showNotice).toHaveBeenCalledTimes(1));
     expect(showNotice).toHaveBeenCalledWith(
-      '2 combatants rolled without a modifier: their statblocks have no number under "perception". Choose the field in Collection settings → Default Widgets',
+      '2 combatants rolled without a modifier: their statblocks have no number under "perception". Choose the field in Collection settings → Default widgets',
     );
   });
 
@@ -178,7 +178,7 @@ describe('rolling initiative with the statblocks\' modifiers', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Roll initiative' }));
     await waitFor(() => expect(showNotice).toHaveBeenCalledTimes(1));
     expect(showNotice).toHaveBeenCalledWith(
-      '1 combatant rolled without a modifier: its statblock has no number under "perception". The campaign Blue Mouth Caves sets the rules: choose the field in its Game System → Initiative',
+      '1 combatant rolled without a modifier: its statblock has no number under "perception". The campaign Blue Mouth Caves sets the rules: choose the field in its Game system → Initiative',
     );
   });
 

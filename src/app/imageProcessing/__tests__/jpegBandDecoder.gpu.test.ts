@@ -4,14 +4,14 @@ import { jpegBandDecoder } from '../band/jpegBandDecoder';
 
 const FIXTURES = ['baseline-420.jpg', 'baseline-422.jpg', 'baseline-444.jpg', 'baseline-420-restart.jpg', 'baseline-gray.jpg', 'baseline-420-tall.jpg', 'baseline-exif-upright.jpg'];
 
-async function fixture(name: string): Promise<Uint8Array> {
+async function fixture(name: string): Promise<Uint8Array<ArrayBuffer>> {
   const response = await fetch(`/tests/fixtures/images/${name}`);
   if (!response.ok) throw new Error(`${name}: ${response.status}`);
   return new Uint8Array(await response.arrayBuffer());
 }
 
 /** The browser's own decode of `bytes`, as RGBA. */
-async function browserPixels(bytes: Uint8Array): Promise<{ width: number; height: number; data: Uint8ClampedArray }> {
+async function browserPixels(bytes: Uint8Array<ArrayBuffer>): Promise<{ width: number; height: number; data: Uint8ClampedArray }> {
   const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/jpeg' }), { colorSpaceConversion: 'none' });
   const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
   const context = canvas.getContext('2d')!;
@@ -20,7 +20,7 @@ async function browserPixels(bytes: Uint8Array): Promise<{ width: number; height
   return { width: canvas.width, height: canvas.height, data: context.getImageData(0, 0, canvas.width, canvas.height).data };
 }
 
-async function bandPixels(bytes: Uint8Array, reduce: 1 | 8): Promise<{ width: number; height: number; data: Uint8ClampedArray }> {
+async function bandPixels(bytes: Uint8Array<ArrayBuffer>, reduce: 1 | 8): Promise<{ width: number; height: number; data: Uint8ClampedArray }> {
   const { width, height } = reducedSize(jpegBandDecoder.inspect(bytes), reduce);
   const data = new Uint8ClampedArray(width * height * 4);
   await jpegBandDecoder.decode(bytes, { reduce, onBand: (band) => data.set(band.data, band.y * width * 4) });

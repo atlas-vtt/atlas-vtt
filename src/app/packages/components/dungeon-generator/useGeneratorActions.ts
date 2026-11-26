@@ -5,6 +5,7 @@ import { maxPxPerCell } from '../../../dungeons/render/layoutSize';
 import { dungeonStyle } from '../../../dungeons/styleCatalog';
 import type { DungeonWorkerClient } from '../../../dungeons/worker/DungeonWorkerClient';
 import { AssetService } from '../../../services/AssetService';
+import { generatedMapLimits } from '../../../platform/generatedMapLimits';
 import { showNotice } from '../../../ui/notice';
 import { parentPath } from '../../../utils/pathUtils';
 import { t } from '../../../i18n';
@@ -106,11 +107,13 @@ export function useGeneratorActions({ app, client, state, collectionId, onCreate
     }
   }, [app, client]);
 
+  // The export dialog's Max is what this device draws: a tablet's canvas is smaller than a map may be.
+  const mapLimits = generatedMapLimits();
   return {
     creating,
     problem,
     create,
-    maxCell: state.model ? maxPxPerCell(state.model, state.settings.view) : null,
+    maxCell: state.model ? maxPxPerCell(state.model, state.settings.view, mapLimits.maxPixels, mapLimits.maxSide) : null,
     exportAs,
   };
 }

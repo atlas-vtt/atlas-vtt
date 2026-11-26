@@ -1,7 +1,9 @@
 import type { DiceRollOrigin } from '../types/diceRollOrigin';
 import type { DiceRollResult } from '../types/diceTypes';
 import { nameShownToPlayers } from '../pixi/token-renderer/nameplateVisibility';
+import { tokenDisplayName } from '../pixi/token-renderer/tokenDisplayName';
 import type { PreparedDiceRoll, RollSourcePresentation } from '../react/components/dice/diceSourcePresentation';
+import type { TokenEntity } from '../types';
 
 /** A token the players' picture shows, as a roll may name it: plain data read from the map. */
 export interface ShownRollToken {
@@ -12,6 +14,14 @@ export interface ShownRollToken {
   readonly imagePath: string | undefined;
   readonly showRing: boolean;
   readonly ringColor: string | undefined;
+}
+
+/** What a token shows of itself wherever it is named: its name, artwork and ring. */
+export type TokenFace = Pick<ShownRollToken, 'name' | 'imagePath' | 'showRing' | 'ringColor'>;
+
+/** A token's face, read from the token as the scene holds it. */
+export function tokenFace(token: TokenEntity): TokenFace {
+  return { name: tokenDisplayName(token), imagePath: token.imagePath || undefined, showRing: token.showRing !== false, ringColor: token.ringColor };
 }
 
 /** The scene a player window shows, as rolls ask it which tokens it shows. */
@@ -42,7 +52,7 @@ export interface PlayerRollView {
  * A roll as the player window shows it. It names its token, with the token's name and
  * picture on the map and the ability rolled, only when its origin names that token and
  * the shown scene shows it. Otherwise players see the dice and the total and nothing of
- * who rolled or what for. The roll itself is never changed: the GM's window and the log
+ * who rolled, nor what for unless its roller wrote that for the table (a toolbar roll's name). The roll itself is never changed: the GM's window and the log
  * keep it whole.
  */
 export function rollForPlayers(
@@ -54,10 +64,11 @@ export function rollForPlayers(
   const source = result.source;
   if (!source) return { result, sourcePresentation: null };
   const shown = origin && source.tokenId && origin.tokenId === source.tokenId ? scene?.shownToken(origin) ?? null : null;
-  if (!shown) return { result: { ...result, source: { type: source.type } }, sourcePresentation: null };
+  // A toolbar roll's name is what its roller wrote for the table (a player's "Longsword"), never a statblock's ability.
+  const ability = shown || source.type === 'toolbar' ? source.abilityName : undefined;
   return {
-    result: { ...result, source: source.abilityName ? { type: source.type, abilityName: source.abilityName } : { type: source.type } },
-    sourcePresentation: presentationOf(shown, view),
+    result: { ...result, source: ability ? { type: source.type, abilityName: ability } : { type: source.type } },
+    sourcePresentation: shown ? presentationOf(shown, view) : null,
   };
 }
 

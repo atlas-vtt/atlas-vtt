@@ -57,9 +57,10 @@ export class CoveredPages {
     this.caughtUp.clear();
   }
 
-  /** Sends a live message: marks to all to the pages the map shows on, anything else to whom it is for. */
+  /** Sends a live message: marks only to the pages the map shows on (to all, or to one), anything else to whom it is for. */
   sendLive(body: GmMessage, key: string, to?: string): void {
-    if (to !== undefined || this.covered.size === 0 || body.t !== 'marks' || !this.ports.batches()) return this.ports.sendLive(body, key, to);
+    if (this.covered.size === 0 || body.t !== 'marks' || !this.ports.batches()) return this.ports.sendLive(body, key, to);
+    if (to !== undefined) return void (this.covered.has(to) || this.ports.sendLive(body, key, to));
     for (const player of this.ports.connected()) if (!this.covered.has(player)) this.ports.sendLive(body, key, player);
   }
 

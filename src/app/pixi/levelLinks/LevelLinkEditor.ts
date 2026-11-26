@@ -8,6 +8,7 @@ import type { LevelLink } from '../../types/sceneLevelTypes';
 import { areaHandlePoint } from '../../vision/polygonArea';
 import { PolygonAreaEditor } from '../areas/PolygonAreaEditor';
 import { snapToWallEnd } from '../lighting/wallEnds';
+import { placesFreely } from '../../types/toolSwitches';
 import { levelLinkOverlay } from './levelLinkOverlay';
 
 export interface LevelLinkEditorDeps {
@@ -90,7 +91,7 @@ export class LevelLinkEditor extends PolygonAreaEditor<LevelLink> {
           return false;
         },
         maxCorners: MAX_LINK_CORNERS,
-        snap: (point, { altKey }) => (altKey ? point : snapToWallEnd(point, levelObjects(store.getState()).walls, viewport.scale.x)),
+        snap: (point, { altKey }) => (placesFreely(store.getState(), 'stairsSnap', altKey) ? point : snapToWallEnd(point, levelObjects(store.getState()).walls, viewport.scale.x)),
       },
     });
     this.stopFollowing = store.subscribe((state, previous) => this.follow(state, previous));

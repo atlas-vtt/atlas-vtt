@@ -10,4 +10,11 @@ export const editToken: Translation = {
   'editToken.resources': 'Ресурсы',
   'editToken.token': 'Токен',
   'editToken.resetStatblock': 'Сбросить к значению статблока',
+  'editToken.speed': 'Скорость',
+  'editToken.speedDefault': 'По умолчанию: {value}',
+  'editToken.sounds': 'Звуки',
+  'editToken.soundsHint': 'Включаются из меню токена, только на этом компьютере.',
+  'editToken.addSound': 'Добавить звук',
+  'editToken.soundsFull': 'У токена может быть до {max} звуков.',
+  'editToken.soundVolume': 'Громкость: {name}',
 };

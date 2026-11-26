@@ -13,6 +13,11 @@ interface ClipboardEntry {
  */
 let entry: ClipboardEntry | null = null;
 
+/** Whether something was copied on a map of this vault; it may have gone stale since, which only a paste finds out. */
+export function holdsMapClipboard(): boolean {
+  return entry !== null;
+}
+
 /** Readable summary of the objects, one line per token, text or pin. */
 export function describeMapObjects(content: MapObjectContent): string {
   const lines = [

@@ -85,16 +85,19 @@ export class StatblockPreviewWindow {
     viewId?: string,
     /** The view, scene and token a token on a map was hovered in; none for a token in a list. */
     originContext?: TokenRollContext,
-    /** The document of the window the token was hovered in, which may be a popout's. */
-    doc: Document = document,
+    /**
+     * Where the window joins the page: a map's note preview layer, so overlays of the map (the DM screen, its
+     * sound page) and dialogs stand above it, else the main window's portal host.
+     */
+    host: HTMLElement = portalHost(),
   ) {
     this.notePath = notePath;
     this.originatingPin = 'type' in originatingToken ? originatingToken : null;
     this.manager = manager;
     this.initialPos = initialPos;
 
-    this.element = portalHost(doc).createDiv({ cls: 'atlas-statblock-preview-window' });
-    this.releaseShown = holdPreviewShown(doc);
+    this.element = host.createDiv({ cls: 'atlas-statblock-preview-window' });
+    this.releaseShown = holdPreviewShown(host.doc);
     this.element.setAttribute('tabindex', '-1');
     scrollOnCtrlWheel(this.element);
     // Only a map's preview, which its manager keeps, can stay open.
@@ -112,6 +115,7 @@ export class StatblockPreviewWindow {
       noteText: outsideNote?.text,
       bundleTemplates: outsideNote?.templates,
       variant: 'hover',
+      pressableCounters: true,
     };
     const content = this.element.createDiv({ cls: 'atlas-statblock-preview-window__content' });
     this.reactRoot = createRoot(content);
@@ -177,13 +181,14 @@ export class StatblockPreviewWindow {
 
     // Pinning is the pin button's alone: rolling a die or dragging the window never pins it. A window
     // the user moves stays where they put it rather than following the pointer it opened at.
-    controls.addEventListener('mousedown', (e) => {
+    controls.addEventListener('pointerdown', (e) => {
       this.initialPos = undefined;
       this.stopDrag = startPreviewWindowDrag(element, e, reach, dragEnded);
     });
-    element.addEventListener('mousedown', (e) => {
+    element.addEventListener('pointerdown', (e) => {
       const target = e.target as HTMLElement | null;
-      if (e.button === 0 && target?.closest(CARD_HEADER)) {
+      // A finger on the card's header scrolls the statblock; it moves the window by the controls above
+      if (e.button === 0 && e.pointerType !== 'touch' && target?.closest(CARD_HEADER)) {
         this.initialPos = undefined;
         this.stopDrag = startPreviewWindowDrag(element, e, reach, dragEnded, HEADER_DRAG_THRESHOLD);
       }
@@ -207,11 +212,13 @@ export class StatblockPreviewWindow {
     }
   }
 
-  setPosition(x: number, y: number) {
+  setPosition(x: number, y: number): void {
     if (!this.element) return;
 
-    const winWidth = this.element.win.innerWidth;
-    const winHeight = this.element.win.innerHeight;
+    // A map's preview lies in its leaf, whose `contain: strict` makes it the box `position: fixed` counts from and
+    // the frame the window must keep inside; a list's preview counts from the window.
+    const frame = viewFrame(this.element);
+    const origin = this.element.closest('.workspace-leaf')?.getBoundingClientRect() ?? { left: 0, top: 0 };
     // A theme that draws around the preview asks for more room than this.
     const gaps = previewEdgeGaps(this.element.ownerDocument, 20);
     // The controls hang above the window, so they need room above it too.
@@ -224,34 +231,36 @@ export class StatblockPreviewWindow {
 
       // Cap the window to the viewport first, so the measurement below is of
       // the clamped box; the card body scrolls when the statblock is taller.
-      this.element.style.maxHeight = `${winHeight - gaps.block * 2 - above}px`;
+      this.element.style.maxHeight = `${frame.bottom - frame.top - gaps.block * 2 - above}px`;
 
       const rect = this.element.getBoundingClientRect();
       const elementWidth = rect.width || 400;
       const elementHeight = rect.height || 600;
+      const minX = frame.left + gaps.inline;
+      const minY = frame.top + gaps.block + above;
 
       let finalX = x + 15;
       let finalY = y + 15;
 
-      if (finalX + elementWidth > winWidth - gaps.inline) {
+      if (finalX + elementWidth > frame.right - gaps.inline) {
         finalX = x - elementWidth - 15;
-        if (finalX < gaps.inline) {
-          finalX = winWidth - elementWidth - gaps.inline;
+        if (finalX < minX) {
+          finalX = frame.right - elementWidth - gaps.inline;
         }
       }
 
-      if (finalY + elementHeight > winHeight - gaps.block) {
+      if (finalY + elementHeight > frame.bottom - gaps.block) {
         finalY = y - elementHeight - 15;
-        if (finalY < gaps.block + above) {
-          finalY = winHeight - elementHeight - gaps.block;
+        if (finalY < minY) {
+          finalY = frame.bottom - elementHeight - gaps.block;
         }
       }
 
-      finalX = Math.max(gaps.inline, finalX);
-      finalY = Math.max(gaps.block + above, finalY);
+      finalX = Math.max(minX, finalX);
+      finalY = Math.max(minY, finalY);
 
-      this.element.style.left = `${finalX}px`;
-      this.element.style.top = `${finalY}px`;
+      this.element.style.left = `${finalX - origin.left}px`;
+      this.element.style.top = `${finalY - origin.top}px`;
       this.element.classList.remove('atlas-statblock-preview-window--measuring');
     });
   }

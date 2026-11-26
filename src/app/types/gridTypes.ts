@@ -29,6 +29,11 @@ export interface GridState {
    * new scenes are written with a copy of the collection's distance, which then goes stale.
    */
   unitDistanceOverride?: number;
+  /**
+   * The unit this scene's distances are shown in, in place of its collection's (a galaxy map
+   * measured in "ly" in a collection of feet). Unset follows the collection. Read with `sceneUnitName`.
+   */
+  unitNameOverride?: string;
   lineType?: 'solid' | 'dashed' | 'dotted'; // Grid line style
   lineWidth?: number; // Grid line width in pixels
   measurementType?: 'units' | 'abstract'; // Measurement system to use

@@ -9,6 +9,7 @@ import { MENU_SEPARATOR, type ContextMenuEntry } from '../../../context-menu/Atl
 import type { LibraryActions } from './useLibraryActions';
 import { filesOfRows, type LibraryRow } from './rowModel';
 import { tagsSubmenu } from './tagMenus';
+import { loopText } from '../../../../../soundLibrary/loopPoints';
 
 const signed = (db: number): string => (db > 0 ? `+${db}` : String(db));
 
@@ -49,6 +50,13 @@ function recordEntries(context: RowMenuContext, files: readonly LibraryFile[]): 
   ];
 }
 
+/** Music rows go to the Armarium: one as a track, a selection of several as an album. */
+function shareEntries(actions: LibraryActions, files: readonly LibraryFile[]): ContextMenuEntry[] {
+  if (files.length === 0 || files.some((file) => file.kind !== 'music')) return [];
+  const label = files.length === 1 ? t('armariumMusic.shareTrack') : t('armariumMusic.shareAlbum');
+  return [MENU_SEPARATOR, { type: 'item', label, icon: 'cloud-upload', onClick: () => actions.share(files) }];
+}
+
 /** A row's menu, the same from its ⋯, a right press and Shift+F10. */
 export function rowMenu(row: LibraryRow, context: RowMenuContext): ContextMenuEntry[] {
   const { actions, entries, moveTo, rows } = context;
@@ -67,6 +75,9 @@ export function rowMenu(row: LibraryRow, context: RowMenuContext): ContextMenuEn
     ...(moveTo === null ? [] : [{ type: 'item' as const, label: t(moveTo === 'music' ? 'audio.library.moveToMusic' : 'audio.library.moveToAmbience'), icon: 'arrow-right-left', onClick: () => actions.move(entries, moveTo) }]),
     tagsSubmenu(actions, files, context.rootTags),
     ...recordEntries(context, files),
+    { type: 'item', label: t('audio.loopPoints'), icon: 'repeat', disabled: files.length !== 1 || !context.sound, ...(context.sound?.loop && { detail: loopText(context.sound.loop) }), onClick: () => actions.askLoop(row.file, context.sound) },
+    { type: 'item', label: t('audio.startAtLoopIn'), checked: context.sound?.startAtLoopIn === true, disabled: !context.sound?.loop, onClick: () => actions.edit(files, { startAtLoopIn: context.sound?.startAtLoopIn ? undefined : true }) },
+    ...shareEntries(actions, files),
     MENU_SEPARATOR,
     { type: 'item', label: t('audio.library.moveToTrash'), icon: 'trash-2', destructive: true, onClick: () => actions.remove(entries) },
   ];

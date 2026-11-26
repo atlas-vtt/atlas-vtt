@@ -1,5 +1,6 @@
 import { MAX_SOUND_LAYERS, MAX_SOUND_OUTGOING, MAX_SOUND_TRACKS, type SharedLayerPlay, type SharedMusicPlay, type SharedSoundInfo, type SharedTableSound, type AssetRef } from '../../protocol/index.ts';
 import type { LayerPlay, MusicPlay, SoundInfo, TableSound } from '../../../sound/soundTypes';
+import { heldStart, musicHeldStart } from '../../../sound/engine/soundTimeline';
 
 /** The quietest a level goes on the wire: JSON has no -Infinity, and this is silence. */
 const WIRE_SILENCE_DB = -120;
@@ -32,9 +33,10 @@ export function wireState(state: TableSound, soundOf: (key: string) => WireSound
     const { key, asset } = soundOf(sound.key);
     return { key, frames: sound.frames, gainDb: wireDb(sound.gainDb), ...(sound.loop && { loop: sound.loop }), ...(asset && { asset }), ...(sound.growing && { growing: true as const }) };
   };
-  const play = ({ startAt, gainDb, muted, reverb, fade }: MusicPlay | LayerPlay): Pick<SharedMusicPlay, 'startAt' | 'gainDb' | 'fade' | 'reverb'> & { muted?: boolean } => ({ startAt, gainDb: wireDb(gainDb), fade, ...(muted && { muted }), ...(reverb && { reverb }) });
-  const music = (list: MusicPlay): SharedMusicPlay => ({ ...play(list), tracks: list.tracks.slice(0, MAX_SOUND_TRACKS).map(info), seed: list.seed, shuffle: list.shuffle, ...(list.repeat && { repeat: list.repeat }), ...(list.listFrame && { listFrame: list.listFrame }) });
-  const layer = (entry: LayerPlay): SharedLayerPlay => ({ ...play(entry), sound: info(entry.sound) });
+  // A play's own start in its sound goes as a frame: a page never hears of a track's "start at loop in".
+  const play = ({ startAt, gainDb, muted, reverb, fade }: MusicPlay | LayerPlay, fromFrame: number | null): Pick<SharedMusicPlay, 'startAt' | 'gainDb' | 'fade' | 'reverb' | 'fromFrame'> & { muted?: boolean } => ({ startAt, gainDb: wireDb(gainDb), fade, ...(muted && { muted }), ...(reverb && { reverb }), ...(fromFrame && { fromFrame }) });
+  const music = (list: MusicPlay): SharedMusicPlay => ({ ...play(list, musicHeldStart(list)), tracks: list.tracks.slice(0, MAX_SOUND_TRACKS).map(info), seed: list.seed, shuffle: list.shuffle, ...(list.repeat && { repeat: list.repeat }), ...(list.listFrame && { listFrame: list.listFrame }) });
+  const layer = (entry: LayerPlay): SharedLayerPlay => ({ ...play(entry, heldStart(entry, entry.sound)), sound: info(entry.sound) });
   return {
     revision: state.revision,
     silenced: state.silenced,

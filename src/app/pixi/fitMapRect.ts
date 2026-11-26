@@ -22,18 +22,35 @@ export function mapFit(screen: { screenWidth: number; screenHeight: number }, re
   };
 }
 
+/** A view whose zoom range is fitted to its map: its limits and the size of its screen. */
+type FittedView = ZoomLimited & { screenWidth: number; screenHeight: number };
+
+/** The map each view's zoom range was last fitted to; the fit depends on the screen, which changes size (`refitZoomRange`). */
+const fittedMaps = new WeakMap<FittedView, PixelRect>();
+
 /** Sets the view's least zoom to what shows the whole map, where that is below `MIN_ZOOM`. */
-export function fitZoomRange(viewport: ZoomLimited & { screenWidth: number; screenHeight: number }, rect: PixelRect): void {
+export function fitZoomRange(viewport: FittedView, rect: PixelRect): void {
+  fittedMaps.set(viewport, rect);
   setMapZoomFloor(viewport, mapFit(viewport, rect).scale);
+}
+
+/**
+ * Fits the view's zoom range again to the map it was last fitted to, for a screen of another size:
+ * a pane made smaller needs a lower least zoom to show the same map whole. Nothing for a view
+ * that was never fitted to a map.
+ */
+export function refitZoomRange(viewport: FittedView): void {
+  const rect = fittedMaps.get(viewport);
+  if (rect) fitZoomRange(viewport, rect);
 }
 
 /** Centres the viewport on the map and zooms so the whole of it shows. */
 export function fitMapRect(
-  viewport: ZoomLimited & { screenWidth: number; screenHeight: number; setZoom(scale: number): unknown; moveCenter(x: number, y: number): unknown },
+  viewport: FittedView & { setZoom(scale: number): unknown; moveCenter(x: number, y: number): unknown },
   rect: PixelRect,
 ): void {
   const fit = mapFit(viewport, rect);
-  setMapZoomFloor(viewport, fit.scale);
+  fitZoomRange(viewport, rect);
   viewport.setZoom(fit.scale);
   viewport.moveCenter(fit.x, fit.y);
 }

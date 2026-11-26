@@ -10,6 +10,7 @@ import { freeGate, newGate } from './joinGate.ts';
 import { LogKeeper, type LogStore } from './log/logStore.ts';
 import { OnlineTable } from './OnlineTable.ts';
 import type { KnownPlayer, Ownership } from './ownership.ts';
+import { clearDrawnBy, drawnBy } from './playerDrawingsClear.ts';
 import { giveTokens, markTokens, playerTokenRows, type PlayerTokenRow } from './playerTokenRows.ts';
 import { presentOnPlayerView, presentedSceneSource, showPresentedElsewhere, type ShownElsewhere } from './presentedScene.ts';
 import type { SavedTable } from './savedTable.ts';
@@ -20,6 +21,8 @@ import type { TableStatus } from './TableConnection.ts';
 import type { LostTable } from './tableEnd.ts';
 import { t } from '../../i18n';
 import type { TableAssets } from './assets/tableAssets.ts';
+import { playerWindowStore } from '../../stores/playerWindowStore';
+import { tableControlsStore } from '../../stores/tableControlsStore';
 
 /**
  * The GM's side of online play, free of any panel: start and stop a table of a campaign, which this
@@ -171,6 +174,18 @@ export class OnlineControl {
   /** Takes a player off the running table: their key for it stops working; they come back with their own code. */
   kick(playerId: string): void {
     this.current?.kick(playerId);
+  }
+
+  /** How many drawings and texts a player has on the level the shared scene shows; none while no scene is shared. */
+  playerDrawings(playerId: string): number {
+    const store = this.current?.sharedStore ?? null;
+    return store === null ? 0 : drawnBy(store.getState(), playerId).length;
+  }
+
+  /** Removes a player's drawings and texts from the level the shared scene shows, in one undo step. */
+  clearPlayerDrawings(playerId: string): void {
+    const store = this.current?.sharedStore ?? null;
+    if (store !== null) clearDrawnBy(store, playerId);
   }
 
   /** A player's own code in the running table's campaign, else in the played one; null for anyone it does not know. */
@@ -377,6 +392,11 @@ export class OnlineControl {
    * Atlas has a presented scene of its own, which is told again at the next change.
    */
   private syncShown(): void {
+    const online = this.current !== null;
+    // The player window bar shows while a table runs; a pause of online players ends with their table
+    if (tableControlsStore.getState().online !== online) {
+      tableControlsStore.setState(online ? { online } : { online, paused: playerWindowStore.getState().isFrozen });
+    }
     const source = this.current === null ? null : presentedSceneSource(this.app);
     if (this.shown !== null && this.shown.source !== source) {
       this.shown.stop();

@@ -8,7 +8,7 @@ import type { ByteRange } from './pngChunks';
 const INPUT_SLICE = 256 * 1024;
 
 /** The compressed slices of the IDAT chunks, in order, as views of the file. */
-function* slices(bytes: Uint8Array, ranges: readonly ByteRange[]): Generator<Uint8Array> {
+function* slices(bytes: Uint8Array<ArrayBuffer>, ranges: readonly ByteRange[]): Generator<Uint8Array<ArrayBuffer>> {
   for (const { start, end } of ranges) {
     for (let at = start; at < end; at += INPUT_SLICE) yield bytes.subarray(at, Math.min(end, at + INPUT_SLICE));
   }
@@ -20,9 +20,9 @@ function* slices(bytes: Uint8Array, ranges: readonly ByteRange[]): Generator<Uin
  * output is read, so neither side holds more than a slice's worth. Ending the iteration early
  * cancels the stream, so trailing data after the image's last row is never looked at.
  */
-export async function* inflateImageData(bytes: Uint8Array, ranges: readonly ByteRange[]): AsyncGenerator<Uint8Array> {
+export async function* inflateImageData(bytes: Uint8Array<ArrayBuffer>, ranges: readonly ByteRange[]): AsyncGenerator<Uint8Array> {
   const input = slices(bytes, ranges);
-  const source = new ReadableStream<Uint8Array>({
+  const source = new ReadableStream<Uint8Array<ArrayBuffer>>({
     pull(controller): void {
       const next = input.next();
       if (next.done) controller.close();

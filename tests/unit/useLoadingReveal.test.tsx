@@ -75,4 +75,17 @@ describe('useLoadingReveal', () => {
     advance(0);
     expect(result.current).toBe(false);
   });
+
+  it('lets a load at mount wait its delay where asked, so a late piece that comes at once never flickers', () => {
+    const { result, rerender } = renderHook(({ loading }) => useLoadingReveal(loading, { waitAtMount: true }), { initialProps: { loading: true } });
+    expect(result.current).toBe(false);
+    advance(SKELETON_DELAY_MS - 1);
+    rerender({ loading: false });
+    advance(SKELETON_DELAY_MS + SKELETON_MIN_VISIBLE_MS);
+    expect(result.current).toBe(false);
+
+    const slow = renderHook(() => useLoadingReveal(true, { waitAtMount: true }));
+    advance(SKELETON_DELAY_MS);
+    expect(slow.result.current).toBe(true);
+  });
 });

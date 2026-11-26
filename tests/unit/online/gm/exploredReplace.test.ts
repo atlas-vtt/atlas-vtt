@@ -3,7 +3,7 @@ import { parseGmMessage } from '../../../../src/app/online/protocol/index.ts';
 import type { SceneState } from '../../../../src/app/online/gm/atlasView.ts';
 import type { SceneLevel } from '../../../../src/app/types/sceneLevelTypes';
 import { describe, expect, it } from 'vitest';
-import { EXPLORED_INTERVAL_MS } from '../../../../src/app/online/gm/InputShare.ts';
+import { EXPLORED_INTERVAL_MS } from '../../../../src/app/online/gm/ExploredShare.ts';
 import { sceneState, shareHarness, type ShareHarness } from './shareHarness.ts';
 
 type Explored = Extract<GmMessage, { t: 'explored' }>;
@@ -165,6 +165,21 @@ describe('an explored memory the GM saves', () => {
     await table.set({ ...table.state(), viewedLevel: 'ground' });
     await then(table, { exploredMask: mask('ground seen') });
     expect(serials(table)).toEqual([0, 0]);
+  });
+
+  it('is counted on the players\' floor when the GM forgets every floor from another one, though that floor saved no memory', async () => {
+    const levels: SceneLevel[] = [
+      { id: 'ground', name: 'Ground', elevation: { bottom: 0, top: 10 }, background: 'maps/cave.webp' },
+      { id: 'upper', name: 'Upper', elevation: { bottom: 10, top: 20 }, background: 'maps/upper.webp' },
+    ];
+    const table = shareHarness(sceneState({ ...LIT, levels, viewedLevel: 'upper', exploredMask: null }), MAP);
+    table.presented = 'ground';
+    table.share.start();
+    await table.set(table.state());
+    await table.advance(EXPLORED_INTERVAL_MS + 100);
+    await then(table, { exploredEdits: 1, exploredForgotten: 1 });
+    expect(serials(table)).toEqual([0, 1]);
+    expect(memories(table)).toEqual([null, null]);
   });
 
   it('is refused by players where its count is no whole number', () => {

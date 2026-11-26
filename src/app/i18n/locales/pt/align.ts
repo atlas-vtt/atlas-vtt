@@ -1,0 +1,27 @@
+import type { Translation } from '../../types';
+
+export const align: Translation = {
+  'align.analysing': 'Analisando o mapa…',
+  'align.checking': 'Grade encontrada: {type}. Verificando o tamanho das células…',
+  'align.waitingForTiles': 'Aguardando os blocos do mapa · {percent}%',
+  'align.cornerFirst': 'Clique em um canto de uma célula.',
+  'align.cornerNext': 'Agora no próximo canto à direita.',
+  'align.find': 'Detecção automática',
+  'align.flat': 'Plana',
+  'align.flatHexes': 'hexágonos de topo plano',
+  'align.freehandHint': 'Aproxime até que uma célula de prévia cubra uma célula do mapa e clique.',
+  'align.gridType': 'Tipo de grade',
+  'align.hexCornerFirst': 'Clique em um canto de um hexágono.',
+  'align.hexCornerNext': 'Agora em um canto vizinho do mesmo hexágono.',
+  'align.measureCount': 'Medição {done} de {total}',
+  'align.measureMore': 'As linhas do mapa não bastaram. Meça mais uma célula.',
+  'align.noGrid': 'Nenhuma grade encontrada na imagem do mapa. Alinhe manualmente.',
+  'align.orByHand': 'Ou alinhe você mesmo',
+  'align.pointy': 'Pontuda',
+  'align.pointyHexes': 'hexágonos de topo pontudo',
+  'align.square': 'Quadrada',
+  'align.squares': 'quadrados',
+  'align.tab.freehand': 'Livre',
+  'align.tab.intersections': 'Medir',
+  'align.title': 'Alinhamento da grade',
+};

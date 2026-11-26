@@ -66,6 +66,34 @@ export class SmoothDecelerate extends Decelerate {
     super.reset();
   }
 
+  /**
+   * The map was moved by a pan that is not the viewport's own drag (fingers): where it is now is
+   * remembered, as `move` does for a drag, so that `glide` knows how fast it went.
+   */
+  track(): void {
+    this.saved.push({ x: this.parent.x, y: this.parent.y, time: performance.now() });
+    if (this.saved.length > 60) this.saved.splice(0, 30);
+  }
+
+  /** The pan that was tracked has ended: the map coasts on at the speed of its last 100 ms, as after a drag. */
+  glide(): void {
+    const now = performance.now();
+    const from = this.saved.find((snapshot) => snapshot.time >= now - 100);
+    this.saved = [];
+    if (!from || now === from.time || prefersReducedMotion(this.parent.options.events.domElement)) return;
+    const elapsed = now - from.time;
+    this.x = (this.parent.x - from.x) / elapsed;
+    this.y = (this.parent.y - from.y) / elapsed;
+    this.percentChangeX = this.percentChangeY = this.options.friction;
+    this.timeSinceRelease = 0;
+  }
+
+  /** A pan that is not the viewport's own takes the map over: a coast or a brake under way ends. */
+  halt(): void {
+    this.reset();
+    this.saved = [];
+  }
+
   override destroy(): void {
     this.parent.off('drag-start', this.handleDragStart);
     super.destroy();

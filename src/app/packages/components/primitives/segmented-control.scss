@@ -1,36 +1,68 @@
 @use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
 
+// The options stand $surface-inset inside the track and run concentric with its corner. A place
+// that gives the track another corner (the corner of a menu or panel it sits in) sets
+// `--atlas-segmented-radius`, never the options' radius, so they follow.
 .atlas-segmented {
+  --atlas-segmented-radius: #{$radius-m};
   display: flex;
-  gap: $spacing-xs;
-  padding: $spacing-xs;
-  background: var(--background-modifier-border);
-  border-radius: $radius-l;
+  gap: $surface-inset;
+  padding: $surface-inset;
+  // A faint tint of the surface it lies on, so the chosen option stands out by itself and the track never outweighs
+  // the actions around it (owner, 2026-11-17: the border colour's fill was the loudest thing in the dice tray).
+  background: color-mix(in oklch, var(--mono-100) 6%, transparent);
+  border-radius: var(--atlas-segmented-radius);
 }
 
 .atlas-segmented__option {
-  // Override Button component defaults for segmented control
+  // Its height and padding are `.btn`'s, which comes later in the stylesheet at this specificity.
   flex: 1;
-  height: auto;
-  padding: $spacing-xs $spacing-s;
-  border-radius: $radius-m;
+  min-width: 0;
+  overflow-wrap: break-word;
+  hyphens: auto;
+  text-align: center;
   color: var(--text-muted);
   font-size: $font-ui-small;
   font-weight: $font-weight-medium;
 
+  // Under a finger the track is as tall as a control at least, and its options fill it.
+  @include atlas-coarse-pointer {
+    min-height: calc(var(--input-height) - #{2 * $surface-inset});
+  }
+
   &.atlas-active {
     background: var(--background-primary) !important;
     color: var(--text-normal);
-    box-shadow: $shadow-sm;
+    box-shadow: $segmented-chosen-shadow;
   }
 }
 
 // Choices of unequal length (a long first label, short others) share the row by what each needs,
 // each with the same padding on every side.
+// Concentric inside the track, and a choice longer than its share of the track wraps inside its
+// option rather than run into its neighbour. Written with the track, or `.btn`, which comes later in
+// the stylesheet at the same specificity, wins: options had the track's 10 px, and every label stayed
+// on one line however narrow its option (Portuguese stairs choices ran into each other).
+.atlas-segmented .atlas-segmented__option {
+  border-radius: calc(var(--atlas-segmented-radius) - #{$surface-inset});
+  white-space: normal;
+}
+
+// A track in a panel of fixed width (the map's popovers, the dice tray): an option is as tall as a
+// button, or as `--atlas-segmented-fit-height` where its place sets one, and grows when its choice wraps.
+$fit-height: var(--atlas-segmented-fit-height, #{$button-height-l});
+
 .atlas-segmented--fit .atlas-segmented__option {
   flex: 1 1 auto;
+  height: auto;
+  min-height: $fit-height;
   padding: $spacing-xs;
-  white-space: nowrap;
+
+  // Over the finger's minimum every option takes, which is written more specifically.
+  @include atlas-coarse-pointer {
+    min-height: $fit-height;
+  }
 }
 
 // An option with an icon: the icon before the word

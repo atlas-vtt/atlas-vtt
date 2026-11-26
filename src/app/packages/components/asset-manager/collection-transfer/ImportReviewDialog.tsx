@@ -5,6 +5,7 @@ import type { ImportReview } from '../../../../services/collectionBundle/importR
 import { formatRelativeTime } from '../../../../utils/relativeTime';
 import { Button } from '../../primitives/button';
 import { LabelTooltip } from '../../primitives/tooltip';
+import { ToggleLabel } from '../../primitives/Toggle';
 import { CollectionHero } from './CollectionHero';
 import { ConflictList } from './ConflictList';
 import type { ContentMedia } from './contentMedia';
@@ -137,7 +138,7 @@ export function ImportReviewDialog({ review, media, onConfirm, onCancel }: Impor
       )}
       {review.releaseNotes && (
         <section className="atlas-transfer-section" aria-labelledby={notesId}>
-          <h4 id={notesId} className="atlas-transfer-section__title">{review.relation === 'new' ? t('importReview.notes') : t('importReview.whatsNew')}</h4>
+          <h3 id={notesId} className="atlas-transfer-section__title">{review.relation === 'new' ? t('importReview.notes') : t('importReview.whatsNew')}</h3>
           <p className="atlas-transfer-notes-view">{review.releaseNotes}</p>
         </section>
       )}
@@ -149,10 +150,7 @@ export function ImportReviewDialog({ review, media, onConfirm, onCancel }: Impor
         <ConflictList conflicts={review.conflicts} resolutions={resolutions} onChange={setResolutions} />
       )}
       {review.canRestore && (
-        <label className="atlas-transfer-checkbox">
-          <input type="checkbox" checked={restore} onChange={(event) => setRestore(event.target.checked)} />
-          <span>{t('importReview.restore')}</span>
-        </label>
+        <ToggleLabel label={t('importReview.restore')} value={restore} onChange={() => setRestore(!restore)} />
       )}
       {review.relation !== 'new' && (
         <p className="atlas-transfer-hint">{t('importReview.backup')}</p>

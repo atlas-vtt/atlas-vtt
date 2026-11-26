@@ -19,8 +19,8 @@
   // Above the body (z-index 1), so the menus and search popovers that drop
   // below the header take clicks.
   z-index: 2;
+  // No divider line under it: the header's spacing sets it apart from the grid.
   padding: $spacing-m;
-  border-bottom: $border-width-s solid var(--divider-color);
   min-height: 0;
 }
 
@@ -76,4 +76,17 @@
 
 .atlas-am-toolbar-center {
   justify-self: start;
+}
+
+// A window choosing a map names what the map is for where the tabs stand (`MapPick`).
+.atlas-am-pick-title {
+  @include atlas-truncate;
+  margin: 0;
+  font-size: $font-ui-medium;
+  font-weight: $font-weight-semibold;
+  color: var(--text-normal);
+}
+
+.atlas-am-pick-none {
+  flex-shrink: 0;
 }

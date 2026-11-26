@@ -8,10 +8,13 @@
 - The dice tray's dice are the game-icons.net icons d4, d10 and d12 by Skoll and dice-six-faces-six, dice-eight-faces-eight and dice-twenty-faces-twenty by Delapouite, licensed under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/), redrawn as pencil sketches.
 - The starter class tokens (Cleric, Fighter, Paladin, Ranger, Rogue, Warlock, Wizard, and Knight, Assassin and Occultist from the Guard, Bandit and Cultist icons) are icons by [Sketch Studio](https://www.fiverr.com/sketchstudioart), commissioned by Maatlock of [maatlockstavern.com](https://maatlockstavern.com), licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). They were redrawn as pencil sketches and placed on a parchment background.
 - The toolbar editor's screenshots show creature tokens cropped from Oozejar's Illustrated Bestiary (Gourdin Konbo Club), licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
+- The music packs the Sound page offers to download are by [Vindsvept](https://vindsvept.se) ([YouTube](https://www.youtube.com/Vindsvept), [Bandcamp](https://vindsvept.bandcamp.com)), licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). They were converted from the lossless originals to Ogg Opus; each pack comes with a credits note naming every track.
 - Dice result sounds are built from the "Impact Sounds" and "Casino Audio" packs by [Kenney](https://kenney.nl), released under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) and converted from OGG to MP3.
 - The dice toast knotwork corners are cropped from "Celtic knot border" by pitr on [ClipSafari](https://www.clipsafari.com/clips/o213700-celtic-knot-border), released under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/).
-- The numerals of the 3D dice panel are set in Fantaisie Artistique by George Williams, released under the SIL Open Font License by its author ([FontForge font archive](https://fontforge.org/archive/sfds/toyfonts.html)). The licence text is in [`src/app/assets/fonts/fantaisie-artistique-OFL.txt`](src/app/assets/fonts/fantaisie-artistique-OFL.txt). The font is bundled unmodified in `styles.css`.
-- The sci-fi dice numerals are set in [Oxanium](https://github.com/sevmeyer/oxanium) by Severin Meyer, Copyright 2019 The Oxanium Project Authors, licensed under the [SIL Open Font License 1.1](https://openfontlicense.org). The licence text is in [`src/app/assets/fonts/oxanium-OFL.txt`](src/app/assets/fonts/oxanium-OFL.txt). The font is bundled unmodified in `styles.css`.
+- The numerals of the 3D dice panel, the Draw tool's medieval text and the headings of the Mediaeval look are set in Fantaisie Artistique by George Williams, released under the SIL Open Font License by its author ([FontForge font archive](https://fontforge.org/archive/sfds/toyfonts.html)). The licence text is in [`src/app/assets/fonts/fantaisie-artistique-OFL.txt`](src/app/assets/fonts/fantaisie-artistique-OFL.txt). The font is bundled unmodified in `styles.css`.
+- The sci-fi dice numerals, the Draw tool's sci-fi text and the headings of the Sci-fi look are set in [Oxanium](https://github.com/sevmeyer/oxanium) by Severin Meyer, Copyright 2019 The Oxanium Project Authors, licensed under the [SIL Open Font License 1.1](https://openfontlicense.org). The licence text is in [`src/app/assets/fonts/oxanium-OFL.txt`](src/app/assets/fonts/oxanium-OFL.txt). The font is bundled unmodified in `styles.css`.
+- The Draw tool's monospace text is set in [Courier Prime](https://github.com/quoteunquoteapps/CourierPrime) by Alan Dague-Greene for Quote-Unquote Apps, Copyright 2015 The Courier Prime Project Authors, licensed under the [SIL Open Font License 1.1](https://openfontlicense.org). The licence text is in [`src/app/assets/fonts/courier-prime-OFL.txt`](src/app/assets/fonts/courier-prime-OFL.txt). The font is bundled unmodified in `styles.css`.
+- The text of a note in the Mediaeval look is set in [Libron](https://github.com/nicoverbruggen/libron) by Nico Verbruggen, Libron (c) 2026 Nico Verbruggen, with Reserved Font Name Libron, a modified version of Readerly (c) 2026 Nico Verbruggen, which is based on Newsreader (c) 2020 The Newsreader Project Authors, licensed under the [SIL Open Font License 1.1](https://openfontlicense.org). The licence text is in [`src/app/assets/fonts/libron-OFL.txt`](src/app/assets/fonts/libron-OFL.txt). Its four faces are bundled unmodified in `styles.css`.
 - The 3D dice face artwork (numeral sheet and card stock) is an original work by the Atlas VTT author and is covered by this repository's [GNU Affero General Public License v3.0](LICENSE).
 - Interface icons are [Lucide](https://lucide.dev) (ISC), provided by Obsidian and the bundled lucide-react package.
 - The token ring and the timer sound are original works by the Atlas VTT author and are covered by this repository's [GNU Affero General Public License v3.0](LICENSE).
@@ -54,7 +57,7 @@ The template is in `src/app/statblocks/presets/fate.ts` (`AGPL-3.0-only AND CC-B
 
 Atlas VTT bundles the following open-source packages in `main.js`.
 
-The build disables script-element creation in React DOM and replaces JSZip's legacy fallbacks with native Promise support and Node timers. These adaptations are maintained in `vite/desktop-dependencies.mts`; the original licenses below still apply.
+The build disables script-element creation in React DOM and replaces JSZip's legacy fallbacks with native Promise support and the browser's message tasks, and leaves out JSZip's Node streams. These adaptations are maintained in `vite/desktop-dependencies.mts`; the original licenses below still apply.
 
 ### @dnd-kit/accessibility@3.1.1
 
@@ -247,10 +250,6 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
-
-### @pixi/colord@2.9.6
-
-Licence: MIT
 
 ### @radix-ui/number@1.1.3
 
@@ -828,7 +827,7 @@ SOFTWARE.
 
 Licence: MIT
 
-### @tanstack/react-virtual@3.14.24
+### @tanstack/react-virtual@3.14.26
 
 Licence: MIT
 
@@ -856,7 +855,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### @tanstack/virtual-core@3.19.9
+### @tanstack/virtual-core@3.19.11
 
 Licence: MIT (same text as @tanstack/react-virtual)
 
@@ -983,6 +982,34 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+### colord@2.14.0
+
+Licence: MIT
+
+```
+MIT License
+
+Copyright (c) 2020 Vlad Shilov omgovich@ya.ru
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 ```
 
 ### core-util-is@1.0.3
@@ -1226,7 +1253,7 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### immer@11.2.9
+### immer@11.2.10
 
 Licence: MIT
 
@@ -2153,7 +2180,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### pixi-viewport@6.0.3
+### pixi-viewport@7.0.3
 
 Licence: MIT
 
@@ -2181,7 +2208,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### pixi.js@8.22.0
+### pixi.js@8.23.0
 
 Licence: MIT
 
@@ -2609,7 +2636,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### tslib@2.8.1
+### tslib@2.9.1
 
 Licence: 0BSD
 
@@ -2792,7 +2819,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### zustand@5.0.3
+### zustand@5.1.0
 
 Licence: MIT
 

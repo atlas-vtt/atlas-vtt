@@ -1,4 +1,4 @@
-import type { EventEmitter } from 'events';
+import type { EventEmitter } from '../../utils/typedEmitter';
 import type { Container, Texture } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import type { ExploredBrushOptions, ExploredEdit } from '../../lighting/exploredEdits';

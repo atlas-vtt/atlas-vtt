@@ -29,7 +29,7 @@ describe('parseFormula', () => {
     '', ' ', 'hello d20', 'd20 hello', 'd20+garbage+d6', 'd20 d6', 'd20++2', 'd20-', 'd20\n', 'd20\r', 'd20 ', '1.5d6', 'd6!!!', 'd6!100',
     'd6!I', '10000', '00001', '0001d6', 'd00006', 'Infinity', '()', '(d20', 'd20)', '2*-3', 'd20*', '4d6 kh3', '2d6 [fire]', '4d6>3', '4d6<3',
     '4d6=3', '4d6cs', '4d6kh3r1', '4d6kh1kh1', '4d6!x', '4d6x6', '2d6[]', '2d6[fire!]', `2d6[${'a'.repeat(25)}]`, '1d6/0', '1d6/(0)', '4d6KH3',
-    '(1d6)[fire]', 'd20 / 0',
+    '(1d6) [fire]', 'd20 / 0',
   ])('rejects malformed formula %j', (formula) => {
     expect(parseFormula(formula)).toEqual({ ok: false, code: 'syntax' });
   });
@@ -97,6 +97,16 @@ describe('parseFormula', () => {
   it('reads labels on dice and constants', () => {
     expect(dice('2d6x[fire]')).toMatchObject({ label: 'fire' });
     expect(parsed('1d20+3[bonus]').terms[1]).toEqual({ kind: 'constant', value: 3, negative: false, label: 'bonus' });
+  });
+
+  it('gives a parenthesis label to every term inside that has none of its own', () => {
+    const labels = (formula: string): (string | undefined)[] => parsed(formula).terms.map((term) => term.label);
+    expect(labels('2d6[slashing]+(1d10+12)[necrotic]')).toEqual(['slashing', 'necrotic', 'necrotic']);
+    expect(labels('(1d8[fire]+2)[cold] * 2')).toEqual(['fire', 'cold', undefined]);
+    expect(labels('-((1d4+1)[acid])')).toEqual(['acid', 'acid']);
+    expect(parsed('(1d10+12)[necrotic]').linear).toBe(true);
+    expect(parseFormula('(1d6)[]')).toMatchObject({ ok: false, code: 'syntax' });
+    expect(parseFormula('(1d6)[a]]')).toMatchObject({ ok: false, code: 'syntax' });
   });
 
   it('marks every term an odd number of minus signs leads to', () => {

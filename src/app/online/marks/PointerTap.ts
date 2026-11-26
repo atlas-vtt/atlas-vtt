@@ -1,8 +1,9 @@
 import type { LaserState, MarkPoint } from '../protocol/index.ts';
 import { SpanMeter } from './SpanMeter.ts';
+import { isPrimaryPress } from '../../pixi/utils/pointerButtons';
 
-/** A pointer event as a viewport sends it: the button and where it is on the canvas. */
-export type TapEvent = { readonly button: number } & Readonly<Record<'global', { readonly x: number; readonly y: number }>>;
+/** A pointer event as a viewport sends it: the button, whether Ctrl is held with it, and where it is on the canvas. */
+export type TapEvent = { readonly button: number; readonly ctrlKey?: boolean } & Readonly<Record<'global', { readonly x: number; readonly y: number }>>;
 
 type TapEventName = 'pointerdown' | 'pointermove' | 'pointerup' | 'pointerupoutside';
 
@@ -83,8 +84,7 @@ export class PointerTap implements LaserSource {
   private press: Press | null = null;
   private readonly onDown = (event: TapEvent): void => this.down(event);
   private readonly onMove = (event: TapEvent): void => this.move(event);
-  private readonly onUp = (event: TapEvent): void => this.up(event.button);
-  private readonly onUpOutside = (): void => this.up(null);
+  private readonly onUp = (): void => this.up();
   private readonly onLeave = (): void => {
     this.pointer = null;
     this.changed();
@@ -99,8 +99,9 @@ export class PointerTap implements LaserSource {
     viewport.on('pointerdown', this.onDown);
     viewport.on('pointermove', this.onMove);
     viewport.on('pointerup', this.onUp);
-    viewport.on('pointerupoutside', this.onUpOutside);
-    canvas.addEventListener('mouseleave', this.onLeave);
+    viewport.on('pointerupoutside', this.onUp);
+    // A pointer leaves the canvas when it moves off it, and a finger whenever it lifts: no dot stays where it was.
+    canvas.addEventListener('pointerleave', this.onLeave);
   }
 
   state(): Pick<LaserState, 'at' | 'on'> {
@@ -128,16 +129,17 @@ export class PointerTap implements LaserSource {
     this.viewport.off('pointerdown', this.onDown);
     this.viewport.off('pointermove', this.onMove);
     this.viewport.off('pointerup', this.onUp);
-    this.viewport.off('pointerupoutside', this.onUpOutside);
-    this.canvas.removeEventListener('mouseleave', this.onLeave);
+    this.viewport.off('pointerupoutside', this.onUp);
+    this.canvas.removeEventListener('pointerleave', this.onLeave);
     this.listeners.clear();
   }
 
   private down(event: TapEvent): void {
     const at = this.track(event);
-    if (event.button === 0 && at !== null) this.press = { serial: (this.press?.serial ?? 0) + 1, at };
+    const primary = isPrimaryPress({ button: event.button, ctrlKey: event.ctrlKey === true });
+    if (primary && at !== null) this.press = { serial: (this.press?.serial ?? 0) + 1, at };
     const quick = event.button === 1;
-    if (!quick && !(event.button === 0 && this.isLaser())) return;
+    if (!quick && !(primary && this.isLaser())) return;
     this.quick ||= quick;
     this.pointing = true;
     if (at !== null) this.addPoint(at);
@@ -151,11 +153,11 @@ export class PointerTap implements LaserSource {
     if (this.pointing || this.quick || this.isLaser()) this.changed();
   }
 
-  /** The middle button ends quick pointing, the primary button the Laser tool's; `null` (released off the canvas) ends both. */
-  private up(button: number | null): void {
-    if (button === null || (button === 1 && this.quick)) this.quick = false;
-    else if (!(button === 0 && this.pointing && this.isLaser())) return;
-    this.pointing = this.quick;
+  /** A release ends the laser whichever button it names: it comes only once the last button is up, on the canvas or off it. */
+  private up(): void {
+    if (!this.pointing && !this.quick) return;
+    this.quick = false;
+    this.pointing = false;
     this.changed();
   }
 

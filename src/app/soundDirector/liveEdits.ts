@@ -1,5 +1,6 @@
 import type { LayerPlay, MusicPlay, MusicRepeat, RoomId, SoundInfo, TableSound } from '../sound/soundTypes';
 import { DEFAULT_ROOM } from '../sound/soundTypes';
+import { heldStart, musicHeldStart } from '../sound/engine/soundTimeline';
 import { MAX_MOOD_LAYERS } from '../sound/soundTypes';
 import { changed, enteringLayer, enteringMusic, FADER_MS, leaving, OFFLINE_LEAD_MS, rampFade, ROOM_FADE_MS, SILENCE_FADE_MS, withoutFinished, withReverb } from './tableSound';
 
@@ -121,7 +122,7 @@ export function toggleSilence(state: TableSound, now: number): TableSound {
 
 /** Whether two infos of one key would sound different. */
 function sameInfo(a: SoundInfo, b: SoundInfo): boolean {
-  return a.frames === b.frames && a.gainDb === b.gainDb && a.growing === b.growing && a.loop?.startFrame === b.loop?.startFrame && a.loop?.endFrame === b.loop?.endFrame;
+  return a.frames === b.frames && a.gainDb === b.gainDb && a.growing === b.growing && a.loop?.startFrame === b.loop?.startFrame && a.loop?.endFrame === b.loop?.endFrame && a.crossfadeMs === b.crossfadeMs && a.startAtLoopIn === b.startAtLoopIn;
 }
 
 /**
@@ -137,13 +138,17 @@ export function withCurrentInfos(state: TableSound, infoOfKey: (key: string) => 
     changes++;
     return info;
   };
+  // A sound that goes round on its own keeps the place it began at: a loop in moved, or "start at loop in"
+  // switched, while it plays would otherwise move the whole play along by the difference.
   const music = <T extends MusicPlay>(play: T): T => {
     const tracks = play.tracks.map(current);
-    return tracks.every((track, index) => track === play.tracks[index]) ? play : { ...play, tracks };
+    if (tracks.every((track, index) => track === play.tracks[index])) return play;
+    const held = play.fromFrame === undefined ? musicHeldStart(play) : null;
+    return { ...play, tracks, ...(held !== null && { fromFrame: held }) };
   };
   const layer = (play: LayerPlay): LayerPlay => {
     const sound = current(play.sound);
-    return sound === play.sound ? play : { ...play, sound };
+    return sound === play.sound ? play : { ...play, sound, fromFrame: play.fromFrame ?? heldStart(play, play.sound) };
   };
   const next = {
     music: state.music && music(state.music),

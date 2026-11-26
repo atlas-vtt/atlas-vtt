@@ -8,4 +8,6 @@ export const present: Translation = {
   'present.chosen': '打开玩家窗口后，玩家将看到 {name}',
   'present.reconnect': '打开正在展示的场景，并把它送到玩家视图以重新连接。',
   'present.loadFailed': '无法加载正在展示的场景。请再送一个场景以重新连接。',
+  'present.shownElsewhere.mobile': '玩家看到的是 {name}',
+  'present.sceneLevel': '{scene}：{level}',
 };

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../utils/typedEmitter';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DiceTool } from '../DiceTool';
 import { FORMULA_LIMITS } from '../parseFormula';

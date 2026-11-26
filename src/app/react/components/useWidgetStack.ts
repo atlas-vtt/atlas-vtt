@@ -15,6 +15,8 @@ const MAX_STAGGER_MS = 200;
 const SHOWN_DEPTHS = 3;
 
 interface WidgetStack {
+  /** The bar's element while it is drawn. */
+  bar: HTMLElement | null;
   /** Holds the bar's element, which comes and goes with the widgets. */
   barRef: (bar: HTMLElement | null) => void;
   openerRef: RefObject<HTMLButtonElement | null>;
@@ -27,6 +29,11 @@ interface WidgetStack {
   /** `raise` for the card a click on the rows landed on. */
   raiseClicked: (event: MouseEvent<HTMLElement>) => void;
   barStyle: CSSProperties | undefined;
+  /**
+   * Whether the cards lie as they will: false in the commit whose measuring has just turned a row into a stack or back,
+   * until the commit that draws it. A motion read from the cards waits for it.
+   */
+  settled: () => boolean;
 }
 
 /**
@@ -72,6 +79,9 @@ export function useWidgetStack(ids: readonly string[], content: unknown): Widget
   const [bar, barRef] = useState<HTMLElement | null>(null);
   const [rows, rowsRef] = useState<HTMLElement | null>(null);
   const [stacked, setStacked] = useState(false);
+  const stackedNow = useRef(stacked);
+  stackedNow.current = stacked;
+  const decided = useRef<boolean | null>(null);
   const [viewWidth, setViewWidth] = useState(0);
   const [held, setHeld] = useState<{ width: number; height: number } | null>(null);
   const [recent, setRecent] = useState<readonly string[]>([]);
@@ -126,6 +136,7 @@ export function useWidgetStack(ids: readonly string[], content: unknown): Widget
     if (width === 0) return;
     setViewWidth(width);
     const stacks = count > 1 && widestRow(bar) > roomForRow(topBar);
+    decided.current = stacks;
     setStacked(stacks);
     if (!stacks) setHeld(null);
   }, [bar, topBar, count]);
@@ -188,5 +199,7 @@ export function useWidgetStack(ids: readonly string[], content: unknown): Widget
   const barStyle = held ? { '--atlas-widget-room': `${viewWidth}px`, ...held } as CSSProperties : undefined;
   const stackedState = open ? 'open' : 'closed';
 
-  return { barRef, openerRef, rowsRef, state: stacked ? stackedState : undefined, spread, raise, raiseClicked, barStyle };
+  const settled = useCallback(() => decided.current === null || decided.current === stackedNow.current, []);
+
+  return { bar, barRef, openerRef, rowsRef, state: stacked ? stackedState : undefined, spread, raise, raiseClicked, barStyle, settled };
 }

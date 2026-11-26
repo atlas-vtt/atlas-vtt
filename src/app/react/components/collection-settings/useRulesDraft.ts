@@ -5,6 +5,7 @@ import type { RulesSettings } from '../../../gameSystems/mapRules';
 import { parseSenseDefinitions } from '../../../gameSystems/senseValidation';
 import { DEFAULT_GRID_DEFAULTS, rulesOfPreset, vanillaSystemSettings } from '../../../gameSystems/systemRules';
 import { hasVisionDefaults } from '../../../gameSystems/visionDefaults';
+import { parseMovementRules, savedMovementRules, type MovementRules } from '../../../measure/movementRules';
 import { collectionResources } from '../../../resources/collectionResources';
 import { keepingPlayerVisibility, savedResources } from '../../../resources/resourceDefinitions';
 import type { ResourceDefinition } from '../../../resources/resourceTypes';
@@ -46,6 +47,9 @@ export interface RulesDraft {
   /** Unset while the rules take the initiative rules of their preset; read with `collectionInitiativeRules`. */
   initiative: InitiativeRules | undefined;
   setInitiative: (initiative: InitiativeRules | undefined) => void;
+  /** Unset while the rules take the movement rules of their preset; read with `collectionMovementRules`. */
+  movement: MovementRules | undefined;
+  setMovement: (movement: MovementRules | undefined) => void;
   systemPresetId: string | undefined;
   setSystemPresetId: (presetId: string | undefined) => void;
   /** Starts the draft from stored rules. The same function on every render. */
@@ -75,6 +79,7 @@ export function useRulesDraft(): RulesDraft {
   const [dice, setDice] = useState<DiceRules | undefined>(undefined);
   const [diceSetId, setDiceSetId] = useState<string | undefined>(undefined);
   const [initiative, setInitiative] = useState<InitiativeRules | undefined>(undefined);
+  const [movement, setMovement] = useState<MovementRules | undefined>(undefined);
   const [systemPresetId, setSystemPresetId] = useState<string | undefined>(undefined);
 
   const load = useCallback((settings: RulesSettings): void => {
@@ -93,6 +98,7 @@ export function useRulesDraft(): RulesDraft {
     setDice(settings.dice);
     setDiceSetId(settings.diceSetId);
     setInitiative(parseInitiativeRules(settings.initiative));
+    setMovement(parseMovementRules(settings.movement));
     setSystemPresetId(settings.systemPresetId);
   }, []);
 
@@ -106,10 +112,11 @@ export function useRulesDraft(): RulesDraft {
     setDice(rules.dice);
     setDiceSetId(rules.diceSetId);
     setDefaultTokenVision(rules.defaultTokenVision);
-    // The rules read their preset's senses, light presets and initiative rules until they are edited.
+    // The rules read their preset's senses, light presets, initiative and movement rules until they are edited.
     setSenses(undefined);
     setLightPresets(undefined);
     setInitiative(undefined);
+    setMovement(undefined);
     setSystemPresetId(preset.id);
   };
 
@@ -125,6 +132,7 @@ export function useRulesDraft(): RulesDraft {
     setSenses(vanilla.senses);
     setLightPresets(vanilla.lightPresets);
     setInitiative(vanilla.initiative);
+    setMovement(vanilla.movement);
     setSystemPresetId(undefined);
   };
 
@@ -149,6 +157,7 @@ export function useRulesDraft(): RulesDraft {
       ...(diceSetId ? { dice: undefined } : dice && { dice: { ...dice, defaultRoll: dice.defaultRoll.trim() } }),
       diceSetId,
       initiative: initiative && savedInitiativeRules(initiative),
+      movement: movement && savedMovementRules(movement),
       systemPresetId,
     };
   };
@@ -169,6 +178,7 @@ export function useRulesDraft(): RulesDraft {
     resources, setResources,
     dice, diceSetId, pickDiceSet,
     initiative, setInitiative,
+    movement, setMovement,
     systemPresetId, setSystemPresetId,
     load, applyPreset, clearSystem, toSettings, barsToShowOnScenes: barsOnScenes,
   };

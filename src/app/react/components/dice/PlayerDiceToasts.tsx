@@ -1,4 +1,4 @@
-import type { EventEmitter } from 'events';
+import type { EventEmitter } from '../../../utils/typedEmitter';
 import React, { useMemo } from 'react';
 import type { App } from 'obsidian';
 import { AtlasUIContext, type AtlasUIContextValue } from '../../root/AtlasUIContext';

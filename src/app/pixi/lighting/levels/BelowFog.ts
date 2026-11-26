@@ -22,7 +22,8 @@ export class BelowFog {
   private operations: Readonly<Record<string, FogOperation>> | null = null;
   private mapKey: string | null = null;
 
-  constructor(private readonly onChange: () => void) {}
+  /** `canvasSide`: the longest side of the canvas on this device; unset, the level's size decides alone. */
+  constructor(private readonly onChange: () => void, private readonly canvasSide = Infinity) {}
 
   /**
    * Composes `operations` over a level of `bounds`, keyed by `mapKey` (`levelMapKey`); the same
@@ -69,7 +70,7 @@ export class BelowFog {
     const current = this.compositor?.getBounds();
     if (current && current.width === width && current.height === height) return false;
     this.release();
-    this.compositor = new FogCanvasCompositor(bounds, FOG_SCALE, this.cache, () => this.mapKey);
+    this.compositor = new FogCanvasCompositor(bounds, FOG_SCALE, this.cache, () => this.mapKey, this.canvasSide);
     this.texture = Texture.from(this.compositor.getCanvas());
     this.view.texture = this.texture;
     this.view.position.set(0, 0);

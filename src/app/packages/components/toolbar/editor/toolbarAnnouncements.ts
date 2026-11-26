@@ -1,6 +1,7 @@
 import { t } from '../../../../i18n'
 import { namesHotkey } from '../../../../keyboard/mapHotkeys'
-import { UNDO_BAR_ID, type ToolbarUnitId } from '../../../../toolbar/toolbarCatalog'
+import type { MapHotkeyId } from '../../../../keyboard/mapHotkeys'
+import { HELP_BAR, toolbarUnit, UNDO_BAR_ID, type ToolbarUnitId } from '../../../../toolbar/toolbarCatalog'
 
 /**
  * What the toolbar editor's live region says. Positions count the bar's
@@ -8,7 +9,7 @@ import { UNDO_BAR_ID, type ToolbarUnitId } from '../../../../toolbar/toolbarCata
  */
 
 /** What the hotkey of a hidden control or bar still does. */
-export type KeyEffect = 'selects' | 'undoes'
+export type KeyEffect = 'selects' | 'undoes' | 'opens'
 
 export function enteredMessage(): string {
   return t('toolbarEdit.say.entered')
@@ -29,18 +30,26 @@ export function movedMessage(label: string, from: number, to: number): string {
 /** `hotkey` as `formatHotkey` writes it; an unassigned key is left out. `effect` is what the key does (the undo/redo bar's undoes). */
 export function hiddenMessage(label: string, hotkey: string, effect: KeyEffect = 'selects'): string {
   if (!namesHotkey(hotkey)) return t('toolbarEdit.say.hidden', { label })
-  return t(effect === 'undoes' ? 'toolbarEdit.say.hiddenUndoes' : 'toolbarEdit.say.hiddenSelects', { label, hotkey })
+  const key = effect === 'undoes' ? 'toolbarEdit.say.hiddenUndoes' : effect === 'opens' ? 'toolbarEdit.say.hiddenOpens' : 'toolbarEdit.say.hiddenSelects'
+  return t(key, { label, hotkey })
+}
+
+/** The key that works a control or a bar while it is hidden, as the user bound it; empty where it has none. */
+export function unitHotkey(id: ToolbarUnitId, hotkeyLabel: (id: MapHotkeyId) => string): string {
+  const key = toolbarUnit(id).hotkey
+  return key === undefined ? '' : hotkeyLabel(key)
 }
 
 export function keyEffect(id: ToolbarUnitId): KeyEffect {
-  return id === UNDO_BAR_ID ? 'undoes' : 'selects'
+  if (id === UNDO_BAR_ID) return 'undoes'
+  return id === HELP_BAR.id ? 'opens' : 'selects'
 }
 
 export function shownMessage(label: string, position: number, count: number): string {
   return t('toolbarEdit.say.shown', { label, position, total: count })
 }
 
-/** The undo/redo bar shown again: it has no position among the bar's controls. */
+/** A bar beside the toolbar shown again: it has no position among the bar's controls. */
 export function shownInPlaceMessage(label: string): string {
   return t('toolbarEdit.say.shownInPlace', { label })
 }

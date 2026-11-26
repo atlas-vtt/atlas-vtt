@@ -2,6 +2,7 @@ import { Component, Menu, setIcon, type EmbedContext, type FileEmbed, type TFile
 import { skeletonPhase } from '../packages/components/primitives/skeletonPhase';
 import { runInBackground } from '../utils/backgroundTask';
 import { t } from '../i18n';
+import { createAtlasButton } from '../ui/atlasButton';
 import './atlas-link-embed.scss';
 
 /** What an embed card shows once its file is read. */
@@ -37,7 +38,8 @@ export abstract class AtlasLinkEmbed extends Component implements FileEmbed {
   constructor(protected readonly ctx: EmbedContext, protected readonly file: TFile, protected readonly subpath: string) {
     super();
     ctx.containerEl.addClass('atlas-link-embed');
-    const card = ctx.containerEl.createDiv({ cls: 'atlas-link-embed__card' });
+    // Atlas' own card inside a note: `.atlas-vtt-plugin` gives its buttons Atlas' look.
+    const card = ctx.containerEl.createDiv({ cls: 'atlas-vtt-plugin atlas-link-embed__card' });
     this.artEl = card.createDiv({ cls: 'atlas-link-embed__art' });
     this.artEl.createDiv({ cls: 'atlas-image-placeholder' }).style.setProperty('--atlas-skeleton-phase', skeletonPhase());
     this.captionEl = card.createDiv({ cls: 'atlas-link-embed__caption' });
@@ -64,14 +66,19 @@ export abstract class AtlasLinkEmbed extends Component implements FileEmbed {
   }
 
   private renderAction(action: EmbedCardAction): void {
-    const button = this.captionEl.createEl('button', { cls: 'atlas-link-embed__action mod-cta' });
+    const button = createAtlasButton(this.captionEl, { size: 'sm', cls: 'atlas-link-embed__action' });
     setIcon(button.createSpan({ cls: 'atlas-link-embed__action-icon' }), action.icon);
     button.createSpan({ text: action.label });
     this.onPress(button, () => this.run(action));
   }
 
   private renderMore(actions: readonly EmbedCardAction[]): void {
-    const button = this.captionEl.createEl('button', { cls: 'atlas-link-embed__action atlas-link-embed__more', attr: { 'aria-label': t('atlasLinks.more'), 'aria-haspopup': 'menu' } });
+    const button = createAtlasButton(this.captionEl, {
+      variant: 'secondary',
+      size: 'sm',
+      cls: ['atlas-link-embed__action', 'atlas-link-embed__more'],
+      attr: { 'aria-label': t('atlasLinks.more'), 'aria-haspopup': 'menu' },
+    });
     setIcon(button.createSpan({ cls: 'atlas-link-embed__action-icon' }), 'more-horizontal');
     this.onPress(button, (event) => {
       const menu = new Menu();

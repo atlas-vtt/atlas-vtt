@@ -1,55 +1,58 @@
-import { Tutorial } from '../../../onboarding/Tutorial';
 import { AssetService } from '../../../services/AssetService';
 import { useAtlasSettings } from '../../../keyboard/useMapHotkeys';
 import { SettingsService } from '../../../services/SettingsService';
-import React, { useState, useRef, useMemo, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import type { AnyAsset, AssetManagerProps, Tab } from './types';
+import React, { useState, useRef, useMemo, useCallback, useEffect, startTransition } from 'react';
+import type { AssetManagerProps, Tab } from './types';
 
 import { Header } from './components/Header';
+import type { HeaderMenuHandle } from './components/HeaderMenu';
 import { Sidebar } from './components/Sidebar';
 import { BestiaryTokensOffer } from './components/BestiaryTokensOffer';
+import { useStarterOfferDismissal } from './hooks/useStarterOfferDismissal';
+import { EmptyTabAction, type CreatableTab } from './components/EmptyTabAction';
 import { Content } from './components/Content';
 import { LocationBar } from './components/LocationBar';
 import { ModalLayer } from './components/ModalLayer';
+import { AssetManagerWindow, useOpenedAfterPress } from './components/AssetManagerWindow';
+import { AssetManagerTours } from './components/AssetManagerTours';
 import { useAssetData } from './hooks/useAssetData';
 import { useSelectionHandlers, type VisibleIds } from './hooks/useSelectionHandlers';
 import { useAssetCrud } from './hooks/useAssetCrud';
+import { useExternalImport } from './hooks/useExternalImport';
 import { useTagsAndCollections } from './hooks/useTagsAndCollections';
 import { AssetTagMenuContext, type AssetTagMenuActions } from './components/assetTagMenuContext';
 import { tagGroupOfTab } from './utils/assetTags';
 import { useContextMenus } from './hooks/useContextMenus';
 import { useStatblockLink } from './hooks/useStatblockLink';
 import { useAssetManagerEffects } from './hooks/useAssetManagerEffects';
+import { useAssetManagerShortcuts } from './hooks/useAssetManagerShortcuts';
+import { hasOpenDialog } from './utils/openDialogs';
 import { useFollowSelectedCollection } from './hooks/useFollowSelectedCollection';
-import { useHeldWhile } from './hooks/useHeldWhile';
 import { useOverlayBodyClass } from './hooks/useOverlayBodyClass';
-import { useLoadingReveal } from '../primitives/useLoadingReveal';
 import { useSidebarLayout } from './hooks/useSidebarLayout';
 import { useRememberedPlace } from './hooks/useRememberedPlace';
 import { useLeaveHiddenFolder } from './hooks/useLeaveHiddenFolder';
-import { sortAssets } from './utils/assetSort';
-import { filterFolders, type AssetFilter } from './utils/assetFilter';
-import { useCreatureFilters } from './hooks/useCreatureFilters';
-import { useCollectionFilterDefinitions } from './hooks/useCollectionFilterDefinitions';
-import { useFilterSearch, useSearchKeywords } from './hooks/useFilterSearch';
+import { useDisplayedContent } from './hooks/useDisplayedContent';
+import { useRevealMoved } from './hooks/useRevealMoved';
 import { ActiveFilterBar } from './components/search/ActiveFilterBar';
-import { DIALOG_EXIT_DURATION, dialogBackdropVariants, useDialogWindowVariants } from '../primitives/dialogMotion';
 import { showDungeonGenerator } from '../dungeon-generator/openDungeonGenerator';
 import { runInBackground } from '../../../utils/backgroundTask';
-import { t } from '../../../i18n';
+import { useArmariumPlace, useStoreOnTop } from './hooks/useArmariumPlace';
+import { ArmariumPane } from '../../../armarium/ArmariumPane';
+import type { ShareRequest } from '../../../armarium/armariumMessages';
+import { pickMusicToShare } from '../../../armarium/share/openMusicShare';
+import { isMusicKind } from '../../../services/itemBundle/itemBundleFormat';
+import { pickItemToShare } from '../../../armarium/share/openItemShare';
+import { useStoreTagFilter, useStoreTags } from '../../../armarium/storeTagFilter';
+import { MapPickContext } from './mapPick';
 
-const NO_ASSETS: AnyAsset[] = [];
+/** What a window opened to choose a map does instead of editing: nothing. */
+const IGNORE = (): void => {};
 
-const wrapperVariants = {
-  hidden: { opacity: 1 },
-  visible: { opacity: 1 },
-  exit: { opacity: 1, transition: { duration: DIALOG_EXIT_DURATION, when: 'afterChildren' as const } },
-};
-
-export default function AssetManager({ isOpen, onClose, initialTab, onExitComplete }: AssetManagerProps): React.JSX.Element {
+export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, onExitComplete, pendingImport, armariumRequest = 0, armariumPage, pick }: AssetManagerProps): React.JSX.Element {
+  const isOpen = useOpenedAfterPress(isOpenProp);
   const [search, setSearch] = useState('');
-  const [activeTab, setActiveTab] = useState<Tab>('tokens');
+  const [activeTab, setActiveTab] = useState<Tab>(pick ? 'maps' : 'tokens');
   const [selectedCollection, setSelectedCollection] = useState(() => AssetService.defaultCollectionId());
   const [collapsedSections, setCollapsedSections] = useState<{ folders: boolean; assets: boolean }>({ folders: false, assets: false });
   const [draggedItems, setDraggedItems] = useState<{ type: 'asset' | 'folder'; ids: string[] } | null>(null);
@@ -58,24 +61,38 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
   const overlayRef = useOverlayBodyClass(modalRef);
   const containerRef = useRef<HTMLDivElement>(null);
   const sidebar = useSidebarLayout(containerRef, isOpen);
-  const windowVariants = useDialogWindowVariants();
 
   const data = useAssetData(activeTab, selectedCollection, isOpen);
   useFollowSelectedCollection(data.collections, selectedCollection, setSelectedCollection);
   const settings = useAtlasSettings(SettingsService.forApp(data.app));
+  // A window choosing a map is no host of the store: an install is never reviewed over it.
+  const armarium = useArmariumPlace(data.app, isOpen && !pick, armariumRequest, pendingImport, armariumPage);
+  const storeTagFilter = useStoreTagFilter();
+  const storeTagsState = useStoreTags(storeTagFilter);
 
   const visibleIds = useRef<VisibleIds>({ assets: [], folders: [] });
-  const sel = useSelectionHandlers(visibleIds, data.folders, activeTab, isOpen);
+  const sel = useSelectionHandlers(visibleIds, data.folders, activeTab, isOpen, modalRef);
   useLeaveHiddenFolder(data, sel);
 
+  // Another tab or collection renders the whole window again: as a transition, in slices between frames. Either leads
+  // back from the Armarium to the library, as a tag does, in the same render: the library never shows the place it held
+  // before the store.
   const changeTab = useCallback((tab: Tab): void => {
-    if (tab === activeTab) return;
-    setActiveTab(tab);
-    sel.resetForTab();
-  }, [activeTab, sel.resetForTab]);
+    // Choosing a map keeps to the Maps tab, whatever key or control asks for another.
+    if (pick) return;
+    if (tab === activeTab) {
+      armarium.leave();
+      return;
+    }
+    startTransition(() => {
+      armarium.leave();
+      setActiveTab(tab);
+      sel.resetForTab();
+    });
+  }, [activeTab, sel.resetForTab, armarium.leave, pick]);
 
   const memory = useRememberedPlace({
-    isOpen, initialTab, data, sel,
+    isOpen, initialTab: pick ? 'maps' : initialTab, data, sel, remember: !pick,
     place: { collection: selectedCollection, tab: activeTab, search, collapsedSections },
     apply: (place) => {
       setActiveTab(place.tab);
@@ -87,71 +104,43 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
 
   // The open folder, the selection and the tags belong to the collection they were chosen in.
   const changeCollection = (collectionId: string): void => {
-    if (collectionId === selectedCollection) return;
-    setSelectedCollection(collectionId);
-    sel.resetForTab();
+    if (collectionId === selectedCollection) {
+      armarium.leave();
+      return;
+    }
+    startTransition(() => {
+      armarium.leave();
+      setSelectedCollection(collectionId);
+      sel.resetForTab();
+    });
   };
 
-  const filterDefinitions = useCollectionFilterDefinitions(data.app, data.assetService, selectedCollection);
-  const searchKeywords = useSearchKeywords(activeTab, filterDefinitions, search);
-
-  const assetFilter = useMemo((): AssetFilter => ({
-    tab: activeTab,
-    folderId: sel.selectedFolderId,
-    search: searchKeywords.nameQuery,
-    tags: sel.selectedTagIds.map((tagId) => data.availableTags.find((tag) => tag.id === tagId) ?? { id: tagId, name: tagId }),
-  }), [activeTab, sel.selectedFolderId, searchKeywords.nameQuery, sel.selectedTagIds, data.availableTags]);
-
-  const creature = useCreatureFilters({
-    app: data.app, definitions: filterDefinitions, isOpen,
-    assets: data.assets, folders: data.folders, filter: assetFilter,
+  const { creature, filterSearch, shown, showSkeleton, showTagSkeleton, isFiltering } = useDisplayedContent({
+    isOpen, activeTab, selectedCollection, search, setSearch, data, sel, visibleIds,
   });
+  const storeOnTop = useStoreOnTop(armarium, shown.tab === activeTab && shown.collection === selectedCollection);
 
-  const filterSearch = useFilterSearch({
-    keywords: searchKeywords,
-    setSearch,
-    panel: creature.panel,
-    tags: data.availableTags,
-    tagIds: sel.selectedTagIds,
-    setTagIds: sel.setSelectedTagIds,
-  });
-
-  const displayedAssets = useMemo(
-    () => sortAssets(creature.assets, sel.sortBy, sel.sortOrder, creature.ratingOf),
-    [creature.assets, sel.sortBy, sel.sortOrder, creature.ratingOf],
-  );
-
-  const displayedFolders = useMemo(() => filterFolders(data.folders, creature.filter), [data.folders, creature.filter]);
-
-  // A change of tab or collection keeps the previous content on screen, untouched by the
-  // resets the change triggers, while its assets load: a quick load swaps the panes once.
-  // A load that takes longer gives way to the skeleton of the new place, so the manager
-  // answers at once however long its content takes.
-  const showSkeleton = useLoadingReveal(data.assetsLoading);
-  const isPending = data.assetsLoading || showSkeleton;
-  const shown = useHeldWhile(data.assetsLoading && !showSkeleton, {
-    collection: selectedCollection,
-    tab: activeTab,
-    loading: isPending,
-    assets: isPending ? NO_ASSETS : displayedAssets,
-    folders: displayedFolders,
-    folderId: sel.selectedFolderId,
-    folderPath: sel.selectedFolderId ? sel.getFolderPath(sel.selectedFolderId) : [],
-    refinement: [searchKeywords.nameQuery, sel.sortBy, sel.sortOrder, ...sel.selectedTagIds, creature.refinementKey].join('\n'),
-  });
-
-  visibleIds.current = {
-    assets: displayedAssets.map((asset) => asset.id),
-    folders: displayedFolders.map((folder) => folder.id),
-  };
+  // Where a move's notice takes the GM: the cards' new place, with them selected (decision #37).
+  const reveal = useRevealMoved({ selectedCollection, changeCollection, assets: data.assets, assetsLoading: data.assetsLoading, sel });
 
   const crud = useAssetCrud(
     data.app, data.assetService, activeTab, selectedCollection,
     sel.selectedFolderId, data.folders, data.collections,
     data.setFolders, data.reloadCollections, setSelectedCollection,
     data.loadFoldersForActiveTab, data.loadAssetsForActiveTab,
-    draggedItems, setDraggedItems, setDropTarget,
+    draggedItems, setDraggedItems, setDropTarget, data.setAssets, reveal.inFolder, sel,
   );
+  useExternalImport(armarium.pendingImport, isOpen, crud);
+  // The Armarium's Share: the selected collection, one of the vault's own items of the kind it names, or music.
+  const shareInArmarium = ({ what, listing }: ShareRequest): void => {
+    if (what === 'collection') void crud.handleShareCollection();
+    else if (isMusicKind(what)) pickMusicToShare(data.app, what, listing);
+    else pickItemToShare(data.app, what);
+  };
+  // The library's selection stays behind: Escape over the store closes the window, never clears what is not shown.
+  useEffect(() => {
+    if (armarium.shown) sel.handleClearSelection();
+  }, [armarium.shown]);
 
   const tags = useTagsAndCollections(
     data.assetService, selectedCollection, data.tagsByGroup,
@@ -166,170 +155,164 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
 
   const statblock = useStatblockLink(data.app);
 
-  const { handleAssetContextMenu, handleFolderContextMenu, handleContentContextMenu } =
-    useContextMenus({ data, sel, crud, tags, statblock, selectedCollection, activeTab, onClose });
+  const { handleAssetContextMenu, handleAssetDelete, handleFolderContextMenu, handleContentContextMenu } =
+    useContextMenus({ data, sel, crud, tags, statblock, selectedCollection, activeTab, onClose, openCollection: reveal.inCollection });
+  // Choosing a map edits nothing: no menus, no moves, no deletes.
+  const editing = pick ? null : { handleAssetContextMenu, handleAssetDelete, handleFolderContextMenu, handleContentContextMenu, setDraggedItems };
 
   useAssetManagerEffects({
     isOpen, onClose,
     modalRef, containerRef,
     activeTab, changeTab,
-    data, sel, crud, tags, statblock,
+    data, sel, crud, tags, statblock, setSearch,
   });
+  const createMenu = useRef<HeaderMenuHandle>(null);
+  useAssetManagerShortcuts(data.app, isOpen && !hasOpenDialog(crud, tags, statblock), containerRef, changeTab, () => createMenu.current?.open());
 
-  const anyModalOpen = crud.isTokenCreatorOpen || crud.isEncounterBuilderOpen || crud.isMapCreatorOpen;
+  const onCreate: Record<CreatableTab, () => void> = {
+    tokens: () => crud.setIsTokenCreatorOpen(true),
+    maps: crud.handleCreateMap,
+    encounters: () => crud.setIsEncounterBuilderOpen(true),
+  };
+  const starterOffer = useStarterOfferDismissal(data.app, data.collections.find((option) => option.id === selectedCollection)?.uid);
 
-  // The empty Tokens tab offers the starter tokens in place of its hint.
-  const offerService = data.assetService;
-  const emptyOffer = shown.tab === 'tokens' && offerService
-    ? (hint: React.ReactNode): React.ReactNode => <BestiaryTokensOffer app={data.app} assets={offerService} collection={selectedCollection} variant="empty" fallback={hint} />
-    : null;
+  const emptyAction = pick ? null : (
+    <EmptyTabAction tab={shown.tab} app={data.app} assetService={data.assetService} collection={selectedCollection} onCreate={onCreate} onShowMaps={() => changeTab('maps')} />
+  );
 
   return (
-    <>
-      {/* Stays mounted while closed so the window can animate out. */}
-      <AnimatePresence {...(onExitComplete ? { onExitComplete } : {})}>
-        {isOpen && (
-          <motion.div
-            key="asset-manager-modal"
-            className="atlas-vtt-plugin atlas-vtt-root atlas-asset-manager-modal"
-            ref={overlayRef}
-            tabIndex={-1}
-            variants={wrapperVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
+    <MapPickContext.Provider value={pick ?? null}>
+      <AssetManagerWindow isOpen={isOpen} onClose={onClose} onExitComplete={onExitComplete} overlayRef={overlayRef}>
+        <div
+          className={`atlas-asset-manager-container ${sidebar.isFloating ? 'atlas-sidebar-floating' : ''}`}
+          ref={containerRef}
+        >
+          <Sidebar
+            selectedTagIds={sel.selectedTagIds}
+            onSelectTag={sel.handleTagSelect}
+            onClearTags={() => sel.setSelectedTagIds([])}
+            tags={data.availableTags}
+            tagsLoading={showTagSkeleton}
+            tagsFailed={data.assetsFailed}
+            countedAssets={creature.matching}
+            collections={data.collections}
+            selectedCollection={selectedCollection}
+            onSelectCollection={changeCollection}
+            {...(!pick && { onManageTags: () => tags.setIsTagManagerOpen(true) })}
+            {...(!pick && {
+              onEditCollectionSettings: crud.setSettingsModalCollectionId,
+              onExportCollection: () => { void crud.handleExportCollection(); },
+              onShareCollection: () => { void crud.handleShareCollection(); },
+              onImportCollection: crud.handleImportCollection,
+            })}
+            footer={!pick && !armarium.shown && activeTab === 'tokens' && data.assetService && data.assets.length > 0 ? <BestiaryTokensOffer app={data.app} assets={data.assetService} collection={selectedCollection} variant="sidebar" dismissed={starterOffer.dismissed} {...(starterOffer.dismiss && { onDismiss: starterOffer.dismiss })} /> : null}
+            layout={sidebar}
+            storeTags={armarium.shown ? { state: storeTagsState, onToggle: (id) => storeTagFilter.toggle(id), onClear: () => storeTagFilter.clear() } : undefined}
+          />
+          <Header
+            app={data.app}
+            search={search}
+            onSearch={setSearch}
+            query={filterSearch}
+            activeTab={activeTab}
+            onTabChange={changeTab}
+            assetCounts={data.assetCounts}
+            countsFailed={data.assetsFailed}
+            onCreateTokens={() => crud.setIsTokenCreatorOpen(true)}
+            onCreateMap={crud.handleCreateMap}
+            onGenerateDungeon={() => {
+              runInBackground(showDungeonGenerator(data.app, selectedCollection), 'Opening the dungeon generator');
+              onClose();
+            }}
+            onCreateEncounter={() => crud.setIsEncounterBuilderOpen(true)}
+            onCreateCollection={crud.handleCreateCollection}
+            onCreateFolder={crud.handleCreateFolder}
+            createMenu={createMenu}
+            sidebarToggleLabel={sidebar.toggleLabel}
+            onToggleSidebar={sidebar.toggle}
+            sel={sel}
+            {...(pick ? { pick } : { onShowArmarium: () => armarium.show() })}
+            armarium={armarium.shown ? { onBack: armarium.leave, onReload: armarium.reload, page: armarium.page, onShare: (what) => shareInArmarium({ what }) } : undefined}
+          />
+          <div
+            className="atlas-asset-manager-body"
+            onDragOver={(e) => { if (!pick && draggedItems && sel.selectedFolderId === null) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; } }}
+            onDrop={(e) => { if (!pick && draggedItems && sel.selectedFolderId === null) { e.preventDefault(); crud.handleDrop(null); } }}
           >
-            <motion.div
-              className="atlas-asset-manager-backdrop"
-              onClick={onClose}
-              variants={dialogBackdropVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-            />
-            {/* The window moves as one piece. The container inside clips its content to the
-                window's corners; what is drawn around the window (a theme's ornament) hangs
-                from this element and so moves and fades with it. */}
-            <motion.div
-              className="atlas-asset-manager-window"
-              variants={windowVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-            >
-              <div
-                className={`atlas-asset-manager-container ${sidebar.isFloating ? 'atlas-sidebar-floating' : ''}`}
-                ref={containerRef}
-              >
-                <Sidebar
-                  selectedTagIds={sel.selectedTagIds}
-                  onSelectTag={sel.handleTagSelect}
-                  onClearTags={() => sel.setSelectedTagIds([])}
-                  tags={data.availableTags}
-                  tagsLoading={data.tagsLoading}
-                  assets={data.assets}
-                  collections={data.collections}
-                  selectedCollection={selectedCollection}
-                  onSelectCollection={changeCollection}
-                  onManageTags={() => tags.setIsTagManagerOpen(true)}
-                  onEditCollectionSettings={crud.setSettingsModalCollectionId}
-                  onExportCollection={() => { void crud.handleExportCollection(); }}
-                  onImportCollection={crud.handleImportCollection}
-                  footer={activeTab === 'tokens' && data.assetService && data.assets.length > 0 ? <BestiaryTokensOffer app={data.app} assets={data.assetService} collection={selectedCollection} variant="sidebar" /> : null}
-                  layout={sidebar}
+            {/* The library and the store are layers of the body: the store's frame stays, hidden, once shown, and the
+                library stays under the store while the store fades in over it, and the store over the library until it
+                shows the place the store was left for. */}
+            {armarium.libraryShown && (
+              <div className="atlas-asset-manager-library" inert={storeOnTop}>
+                <ActiveFilterBar groups={filterSearch.chips} onReset={filterSearch.reset} />
+                {/* A filtered list holds the matches of every folder, so the location reads as the tab's root while it shows. */}
+                <LocationBar
+                  activeTab={shown.tab}
+                  path={isFiltering ? [] : shown.folderPath}
+                  onNavigateToFolder={sel.handleNavigateToFolder}
+                  sort={sel}
                 />
-                <Header
-                  app={data.app}
-                  search={search}
-                  onSearch={setSearch}
-                  query={filterSearch}
-                  activeTab={activeTab}
-                  onTabChange={changeTab}
-                  assetCounts={data.assetCounts}
-                  onCreateTokens={() => crud.setIsTokenCreatorOpen(true)}
-                  onCreateMap={crud.handleCreateMap}
-                  onGenerateDungeon={() => {
-                    runInBackground(showDungeonGenerator(data.app, selectedCollection), 'Opening the dungeon generator');
-                    onClose();
-                  }}
-                  onCreateEncounter={() => crud.setIsEncounterBuilderOpen(true)}
-                  onCreateCollection={crud.handleCreateCollection}
-                  onCreateFolder={crud.handleCreateFolder}
-                  sidebarToggleLabel={sidebar.toggleLabel}
-                  onToggleSidebar={sidebar.toggle}
-                  sel={sel}
-                />
-                <div
-                  className="atlas-asset-manager-body"
-                  onDragOver={(e) => { if (draggedItems && sel.selectedFolderId === null) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; } }}
-                  onDrop={(e) => { if (draggedItems && sel.selectedFolderId === null) { e.preventDefault(); crud.handleDrop(null); } }}
-                >
-                  <ActiveFilterBar groups={filterSearch.chips} onReset={filterSearch.reset} />
-                  <LocationBar
-                    activeTab={shown.tab}
-                    path={shown.folderPath}
-                    onNavigateToFolder={sel.handleNavigateToFolder}
-                    sort={sel}
-                  />
-                  <div className="atlas-asset-manager-main">
-                    <AssetTagMenuContext.Provider value={tagMenuActions}>
-                      <Content
-                        activeTab={shown.tab}
-                        assets={shown.assets}
-                        folders={shown.folders}
-                        selectedAssetIds={sel.selectedAssetIds}
-                        selectedFolderIds={sel.selectedFolderIds}
-                        selectedFolderId={shown.folderId}
-                        folderDepth={shown.folderPath.length}
-                        refinement={shown.refinement}
-                        loading={shown.loading}
-                        showSkeleton={showSkeleton}
-                        assetCount={data.assetCounts?.[shown.tab] ?? null}
-                        scrollKey={`${shown.collection ?? 'default'}/${shown.tab}/${shown.folderId ?? ''}?${shown.refinement}`}
-                        scrollMemory={memory}
-                        onAssetSelect={sel.handleAssetSelect}
-                        onAssetContextMenu={handleAssetContextMenu}
-                        onFolderSelection={sel.handleFolderSelection}
-                        onFolderContextMenu={handleFolderContextMenu}
-                        onFolderDoubleClick={sel.handleFolderDoubleClick}
-                        onContentContextMenu={handleContentContextMenu}
-                        onClearSelection={sel.handleClearSelection}
-                        onClose={onClose}
-                        collapsedSections={collapsedSections}
-                        setCollapsedSections={setCollapsedSections}
-                        draggedItems={draggedItems}
-                        setDraggedItems={setDraggedItems}
-                        dropTarget={dropTarget}
-                        setDropTarget={setDropTarget}
-                        onDrop={crud.handleDrop}
-                        view={data.view}
-                        app={data.app}
-                        {...(emptyOffer && { emptyOffer })}
-                        assetService={data.assetService}
-                        spawnCounts={sel.spawnCounts}
-                        onSpawnCountChange={sel.handleSpawnCountChange}
-                        {...(creature.isActive ? { onClearFilters: filterSearch.reset } : {})}
-                      />
-                    </AssetTagMenuContext.Provider>
-                  </div>
+                <div className="atlas-asset-manager-main">
+                  <AssetTagMenuContext.Provider value={tagMenuActions}>
+                    <Content
+                      collection={shown.collection}
+                      collectionName={data.collections.find((option) => option.id === shown.collection)?.name ?? shown.collection}
+                      failed={shown.failed}
+                      onRetry={data.retryLoad}
+                      activeTab={shown.tab}
+                      assets={shown.assets}
+                      folders={shown.folders}
+                      selectedAssetIds={sel.selectedAssetIds}
+                      selectedFolderIds={sel.selectedFolderIds}
+                      selectedFolderId={shown.folderId}
+                      folderDepth={shown.folderPath.length}
+                      refinement={shown.refinement}
+                      loading={shown.loading}
+                      showSkeleton={showSkeleton}
+                      assetCount={data.assetCounts?.[shown.tab] ?? null}
+                      scrollKey={`${shown.collection ?? 'default'}/${shown.tab}/${shown.folderId ?? ''}?${shown.refinement}`}
+                      scrollMemory={memory}
+                      onAssetSelect={sel.handleAssetSelect}
+                      onAssetContextMenu={editing?.handleAssetContextMenu ?? IGNORE}
+                      onAssetDelete={editing?.handleAssetDelete ?? IGNORE}
+                      onLinkStatblock={statblock.openStatblockLinkModal}
+                      onFolderSelection={sel.handleFolderSelection}
+                      onFolderContextMenu={editing?.handleFolderContextMenu ?? IGNORE}
+                      onFolderDoubleClick={sel.handleFolderDoubleClick}
+                      onContentContextMenu={editing?.handleContentContextMenu ?? IGNORE}
+                      onClearSelection={sel.handleClearSelection}
+                      onSelectAll={sel.handleSelectAll}
+                      onClose={onClose}
+                      collapsedSections={collapsedSections}
+                      setCollapsedSections={setCollapsedSections}
+                      draggedItems={draggedItems}
+                      setDraggedItems={editing?.setDraggedItems ?? IGNORE}
+                      dropTarget={dropTarget}
+                      setDropTarget={setDropTarget}
+                      onDrop={crud.handleDrop}
+                      view={data.view}
+                      app={data.app}
+                      emptyAction={emptyAction}
+                      assetService={data.assetService}
+                      spawnCounts={sel.spawnCounts}
+                      onSpawnCountChange={sel.handleSpawnCountChange}
+                      reveal={reveal.gridReveal}
+                      {...(isFiltering ? { onClearFilters: filterSearch.reset } : {})}
+                    />
+                  </AssetTagMenuContext.Provider>
                 </div>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            )}
+            {armarium.framed && (
+              <ArmariumPane key={armarium.frameKey} app={data.app} url={armarium.page} shown={storeOnTop} onShare={shareInArmarium} tagFilter={storeTagFilter} />
+            )}
+          </div>
+        </div>
+      </AssetManagerWindow>
 
-      {isOpen && !anyModalOpen && !crud.inputModalState?.isOpen && !crud.settingsModalCollectionId && !crud.isCreateSceneModalOpen && !crud.isMoveModalOpen && !tags.isTagManagerOpen && !statblock.linkingStatblockAsset && (
-        settings?.shouldShowTutorial('assets') ? <Tutorial settings={settings} id="assets" steps={[
-          { title: t('am.tour.libraryTitle'), body: t('am.tour.libraryBody'), selector: '.atlas-am-toolbar-center' },
-          { title: t('am.tour.collectionTitle'), body: t('am.tour.collectionBody'), selector: '.atlas-collections' },
-        ]} action={{ label: t('am.tour.createCollection'), onClick: crud.handleCreateCollection }} /> :
-        settings?.getSetting('onboarding').tokenImported ? <Tutorial settings={settings} id="tokenStatblocks" steps={[
-          { title: t('am.tour.statblockTitle'), body: t('am.tour.statblockBody'), selector: '.atlas-asset-manager-main' },
-        ]} /> : null
-      )}
+      {!pick && <AssetManagerTours isOpen={isOpen} settings={settings} crud={crud} tags={tags} statblock={statblock} onShowMaps={() => changeTab('maps')} />}
 
-      <ModalLayer
+      {!pick && <ModalLayer
         isOpen={isOpen}
         activeTab={activeTab}
         selectedCollection={selectedCollection}
@@ -339,7 +322,8 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
         crud={crud}
         tags={tags}
         statblock={statblock}
-      />
-    </>
+        windowRef={modalRef}
+      />}
+    </MapPickContext.Provider>
   );
 }

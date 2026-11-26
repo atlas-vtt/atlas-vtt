@@ -8,7 +8,7 @@ import { FakeSocket, workspace } from './fakeTable.ts';
 import { ANA, ANA_OWN, BEN, BEN_OWN, BRANNOCH, BRANNOCH_BOOK, BRANNOCH_ART, CAL, cave, delivered, DOOM, keptBooks, MAP, MIRA_BOOK, MIRA_ART, MIRA_DOOM, ofType, openTable, traffic, WORLD_MAP, type Delivered } from './bookTableHarness.ts';
 import { advanceSettled as advance } from './settled.ts';
 
-vi.mock('obsidian', () => ({ Notice: class {}, normalizePath: (path: string) => path, requestUrl: () => Promise.resolve({ status: 201, json: null }), PluginSettingTab: class {}, Setting: class {} }));
+vi.mock('obsidian', () => ({ Notice: class {}, normalizePath: (path: string) => path, requestUrl: () => Promise.resolve({ status: 201, json: null }), PluginSettingTab: class {}, Setting: class {}, Platform: { isDesktopApp: true, isMobile: false, isPhone: false } }));
 // The GM's marks draw with PIXI over Atlas's canvas, which a table of books has no use for.
 vi.mock('../../../../src/app/online/gm/gmMarks.ts', () => ({
   GmMarks: class {
@@ -18,6 +18,7 @@ vi.mock('../../../../src/app/online/gm/gmMarks.ts', () => ({
     showPlayers(): void {}
     showPlayerDrags(): void {}
     showPlayerCursors(): void {}
+    showPlayerStrokes(): void {}
     dispose(): void {}
   },
 }));
@@ -140,13 +141,13 @@ describe('the players\' books at a running table', () => {
     const sheets = ofType(delivered(socket).slice(since), 'book', 'book-sheet', 'book-item');
     expect(sheets).toMatchObject([{ to: ANA, body: { t: 'book-sheet', character: { name: 'Brannoch', resources: [{ current: 2, max: 12 }, { key: 'doom' }] } } }]);
 
-    // Hidden by the GM, the character stays Ana's as it last was; nothing is read of the hidden token.
+    // Hidden by the GM, the character stays Ana's and her sheet follows it: the map hides the token from the others, not her character from her.
     since = delivered(socket).length;
     tab.store.set(cave({ brannoch: { isHidden: true, name: 'Brannoch the Betrayer', resources: { hp: { current: 1, max: 12 } } } }));
     await advance(1_000);
-    expect(ofType(delivered(socket).slice(since), 'book', 'book-sheet')).toEqual([]);
-    expect(traffic(delivered(socket))).not.toContain('Betrayer');
-    expect(lootRecipients()[0]).toEqual({ id: ANA, name: 'Ana', character: 'Brannoch' });
+    expect(ofType(delivered(socket).slice(since), 'book', 'book-sheet')).toMatchObject([{ to: ANA, body: { t: 'book-sheet', character: { name: 'Brannoch the Betrayer', resources: [{ current: 1, max: 12 }] } } }]);
+    expect(traffic(delivered(socket).filter(({ to }) => to !== ANA))).not.toContain('Betrayer');
+    expect(lootRecipients()[0]).toEqual({ id: ANA, name: 'Ana', character: 'Brannoch the Betrayer' });
 
     // The GM gives Brannoch to Ben: Ana keeps what she wrote and has no sheet, and nothing goes into a character's book from her.
     tab.store.set(cave());

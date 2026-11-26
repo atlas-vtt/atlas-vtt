@@ -1,4 +1,4 @@
-import type { EventEmitter } from 'events';
+import type { EventEmitter } from '../../utils/typedEmitter';
 import type { Viewport } from 'pixi-viewport';
 import { MAX_LIGHT_ZONES, MAX_ZONE_CORNERS, lightZoneList } from '../../lighting/lightZones';
 import { levelObjects } from '../../levels/levelObjects';
@@ -9,6 +9,7 @@ import { areaHandlePoint } from '../../vision/polygonArea';
 import { PolygonAreaEditor } from '../areas/PolygonAreaEditor';
 import { lightZoneOverlay } from './LightZoneOverlay';
 import { snapToWallEnd } from './wallEnds';
+import { placesFreely } from '../../types/toolSwitches';
 
 export interface LightZoneEditorDeps {
   viewport: Viewport;
@@ -61,7 +62,7 @@ export class LightZoneEditor extends PolygonAreaEditor<LightZone> {
         },
         // The engine reads a zone's outline from a list of this length: the last corner closes it.
         maxCorners: MAX_ZONE_CORNERS,
-        snap: (point, { altKey }) => (altKey ? point : snapToWallEnd(point, levelObjects(store.getState()).walls, viewport.scale.x)),
+        snap: (point, { altKey }) => (placesFreely(store.getState(), 'lightingSnap', altKey) ? point : snapToWallEnd(point, levelObjects(store.getState()).walls, viewport.scale.x)),
       },
     });
     zoneDeps.eventBus.on('wall-submode-changed', this.onSubMode);

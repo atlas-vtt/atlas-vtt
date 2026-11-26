@@ -8,11 +8,12 @@ import { LinkedFolderWatch } from '../soundDirector/linkedFolderWatch';
 import { SoundDirector } from '../soundDirector/SoundDirector';
 import { isPlaying } from '../soundDirector/tableSound';
 import { whatPlays } from '../soundDirector/whatPlays';
+import { registerConversionConsent } from './soundConsent';
+import { whileSoundOn } from './whileSoundOn';
+import { removeSoundCache } from './removeSoundCache';
 import { runInBackground } from '../utils/backgroundTask';
 import { TokenSoundPlayer } from '../audio/TokenSoundPlayer';
 import { fadeTokenSoundsWithTable } from '../audio/tokenSoundStops';
-import { SettingsService } from '../services/SettingsService';
-import { DEFAULT_SOUND_SETTINGS } from '../services/soundSettings';
 
 const STATUS_REFRESH_MS = 5000;
 
@@ -113,7 +114,7 @@ function registerSoundStatusBar(plugin: Plugin, director: SoundDirector): () => 
   item.addClass('atlas-sound-status');
   item.hide();
   const label = item.createSpan({ cls: 'atlas-sound-status__name' });
-  const stopAll = item.createEl('button', { cls: 'atlas-sound-status__stop-all clickable-icon' });
+  const stopAll = item.createEl('button', { cls: 'atlas-sound-status__stop-all' });
   stopAll.addEventListener('click', () => director.desk.toggleSilence());
   let shownStopped: boolean | null = null;
   const render = (): void => {
@@ -148,16 +149,19 @@ function registerSoundStatusBar(plugin: Plugin, director: SoundDirector): () => 
  */
 export function registerSoundDirector(plugin: Plugin): SoundDirector {
   const director = SoundDirector.forApp(plugin.app);
+  const library = (): SoundLibrary => SoundLibrary.forApp(plugin.app);
   // Linked folders are prepared as they come, once the workspace is up, so a start is not held by a folder's walk.
   plugin.app.workspace.onLayoutReady(() => {
-    const watch = new LinkedFolderWatch({ records: SoundRecordStore.forApp(plugin.app), library: SoundLibrary.forApp(plugin.app), director });
-    plugin.register(() => watch.dispose());
+    runInBackground(removeSoundCache(plugin.app), 'Removing the old sound copy cache');
+    plugin.register(whileSoundOn(director, library, (live) => {
+      const watch = new LinkedFolderWatch({ records: SoundRecordStore.forApp(plugin.app), library: live, director });
+      return () => watch.dispose();
+    }));
   });
+  plugin.register(whileSoundOn(director, library, (live) => registerConversionConsent(plugin, live, director)));
   registerSoundCommands(plugin, director);
   plugin.register(registerMoodCommands(plugin, director));
-  // Token sounds fade with the mix on Stop all and when Sound is switched off.
-  const fadeSeconds = (): number => SettingsService.forApp(plugin.app)?.getSoundSettings().fadeSeconds ?? DEFAULT_SOUND_SETTINGS.fadeSeconds;
-  plugin.register(fadeTokenSoundsWithTable(director, (seconds) => TokenSoundPlayer.stopAllFor(plugin.app, seconds), fadeSeconds));
+  plugin.register(fadeTokenSoundsWithTable(director, (seconds) => TokenSoundPlayer.stopAllFor(plugin.app, seconds)));
   plugin.register(registerSoundStatusBar(plugin, director));
   return director;
 }

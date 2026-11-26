@@ -78,7 +78,6 @@
     border-radius: $radius-m;
     background: var(--background-modifier-form-field);
     box-shadow: 0 0 0 2px color-mix(in oklch, var(--interactive-accent) 20%, transparent);
-    @include atlas-corner-shape;
   }
 
   .atlas-online-log__edit-actions {

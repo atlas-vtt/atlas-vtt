@@ -13,6 +13,8 @@ export function unturned(dx: number, dy: number, degrees: number): { x: number; 
 }
 
 interface Press {
+  /** The pointer that pressed: a second finger meanwhile neither pans nor dismisses. */
+  pointerId: number;
   x: number;
   y: number;
   /** The press started on the dark area around the image, where a click dismisses it. */
@@ -21,8 +23,8 @@ interface Press {
 
 /**
  * Input on an image shown in the player window: the wheel zooms, dragging
- * pans, a double-click resets, and a click beside the image or Escape anywhere
- * in the window dismisses it.
+ * (a mouse, a finger or a pen) pans, a double-click resets, and a click beside
+ * the image or Escape anywhere in the window dismisses it.
  */
 export class ImageOverlayControls {
   private scale = 1;
@@ -42,20 +44,22 @@ export class ImageOverlayControls {
   ) {
     this.applyTransform();
     container.addEventListener('wheel', this.onWheel);
-    container.addEventListener('mousedown', this.onMouseDown);
+    container.addEventListener('pointerdown', this.onPointerDown);
     container.addEventListener('dblclick', this.onDoubleClick);
-    win.document.addEventListener('mousemove', this.onMouseMove);
-    win.document.addEventListener('mouseup', this.onMouseUp);
+    win.document.addEventListener('pointermove', this.onPointerMove);
+    win.document.addEventListener('pointerup', this.onPointerUp);
+    win.document.addEventListener('pointercancel', this.onPointerCancel);
     // Capture on the window: a focused element in the player view cannot swallow Escape
     win.addEventListener('keydown', this.onKeyDown, true);
   }
 
   detach(): void {
     this.container.removeEventListener('wheel', this.onWheel);
-    this.container.removeEventListener('mousedown', this.onMouseDown);
+    this.container.removeEventListener('pointerdown', this.onPointerDown);
     this.container.removeEventListener('dblclick', this.onDoubleClick);
-    this.win.document.removeEventListener('mousemove', this.onMouseMove);
-    this.win.document.removeEventListener('mouseup', this.onMouseUp);
+    this.win.document.removeEventListener('pointermove', this.onPointerMove);
+    this.win.document.removeEventListener('pointerup', this.onPointerUp);
+    this.win.document.removeEventListener('pointercancel', this.onPointerCancel);
     this.win.removeEventListener('keydown', this.onKeyDown, true);
     this.press = null;
     this.drag = null;
@@ -77,31 +81,41 @@ export class ImageOverlayControls {
     this.applyTransform();
   };
 
-  private readonly onMouseDown = (event: MouseEvent): void => {
+  private readonly onPointerDown = (event: PointerEvent): void => {
     if (event.button !== 0) return;
     // The close button handles its own click
     if (this.container.querySelector('.atlas-image-display__close')?.contains(event.target as Node)) return;
-    this.press = { x: event.clientX, y: event.clientY, outsideImage: !this.isOnImage(event.clientX, event.clientY) };
+    this.press = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, outsideImage: !this.isOnImage(event.clientX, event.clientY) };
     this.drag = { clientX: event.clientX, clientY: event.clientY, x: this.x, y: this.y };
     this.container.addClass('is-dragging');
   };
 
-  private readonly onMouseMove = (event: MouseEvent): void => {
-    if (!this.drag) return;
+  private readonly onPointerMove = (event: PointerEvent): void => {
+    if (!this.drag || event.pointerId !== this.press?.pointerId) return;
     const moved = unturned(event.clientX - this.drag.clientX, event.clientY - this.drag.clientY, this.turn());
     this.x = this.drag.x + moved.x;
     this.y = this.drag.y + moved.y;
     this.applyTransform();
   };
 
-  private readonly onMouseUp = (event: MouseEvent): void => {
+  private readonly onPointerUp = (event: PointerEvent): void => {
     const press = this.press;
+    if (!press || event.pointerId !== press.pointerId) return;
+    this.release();
+    if (!press.outsideImage) return;
+    if (Math.hypot(event.clientX - press.x, event.clientY - press.y) <= CLICK_TOLERANCE) this.onDismiss();
+  };
+
+  /** A lost pointer leaves the image where the drag brought it and dismisses nothing. */
+  private readonly onPointerCancel = (event: PointerEvent): void => {
+    if (event.pointerId === this.press?.pointerId) this.release();
+  };
+
+  private release(): void {
     this.press = null;
     this.drag = null;
     this.container.removeClass('is-dragging');
-    if (!press?.outsideImage) return;
-    if (Math.hypot(event.clientX - press.x, event.clientY - press.y) <= CLICK_TOLERANCE) this.onDismiss();
-  };
+  }
 
   private readonly onDoubleClick = (): void => {
     this.scale = 1;

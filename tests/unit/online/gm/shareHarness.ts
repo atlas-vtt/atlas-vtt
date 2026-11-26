@@ -1,7 +1,7 @@
 import { DeltaReader, parseGmMessage, type DeltaOf, type GmMessage, type RollRequestAnswer } from '../../../../src/app/online/protocol/index.ts';
 import type { LoggedRoll, RollRequest } from '../../../../src/app/online/gm/log/TableLog.ts';
 import { produce } from 'immer';
-import type { TokenEntity } from '../../../../src/app/types';
+import type { NotePin, TokenEntity } from '../../../../src/app/types';
 import type { TokenPerception } from '../../../../src/app/vision/tokenPerception';
 import type { SceneState, SceneStore } from '../../../../src/app/online/gm/atlasView.ts';
 import type { SeatSource } from '../../../../src/app/online/gm/seatSource.ts';
@@ -12,11 +12,14 @@ import type { MapLayerSource } from '../../../../src/app/online/gm/atlasMapLayer
 import type { TokenRules } from '../../../../src/app/online/gm/tokenUI.ts';
 import type { RemoteDrag } from '../../../../src/app/online/marks/index.ts';
 import type { GmRuler } from '../../../../src/app/online/gm/dragRulers.ts';
+import type { GmMarkSource } from '../../../../src/app/online/gm/MarkShare.ts';
 import { fakeTokenSource } from './fakeTokenSource.ts';
 import { GENERIC_SOURCE, PLAYER_SETTINGS } from './gmLighting.ts';
 import { settled } from './settled.ts';
 import { isVideoMapPath } from '../../../../src/app/pixi/mosaicCanvas/video/videoMapFiles';
 import type { AssetStoring } from '../../../../src/app/online/gm/assets/assetUses.ts';
+import type { PictureBasis } from '../../../../src/app/online/gm/eyesSight.ts';
+import type { MemoryPorts } from '../../../../src/app/online/gm/memory/memoryPorts.ts';
 import { fakeStoring } from './fakeStoring.ts';
 
 export const GRID_SIZE = 70;
@@ -56,10 +59,14 @@ export interface ShareHarness {
   dice: DiceSource | null;
   /** The tab's grid, doors, sensed tokens and collection; none by default. */
   layers: MapLayerSource | null;
+  /** The GM's renderer as the basis players' own pictures are cut from; none by default, so they are worked out on the CPU. */
+  basis: PictureBasis | null;
   /** The map's resource and condition definitions, or null while they cannot be read (the default). */
   rules: TokenRules | null;
   /** What the GM's own drag ruler measures; none by default. */
   gmRuler: GmRuler | null;
+  /** The GM's own marks on the tab (measurements, laser, the drawing under way); none by default. */
+  marks: GmMarkSource | null;
   /** The rulers of the players' drags the GM's overlay was given, in order. */
   readonly playerDrags: (readonly RemoteDrag[])[];
   /** The rolls taken into the table's log. */
@@ -68,6 +75,8 @@ export interface ShareHarness {
   requests: (from: string, answer: RollRequestAnswer) => RollRequest | null;
   /** The log entry of whoever found a readable pin; nobody by default. */
   foundPin: (mapPath: string, pinId: string) => string | null;
+  /** Told of the shared map's pins whenever they changed; nobody listens by default. */
+  pinsChanged: (mapPath: string, pins: Readonly<Record<string, NotePin>>) => void;
   /** The level of a scene with several Atlas presents to its player view; unset is the first. */
   presented: string | undefined;
   /** The vault's animated maps by path, whose posters are their entries in the images; none by default. */
@@ -87,11 +96,13 @@ const counterId = (count: number): string => count.toString(16).padStart(24, '0'
 
 /**
  * A SceneShare over a fake store, renderer (`fakeTokenSource`), vault and clock; `images` are the
- * vault's image files by path; `seats` tells who plays, owns which token and may claim which; `real`
+ * vault's image files by path; `seats` tells who plays, owns which token and may claim which (without them, a table
+ * where everyone shares the party's picture: Shared vision is on, so what it sends reaches every page); `real`
  * (Atlas's own view store) replaces the fake store, and is written through its own actions, not `set`;
- * `stored` hands players assets the store keeps (by default all of them, `fakeStoring`).
+ * `stored` hands players assets the store keeps (by default all of them, `fakeStoring`); `memory` keeps each
+ * player's own explored memory (none by default).
  */
-export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Uint8Array<ArrayBuffer>>, seats?: SeatSource, real?: SceneStore, stored?: AssetStoring): ShareHarness {
+export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Uint8Array<ArrayBuffer>>, seats?: SeatSource, real?: SceneStore, stored?: AssetStoring, memory?: MemoryPorts): ShareHarness {
   let current = initial;
   const listeners: ((next: SceneState) => void)[] = [];
   const store: SceneStore = real ?? {
@@ -111,15 +122,18 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
     perception: undefined,
     rendered: true,
     lighting: GENERIC_SOURCE,
-    settings: PLAYER_SETTINGS,
+    settings: { ...PLAYER_SETTINGS, sharedVision: seats === undefined },
     dice: null,
     layers: null,
+    basis: null,
     rules: null,
     gmRuler: null,
+    marks: null,
     playerDrags: [],
     logged: [],
     requests: () => null,
     foundPin: () => null,
+    pinsChanged: () => undefined,
     presented: undefined,
     videos: new Map(),
     videoReads: 0,
@@ -128,7 +142,9 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
       logRoll: (roll) => harness.logged.push(roll),
       rollRequest: (from, answer) => harness.requests(from, answer),
       foundPin: (mapPath, pinId) => harness.foundPin(mapPath, pinId),
+      pinsChanged: (mapPath, pins) => harness.pinsChanged(mapPath, pins),
       mapLayers: () => harness.layers,
+      pictureBasis: () => harness.basis,
       lightingSource: () => harness.lighting,
       atlasSettings: () => harness.settings,
       dice: () => harness.dice,
@@ -136,6 +152,7 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
       tokenRules: () => harness.rules,
       tokenSource: () => (harness.rendered ? source : null),
       gmDragRuler: () => harness.gmRuler,
+      gmMarks: () => harness.marks,
       showPlayerDrags: (drags) => harness.playerDrags.push(drags),
       readImage: (path) => {
         const bytes = images.get(path);
@@ -144,7 +161,7 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
         return Promise.resolve(bytes === undefined || mime === null ? null : { bytes, mime });
       },
       send: (body, to) => harness.sent.push({ body, to }),
-      sendLive: (body) => harness.sent.push({ body, to: undefined }),
+      sendLive: (body, _key, to) => harness.sent.push({ body, to }),
       notice: (text) => harness.notices.push(text),
       randomId: () => counterId((ids += 1)),
       now: () => now,
@@ -155,6 +172,7 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
       },
       clearTimer: (timer) => void timers.delete(timer),
       seats,
+      playerMemory: memory,
       stored: stored ?? fakeStoring(undefined, (path) => {
         const bytes = harness.videos.get(path);
         if (bytes !== undefined) harness.videoReads += 1;

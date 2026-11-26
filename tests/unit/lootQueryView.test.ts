@@ -54,8 +54,16 @@ function entry(path: string, values: Record<string, string | null>): unknown {
   };
 }
 
-function listener(): LootQueryListener & { onSnapshot: ReturnType<typeof vi.fn>; onUnavailable: ReturnType<typeof vi.fn> } {
-  return { onSnapshot: vi.fn(), onUnavailable: vi.fn() };
+function listener(): LootQueryListener & { onSnapshot: ReturnType<typeof vi.fn>; onUnavailable: ReturnType<typeof vi.fn>; onUnreadable: ReturnType<typeof vi.fn> } {
+  return { onSnapshot: vi.fn(), onUnavailable: vi.fn(), onUnreadable: vi.fn() };
+}
+
+/** A row whose `tags` Obsidian answers with `tags()` (which may throw); its price reads as any row's. */
+function tagged(name: string, tags: () => unknown): unknown {
+  return {
+    file: { path: `Items/${name}.md`, basename: name },
+    getValue: (id: string) => (id === 'note.tags' ? tags() : id === 'note.price' ? { toString: () => '5' } : null),
+  };
 }
 
 const CONFIG = { views: [{ type: LOOT_QUERY_VIEW, name: 'Armor' }] };
@@ -100,10 +108,15 @@ describe('registerLootQueryView', () => {
   });
 });
 
+/** An app whose workspace is in this document, the main window's. */
+function appWithWorkspace(): App {
+  return Object.assign(new App(), { workspace: { containerEl: document.body } });
+}
+
 describe('LootBaseQuery', () => {
   it('renders the base config off screen with Atlas’s view type', async () => {
     const render = vi.spyOn(MarkdownRenderer, 'render').mockResolvedValue();
-    await new LootBaseQuery(new App(), CONFIG, 'Items.base', listener()).start();
+    await new LootBaseQuery(appWithWorkspace(), CONFIG, 'Items.base', listener()).start();
 
     const [, markdown, host, sourcePath] = render.mock.calls[0] ?? [];
     expect(markdown).toMatch(/^```base\n[\s\S]*type: atlas-loot[\s\S]*```$/);
@@ -114,7 +127,7 @@ describe('LootBaseQuery', () => {
   it('passes on every result of its view, with its columns and the properties the roller reads by name', async () => {
     const views = basesOn();
     const events = listener();
-    await new LootBaseQuery(new App(), CONFIG, 'Items.base', events).start();
+    await new LootBaseQuery(appWithWorkspace(), CONFIG, 'Items.base', events).start();
     const view = views[0];
     if (!view) throw new Error('no view');
 
@@ -130,11 +143,73 @@ describe('LootBaseQuery', () => {
     });
   });
 
+  it('reads every row of a view in which one note\'s tags are no list of words, without the value it cannot read', async () => {
+    const views = basesOn();
+    const events = listener();
+    await new LootBaseQuery(appWithWorkspace(), CONFIG, 'Items.base', events).start();
+    const view = views[0];
+    if (!view) throw new Error('no view');
+    const fail = (): never => { throw new TypeError('tags.map is not a function'); };
+
+    view.config = { getOrder: () => ['file.name', 'note.tags', 'note.price'], getDisplayName: (id) => id };
+    view.data = { data: [
+      tagged('Rope', () => ({ toString: () => 'gear, adventuring' })),
+      // A template note that slipped through the filters: tags that are a text, a number, nested lists, nothing
+      tagged('A text', () => 'loose'),
+      tagged('A number', () => ({ toString: () => 7 })),
+      tagged('Nested lists', () => ({ toString: fail })),
+      tagged('Nothing', () => null),
+      tagged('Unreadable', fail),
+      tagged('Torch', () => ({ toString: () => 'gear' })),
+    ] };
+    expect(() => view.onDataUpdated()).not.toThrow();
+
+    const rows = (events.onSnapshot.mock.calls[0]?.[0] as { entries: { name: string; values: Record<string, string> }[] } | undefined)?.entries ?? [];
+    expect(rows.map((row) => [row.name, row.values['note.tags'], row.values['note.price']])).toEqual([
+      ['Rope', 'gear, adventuring', '5'],
+      ['A text', 'loose', '5'],
+      ['A number', undefined, '5'],
+      ['Nested lists', undefined, '5'],
+      ['Nothing', undefined, '5'],
+      ['Unreadable', undefined, '5'],
+      ['Torch', 'gear', '5'],
+    ]);
+    expect(events.onUnreadable).not.toHaveBeenCalled();
+  });
+
+  it('leaves out a row that names no note and keeps the others', async () => {
+    const views = basesOn();
+    const events = listener();
+    await new LootBaseQuery(appWithWorkspace(), CONFIG, 'Items.base', events).start();
+    const view = views[0];
+    if (!view) throw new Error('no view');
+
+    view.config = { getOrder: () => ['note.price'], getDisplayName: (id) => id };
+    view.data = { data: [null, { file: null, getValue: () => null }, entry('Items/Plate.md', { 'note.price': '300' })] };
+    view.onDataUpdated();
+
+    expect(events.onSnapshot).toHaveBeenCalledWith(expect.objectContaining({ entries: [{ path: 'Items/Plate.md', name: 'Plate', values: { 'note.price': '300' } }] }));
+  });
+
+  it('says so when the results of a view cannot be read at all, instead of staying silent', async () => {
+    const views = basesOn();
+    const events = listener();
+    await new LootBaseQuery(appWithWorkspace(), CONFIG, 'Items.base', events).start();
+    const view = views[0];
+    if (!view) throw new Error('no view');
+
+    view.config = { getOrder: () => { throw new Error('no order'); }, getDisplayName: (id) => id };
+    expect(() => view.onDataUpdated()).not.toThrow();
+
+    expect(events.onSnapshot).not.toHaveBeenCalled();
+    expect(events.onUnreadable).toHaveBeenCalledOnce();
+  });
+
   it('reports an unavailable view when Obsidian makes none', async () => {
     vi.useFakeTimers();
     basesOff();
     const events = listener();
-    await new LootBaseQuery(new App(), CONFIG, 'Items.base', events).start();
+    await new LootBaseQuery(appWithWorkspace(), CONFIG, 'Items.base', events).start();
 
     vi.advanceTimersByTime(LOOT_VIEW_GRACE_MS - 1);
     expect(events.onUnavailable).not.toHaveBeenCalled();
@@ -146,7 +221,7 @@ describe('LootBaseQuery', () => {
     vi.useFakeTimers();
     basesOn();
     const events = listener();
-    await new LootBaseQuery(new App(), CONFIG, 'Items.base', events).start();
+    await new LootBaseQuery(appWithWorkspace(), CONFIG, 'Items.base', events).start();
 
     vi.advanceTimersByTime(LOOT_VIEW_GRACE_MS);
     expect(events.onUnavailable).not.toHaveBeenCalled();
@@ -156,7 +231,7 @@ describe('LootBaseQuery', () => {
     vi.useFakeTimers();
     const views = basesOn();
     const events = listener();
-    const query = new LootBaseQuery(new App(), CONFIG, 'Items.base', events);
+    const query = new LootBaseQuery(appWithWorkspace(), CONFIG, 'Items.base', events);
     await query.start();
     query.stop();
 
@@ -175,7 +250,7 @@ describe('LootBaseQuery', () => {
     vi.useFakeTimers();
     basesOff();
     const events = listener();
-    const query = new LootBaseQuery(new App(), CONFIG, 'Items.base', events);
+    const query = new LootBaseQuery(appWithWorkspace(), CONFIG, 'Items.base', events);
     await query.start();
     query.stop();
 

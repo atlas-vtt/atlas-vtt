@@ -15,7 +15,7 @@ vi.mock('../../src/app/initiative/useMapInitiativeRules', () => ({
 vi.mock('../../src/app/react/ViewStoreContext', async (importOriginal) => ({
   ...await importOriginal<typeof import('../../src/app/react/ViewStoreContext')>(),
   useAtlasStore: (selector: (value: unknown) => unknown) => selector(gm.state),
-  useViewStoreHook: () => ({ getState: () => gm.state }),
+  useViewStoreHook: () => ({ getState: () => gm.state, subscribe: () => () => undefined }),
 }));
 // jsdom has no WebGL: the player window shows result cards.
 vi.mock('../../src/app/dice3d/stagePool', async (importOriginal) => ({
@@ -37,6 +37,7 @@ function gmScene(mapPath: string, name: string): Record<string, unknown> {
     ] },
     objects: { tokens: { wolf: { id: 'wolf', kind: 'character', name, x: 0, y: 0, imagePath: '', statblockPath: WOLF } } },
     tokenSettings: { showInstanceBadges: true },
+    selectedIds: [] as string[],
     ...Object.fromEntries(['removeFromInitiative', 'rollAllInitiative', 'rollEntryInitiative', 'nextTurn', 'previousTurn', 'reorderInitiative',
       'moveToFront', 'moveToBack', 'startCombat', 'endCombat', 'updateInitiativeEntry', 'updateTokens', 'setInitiativeSitsOut', 'resetInitiative',
     ].map((action) => [action, vi.fn()])),
@@ -104,8 +105,8 @@ describe('a statblock preview kept open from the initiative tracker', () => {
     act(() => document.querySelector<HTMLElement>('.statblock-hover-preview .atlas-dice-link')!.click());
     expect(origins).toEqual([{ viewId: 'view-1', mapPath: MAP_A, tokenId: 'wolf' }]);
 
+    await waitFor(() => expect(lastCard(player.doc)?.textContent).toMatch(/\d/));
     const card = lastCard(player.doc);
-    expect(card?.textContent).toMatch(/\d/);
     expect(card?.textContent).not.toMatch(/Wolf|Bone Hound|Bite/);
     expect(card?.querySelector('img')).toBeNull();
   });

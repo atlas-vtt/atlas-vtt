@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { Texture, type EventSystem } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { TFile } from 'obsidian';
 import { axialToPixel, createHexLayout } from '../../src/app/grid/hexGeometry';
 import { hexLayoutOfGrid, hexLinkAt, linkedHexOf } from '../../src/app/grid/hexLinks';

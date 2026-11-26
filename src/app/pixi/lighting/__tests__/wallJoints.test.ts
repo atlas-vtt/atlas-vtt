@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { WallInput, WallSegment } from '../../../types/wallTypes';
 import { placeDoor } from '../wallEdits';
-import { chainEndingAt, wallEndNear } from '../wallEnds';
+import { chainEndingAt, connectedChain, wallEndNear } from '../wallEnds';
 import { removeDoor, removeJoint } from '../wallJoints';
 
 function walls(...list: Array<WallInput & { id: string }>): Record<string, WallSegment> {
@@ -33,6 +33,32 @@ describe('chainEndingAt', () => {
     expect(chainEndingAt({ x: 0, y: 0 }, room)).toBe('c');
     expect(chainEndingAt({ x: 100, y: 0 }, room)).toBeUndefined();
     expect(chainEndingAt({ x: 0, y: 100 }, room)).toBeUndefined();
+  });
+});
+
+describe('connectedChain', () => {
+  // One carve writes every piece of a room's edge with one chain id, also pieces that never meet.
+  const carved = walls(
+    { id: 'top', type: 'solid', p1: { x: 0, y: 0 }, p2: { x: 100, y: 0 }, chainId: 'room' },
+    { id: 'nib', type: 'solid', p1: { x: 101, y: 1 }, p2: { x: 110, y: 20 }, chainId: 'room' },
+    { id: 'bottom', type: 'solid', p1: { x: 0, y: 300 }, p2: { x: 100, y: 300 }, chainId: 'room' },
+    { id: 'side', type: 'solid', p1: { x: 0, y: 0 }, p2: { x: 0, y: 300 }, chainId: 'other' },
+    { id: 'lone', type: 'solid', p1: { x: 100, y: 0 }, p2: { x: 200, y: 0 } },
+  );
+
+  it('takes the walls of the chain that reach the wall end to end, and none of its parts elsewhere', () => {
+    expect(connectedChain('top', carved).sort()).toEqual(['nib', 'top']);
+    expect(connectedChain('nib', carved).sort()).toEqual(['nib', 'top']);
+    expect(connectedChain('bottom', carved)).toEqual(['bottom']);
+  });
+
+  it('never reaches a part of the chain through a wall of another chain', () => {
+    expect(connectedChain('side', carved)).toEqual(['side']);
+  });
+
+  it('is the wall alone without a chain, and nothing for a wall that is not there', () => {
+    expect(connectedChain('lone', carved)).toEqual(['lone']);
+    expect(connectedChain('gone', carved)).toEqual([]);
   });
 });
 

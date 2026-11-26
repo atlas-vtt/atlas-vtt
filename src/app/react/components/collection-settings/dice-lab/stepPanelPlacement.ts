@@ -5,6 +5,7 @@
  * (it scrolls). Pure: every box is in px of one coordinate space.
  */
 
+import { clamp } from '../../../../utils/math';
 export type StepPanelSide = 'below' | 'above' | 'right' | 'left';
 
 export interface Box {
@@ -35,8 +36,6 @@ export interface StepPanelPlace {
 
 /** Room between the die (or its label or fan) and the panel, and the panel and the frame's edge. */
 export const STEP_PANEL_GAP = 8;
-
-const clamp = (value: number, least: number, most: number): number => Math.max(least, Math.min(most, value));
 
 /** The panel of `width` × `height` beside the die in `anchor`, inside `frame`. */
 export function placeStepPanel(anchor: StepPanelAnchor, width: number, height: number, frame: Box): StepPanelPlace {

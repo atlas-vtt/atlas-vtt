@@ -1,0 +1,638 @@
+// ──────────────────────────────────────────────
+// Saved rolls – floating beside the dice tray: BEM atlas-dice-presets*
+// ──────────────────────────────────────────────
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+@use '../../../../../styles/wiggle' as *;
+
+$presets-width: 288px;
+$presets-gap: $spacing-s;
+$presets-quiet-text: color-mix(in srgb, var(--text-muted) 70%, var(--text-normal));
+// Room inside the scroller for the cards' shadows, which a scroller would cut: Obsidian's `--shadow-l` (the
+// elevated shadow) blurs 90 px, 30 px down. Beside the cards and below them; above, the save card stands.
+$presets-shadow-side: 96px;
+$presets-shadow-below: 128px;
+// How far the list fades out at the column's foot.
+$presets-fade: $spacing-l;
+
+// No panel: a column of floating cards beside the tray, top to top with it and as tall, out of the tray's flow so the
+// tray keeps its place over its button. On the left: the tray's own tooltips open to its right.
+.atlas-dice-presets {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: calc(100% + #{$presets-gap});
+  display: flex;
+  flex-direction: column;
+  gap: $presets-gap;
+  width: $presets-width;
+  font-size: $font-ui-small;
+  pointer-events: none;
+  // Above the tray's own content: a saved roll's editor, and a die's step panel in it, may hang over the tray.
+  z-index: 1;
+
+  // A window too narrow for both side by side (a tablet upright): above the tray, at its right edge, growing upward.
+  @media (max-width: 1000px) {
+    top: auto;
+    bottom: calc(100% + #{$presets-gap});
+    right: 0;
+    max-height: 320px;
+  }
+}
+
+// One floating surface: the tray's own look, border, corner and shadow, its controls $surface-inset inside the
+// border and concentric with its corner on all four sides alike, as in every bar and card of Atlas.
+$card-control: $button-height-l;
+$card-control-radius: atlas-panel-inset-radius-value($surface-inset, calc(#{$card-control} * 0.5));
+// A saved roll's card is taller than the save card: its name and its dice read at a glance.
+$item-control: calc(#{$button-height-l} + #{$spacing-s});
+
+.atlas-dice-presets__card {
+  @include atlas-elevated-surface;
+  @include atlas-panel-radius($surface-radius);
+  box-shadow: $shadow-elevated;
+  padding: $surface-inset;
+  pointer-events: auto;
+  --atlas-bar-control-radius: #{$card-control-radius};
+}
+
+// The saved rolls: one card each, in a list that scrolls within the tray's height and fades at its edges.
+.atlas-dice-presets__list {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: $presets-gap;
+  min-height: 0;
+  // The scroller reaches far past the column beside and below it, so the cards' shadows are not cut at its box; that
+  // room takes no pointer (the map and the toolbar under it stay usable), the cards do, and the wheel over a card
+  // still scrolls the list. The mask only fades the list at the column's top and foot: past the foot, cards are
+  // hidden, while their shadows beside them show whole. The padding below reaches past the fade too, so the last card
+  // scrolls clear of it and shows whole.
+  margin: (-$presets-gap) (-$presets-shadow-side) (-$presets-shadow-below);
+  padding: $presets-gap $presets-shadow-side calc(#{$presets-shadow-below} + #{$presets-fade});
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  list-style: none;
+  pointer-events: none;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 $presets-gap,
+    #000 calc(100% - #{$presets-shadow-below} - #{$presets-fade}),
+    transparent calc(100% - #{$presets-shadow-below})
+  );
+
+  > * {
+    pointer-events: auto;
+  }
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  &:empty {
+    display: none;
+  }
+}
+
+@keyframes atlas-dice-preset-in {
+  from {
+    opacity: 0;
+    translate: 12px 0;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+.atlas-dice-presets__item {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: $surface-inset;
+  animation: atlas-dice-preset-in 240ms $transition-ease-out both;
+  animation-delay: calc(var(--atlas-preset-index, 0) * 30ms);
+
+  @media (prefers-reduced-motion: reduce) {
+    animation-name: atlas-dice-fade-in;
+    animation-delay: 0ms;
+  }
+
+  // Under the pointer, with focus inside or while its menu is open, a card shows its ⋯.
+  @include atlas-hover {
+    .btn.atlas-dice-presets__more {
+      display: flex;
+    }
+  }
+
+  &:focus-within .btn.atlas-dice-presets__more,
+  .btn.atlas-dice-presets__more[aria-expanded='true'] {
+    display: flex;
+  }
+}
+
+// A card's ⋯: a square as tall as the card's inside, concentric with it, like every control of a card. Hidden, it is not
+// drawn at all (no control held at opacity 0); shown, it fades in. Under a finger nothing hovers: it stands shown.
+.atlas-dice-presets__item .btn.atlas-dice-presets__more {
+  display: none;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: $item-control;
+  height: $item-control;
+  padding: 0;
+  border-radius: var(--atlas-bar-control-radius);
+  color: $presets-quiet-text;
+  transition: opacity $transition-fast $transition-ease, background-color $transition-fast $transition-ease;
+
+  @starting-style {
+    opacity: 0;
+  }
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
+
+  // Its own fill on top of the lit card.
+  @include atlas-hover {
+    background: color-mix(in oklch, var(--text-normal) 10%, transparent);
+    color: var(--text-normal);
+  }
+
+  &[aria-expanded='true'] {
+    background: color-mix(in oklch, var(--text-normal) 10%, transparent);
+    color: var(--text-normal);
+  }
+
+  @include atlas-hover-reveal {
+    display: flex;
+  }
+}
+
+// A saved roll that stands in the tray's row: a small pin after its name.
+.atlas-dice-presets__pinned {
+  width: $icon-xs;
+  height: $icon-xs;
+  margin-inline-start: $spacing-xs;
+  vertical-align: -1px;
+  color: var(--text-accent);
+}
+
+// Every control of a card: no look of Obsidian's, the card's control corner on all four corners (the press is
+// Atlas' one press rule, `_button-press.scss`). The save card's icons take the menus' quiet hover fill; a saved roll's
+// card lights up whole instead (below), its ⋯ with a fill of its own on top.
+.atlas-dice-presets__roll,
+.atlas-dice-presets__icon {
+  margin: 0;
+  padding: 0;
+  height: $card-control;
+  background: transparent;
+  border: none;
+  border-radius: var(--atlas-bar-control-radius);
+  box-shadow: none;
+  cursor: pointer;
+  transition: background-color $transition-fast $transition-ease, color $transition-fast $transition-ease, opacity $transition-fast $transition-ease;
+}
+
+.atlas-dice-presets__icon {
+  @include atlas-hover {
+    background: var(--background-modifier-hover);
+  }
+}
+
+// A saved roll lights up whole under the pointer, the ⋯'s place included, and stays lit while its menu is open. The ⋯
+// is a control of its own: under the pointer it alone lights up.
+.atlas-dice-presets__item {
+  transition: background-color $transition-fast $transition-ease;
+
+  @include atlas-hover('&:hover:not(:has(.atlas-dice-presets__more:hover))') {
+    background: color-mix(in oklch, var(--background-primary), var(--text-normal) 7%);
+  }
+
+  &:has(.atlas-dice-presets__more[aria-expanded='true']) {
+    background: color-mix(in oklch, var(--background-primary), var(--text-normal) 7%);
+  }
+
+  // Its editor is open above: the card stays lit, its edge in the accent, so it is clear which roll is edited.
+  &[data-editing] {
+    background: color-mix(in oklch, var(--background-primary), var(--text-normal) 7%);
+    border-color: color-mix(in oklch, var(--interactive-accent) 60%, transparent);
+  }
+
+  .atlas-dice-presets__roll {
+    height: $item-control;
+    padding-inline: $spacing-m $spacing-s;
+  }
+}
+
+.atlas-dice-presets__roll {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  min-width: 0;
+  padding-inline: $spacing-s;
+  color: var(--text-normal);
+  font-size: inherit;
+  line-height: 1.25;
+  text-align: start;
+}
+
+// A saved roll's dice stand before its name and formula, so the ⋯ that shows at the card's end moves none of them.
+.atlas-dice-presets__item .atlas-dice-presets__roll {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-content: center;
+  column-gap: $spacing-s;
+}
+
+.atlas-dice-presets__dice {
+  display: flex;
+  grid-row: 1 / 3;
+  grid-column: 1;
+  align-items: center;
+
+  // Several kinds overlap a little, the later one under the earlier, so a roll of many dice stays short.
+  > .atlas-die-still + .atlas-die-still {
+    margin-inline-start: -$spacing-xs;
+  }
+}
+
+.atlas-dice-presets__name,
+.atlas-dice-presets__formula {
+  grid-column: 2;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atlas-dice-presets__name {
+  font-size: $font-ui-medium;
+  font-weight: $font-weight-medium;
+}
+
+.atlas-dice-presets__formula {
+  color: $presets-quiet-text;
+  font-size: $font-ui-small;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+// Square, as tall as the card's inside.
+.atlas-dice-presets__icon {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: $card-control;
+  color: $presets-quiet-text;
+  opacity: 0;
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
+
+  @include atlas-hover {
+    color: var(--text-normal);
+  }
+
+  // A pinned roll keeps its pin in sight: it is part of the tray's row.
+  &[aria-pressed='true'] {
+    opacity: 1;
+    color: var(--text-accent);
+  }
+
+  &[aria-disabled='true'] {
+    cursor: default;
+  }
+
+  &:focus-visible {
+    opacity: 1;
+  }
+
+  // Under a finger nothing hovers: the controls stand shown.
+  @include atlas-hover-reveal {
+    opacity: 1;
+  }
+}
+
+// Deleting is told by its colour under the pointer: the error red and a faint red fill.
+.atlas-dice-presets__icon--destructive {
+  @include atlas-hover {
+    background: color-mix(in oklch, var(--color-red) 12%, transparent);
+    color: var(--text-error);
+  }
+}
+
+// The card is the field: name, a hairline, formula and +; one edge, hover and focus for all of it, as the tray's
+// formula bar has. The inputs draw no edge or ring of their own.
+.atlas-dice-presets__form {
+  display: grid;
+  flex-shrink: 0;
+  grid-template-columns: 1fr auto 1fr auto auto;
+  align-items: center;
+  column-gap: 0;
+  animation: atlas-dice-preset-in 240ms $transition-ease-out both;
+  transition: border-color $transition-fast $transition-ease, box-shadow $transition-fast $transition-ease;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation-name: atlas-dice-fade-in;
+  }
+
+  // Its buttons are controls of their own: under the pointer they alone light up.
+  @include atlas-hover('&:hover:not(:focus-within):not(:has(.atlas-dice-presets__icon:hover))') {
+    border-color: $field-edge-hover;
+  }
+
+  &:focus-within {
+    border-color: $field-edge-focus;
+    box-shadow: $shadow-elevated, $field-focus-ring;
+  }
+
+  &:has(.atlas-dice-presets__field[aria-invalid='true']) {
+    border-color: var(--text-error);
+  }
+
+  .atlas-dice-presets__icon {
+    opacity: 1;
+    color: var(--text-normal);
+  }
+}
+
+.atlas-dice-presets__field,
+.atlas-dice-presets__field:hover,
+.atlas-dice-presets__field:focus {
+  width: 100%;
+  min-width: 0;
+  height: $card-control;
+  margin: 0;
+  padding: 0 $spacing-s;
+  background: transparent;
+  border: none;
+  border-radius: var(--atlas-bar-control-radius);
+  box-shadow: none;
+  outline: none;
+  color: var(--text-normal);
+  font-family: var(--font-interface);
+  font-size: $font-ui-small;
+}
+
+.atlas-dice-presets__field::placeholder {
+  color: var(--text-faint);
+}
+
+.atlas-dice-presets__field--formula {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+// The hairline between name and formula, a little shorter than the card, as between the tray's formula and modifier.
+.atlas-dice-presets__divider {
+  width: $border-width-s;
+  height: 50%;
+  background: $field-edge;
+}
+
+.atlas-dice-presets__message {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: $spacing-xs $spacing-s;
+  @include atlas-error-text;
+  font-size: $font-ui-smaller;
+  line-height: 1.4;
+
+  &:empty {
+    display: none;
+  }
+}
+
+// The icons at the tray's foot before Clear (saved rolls, edit the row): the accent while what they open stands open.
+.atlas-dice-tray__actions .atlas-dice-tray__foot-icon.btn--ghost {
+  flex-shrink: 0;
+  width: $button-height-l;
+  padding: 0;
+  color: var(--text-muted);
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
+
+  &[aria-pressed='true'] {
+    color: var(--text-accent);
+  }
+
+  @include atlas-hover('&:hover:not(:disabled)') {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+  }
+}
+
+// ── The row's edit mode ─────────────────────
+// As a phone's home screen (`styles/_wiggle.scss`): the places wiggle, each with a × on its corner; the held one lifts
+// and follows the pointer, the others slide aside (`useRowDrag`).
+
+.atlas-dice-tray__dice--editing {
+  .atlas-dice-tray__die {
+    position: relative;
+    touch-action: none;
+    user-select: none;
+    cursor: grab;
+    transition: translate $transition-fast $transition-ease-out;
+
+    &[data-held] {
+      z-index: 1;
+      cursor: grabbing;
+      transition: none;
+
+      .atlas-dice-tray__face {
+        @include atlas-wiggle-held;
+      }
+    }
+  }
+
+  .atlas-dice-tray__face {
+    cursor: inherit;
+    @include atlas-wiggle;
+  }
+
+  .atlas-dice-tray__die:nth-child(even) .atlas-dice-tray__face {
+    @include atlas-wiggle-shifted;
+  }
+
+  .atlas-dice-tray__die:nth-child(3n) .atlas-dice-tray__face {
+    @include atlas-wiggle-slower;
+  }
+}
+
+// After a drop the row takes its new order in place, without sliding back from where the places stood aside.
+.atlas-dice-tray__dice--settling .atlas-dice-tray__die {
+  transition: none;
+}
+
+.atlas-dice-tray__remove {
+  position: absolute;
+  top: -$spacing-xs;
+  left: -$spacing-xs;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  border: $border-width-m solid var(--background-primary);
+  border-radius: $radius-full;
+  background: var(--background-modifier-border);
+  box-shadow: none;
+  color: var(--text-normal);
+  cursor: pointer;
+
+  svg {
+    width: 10px;
+    height: 10px;
+  }
+
+  @include atlas-hover {
+    background: var(--text-error);
+    color: var(--text-on-accent, #fff);
+  }
+
+  @include atlas-coarse-pointer {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+// The place that adds a die: a quiet outline and no fill, then the field the die is typed into.
+.atlas-dice-tray__add.atlas-dice-tray__face {
+  border-color: color-mix(in oklch, var(--mono-100) $border-opacity-subtle, transparent);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
+}
+
+.atlas-dice-tray__add-field.atlas-dice-tray__face {
+  padding: 0;
+  text-align: center;
+  color: var(--text-normal);
+  font-size: $font-ui-small;
+  outline: none;
+
+  &:focus {
+    border-color: var(--interactive-accent);
+  }
+
+  &[aria-invalid='true'] {
+    border-color: var(--text-error);
+  }
+}
+
+// What a typed die that cannot join the row says: under the row, out of the flow, in the gap above the formula.
+.atlas-dice-tray__row-edit {
+  position: relative;
+}
+
+.atlas-dice-tray__row-note {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding-top: 2px;
+  @include atlas-error-text;
+  font-size: $font-ui-smaller;
+  line-height: $spacing-l;
+  text-align: center;
+
+  &:empty {
+    display: none;
+  }
+}
+
+// A refused die shakes its field; two identical keyframes, taken in turn, so every refusal shakes again.
+@keyframes atlas-dice-shake-a {
+  0%, 100% { translate: 0 0; }
+  20%, 60% { translate: -3px 0; }
+  40%, 80% { translate: 3px 0; }
+}
+
+@keyframes atlas-dice-shake-b {
+  0%, 100% { translate: 0 0; }
+  20%, 60% { translate: -3px 0; }
+  40%, 80% { translate: 3px 0; }
+}
+
+.atlas-dice-tray__add-field {
+  &[data-shake='1'] {
+    animation: atlas-dice-shake-a 260ms $transition-ease-out;
+  }
+
+  &[data-shake='0'] {
+    animation: atlas-dice-shake-b 260ms $transition-ease-out;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &[data-shake] {
+      animation: none;
+    }
+  }
+}
+
+// A saved roll's place: its first die's body, and small marks in three corners (the fourth is the tray's count).
+.atlas-preset-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.atlas-preset-face__mark {
+  position: absolute;
+  max-width: calc(100% - 2 * #{$spacing-xs});
+  overflow: hidden;
+  padding: 0 3px;
+  border-radius: $radius-s;
+  background: color-mix(in oklch, var(--background-primary) 82%, transparent);
+  color: var(--text-normal);
+  font-size: 9px;
+  font-weight: $font-weight-semibold;
+  font-variant-numeric: tabular-nums lining-nums;
+  line-height: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.atlas-preset-face__mark--count {
+  top: 2px;
+  left: 2px;
+}
+
+.atlas-preset-face__mark--rule {
+  bottom: 2px;
+  left: 2px;
+  max-width: 55%;
+  color: var(--text-accent);
+}
+
+.atlas-preset-face__mark--rest {
+  right: 2px;
+  bottom: 2px;
+}
+
+// With a rule beside it, the rest keeps to its half of the foot.
+.atlas-preset-face__mark--rule ~ .atlas-preset-face__mark--rest {
+  max-width: 45%;
+}

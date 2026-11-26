@@ -198,4 +198,22 @@ describe('registerAtlasLeafSync', () => {
     expect(map.setViewState).not.toHaveBeenCalled();
     expect(showNotice).toHaveBeenCalledOnce();
   });
+
+  it('says so only once the copy has left its popout, which is the active window until that closes it', () => {
+    const map = leafIn(rootSplit, 'atlas-vtt', MAP_STATE);
+    map.view = { getViewType: () => map.type, atlasStore: {}, onLoadFile: vi.fn(async () => undefined) } as FakeLeaf['view'];
+    const copy = leafIn(popoutWindow, 'atlas-vtt', MAP_STATE);
+    const { app, layoutChange } = workspaceOf([map, copy]);
+    // Obsidian puts a notice into the active window: the popout while the copy is its last leaf
+    const noticeIn: string[] = [];
+    vi.mocked(showNotice).mockImplementationOnce(() => {
+      noticeIn.push(copy.attached ? 'the popout that is about to close' : 'the main window');
+      return undefined as never;
+    });
+    registerAtlasLeafSync({ app, registerEvent: vi.fn() } as never);
+
+    layoutChange();
+
+    expect(noticeIn).toEqual(['the main window']);
+  });
 });

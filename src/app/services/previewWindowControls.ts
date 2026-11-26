@@ -1,8 +1,10 @@
 import { setIcon } from 'obsidian';
 import { t } from '../i18n';
 import type { ViewFrame } from '../packages/components/primitives/popoverFit';
+import { dragThreshold } from '../pixi/utils/pointerReach';
 import { shiftIntoFrame } from './previewWindowLayout';
 import { swallowNextClick } from '../utils/swallowClick';
+import { followPointer } from '../utils/pointerDrag';
 
 /**
  * The pin button of a floating preview window (note and statblock previews):
@@ -43,8 +45,8 @@ export function keepPreviewReachable(element: HTMLElement, reach: PreviewWindowR
 }
 
 /**
- * Moves a floating preview window with the pointer, from a press on its handle
- * until the button is released, then calls `onEnd`. The window never leaves
+ * Moves a floating preview window with the pointer (a mouse, a finger or a pen), from a press on
+ * its handle until the pointer is let go or lost, then calls `onEnd`. The window never leaves
  * its controls outside its view (`reach`), so it can always be moved back and
  * closed. Presses on a button inside the handle are left to the button. With a
  * `threshold` (a handle that holds links, such as a statblock's name), the
@@ -55,7 +57,7 @@ export function keepPreviewReachable(element: HTMLElement, reach: PreviewWindowR
  */
 export function startPreviewWindowDrag(
   element: HTMLElement,
-  event: MouseEvent,
+  event: PointerEvent,
   reach: PreviewWindowReach,
   onEnd: () => void,
   threshold = 0,
@@ -68,42 +70,45 @@ export function startPreviewWindowDrag(
   const startTop = element.offsetTop;
   const startReach = reach.reach();
   const frame = reach.frame();
+  // A handle that waits for a move before it drags waits a little longer for a finger, which wanders
+  const moveThreshold = threshold > 0 ? dragThreshold(threshold, event) : 0;
   let dragging = false;
   let moved = false;
-  const begin = (): void => {
+
+  const follow = followPointer(element, event, {
+    move: (e) => {
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      if (!dragging) {
+        if (Math.hypot(dx, dy) < moveThreshold) return;
+        begin();
+        // A press on text began a selection, which the move must not extend.
+        doc.getSelection()?.removeAllRanges();
+      }
+      moved = true;
+      const fit = startReach
+        ? shiftIntoFrame({ left: startReach.left + dx, right: startReach.right + dx, top: startReach.top + dy, bottom: startReach.bottom + dy }, frame)
+        : { x: 0, y: 0 };
+      element.style.left = `${startLeft + dx + fit.x}px`;
+      element.style.top = `${startTop + dy + fit.y}px`;
+    },
+    end: (_e, lost) => {
+      element.classList.remove('is-dragging');
+      if (!dragging) return;
+      if (threshold > 0 && moved && !lost) swallowNextClick(element.win);
+      onEnd();
+    },
+  });
+  // Captured only as a drag: a click on a link in the handle must reach the link.
+  function begin(): void {
     dragging = true;
     element.classList.add('is-dragging');
-  };
+    follow.capture();
+  }
   if (threshold === 0) begin();
 
-  const move = (e: MouseEvent): void => {
-    const dx = e.clientX - startX;
-    const dy = e.clientY - startY;
-    if (!dragging) {
-      if (Math.hypot(dx, dy) < threshold) return;
-      begin();
-      // A press on text began a selection, which the move must not extend.
-      doc.getSelection()?.removeAllRanges();
-    }
-    moved = true;
-    const fit = startReach
-      ? shiftIntoFrame({ left: startReach.left + dx, right: startReach.right + dx, top: startReach.top + dy, bottom: startReach.bottom + dy }, frame)
-      : { x: 0, y: 0 };
-    element.style.left = `${startLeft + dx + fit.x}px`;
-    element.style.top = `${startTop + dy + fit.y}px`;
-  };
-  const stop = (): void => {
+  return (): void => {
     element.classList.remove('is-dragging');
-    doc.removeEventListener('mousemove', move);
-    doc.removeEventListener('mouseup', end);
+    follow.stop();
   };
-  const end = (): void => {
-    stop();
-    if (!dragging) return;
-    if (threshold > 0 && moved) swallowNextClick(element.win);
-    onEnd();
-  };
-  doc.addEventListener('mousemove', move);
-  doc.addEventListener('mouseup', end);
-  return stop;
 }

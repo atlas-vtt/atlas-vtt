@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../../src/app/utils/typedEmitter';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createInMemoryApp } from '../../mocks/inMemoryVault';
 import { fakeMapRenderer } from '../../helpers/fakeMapRenderer';

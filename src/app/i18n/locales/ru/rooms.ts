@@ -1,0 +1,25 @@
+import type { Translation } from '../../types';
+
+export const rooms: Translation = {
+  'rooms.carve': 'Вырезать',
+  'rooms.fill': 'Заполнить',
+  'rooms.door': 'Дверь',
+  'rooms.rectangle': 'Прямоугольник',
+  'rooms.points': 'По точкам',
+  'rooms.lasso': 'Лассо',
+  'rooms.brush': 'Кисть',
+  'rooms.brushSize': 'Размер кисти',
+  'rooms.bucket': 'Ведро',
+  'rooms.bucketTip': 'Щёлкните или проведите внутри комнаты, чтобы вырезать её пол до нарисованных стен',
+  'rooms.bucketRadius': 'Радиус ведра',
+  'rooms.bucketSensitivity': 'Чувствительность к краям',
+  'rooms.stabilize': 'Стабилизация',
+  'rooms.experimental.label': 'Ведро для комнат',
+  'rooms.experimental.hint': 'Ведро в режиме комнат инструмента освещения: щёлкните или проведите по нарисованной карте, и пол находится до нарисованных стен и вырезается. Пока выключено, ведро скрыто.',
+  'rooms.bucketFoundNothing': 'Ведро не нашло здесь пола. Попробуйте другое место или другую чувствительность',
+  'rooms.carveTip': 'Вырежьте комнату в скале. Удерживайте Alt, чтобы заполнять',
+  'rooms.fillTip': 'Заполните скалу обратно. Удерживайте Alt, чтобы вырезать',
+  'rooms.rectangleTip': 'Удерживайте Shift для привязки к сетке',
+  'rooms.pointsTip': 'Щёлкайте углы, затем снова первый, чтобы замкнуть. Shift привязывает к сетке',
+  'rooms.doorHint': 'Проведите поперёк проёма. Удерживайте Alt для потайной двери',
+};

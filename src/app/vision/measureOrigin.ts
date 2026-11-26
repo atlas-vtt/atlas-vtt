@@ -55,8 +55,22 @@ export function measureOriginOf(points: readonly Point[], footprints: readonly T
   for (const footprint of footprints) {
     if (!tokenIds.includes(footprint.id) && points.some((point) => covers(footprint, point))) tokenIds.push(footprint.id);
   }
-  if (tokenIds.length === 0) return NO_MEASURE_ORIGIN;
-  return { tokenIds, unseenAtStart: tokenIds.some((id) => !seen(id)) };
+  return originOnTokens(tokenIds, seen);
+}
+
+/** The origin of a mark that stands on `tokenIds` themselves, by whether `seen` says the players see them now. */
+export function originOnTokens(tokenIds: readonly string[], seen: TokenSeen): MeasureOrigin {
+  return tokenIds.length === 0 ? NO_MEASURE_ORIGIN : { tokenIds, unseenAtStart: tokenIds.some((id) => !seen(id)) };
+}
+
+/**
+ * The origin of a mark that stands on `tokenIds` now (the range check, the rings of Ranges): the
+ * one it had (`before`) while it stands on the same tokens, so one first shown while the players
+ * did not see a token stays out of their picture; else taken anew by what `seen` says then.
+ */
+export function originKept(before: MeasureOrigin | null | undefined, tokenIds: readonly string[], seen: () => TokenSeen): MeasureOrigin {
+  const same = before && before.tokenIds.length === tokenIds.length && before.tokenIds.every((id, index) => id === tokenIds[index]);
+  return same ? before : originOnTokens(tokenIds, seen());
 }
 
 /**
@@ -65,6 +79,22 @@ export function measureOriginOf(points: readonly Point[], footprints: readonly T
  */
 export function measureShownToPlayers(origin: MeasureOrigin, seen: TokenSeen): boolean {
   return !origin.unseenAtStart && origin.tokenIds.every((id) => seen(id));
+}
+
+/** What says who sees a measurement: the GM's own choice, and where it started. */
+export interface MeasureAudience {
+  /** Only the GM sees it. */
+  readonly hidden?: boolean | undefined;
+  /** The tokens it started on; unset or null: none, as far as anyone knows. */
+  readonly origin?: MeasureOrigin | null | undefined;
+}
+
+/**
+ * Whether the players' picture shows a measurement, live or kept: never one the GM keeps to
+ * themselves, and one that started on tokens only by `measureShownToPlayers`.
+ */
+export function playersSeeMeasure({ hidden, origin }: MeasureAudience, seen: TokenSeen): boolean {
+  return hidden !== true && (!origin || measureShownToPlayers(origin, seen));
 }
 
 function covers({ x, y, radius }: TokenFootprint, point: Point): boolean {

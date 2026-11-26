@@ -14,11 +14,12 @@ import { MosaicCanvasService } from './pixi/mosaicCanvas/MosaicCanvasService';
 import { vaultMapVideos } from './pixi/mosaicCanvas/video/vaultMapVideos';
 import { fitMapRect, fitZoomRange } from './pixi/fitMapRect';
 import { showCamera, type ViewCamera } from './pixi/viewCamera';
-import { requestRender } from './pixi/RenderScheduler';
+import { rendersHeld, requestRender } from './pixi/RenderScheduler';
 import { prefersReducedMotion } from './utils/motion';
 import type { ViewAtlasStore } from './storeFactory';
 import { levelBackground } from './levels/levelEdits';
 import { viewedLevelId, type LevelView } from './levels/sceneLevels';
+import { deviceProfile } from './platform/deviceProfile';
 
 export interface DisplayedMap {
   mapData: MapFile;
@@ -84,8 +85,16 @@ function viewMapImage(app: App, renderer: MapRenderer): MosaicCanvas | null {
     requestRender: () => requestRender(pixi),
     // While a load holds the last frame, the crossfade from it shows the tesserae, so they do not fade in too.
     drawAtOnce: () => !pixi.ticker.started || prefersReducedMotion(pixi.canvas),
+    uploadAtOnce: () => rendersHeld(pixi),
     picture: MAP_THUMBNAIL_SIZE,
     video: vaultMapVideos(app, service, pixi.renderer, pixi.canvas),
+    textureBudget: deviceProfile().budgets.tileTextureBudget,
+  });
+  // Every image the view comes to show can be seen whole, also one no load brought: another
+  // level's, a changed background, the map drawn with another stretch.
+  mapImage.onChange((change) => {
+    const rect = mapImage.worldRect;
+    if (change !== 'albedo' && rect) fitZoomRange(viewport, rect);
   });
   renderer.setMapImage(mapImage);
   return mapImage;

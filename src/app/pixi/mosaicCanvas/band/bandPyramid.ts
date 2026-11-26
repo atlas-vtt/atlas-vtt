@@ -19,7 +19,7 @@ export interface LevelBand {
   readonly rows: number;
   readonly width: number;
   /** RGBA, straight alpha, reused once the handler's promise settles. */
-  readonly data: Uint8ClampedArray;
+  readonly data: Uint8ClampedArray<ArrayBuffer>;
 }
 
 export interface BandPyramidOptions {
@@ -41,7 +41,7 @@ export function tesseraRowSpan(level: Pick<PyramidLevel, 'height'>, row: number)
 class LevelRows {
   readonly level: PyramidLevel;
   /** Rows `start` to `start + filled` of the level. */
-  private readonly buffer: Uint8ClampedArray;
+  private readonly buffer: Uint8ClampedArray<ArrayBuffer>;
   private start = 0;
   private filled = 0;
   private tesseraRow = 0;

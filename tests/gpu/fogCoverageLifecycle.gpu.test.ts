@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { fogRect, fogScenes } from '../helpers/fogCoverageScene';
 import { migrateMapFile } from '../../src/app/services/MapPersistence';
-import { FogOperationCanvas } from '../../src/app/pixi/fog/FogOperationCanvas';
 import { fogCoverage, type FogCoverage } from '../../src/app/fog/fogCoverage';
 
 vi.mock('../../src/app/fog/fogCoverage', { spy: true });
@@ -37,7 +36,7 @@ describe('fog renderer lifecycle', () => {
     vi.mocked(fogCoverage).mockClear();
     expect(committed?.covers({ x: 48, y: 32 })).toBe(true);
     s.store.getState().setActiveTool('eraser');
-    s.events.emit('fog-brush-size-changed', 16);
+    s.store.getState().setFogTool({ brushSize: 16 });
     s.pointer('pointerdown', 32, 32);
     s.pointer('pointermove', 64, 32);
     expect(s.read(48, 32)).toBe(255);
@@ -62,6 +61,96 @@ describe('fog renderer lifecycle', () => {
     expect(s.read(32, 32, false)).toBeCloseTo(128, -1);
     expect(s.read(32, 32)).toBe(0);
     expect(s.read(100, 100)).toBe(255);
+  });
+
+  it('draws the GM\'s fog as opaque as the GM set it, and the players\' opaque as ever', async () => {
+    const s = await scene({ paint: fogRect() });
+    s.fog.setGmOpacity(0.25);
+    expect(s.read(32, 32, false)).toBeCloseTo(191, -1);
+    expect(s.read(32, 32)).toBe(0);
+    s.fog.setGmOpacity(1);
+    expect(s.read(32, 32, false)).toBe(0);
+    expect(s.read(100, 100, false)).toBe(255);
+  });
+
+  it('shows a rectangle as the fog it will leave while it is drawn, and a lasso that reveals only once it is let go', async () => {
+    const s = await scene();
+    s.store.getState().setActiveTool('fog');
+    s.store.getState().setFogTool({ shape: 'rectangle' });
+    // The rectangle's corners snap to the 70 px grid's.
+    s.pointer('pointerdown', 5, 5);
+    s.pointer('pointermove', 66, 66);
+    expect(s.read(48, 48)).toBe(0);
+    expect(s.read(100, 100)).toBe(255);
+    expect(s.store.getState().objects.fog).toEqual({});
+    s.pointer('pointerup', 66, 66);
+    expect(Object.values(s.store.getState().objects.fog)).toMatchObject([{ type: 'rectangle', isErasing: false, x: 0, y: 0, width: 70, height: 70 }]);
+    expect(s.read(48, 48)).toBe(0);
+
+    // Revealing with the lasso: the players see the hole only once it is let go, the GM a wash over what will go.
+    s.store.getState().setActiveTool('eraser');
+    s.store.getState().setFogTool({ shape: 'lasso' });
+    const gmBefore = s.read(40, 40, false);
+    s.pointer('pointerdown', 20, 20);
+    s.pointer('pointermove', 60, 20);
+    expect(s.read(40, 30)).toBe(0);
+    s.pointer('pointermove', 60, 60);
+    s.pointer('pointermove', 20, 60);
+    expect(s.read(40, 40)).toBe(0);
+    expect(s.read(10, 10)).toBe(0);
+    // The wash is red over the grey of the fog.
+    expect(s.read(40, 40, false)).toBeGreaterThan(gmBefore + 20);
+    expect(Object.values(s.store.getState().objects.fog)).toHaveLength(1);
+    s.pointer('pointerup', 20, 60);
+    expect(Object.values(s.store.getState().objects.fog)).toHaveLength(2);
+    expect(s.read(40, 40)).toBe(255);
+    expect(s.read(10, 10)).toBe(0);
+  });
+
+  it('drops the stroke under way on Escape and turns it around on Alt, by the keys of the canvas\'s window', async () => {
+    const s = await scene({ paint: fogRect() });
+    const key = (type: 'keydown' | 'keyup', name: string): KeyboardEvent => {
+      const event = new KeyboardEvent(type, { key: name, bubbles: true, cancelable: true });
+      document.body.dispatchEvent(event);
+      return event;
+    };
+    const heard = vi.fn();
+    window.addEventListener('keydown', heard);
+    try {
+      s.store.getState().setActiveTool('eraser');
+      s.store.getState().setFogTool({ shape: 'rectangle' });
+      // The rectangle's corners snap to the 70 px grid's.
+      const gmBefore = s.read(48, 48, false);
+      s.pointer('pointerdown', 5, 5);
+      s.pointer('pointermove', 66, 66);
+      // What the rectangle will reveal is a wash on the GM's canvas, and nothing in the players' picture.
+      expect(s.read(48, 48)).toBe(0);
+      expect(s.read(48, 48, false)).toBeGreaterThan(gmBefore + 20);
+      expect(key('keydown', 'Escape').defaultPrevented).toBe(true);
+      // The map's shortcuts never hear the key, and the fog is as the scene holds it.
+      expect(heard).not.toHaveBeenCalled();
+      expect(s.read(48, 48)).toBe(0);
+      expect(s.read(48, 48, false)).toBe(gmBefore);
+      s.pointer('pointermove', 30, 66);
+      s.pointer('pointerup', 30, 66);
+      expect(Object.keys(s.store.getState().objects.fog)).toEqual(['paint']);
+      // No stroke: Escape is the map's again.
+      key('keydown', 'Escape');
+      expect(heard).toHaveBeenCalledTimes(1);
+
+      // Alt held while the pointer rests: the revealing tool hides, where no fog lay.
+      s.pointer('pointerdown', 75, 75);
+      s.pointer('pointermove', 125, 125);
+      expect(s.read(100, 100)).toBe(255);
+      key('keydown', 'Alt');
+      expect(s.read(100, 100)).toBe(0);
+      s.pointer('pointerup', 125, 125);
+      key('keyup', 'Alt');
+      expect(Object.values(s.store.getState().objects.fog)).toMatchObject([{ id: 'paint' }, { type: 'rectangle', isErasing: false, x: 70, y: 70, width: 70, height: 70 }]);
+      expect(s.read(100, 100)).toBe(0);
+    } finally {
+      window.removeEventListener('keydown', heard);
+    }
   });
 
   it('follows append, undo, redo and clear through the actual store history', async () => {
@@ -105,7 +194,7 @@ describe('fog renderer lifecycle', () => {
   it('discards a live erase when the tool changes and keeps saved fog', async () => {
     const s = await scene({ paint: fogRect() });
     s.store.getState().setActiveTool('eraser');
-    s.events.emit('fog-brush-size-changed', 16);
+    s.store.getState().setFogTool({ brushSize: 16 });
     s.pointer('pointerdown', 32, 32);
     s.pointer('pointermove', 64, 32);
     expect(s.read(48, 32)).toBe(255);
@@ -117,7 +206,7 @@ describe('fog renderer lifecycle', () => {
   it('commits a brush through public pointer events', async () => {
     const s = await scene();
     s.store.getState().setActiveTool('fog');
-    s.events.emit('fog-brush-size-changed', 16);
+    s.store.getState().setFogTool({ brushSize: 16 });
     s.pointer('pointerdown', 32, 32);
     s.pointer('pointermove', 64, 32);
     s.pointer('pointerup', 64, 32);
@@ -130,11 +219,11 @@ describe('fog renderer lifecycle', () => {
   it('shows saved edits skipped during a lasso when changing the drawing mode', async () => {
     const s = await scene({ paint: fogRect() });
     s.store.getState().setActiveTool('fog');
-    s.events.emit('fog-mode-changed', 'lasso');
+    s.store.getState().setFogTool({ shape: 'lasso' });
     s.pointer('pointerdown', 96, 96);
     s.pointer('pointermove', 112, 112);
     s.setFog({});
-    s.events.emit('fog-mode-changed', 'rectangle');
+    s.store.getState().setFogTool({ shape: 'rectangle' });
     expect(s.read(32, 32)).toBe(255);
     expect(Object.keys(s.store.getState().objects.fog)).toEqual([]);
   });
@@ -149,28 +238,22 @@ describe('fog renderer lifecycle', () => {
     expect(s.read(96, 32)).toBe(0);
   });
 
-  it('keeps invalid saved geometry opaque without building editing proxies', async () => {
+  it('keeps invalid saved geometry opaque until valid geometry arrives', async () => {
     const s = await scene();
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-    const proxy = vi.spyOn(FogOperationCanvas.prototype, 'getCanvas');
     s.setFog({ paint: { ...fogRect(), timestamp: Number.NaN } });
     expect(s.read(100, 100)).toBe(0);
     expect(s.read(32, 32)).toBe(0);
-    expect(proxy).not.toHaveBeenCalled();
-    proxy.mockRestore();
     s.setFog({ paint: fogRect() });
     expect(s.read(100, 100)).toBe(255);
     expect(s.read(32, 32)).toBe(0);
   });
 
-  it('draws valid saved fog even when its editing proxy fails', async () => {
-    const s = await scene();
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-    const proxy = vi.spyOn(FogOperationCanvas.prototype, 'getCanvas').mockImplementationOnce(() => { throw new Error('Proxy failed'); });
-    s.setFog({ paint: fogRect() });
-    expect(proxy).toHaveBeenCalledTimes(1);
-    expect(s.read(32, 32)).toBe(0);
-    expect(s.read(100, 100)).toBe(255);
+  it('holds nothing in its layer but the picture and the tool\'s marks, whatever fog the scene holds', async () => {
+    const s = await scene({ paint: fogRect(), more: { ...fogRect('more', 2), x: 80 }, hole: fogRect('hole', 3, true) });
+    const layers = s.fog.getContainer().children.length;
+    s.setFog({});
+    expect(s.fog.getContainer().children).toHaveLength(layers);
+    expect(s.fog.getContainer().interactiveChildren).toBe(false);
   });
 
   it.each([false, true])('covers malformed saved points during bounds calculation (preloaded: %s)', async preloaded => {
@@ -192,10 +275,10 @@ describe('fog renderer lifecycle', () => {
   it.each(['mode', 'tool', 'release', 'erase'])('updates bounds for saved edits after canceling a stroke by %s', async cancel => {
     const s = await scene({ paint: fogRect() });
     s.store.getState().setActiveTool('fog');
-    s.events.emit('fog-mode-changed', 'lasso');
+    s.store.getState().setFogTool({ shape: 'lasso' });
     s.pointer('pointerdown', 96, 96);
     s.setFog({ paint: { ...fogRect(), offsetX: 1000, offsetY: 1000, width: 256, height: 256 } });
-    if (cancel === 'mode') s.events.emit('fog-mode-changed', 'rectangle');
+    if (cancel === 'mode') s.store.getState().setFogTool({ shape: 'rectangle' });
     else if (cancel === 'tool') s.store.getState().setActiveTool('select');
     else if (cancel === 'erase') s.store.getState().setActiveTool('eraser');
     else s.pointer('pointerup', 96, 96);

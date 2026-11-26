@@ -147,6 +147,23 @@ describe('linked creatures while Fantasy Statblocks parses the vault', () => {
       .resolves.toMatchObject({ name: 'Goblin Boss', hp: 21, cr: '1/4', path: 'Bestiary/Boss.md' });
   });
 
+  it('draws a frontmatter statblock the plugin has not parsed from the fence it holds, as the plugin does (#611)', async () => {
+    const chief = 'Bestiary/Chief.md';
+    current.frontmatter[chief] = { statblock: true, name: 'Goblin Chief' };
+    current.files.set(chief, '---\nstatblock: true\nname: Goblin Chief\n---\n```statblock\ncreature: Goblin\nname: Goblin Chief\nhp: 30\n```');
+
+    // The fence builds on a bestiary creature, which can be read only after the parse: until then the frontmatter.
+    await expect(resolveLinkedCreature(current.app, chief)).resolves.toEqual({ statblock: true, name: 'Goblin Chief', path: chief });
+
+    bestiary.finish();
+    await expect(resolveLinkedCreature(current.app, chief))
+      .resolves.toMatchObject({ name: 'Goblin Chief', hp: 30, cr: '1/4', path: chief });
+
+    // Once the plugin parsed the note ("Parse Frontmatter" on), its bestiary entry wins.
+    bestiary.creatures.push({ name: 'Goblin Chief', path: chief, hp: 45 });
+    await expect(resolveLinkedCreature(current.app, chief)).resolves.toMatchObject({ name: 'Goblin Chief', hp: 45 });
+  });
+
   it('gives a parsed creature that extends another as it was parsed, and extended after the parse', async () => {
     current.files.set('Bestiary/Boss.md', '');
     bestiary.creatures.push({ name: 'Goblin Boss', path: 'Bestiary/Boss.md', extends: 'Goblin', hp: 21 });

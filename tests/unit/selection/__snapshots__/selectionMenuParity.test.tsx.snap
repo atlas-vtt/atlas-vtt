@@ -1,0 +1,1939 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the desktop menus of what is selected > a drawing, and a locked one 1`] = `
+[
+  {
+    "follows": false,
+    "icon": "palette",
+    "rows": [
+      {
+        "checked": false,
+        "item": "White",
+        "leading": true,
+      },
+      {
+        "checked": false,
+        "item": "Black",
+        "leading": true,
+      },
+      {
+        "checked": false,
+        "item": "Red",
+        "leading": true,
+      },
+      {
+        "checked": false,
+        "item": "Orange",
+        "leading": true,
+      },
+      {
+        "checked": false,
+        "item": "Yellow",
+        "leading": true,
+      },
+      {
+        "checked": false,
+        "item": "Green",
+        "leading": true,
+      },
+      {
+        "checked": true,
+        "item": "Blue",
+        "leading": true,
+      },
+      {
+        "checked": false,
+        "item": "Purple",
+        "leading": true,
+      },
+    ],
+    "submenu": "Colour",
+  },
+  {
+    "follows": false,
+    "icon": "ruler",
+    "rows": [
+      {
+        "checked": true,
+        "item": "Small",
+      },
+      {
+        "checked": false,
+        "item": "Medium",
+      },
+      {
+        "checked": false,
+        "item": "Large",
+      },
+      {
+        "checked": false,
+        "item": "Extra large",
+      },
+    ],
+    "submenu": "Size",
+  },
+  {
+    "custom": "<div class="atlas-ctx-separator" role="separator"></div>",
+  },
+  {
+    "icon": "eye-off",
+    "item": "Hide from players",
+  },
+  {
+    "icon": "layers-2",
+    "item": "Under tokens",
+  },
+  {
+    "icon": "lock",
+    "item": "Lock",
+  },
+  {
+    "disabled": true,
+    "icon": "group",
+    "item": "Group",
+  },
+  {
+    "disabled": true,
+    "icon": "ungroup",
+    "item": "Ungroup",
+  },
+  {
+    "custom": "<div class="atlas-ctx-separator" role="separator"></div>",
+  },
+  {
+    "icon": "bring-to-front",
+    "item": "To front",
+  },
+  {
+    "icon": "send-to-back",
+    "item": "To back",
+  },
+  {
+    "custom": "<div class="atlas-ctx-separator" role="separator"></div>",
+  },
+  {
+    "icon": "files",
+    "item": "Duplicate",
+  },
+  {
+    "destructive": true,
+    "icon": "trash",
+    "item": "Delete",
+  },
+]
+`;
+
+exports[`the desktop menus of what is selected > a drawing, and a locked one 2`] = `
+[
+  {
+    "disabled": true,
+    "icon": "palette",
+    "item": "Colour",
+  },
+  {
+    "disabled": true,
+    "icon": "ruler",
+    "item": "Size",
+  },
+  {
+    "custom": "<div class="atlas-ctx-separator" role="separator"></div>",
+  },
+  {
+    "disabled": true,
+    "icon": "eye-off",
+    "item": "Hide from players",
+  },
+  {
+    "disabled": true,
+    "icon": "layers-2",
+    "item": "Under tokens",
+  },
+  {
+    "icon": "lock-open",
+    "item": "Unlock",
+  },
+  {
+    "disabled": true,
+    "icon": "group",
+    "item": "Group",
+  },
+  {
+    "disabled": true,
+    "icon": "ungroup",
+    "item": "Ungroup",
+  },
+  {
+    "custom": "<div class="atlas-ctx-separator" role="separator"></div>",
+  },
+  {
+    "disabled": true,
+    "icon": "bring-to-front",
+    "item": "To front",
+  },
+  {
+    "disabled": true,
+    "icon": "send-to-back",
+    "item": "To back",
+  },
+  {
+    "custom": "<div class="atlas-ctx-separator" role="separator"></div>",
+  },
+  {
+    "icon": "files",
+    "item": "Duplicate",
+  },
+  {
+    "destructive": true,
+    "disabled": true,
+    "icon": "trash",
+    "item": "Delete",
+  },
+]
+`;
+
+exports[`the desktop menus of what is selected > a pin 1`] = `
+[
+  {
+    "icon": "file-text",
+    "item": "Open Note",
+  },
+  {
+    "icon": "edit",
+    "item": "Edit Pin",
+  },
+  {
+    "icon": "eye",
+    "item": "Preview",
+  },
+  {
+    "checked": false,
+    "icon": "book-open",
+    "item": "Show to players",
+  },
+  {
+    "checked": false,
+    "icon": "tag",
+    "item": "Show name",
+  },
+  {
+    "icon": "pencil",
+    "item": "Rename…",
+  },
+  {
+    "icon": "files",
+    "item": "Duplicate",
+  },
+  {
+    "destructive": true,
+    "icon": "trash",
+    "item": "Delete",
+  },
+]
+`;
+
+exports[`the desktop menus of what is selected > a pin 2`] = `
+[
+  {
+    "icon": "file-text",
+    "item": "Open Note",
+  },
+  {
+    "icon": "edit",
+    "item": "Edit Pin",
+  },
+  {
+    "icon": "eye",
+    "item": "Preview",
+  },
+  {
+    "checked": true,
+    "icon": "book-open",
+    "item": "Show to players",
+  },
+  {
+    "checked": true,
+    "icon": "tag",
+    "item": "Show name",
+  },
+  {
+    "icon": "pencil",
+    "item": "Rename…",
+  },
+  {
+    "icon": "files",
+    "item": "Duplicate",
+  },
+  {
+    "destructive": true,
+    "icon": "trash",
+    "item": "Delete",
+  },
+]
+`;
+
+exports[`the desktop menus of what is selected > a text 1`] = `
+[
+  {
+    "icon": "pencil",
+    "item": "Edit",
+  },
+  {
+    "follows": false,
+    "icon": "palette",
+    "rows": [
+      {
+        "checked": true,
+        "item": "White",
+        "leading": true,
+      },
+      {
+        "checked": false,
+        "item": "Black",
+        "leading": true,
+      },
+      {
+        "checked": false,
+        "item": "Red",
+        "leading": true,
+      },
+      {
+        "checked": false,
+        "item": "Orange",
+        "leading": true,
+      },
+      {
+        "checked": false,
+        "item": "Yellow",
+        "leading": true,
+      },
+      {
+        "checked": false,
+        "item": "Green",
+        "leading": true,
+      },
+      {
+        "checked": false,
+        "item": "Blue",
+        "leading": true,
+      },
+      {
+        "checked": false,
+        "item": "Purple",
+        "leading": true,
+      },
+    ],
+    "submenu": "Colour",
+  },
+  {
+    "follows": false,
+    "icon": "ruler",
+    "rows": [
+      {
+        "checked": true,
+        "item": "Small",
+      },
+      {
+        "checked": false,
+        "item": "Medium",
+      },
+      {
+        "checked": false,
+        "item": "Large",
+      },
+      {
+        "checked": false,
+        "item": "Extra large",
+      },
+    ],
+    "submenu": "Size",
+  },
+  {
+    "custom": "<div class="atlas-ctx-separator" role="separator"></div>",
+  },
+  {
+    "icon": "eye-off",
+    "item": "Hide from players",
+  },
+  {
+    "icon": "layers-2",
+    "item": "Under tokens",
+  },
+  {
+    "icon": "lock",
+    "item": "Lock",
+  },
+  {
+    "disabled": true,
+    "icon": "group",
+    "item": "Group",
+  },
+  {
+    "disabled": true,
+    "icon": "ungroup",
+    "item": "Ungroup",
+  },
+  {
+    "custom": "<div class="atlas-ctx-separator" role="separator"></div>",
+  },
+  {
+    "icon": "bring-to-front",
+    "item": "To front",
+  },
+  {
+    "icon": "send-to-back",
+    "item": "To back",
+  },
+  {
+    "custom": "<div class="atlas-ctx-separator" role="separator"></div>",
+  },
+  {
+    "icon": "files",
+    "item": "Duplicate",
+  },
+  {
+    "destructive": true,
+    "icon": "trash",
+    "item": "Delete",
+  },
+]
+`;
+
+exports[`the desktop menus of what is selected > a text and drawings selected with tokens, from one of the drawings and from their frame 1`] = `
+[
+  {
+    "follows": false,
+    "icon": "palette",
+    "rows": [
+      {
+        "checked": false,
+        "item": "White",
+        "leading": true,
+      },
+      {
+        "checked": false,
+        "item": "Black",
+        "leading": true,
+      },
+      {
+        "checked": false,
+        "item": "Red",
+        "leading": true,
+      },
+      {
+        "checked": false,
+        "item": "Orange",
+        "leading": true,
+      },
+      {
+        "checked": false,
+        "item": "Yellow",
+        "leading": true,
+      },
+      {
+        "checked": false,
+        "item": "Green",
+        "leading": true,
+      },
+      {
+        "checked": false,
+        "item": "Blue",
+        "leading": true,
+      },
+      {
+        "checked": false,
+        "item": "Purple",
+        "leading": true,
+      },
+    ],
+    "submenu": "Colour",
+  },
+  {
+    "follows": false,
+    "icon": "ruler",
+    "rows": [
+      {
+        "checked": false,
+        "item": "Small",
+      },
+      {
+        "checked": false,
+        "item": "Medium",
+      },
+      {
+        "checked": false,
+        "item": "Large",
+      },
+      {
+        "checked": false,
+        "item": "Extra large",
+      },
+    ],
+    "submenu": "Size",
+  },
+  {
+    "custom": "<div class="atlas-ctx-separator" role="separator"></div>",
+  },
+  {
+    "icon": "eye-off",
+    "item": "Hide from players",
+  },
+  {
+    "icon": "layers-2",
+    "item": "Under tokens",
+  },
+  {
+    "icon": "lock",
+    "item": "Lock",
+  },
+  {
+    "icon": "group",
+    "item": "Group",
+  },
+  {
+    "disabled": true,
+    "icon": "ungroup",
+    "item": "Ungroup",
+  },
+  {
+    "custom": "<div class="atlas-ctx-separator" role="separator"></div>",
+  },
+  {
+    "icon": "bring-to-front",
+    "item": "To front",
+  },
+  {
+    "icon": "send-to-back",
+    "item": "To back",
+  },
+  {
+    "custom": "<div class="atlas-ctx-separator" role="separator"></div>",
+  },
+  {
+    "icon": "files",
+    "item": "Duplicate",
+  },
+  {
+    "destructive": true,
+    "icon": "trash",
+    "item": "Delete",
+  },
+]
+`;
+
+exports[`the desktop menus of what is selected > a text and drawings selected with tokens, from one of the drawings and from their frame 2`] = `
+[
+  {
+    "follows": false,
+    "icon": "palette",
+    "rows": [
+      {
+        "checked": false,
+        "item": "White",
+        "leading": true,
+      },
+      {
+        "checked": false,
+        "item": "Black",
+        "leading": true,
+      },
+      {
+        "checked": false,
+        "item": "Red",
+        "leading": true,
+      },
+      {
+        "checked": false,
+        "item": "Orange",
+        "leading": true,
+      },
+      {
+        "checked": false,
+        "item": "Yellow",
+        "leading": true,
+      },
+      {
+        "checked": false,
+        "item": "Green",
+        "leading": true,
+      },
+      {
+        "checked": false,
+        "item": "Blue",
+        "leading": true,
+      },
+      {
+        "checked": false,
+        "item": "Purple",
+        "leading": true,
+      },
+    ],
+    "submenu": "Colour",
+  },
+  {
+    "follows": false,
+    "icon": "ruler",
+    "rows": [
+      {
+        "checked": false,
+        "item": "Small",
+      },
+      {
+        "checked": false,
+        "item": "Medium",
+      },
+      {
+        "checked": false,
+        "item": "Large",
+      },
+      {
+        "checked": false,
+        "item": "Extra large",
+      },
+    ],
+    "submenu": "Size",
+  },
+  {
+    "custom": "<div class="atlas-ctx-separator" role="separator"></div>",
+  },
+  {
+    "icon": "eye-off",
+    "item": "Hide from players",
+  },
+  {
+    "icon": "layers-2",
+    "item": "Under tokens",
+  },
+  {
+    "icon": "lock",
+    "item": "Lock",
+  },
+  {
+    "icon": "group",
+    "item": "Group",
+  },
+  {
+    "disabled": true,
+    "icon": "ungroup",
+    "item": "Ungroup",
+  },
+  {
+    "custom": "<div class="atlas-ctx-separator" role="separator"></div>",
+  },
+  {
+    "icon": "bring-to-front",
+    "item": "To front",
+  },
+  {
+    "icon": "send-to-back",
+    "item": "To back",
+  },
+  {
+    "custom": "<div class="atlas-ctx-separator" role="separator"></div>",
+  },
+  {
+    "icon": "files",
+    "item": "Duplicate",
+  },
+  {
+    "destructive": true,
+    "icon": "trash",
+    "item": "Delete",
+  },
+]
+`;
+
+exports[`the desktop menus of what is selected > a token alone 1`] = `
+[
+  {
+    "follows": true,
+    "icon": "palette",
+    "rows": [
+      {
+        "checked": true,
+        "item": "Poisoned",
+        "keepOpen": true,
+        "leading": true,
+      },
+      {
+        "checked": false,
+        "item": "Frightened",
+        "keepOpen": true,
+        "leading": true,
+        "stepper": "0",
+      },
+    ],
+    "submenu": "Conditions",
+  },
+  {
+    "follows": false,
+    "icon": "scaling",
+    "rows": [
+      {
+        "checked": false,
+        "item": "Tiny (0.5×0.5)",
+      },
+      {
+        "checked": false,
+        "item": "Small (0.75×0.75)",
+      },
+      {
+        "checked": true,
+        "item": "Medium (1×1)",
+      },
+      {
+        "checked": false,
+        "item": "Large (2×2)",
+      },
+      {
+        "checked": false,
+        "item": "Huge (3×3)",
+      },
+      {
+        "checked": false,
+        "item": "Gargantuan (4×4)",
+      },
+    ],
+    "submenu": "Size",
+  },
+  {
+    "follows": true,
+    "icon": "move-vertical",
+    "rows": [
+      {
+        "item": "Height",
+        "keepOpen": true,
+        "stepper": "–",
+      },
+      {
+        "disabled": true,
+        "item": "On the floor",
+        "keepOpen": true,
+      },
+    ],
+    "submenu": "Height",
+  },
+  {
+    "follows": true,
+    "icon": "circle-dot",
+    "rows": [
+      {
+        "item": "Aura",
+        "keepOpen": true,
+        "stepper": "–",
+      },
+      {
+        "disabled": true,
+        "item": "No aura",
+        "keepOpen": true,
+      },
+    ],
+    "submenu": "Aura",
+  },
+  {
+    "icon": "eye-off",
+    "item": "Hide",
+  },
+  {
+    "checked": false,
+    "icon": "scan-eye",
+    "item": "Vision",
+  },
+  {
+    "follows": false,
+    "icon": "flame",
+    "rows": [
+      {
+        "checked": true,
+        "item": "None",
+      },
+      {
+        "checked": false,
+        "item": "Candle",
+      },
+      {
+        "checked": false,
+        "item": "Torch",
+      },
+      {
+        "checked": false,
+        "item": "Lantern",
+      },
+      {
+        "checked": false,
+        "item": "Magical light",
+      },
+      {
+        "checked": false,
+        "item": "Darkness",
+      },
+    ],
+    "submenu": "Carry light",
+  },
+  {
+    "icon": "files",
+    "item": "Duplicate",
+  },
+  {
+    "icon": "copy",
+    "item": "Copy",
+  },
+  {
+    "icon": "swords",
+    "item": "Save as Encounter",
+  },
+  {
+    "icon": "edit",
+    "item": "Edit token",
+  },
+  {
+    "icon": "swords",
+    "item": "Add to Initiative",
+  },
+  {
+    "icon": "link",
+    "item": "Link statblock…",
+  },
+  {
+    "follows": false,
+    "icon": "circle",
+    "rows": [
+      {
+        "checked": true,
+        "item": "Default",
+      },
+      {
+        "checked": false,
+        "item": "Blue",
+      },
+      {
+        "checked": false,
+        "item": "Orange",
+      },
+      {
+        "checked": false,
+        "item": "Red",
+      },
+      {
+        "checked": false,
+        "item": "Yellow",
+      },
+      {
+        "checked": false,
+        "item": "Brown",
+      },
+      {
+        "checked": false,
+        "item": "Purple",
+      },
+      {
+        "checked": false,
+        "item": "Green",
+      },
+      {
+        "checked": false,
+        "item": "Pink",
+      },
+      {
+        "checked": false,
+        "item": "Cyan",
+      },
+      {
+        "checked": false,
+        "item": "Gray",
+      },
+      {
+        "checked": false,
+        "item": "White",
+      },
+    ],
+    "submenu": "Ring Color",
+  },
+  {
+    "icon": "rotate-ccw",
+    "item": "Reset",
+  },
+  {
+    "custom": "<div class="atlas-ctx-destructive-row"><div role="menuitem" tabindex="0" class="atlas-ctx-destructive-btn"><span class="atlas-ctx-icon"></span><span>Kill</span></div><div role="menuitem" tabindex="0" class="atlas-ctx-destructive-btn"><span class="atlas-ctx-icon"></span><span>Delete</span></div></div>",
+  },
+]
+`;
+
+exports[`the desktop menus of what is selected > a token of a selection of tokens 1`] = `
+[
+  {
+    "follows": true,
+    "icon": "palette",
+    "rows": [
+      {
+        "checked": false,
+        "item": "Poisoned (1/3)",
+        "keepOpen": true,
+        "leading": true,
+      },
+      {
+        "checked": false,
+        "item": "Frightened",
+        "keepOpen": true,
+        "leading": true,
+        "stepper": "0",
+      },
+    ],
+    "submenu": "Conditions (3 tokens)",
+  },
+  {
+    "follows": false,
+    "icon": "scaling",
+    "rows": [
+      {
+        "checked": false,
+        "item": "Tiny (0.5×0.5)",
+      },
+      {
+        "checked": false,
+        "item": "Small (0.75×0.75)",
+      },
+      {
+        "checked": true,
+        "item": "Medium (1×1)",
+      },
+      {
+        "checked": false,
+        "item": "Large (2×2)",
+      },
+      {
+        "checked": false,
+        "item": "Huge (3×3)",
+      },
+      {
+        "checked": false,
+        "item": "Gargantuan (4×4)",
+      },
+    ],
+    "submenu": "Size",
+  },
+  {
+    "follows": true,
+    "icon": "move-vertical",
+    "rows": [
+      {
+        "item": "Height",
+        "keepOpen": true,
+        "stepper": "–",
+      },
+      {
+        "disabled": true,
+        "item": "On the floor",
+        "keepOpen": true,
+      },
+    ],
+    "submenu": "Height",
+  },
+  {
+    "follows": true,
+    "icon": "circle-dot",
+    "rows": [
+      {
+        "item": "Aura",
+        "keepOpen": true,
+        "stepper": "–",
+      },
+      {
+        "disabled": true,
+        "item": "No aura",
+        "keepOpen": true,
+      },
+    ],
+    "submenu": "Aura",
+  },
+  {
+    "icon": "eye",
+    "item": "Show",
+  },
+  {
+    "checked": false,
+    "icon": "scan-eye",
+    "item": "Vision",
+  },
+  {
+    "follows": false,
+    "icon": "flame",
+    "rows": [
+      {
+        "checked": true,
+        "item": "None",
+      },
+      {
+        "checked": false,
+        "item": "Candle",
+      },
+      {
+        "checked": false,
+        "item": "Torch",
+      },
+      {
+        "checked": false,
+        "item": "Lantern",
+      },
+      {
+        "checked": false,
+        "item": "Magical light",
+      },
+      {
+        "checked": false,
+        "item": "Darkness",
+      },
+    ],
+    "submenu": "Carry light",
+  },
+  {
+    "icon": "files",
+    "item": "Duplicate",
+  },
+  {
+    "icon": "copy",
+    "item": "Copy",
+  },
+  {
+    "icon": "swords",
+    "item": "Save as Encounter",
+  },
+  {
+    "icon": "edit",
+    "item": "Edit token",
+  },
+  {
+    "icon": "swords",
+    "item": "Add to Initiative",
+  },
+  {
+    "icon": "eye",
+    "item": "Preview",
+  },
+  {
+    "follows": false,
+    "icon": "circle",
+    "rows": [
+      {
+        "checked": true,
+        "item": "Default",
+      },
+      {
+        "checked": false,
+        "item": "Blue",
+      },
+      {
+        "checked": false,
+        "item": "Orange",
+      },
+      {
+        "checked": false,
+        "item": "Red",
+      },
+      {
+        "checked": false,
+        "item": "Yellow",
+      },
+      {
+        "checked": false,
+        "item": "Brown",
+      },
+      {
+        "checked": false,
+        "item": "Purple",
+      },
+      {
+        "checked": false,
+        "item": "Green",
+      },
+      {
+        "checked": false,
+        "item": "Pink",
+      },
+      {
+        "checked": false,
+        "item": "Cyan",
+      },
+      {
+        "checked": false,
+        "item": "Gray",
+      },
+      {
+        "checked": false,
+        "item": "White",
+      },
+    ],
+    "submenu": "Ring Color",
+  },
+  {
+    "icon": "heart-pulse",
+    "item": "Change HP of 2 tokens…",
+  },
+  {
+    "icon": "rotate-ccw",
+    "item": "Reset",
+  },
+  {
+    "custom": "<div class="atlas-ctx-destructive-row"><div role="menuitem" tabindex="0" class="atlas-ctx-destructive-btn"><span class="atlas-ctx-icon"></span><span>Kill</span></div><div role="menuitem" tabindex="0" class="atlas-ctx-destructive-btn"><span class="atlas-ctx-icon"></span><span>Delete</span></div></div>",
+  },
+]
+`;
+
+exports[`the desktop menus of what is selected > a token of a selection of tokens, a text and drawings 1`] = `
+[
+  {
+    "follows": true,
+    "icon": "palette",
+    "rows": [
+      {
+        "checked": false,
+        "item": "Poisoned (1/2)",
+        "keepOpen": true,
+        "leading": true,
+      },
+      {
+        "checked": false,
+        "item": "Frightened",
+        "keepOpen": true,
+        "leading": true,
+        "stepper": "0",
+      },
+    ],
+    "submenu": "Conditions (2 tokens)",
+  },
+  {
+    "follows": false,
+    "icon": "scaling",
+    "rows": [
+      {
+        "checked": false,
+        "item": "Tiny (0.5×0.5)",
+      },
+      {
+        "checked": false,
+        "item": "Small (0.75×0.75)",
+      },
+      {
+        "checked": true,
+        "item": "Medium (1×1)",
+      },
+      {
+        "checked": false,
+        "item": "Large (2×2)",
+      },
+      {
+        "checked": false,
+        "item": "Huge (3×3)",
+      },
+      {
+        "checked": false,
+        "item": "Gargantuan (4×4)",
+      },
+    ],
+    "submenu": "Size",
+  },
+  {
+    "follows": true,
+    "icon": "move-vertical",
+    "rows": [
+      {
+        "item": "Height",
+        "keepOpen": true,
+        "stepper": "–",
+      },
+      {
+        "disabled": true,
+        "item": "On the floor",
+        "keepOpen": true,
+      },
+    ],
+    "submenu": "Height",
+  },
+  {
+    "follows": true,
+    "icon": "circle-dot",
+    "rows": [
+      {
+        "item": "Aura",
+        "keepOpen": true,
+        "stepper": "–",
+      },
+      {
+        "disabled": true,
+        "item": "No aura",
+        "keepOpen": true,
+      },
+    ],
+    "submenu": "Aura",
+  },
+  {
+    "icon": "eye-off",
+    "item": "Hide",
+  },
+  {
+    "checked": false,
+    "icon": "scan-eye",
+    "item": "Vision",
+  },
+  {
+    "follows": false,
+    "icon": "flame",
+    "rows": [
+      {
+        "checked": true,
+        "item": "None",
+      },
+      {
+        "checked": false,
+        "item": "Candle",
+      },
+      {
+        "checked": false,
+        "item": "Torch",
+      },
+      {
+        "checked": false,
+        "item": "Lantern",
+      },
+      {
+        "checked": false,
+        "item": "Magical light",
+      },
+      {
+        "checked": false,
+        "item": "Darkness",
+      },
+    ],
+    "submenu": "Carry light",
+  },
+  {
+    "icon": "files",
+    "item": "Duplicate",
+  },
+  {
+    "icon": "copy",
+    "item": "Copy",
+  },
+  {
+    "icon": "swords",
+    "item": "Save as Encounter",
+  },
+  {
+    "icon": "edit",
+    "item": "Edit token",
+  },
+  {
+    "icon": "swords",
+    "item": "Add to Initiative",
+  },
+  {
+    "icon": "link",
+    "item": "Link statblock…",
+  },
+  {
+    "follows": false,
+    "icon": "circle",
+    "rows": [
+      {
+        "checked": true,
+        "item": "Default",
+      },
+      {
+        "checked": false,
+        "item": "Blue",
+      },
+      {
+        "checked": false,
+        "item": "Orange",
+      },
+      {
+        "checked": false,
+        "item": "Red",
+      },
+      {
+        "checked": false,
+        "item": "Yellow",
+      },
+      {
+        "checked": false,
+        "item": "Brown",
+      },
+      {
+        "checked": false,
+        "item": "Purple",
+      },
+      {
+        "checked": false,
+        "item": "Green",
+      },
+      {
+        "checked": false,
+        "item": "Pink",
+      },
+      {
+        "checked": false,
+        "item": "Cyan",
+      },
+      {
+        "checked": false,
+        "item": "Gray",
+      },
+      {
+        "checked": false,
+        "item": "White",
+      },
+    ],
+    "submenu": "Ring Color",
+  },
+  {
+    "icon": "heart-pulse",
+    "item": "Change HP of 1 token…",
+  },
+  {
+    "icon": "rotate-ccw",
+    "item": "Reset",
+  },
+  {
+    "custom": "<div class="atlas-ctx-destructive-row"><div role="menuitem" tabindex="0" class="atlas-ctx-destructive-btn"><span class="atlas-ctx-icon"></span><span>Kill</span></div><div role="menuitem" tabindex="0" class="atlas-ctx-destructive-btn"><span class="atlas-ctx-icon"></span><span>Delete</span></div></div>",
+  },
+]
+`;
+
+exports[`the desktop menus of what is selected > a token outside the selection 1`] = `
+[
+  {
+    "follows": true,
+    "icon": "palette",
+    "rows": [
+      {
+        "checked": false,
+        "item": "Poisoned",
+        "keepOpen": true,
+        "leading": true,
+      },
+      {
+        "checked": false,
+        "item": "Frightened",
+        "keepOpen": true,
+        "leading": true,
+        "stepper": "0",
+      },
+    ],
+    "submenu": "Conditions",
+  },
+  {
+    "follows": false,
+    "icon": "scaling",
+    "rows": [
+      {
+        "checked": false,
+        "item": "Tiny (0.5×0.5)",
+      },
+      {
+        "checked": false,
+        "item": "Small (0.75×0.75)",
+      },
+      {
+        "checked": true,
+        "item": "Medium (1×1)",
+      },
+      {
+        "checked": false,
+        "item": "Large (2×2)",
+      },
+      {
+        "checked": false,
+        "item": "Huge (3×3)",
+      },
+      {
+        "checked": false,
+        "item": "Gargantuan (4×4)",
+      },
+    ],
+    "submenu": "Size",
+  },
+  {
+    "follows": true,
+    "icon": "move-vertical",
+    "rows": [
+      {
+        "item": "Height",
+        "keepOpen": true,
+        "stepper": "–",
+      },
+      {
+        "disabled": true,
+        "item": "On the floor",
+        "keepOpen": true,
+      },
+    ],
+    "submenu": "Height",
+  },
+  {
+    "follows": true,
+    "icon": "circle-dot",
+    "rows": [
+      {
+        "item": "Aura",
+        "keepOpen": true,
+        "stepper": "–",
+      },
+      {
+        "disabled": true,
+        "item": "No aura",
+        "keepOpen": true,
+      },
+    ],
+    "submenu": "Aura",
+  },
+  {
+    "icon": "eye-off",
+    "item": "Hide",
+  },
+  {
+    "checked": false,
+    "icon": "scan-eye",
+    "item": "Vision",
+  },
+  {
+    "follows": false,
+    "icon": "flame",
+    "rows": [
+      {
+        "checked": true,
+        "item": "None",
+      },
+      {
+        "checked": false,
+        "item": "Candle",
+      },
+      {
+        "checked": false,
+        "item": "Torch",
+      },
+      {
+        "checked": false,
+        "item": "Lantern",
+      },
+      {
+        "checked": false,
+        "item": "Magical light",
+      },
+      {
+        "checked": false,
+        "item": "Darkness",
+      },
+    ],
+    "submenu": "Carry light",
+  },
+  {
+    "icon": "files",
+    "item": "Duplicate",
+  },
+  {
+    "icon": "copy",
+    "item": "Copy",
+  },
+  {
+    "icon": "swords",
+    "item": "Save as Encounter",
+  },
+  {
+    "icon": "edit",
+    "item": "Edit token",
+  },
+  {
+    "icon": "swords",
+    "item": "Add to Initiative",
+  },
+  {
+    "icon": "link",
+    "item": "Link statblock…",
+  },
+  {
+    "follows": false,
+    "icon": "circle",
+    "rows": [
+      {
+        "checked": true,
+        "item": "Default",
+      },
+      {
+        "checked": false,
+        "item": "Blue",
+      },
+      {
+        "checked": false,
+        "item": "Orange",
+      },
+      {
+        "checked": false,
+        "item": "Red",
+      },
+      {
+        "checked": false,
+        "item": "Yellow",
+      },
+      {
+        "checked": false,
+        "item": "Brown",
+      },
+      {
+        "checked": false,
+        "item": "Purple",
+      },
+      {
+        "checked": false,
+        "item": "Green",
+      },
+      {
+        "checked": false,
+        "item": "Pink",
+      },
+      {
+        "checked": false,
+        "item": "Cyan",
+      },
+      {
+        "checked": false,
+        "item": "Gray",
+      },
+      {
+        "checked": false,
+        "item": "White",
+      },
+    ],
+    "submenu": "Ring Color",
+  },
+  {
+    "custom": "<div class="atlas-ctx-destructive-row"><div role="menuitem" tabindex="0" class="atlas-ctx-destructive-btn"><span class="atlas-ctx-icon"></span><span>Delete</span></div></div>",
+  },
+]
+`;
+
+exports[`the desktop menus of what is selected > a token without values of its own, and one with a statblock that is hidden 1`] = `
+[
+  {
+    "follows": true,
+    "icon": "palette",
+    "rows": [
+      {
+        "checked": false,
+        "item": "Poisoned",
+        "keepOpen": true,
+        "leading": true,
+      },
+      {
+        "checked": false,
+        "item": "Frightened",
+        "keepOpen": true,
+        "leading": true,
+        "stepper": "0",
+      },
+    ],
+    "submenu": "Conditions",
+  },
+  {
+    "follows": false,
+    "icon": "scaling",
+    "rows": [
+      {
+        "checked": false,
+        "item": "Tiny (0.5×0.5)",
+      },
+      {
+        "checked": false,
+        "item": "Small (0.75×0.75)",
+      },
+      {
+        "checked": true,
+        "item": "Medium (1×1)",
+      },
+      {
+        "checked": false,
+        "item": "Large (2×2)",
+      },
+      {
+        "checked": false,
+        "item": "Huge (3×3)",
+      },
+      {
+        "checked": false,
+        "item": "Gargantuan (4×4)",
+      },
+    ],
+    "submenu": "Size",
+  },
+  {
+    "follows": true,
+    "icon": "move-vertical",
+    "rows": [
+      {
+        "item": "Height",
+        "keepOpen": true,
+        "stepper": "–",
+      },
+      {
+        "disabled": true,
+        "item": "On the floor",
+        "keepOpen": true,
+      },
+    ],
+    "submenu": "Height",
+  },
+  {
+    "follows": true,
+    "icon": "circle-dot",
+    "rows": [
+      {
+        "item": "Aura",
+        "keepOpen": true,
+        "stepper": "–",
+      },
+      {
+        "disabled": true,
+        "item": "No aura",
+        "keepOpen": true,
+      },
+    ],
+    "submenu": "Aura",
+  },
+  {
+    "icon": "eye-off",
+    "item": "Hide",
+  },
+  {
+    "checked": false,
+    "icon": "scan-eye",
+    "item": "Vision",
+  },
+  {
+    "follows": false,
+    "icon": "flame",
+    "rows": [
+      {
+        "checked": true,
+        "item": "None",
+      },
+      {
+        "checked": false,
+        "item": "Candle",
+      },
+      {
+        "checked": false,
+        "item": "Torch",
+      },
+      {
+        "checked": false,
+        "item": "Lantern",
+      },
+      {
+        "checked": false,
+        "item": "Magical light",
+      },
+      {
+        "checked": false,
+        "item": "Darkness",
+      },
+    ],
+    "submenu": "Carry light",
+  },
+  {
+    "icon": "files",
+    "item": "Duplicate",
+  },
+  {
+    "icon": "copy",
+    "item": "Copy",
+  },
+  {
+    "icon": "swords",
+    "item": "Save as Encounter",
+  },
+  {
+    "icon": "edit",
+    "item": "Edit token",
+  },
+  {
+    "icon": "swords",
+    "item": "Add to Initiative",
+  },
+  {
+    "icon": "link",
+    "item": "Link statblock…",
+  },
+  {
+    "follows": false,
+    "icon": "circle",
+    "rows": [
+      {
+        "checked": true,
+        "item": "Default",
+      },
+      {
+        "checked": false,
+        "item": "Blue",
+      },
+      {
+        "checked": false,
+        "item": "Orange",
+      },
+      {
+        "checked": false,
+        "item": "Red",
+      },
+      {
+        "checked": false,
+        "item": "Yellow",
+      },
+      {
+        "checked": false,
+        "item": "Brown",
+      },
+      {
+        "checked": false,
+        "item": "Purple",
+      },
+      {
+        "checked": false,
+        "item": "Green",
+      },
+      {
+        "checked": false,
+        "item": "Pink",
+      },
+      {
+        "checked": false,
+        "item": "Cyan",
+      },
+      {
+        "checked": false,
+        "item": "Gray",
+      },
+      {
+        "checked": false,
+        "item": "White",
+      },
+    ],
+    "submenu": "Ring Color",
+  },
+  {
+    "custom": "<div class="atlas-ctx-destructive-row"><div role="menuitem" tabindex="0" class="atlas-ctx-destructive-btn"><span class="atlas-ctx-icon"></span><span>Delete</span></div></div>",
+  },
+]
+`;
+
+exports[`the desktop menus of what is selected > a token without values of its own, and one with a statblock that is hidden 2`] = `
+[
+  {
+    "follows": true,
+    "icon": "palette",
+    "rows": [
+      {
+        "checked": false,
+        "item": "Poisoned",
+        "keepOpen": true,
+        "leading": true,
+      },
+      {
+        "checked": false,
+        "item": "Frightened",
+        "keepOpen": true,
+        "leading": true,
+        "stepper": "0",
+      },
+    ],
+    "submenu": "Conditions",
+  },
+  {
+    "follows": false,
+    "icon": "scaling",
+    "rows": [
+      {
+        "checked": false,
+        "item": "Tiny (0.5×0.5)",
+      },
+      {
+        "checked": false,
+        "item": "Small (0.75×0.75)",
+      },
+      {
+        "checked": true,
+        "item": "Medium (1×1)",
+      },
+      {
+        "checked": false,
+        "item": "Large (2×2)",
+      },
+      {
+        "checked": false,
+        "item": "Huge (3×3)",
+      },
+      {
+        "checked": false,
+        "item": "Gargantuan (4×4)",
+      },
+    ],
+    "submenu": "Size",
+  },
+  {
+    "follows": true,
+    "icon": "move-vertical",
+    "rows": [
+      {
+        "item": "Height",
+        "keepOpen": true,
+        "stepper": "–",
+      },
+      {
+        "disabled": true,
+        "item": "On the floor",
+        "keepOpen": true,
+      },
+    ],
+    "submenu": "Height",
+  },
+  {
+    "follows": true,
+    "icon": "circle-dot",
+    "rows": [
+      {
+        "item": "Aura",
+        "keepOpen": true,
+        "stepper": "–",
+      },
+      {
+        "disabled": true,
+        "item": "No aura",
+        "keepOpen": true,
+      },
+    ],
+    "submenu": "Aura",
+  },
+  {
+    "icon": "eye",
+    "item": "Show",
+  },
+  {
+    "checked": false,
+    "icon": "scan-eye",
+    "item": "Vision",
+  },
+  {
+    "follows": false,
+    "icon": "flame",
+    "rows": [
+      {
+        "checked": true,
+        "item": "None",
+      },
+      {
+        "checked": false,
+        "item": "Candle",
+      },
+      {
+        "checked": false,
+        "item": "Torch",
+      },
+      {
+        "checked": false,
+        "item": "Lantern",
+      },
+      {
+        "checked": false,
+        "item": "Magical light",
+      },
+      {
+        "checked": false,
+        "item": "Darkness",
+      },
+    ],
+    "submenu": "Carry light",
+  },
+  {
+    "icon": "files",
+    "item": "Duplicate",
+  },
+  {
+    "icon": "copy",
+    "item": "Copy",
+  },
+  {
+    "icon": "swords",
+    "item": "Save as Encounter",
+  },
+  {
+    "icon": "edit",
+    "item": "Edit token",
+  },
+  {
+    "icon": "swords",
+    "item": "Add to Initiative",
+  },
+  {
+    "icon": "eye",
+    "item": "Preview",
+  },
+  {
+    "follows": false,
+    "icon": "circle",
+    "rows": [
+      {
+        "checked": true,
+        "item": "Default",
+      },
+      {
+        "checked": false,
+        "item": "Blue",
+      },
+      {
+        "checked": false,
+        "item": "Orange",
+      },
+      {
+        "checked": false,
+        "item": "Red",
+      },
+      {
+        "checked": false,
+        "item": "Yellow",
+      },
+      {
+        "checked": false,
+        "item": "Brown",
+      },
+      {
+        "checked": false,
+        "item": "Purple",
+      },
+      {
+        "checked": false,
+        "item": "Green",
+      },
+      {
+        "checked": false,
+        "item": "Pink",
+      },
+      {
+        "checked": false,
+        "item": "Cyan",
+      },
+      {
+        "checked": false,
+        "item": "Gray",
+      },
+      {
+        "checked": false,
+        "item": "White",
+      },
+    ],
+    "submenu": "Ring Color",
+  },
+  {
+    "icon": "rotate-ccw",
+    "item": "Reset",
+  },
+  {
+    "custom": "<div class="atlas-ctx-destructive-row"><div role="menuitem" tabindex="0" class="atlas-ctx-destructive-btn"><span class="atlas-ctx-icon"></span><span>Kill</span></div><div role="menuitem" tabindex="0" class="atlas-ctx-destructive-btn"><span class="atlas-ctx-icon"></span><span>Delete</span></div></div>",
+  },
+]
+`;

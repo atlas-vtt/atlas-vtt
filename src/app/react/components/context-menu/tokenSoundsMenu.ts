@@ -19,7 +19,7 @@ export function tokenSoundsSubmenu(player: TokenSoundPlayer, token: { sounds?: T
     onClick: () => playTokenSound(player, sound),
   }));
   if (player.isPlaying()) {
-    rows.push(MENU_SEPARATOR, { type: 'item', label: t('tokenSound.stop'), onClick: () => player.stopAll() });
+    rows.push(MENU_SEPARATOR, { type: 'item', label: t('audio.token.stop'), onClick: () => player.stopAll() });
   }
-  return { type: 'submenu', label: t('tokenSound.play'), icon: 'volume-2', children: rows };
+  return { type: 'submenu', label: t('audio.token.play'), icon: 'volume-2', children: rows };
 }

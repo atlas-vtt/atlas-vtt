@@ -1,4 +1,5 @@
 @use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
 
 // A Table typed in place (`EditableTable`), as Obsidian's Live Preview table
 // widget draws its editing: its `--table-*` variables, its handles, add
@@ -158,6 +159,14 @@
     pointer-events: auto;
   }
 
+  // A touch screen has no hover: a table being edited shows its handles and its add buttons.
+  @include atlas-hover-reveal {
+    [data-table-live] :is(.atlas-sb-sheet-table__handle, .atlas-sb-sheet-table__add) {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  }
+
   .atlas-sb-sheet-table__handle {
     z-index: 2;
     background-color: var(--table-drag-handle-background, transparent);
@@ -242,7 +251,7 @@
     z-index: 3;
     top: 0;
     left: 0;
-    border-radius: 2px;
+    border-radius: $radius-s;
     background-color: var(--interactive-accent);
     pointer-events: none;
   }

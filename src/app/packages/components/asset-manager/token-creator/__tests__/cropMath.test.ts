@@ -1,8 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { clampImagePosition, renderedImageRect, TOKEN_CROP_FRACTION } from '../cropMath';
+import { clampImagePosition, cropReset, renderedImageRect, TOKEN_CROP_FRACTION } from '../cropMath';
 
 const square = { width: 100, height: 100 };
 const portrait = { width: 100, height: 200 };
+
+it('starts and resets ringless uploads and stored images at whole-image fit', () => {
+  expect(cropReset({ file: null, showRing: false })).toEqual({ imageScale: 1, imagePosition: { x: 0, y: 0 } });
+  expect(cropReset({ file: new File(['art'], 'token.png'), showRing: false }).imageScale).toBe(1);
+  expect(cropReset({ file: null, showRing: true }).imageScale).toBe(TOKEN_CROP_FRACTION);
+});
 
 describe('renderedImageRect', () => {
   it('centres an unzoomed square image in the well', () => {
@@ -20,6 +26,10 @@ describe('renderedImageRect', () => {
 });
 
 describe('clampImagePosition', () => {
+  it('uses the contained portrait dimensions for ringless drag limits', () => {
+    expect(clampImagePosition({ x: 9, y: -9 }, 1, portrait, 'contain')).toEqual({ x: 0.25, y: -0.5 });
+  });
+
   it('lets every part of a zoomed image reach the crop', () => {
     const scale = 3;
     const corner = clampImagePosition({ x: 5, y: 5 }, scale, square);

@@ -1,6 +1,7 @@
 import { imageDimensions } from '../../imageProcessing/imageDimensions';
 import type { Size } from '../../imageProcessing/imageLayout';
-import { UVTT_TOO_LARGE, parseUvtt } from './parseUvtt';
+import { parseUvtt, uvttTooLarge } from './parseUvtt';
+import { deviceUvttLimits, type UvttDeviceLimits } from './uvttDeviceLimits';
 import { uvttCellSize } from './uvttToScene';
 import { UVTT_LIMITS, type UvttMap, type UvttRefusal } from './uvttTypes';
 
@@ -38,12 +39,13 @@ export function cellSizeOn(map: UvttMap, image: Size): number | UvttRefusal {
 }
 
 /**
- * Reads a Universal VTT file and checks it against `UVTT_LIMITS`: its content (`parseUvtt`), its
- * image's size from the image's own header, and that the image carries the file's grid. Nothing
- * is converted or written. The file is untrusted: what is wrong comes back as a sentence.
+ * Reads a Universal VTT file and checks it against `UVTT_LIMITS` and what this device holds
+ * (`limits`): its content (`parseUvtt`), its image's size from the image's own header, and that the
+ * image carries the file's grid. Nothing is converted or written. The file is untrusted: what is
+ * wrong comes back as a sentence.
  */
-export async function readUvttSource(file: File): Promise<UvttSource | UvttRefusal> {
-  if (file.size > UVTT_LIMITS.fileBytes) return refused(UVTT_TOO_LARGE);
+export async function readUvttSource(file: File, limits: UvttDeviceLimits = deviceUvttLimits()): Promise<UvttSource | UvttRefusal> {
+  if (file.size > limits.fileBytes) return refused(uvttTooLarge(limits.fileBytes));
   const parsed = parseUvtt(await file.text());
   if (!parsed.ok) return parsed;
   const { map } = parsed;
@@ -51,8 +53,11 @@ export async function readUvttSource(file: File): Promise<UvttSource | UvttRefus
   const image = new Blob([map.image.bytes], { type: map.image.type });
   const size = await imageDimensions(image);
   if (!size) return refused(UNREADABLE_IMAGE);
-  if (size.width * size.height > UVTT_LIMITS.imagePixels) {
-    return refused(`The map image is too large to open: ${size.width} × ${size.height} pixels.`);
+  if (size.width * size.height > limits.imagePixels) {
+    const megapixels = Math.floor(limits.imagePixels / 1e6);
+    return refused(limits.imagePixels < UVTT_LIMITS.imagePixels
+      ? `The map image is too large to open on this device: ${size.width} × ${size.height} pixels, at most ${megapixels} megapixels.`
+      : `The map image is too large to open: ${size.width} × ${size.height} pixels.`);
   }
   const cellSize = cellSizeOn(map, size);
   if (typeof cellSize !== 'number') return cellSize;

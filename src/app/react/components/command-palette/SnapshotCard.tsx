@@ -31,7 +31,7 @@ function NameInput({ name, onDone }: NameInputProps): React.ReactElement {
   const isDone = useRef(false);
 
   useEffect(() => {
-    inputRef.current?.focus();
+    inputRef.current?.focus({ preventScroll: true });
     inputRef.current?.select();
   }, []);
 

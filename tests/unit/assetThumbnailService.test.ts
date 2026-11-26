@@ -8,6 +8,9 @@ import { hashStrings } from '../helpers/hashCorpus';
 import { pathDigest as frozenPathDigest, thumbnailPathFor as frozenThumbnailPathFor } from '../oracles/helperBaseline/thumbnailDigest';
 
 const GOBLIN_IMAGE = 'atlas-vtt/assets/goblin.png';
+const ascii = (value: string): number[] => [...value].map((c) => c.charCodeAt(0));
+const PNG_BYTES = new Uint8Array([0x89, ...ascii('PNG\r\n\x1a\n'), 0, 0, 0, 13, ...ascii('IHDR'), 0, 0, 1, 0, 0, 0, 1, 0, 8, 6, 0, 0, 0]);
+const WEBP_BYTES = new Uint8Array([...ascii('RIFF'), 100, 0, 0, 0, ...ascii('WEBP'), ...ascii('VP8 '), 10, 0, 0, 0, 0, 0, 0, 0x9d, 0x01, 0x2a, 0, 1, 0, 1, 0]);
 
 async function setup(): Promise<{ app: any; files: Map<string, string>; assets: AssetService; goblin: TokenAsset; render: ReturnType<typeof vi.fn> }> {
   (AssetService as any).instance = null;
@@ -165,6 +168,43 @@ describe('AssetThumbnailService', () => {
     expect(update?.id).toBe(map.id);
     const stored = await assets.getAssetById(map.id);
     expect(stored?.type === 'map' && stored.thumbnailPath).toBe(update?.thumbnailPath);
+  });
+
+  it('names a thumbnail by its bytes: a PNG from a device that cannot encode WebP is a .png', async () => {
+    const { app, assets, goblin } = await setup();
+    const service = new AssetThumbnailService(app, assets, async () => PNG_BYTES.slice().buffer);
+    const updates = nextUpdates(service);
+
+    service.ensureThumbnails([goblin]);
+
+    const [update] = await updates;
+    expect(update?.thumbnailPath).toBe(service.thumbnailPathFor(GOBLIN_IMAGE, 'png'));
+    expect(update?.thumbnailPath?.endsWith('.png')).toBe(true);
+    const stored = await assets.getAssetById(goblin.id);
+    expect(stored?.type === 'token' && stored.thumbnailPath).toBe(update?.thumbnailPath);
+    expect(service.stateOf(stored as TokenAsset)).toEqual({ path: update?.thumbnailPath, pending: false });
+  });
+
+  it('stores a thumbnail that came with its image under the name of its bytes', async () => {
+    const { app, assets, render } = await setup();
+    const service = new AssetThumbnailService(app, assets, render);
+    expect(await service.tryThumbnailForImage(GOBLIN_IMAGE, new Blob([PNG_BYTES]))).toBe(service.thumbnailPathFor(GOBLIN_IMAGE, 'png'));
+    expect(await service.tryThumbnailForImage(GOBLIN_IMAGE, new Blob([WEBP_BYTES]))).toBe(service.thumbnailPathFor(GOBLIN_IMAGE));
+    expect(render).not.toHaveBeenCalled();
+  });
+
+  it.each([['webp', 'png'], ['png', 'webp']] as const)('shows the thumbnail another device made as .%s while the recorded .%s has not arrived, and makes none', async (present, recorded) => {
+    const { app, assets, goblin, render } = await setup();
+    const service = new AssetThumbnailService(app, assets, render);
+    const arrived = service.thumbnailPathFor(GOBLIN_IMAGE, present);
+    await app.vault.adapter.write(arrived, 'THUMB');
+    const token: TokenAsset = { ...goblin, thumbnailPath: service.thumbnailPathFor(GOBLIN_IMAGE, recorded) };
+
+    expect(service.hasThumbnail(token)).toBe(true);
+    expect(service.stateOf(token)).toEqual({ path: arrived, pending: false });
+    service.ensureThumbnails([token]);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(render).not.toHaveBeenCalled();
   });
 
   it('returns undefined instead of throwing when a thumbnail cannot be created', async () => {

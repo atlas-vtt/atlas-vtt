@@ -54,6 +54,28 @@ describe('readLootBaseItems', () => {
     expect(await readLootBaseItems(appWith({ [BASE]: 'filters:\n  and: []\n' }), BASE)).toEqual([]);
   });
 
+  it('answers null, and stops, for a base with a view whose results cannot be read', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const items = readLootBaseItems(appWith({ [BASE]: BASE_YAML }), BASE);
+    await started();
+    queries.of('Weapons').listener.onSnapshot(snapshot('Items/Sword.md'));
+    queries.of('Armor').listener.onUnreadable(new Error('no rows'));
+
+    expect(await items).toBeNull();
+    expect(queries.started.every((query) => query.stopped)).toBe(true);
+    vi.restoreAllMocks();
+  });
+
+  it('answers null for a base whose file cannot be read or is no YAML', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const app = appWith({ [BASE]: BASE_YAML });
+    app.vault.cachedRead = () => Promise.reject(new Error('The file is not on this device.'));
+    expect(await readLootBaseItems(app, BASE)).toBeNull();
+    expect(await readLootBaseItems(appWith({ [BASE]: 'views: [unclosed' }), BASE)).toBeNull();
+    expect(queries.started).toHaveLength(0);
+    vi.restoreAllMocks();
+  });
+
   it('answers null for a base that is gone, and while Bases is off', async () => {
     expect(await readLootBaseItems(appWith({}), BASE)).toBeNull();
     queries.available = false;

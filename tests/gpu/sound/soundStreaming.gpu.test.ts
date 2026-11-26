@@ -7,7 +7,7 @@ import type { WindowedSound } from '@/app/sound/codec/windowedSound';
 import { SoundImporter } from '@/app/sound/codec/soundImporter';
 import type { SoundInfo } from '@/app/sound/soundTypes';
 import { STREAM_START_FRAMES } from '@/app/soundDirector/growingCopies';
-import { memoryBytes, musicOf, render, tableOf } from './soundHarness';
+import { COPY_TAGS, memoryBytes, musicOf, render, tableOf } from './soundHarness';
 
 const SECONDS = 180;
 
@@ -48,7 +48,7 @@ describe('a copy that plays while it is made', () => {
     let growing: GrowingCopy | null = null;
     let playableAt = 0;
     const started = performance.now();
-    const result = await importer.run({ source: wave(SECONDS), kind: 'music', loop: false, stream: true }, undefined, {
+    const result = await importer.run({ ...COPY_TAGS, source: wave(SECONDS), kind: 'music', loop: false, stream: true }, undefined, {
       start: (start) => { growing = new GrowingCopy(start); },
       pages: (pages) => {
         growing?.add(pages);
@@ -84,7 +84,7 @@ describe('a copy that plays while it is made', () => {
     let cutter: SegmentCutter | null = null;
     let manifestText = '';
     const segments: CutSegment[] = [];
-    const result = await importer.run({ source: wave(SECONDS), kind: 'music', loop: false, stream: true }, undefined, {
+    const result = await importer.run({ ...COPY_TAGS, source: wave(SECONDS), kind: 'music', loop: false, stream: true }, undefined, {
       start: (start) => {
         manifestText = encodeSegmentManifest(segmentManifest(start.head));
         cutter = new SegmentCutter(segmentManifest(start.head).preSkip, (segment) => segments.push(segment));

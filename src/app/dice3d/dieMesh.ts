@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 
 import { atlasLayout } from './atlasCell';
-import { buildTextures, diceArtworkReady, loadDiceArtwork } from './dieArtwork';
+import { buildTextures, diceArtworkReady, loadDiceArtwork, type FaceNumbers } from './dieArtwork';
 import { dieGeometry, type DieSides } from './dieGeometry';
 import { colouredAssets, refreshColouredDice } from './dieColours';
 import { activeLook } from './dieSkin';
@@ -22,8 +22,12 @@ export interface DieAssets {
   redraw: () => void;
 }
 
-/** One set of textures and mesh per body; dice of the same kind share it. */
-const assetCache = new Map<DieSides, DieAssets>();
+/**
+ * One set of textures and mesh per body, and per numbering where it is not the body's own
+ * (`10 tens`, a percentile roll's tens die); dice of the same kind share it.
+ */
+const assetCache = new Map<string, DieAssets>();
+const cacheKey = (sides: DieSides, numbers: FaceNumbers): string => (numbers === 'plain' ? String(sides) : `${sides} ${numbers}`);
 
 type Uv = [number, number];
 
@@ -152,12 +156,13 @@ export function chamferedGeometry(sides: DieSides): THREE.BufferGeometry {
  * The body and material of a die of `sides`, shared by every die of its kind;
  * in `colour` (`#rrggbb`) its faces are painted in that colour (`dieColours.ts`).
  */
-export function dieAssets(sides: DieSides, colour?: string): DieAssets {
-  if (colour !== undefined) return colouredAssets(dieAssets(sides), sides, colour);
-  const cached = assetCache.get(sides);
+export function dieAssets(sides: DieSides, colour?: string, numbers: FaceNumbers = 'plain'): DieAssets {
+  if (colour !== undefined) return colouredAssets(dieAssets(sides, undefined, numbers), sides, colour, numbers);
+  const key = cacheKey(sides, numbers);
+  const cached = assetCache.get(key);
   if (cached !== undefined) return cached;
 
-  const textures = buildTextures(sides);
+  const textures = buildTextures(sides, numbers);
   // **Card has no gloss.** This used to be polished wood with a lacquer coat
   // and gilded, i.e. metallic, numerals: three controls that all did the same
   // thing, reflect. Paper does not reflect. What remains is a dull surface with
@@ -176,7 +181,7 @@ export function dieAssets(sides: DieSides, colour?: string): DieAssets {
     material,
     redraw: textures.redraw,
   };
-  assetCache.set(sides, assets);
+  assetCache.set(key, assets);
   // Faces painted before their artwork arrived are painted once more when it does.
   // Only then: repainting means drawing every cell again and uploading the atlas anew.
   const font = activeLook().font;
@@ -186,7 +191,8 @@ export function dieAssets(sides: DieSides, colour?: string): DieAssets {
 
 /** Redraws the faces of every cached body, or of one: when the artwork arrives or the look changes. */
 export function refreshDieArtwork(sides?: DieSides): void {
-  if (sides !== undefined) assetCache.get(sides)?.redraw();
-  else for (const assets of assetCache.values()) assets.redraw();
+  for (const [key, assets] of assetCache) {
+    if (sides === undefined || key.split(' ')[0] === String(sides)) assets.redraw();
+  }
   refreshColouredDice(sides);
 }

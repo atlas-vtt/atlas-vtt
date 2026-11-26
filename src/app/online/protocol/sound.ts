@@ -61,6 +61,8 @@ export interface SharedMusicPlay {
   readonly repeat?: SharedMusicRepeat;
   /** Frames of the list behind `startAt`. Unset is 0. */
   readonly listFrame?: number;
+  /** The sound's frame a track that goes round on its own begins at. Unset is 0. */
+  readonly fromFrame?: number;
 }
 
 export interface SharedLayerPlay {
@@ -70,6 +72,8 @@ export interface SharedLayerPlay {
   readonly muted?: boolean;
   readonly reverb?: number;
   readonly fade: SharedSoundFade;
+  /** As on `SharedMusicPlay`. */
+  readonly fromFrame?: number;
 }
 
 /** The room the reverb rings in, and the crossfade that brought it. */
@@ -139,13 +143,15 @@ function parseInfo(value: unknown): SharedSoundInfo | null {
 }
 
 /** What a list and a layer have in common. */
-function parsePlayBase(value: Record<string, unknown>): Pick<SharedMusicPlay, 'startAt' | 'gainDb' | 'fade' | 'reverb'> & { readonly muted?: true } | null {
+function parsePlayBase(value: Record<string, unknown>): Pick<SharedMusicPlay, 'startAt' | 'gainDb' | 'fade' | 'reverb' | 'fromFrame'> & { readonly muted?: true } | null {
   const gainDb = gainOf(value.gainDb);
   const fade = parseFade(value.fade);
   if (!isTime(value.startAt) || gainDb === null || fade === null) return null;
   // Reverb only colours what plays: anything that is no amount reads as dry, not as a state to refuse.
   const reverb = typeof value.reverb === 'number' && Number.isFinite(value.reverb) && value.reverb > 0 ? Math.min(1, value.reverb) : undefined;
-  return { startAt: value.startAt, gainDb, fade, ...(value.muted === true && { muted: true as const }), ...(reverb !== undefined && { reverb }) };
+  // Where a seam began a play is told, never checked: anything that is no frame reads as the sound's start.
+  const fromFrame = isCount(value.fromFrame, MAX_FRAMES) && value.fromFrame > 0 ? value.fromFrame : undefined;
+  return { startAt: value.startAt, gainDb, fade, ...(value.muted === true && { muted: true as const }), ...(reverb !== undefined && { reverb }), ...(fromFrame !== undefined && { fromFrame }) };
 }
 
 /** A room this page knows, or none: a newer GM's room plays in the first. */

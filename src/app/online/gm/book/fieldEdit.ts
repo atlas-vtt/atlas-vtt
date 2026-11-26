@@ -34,8 +34,8 @@ function fitsField(field: TemplateField, value: SheetRaw, references: PlayerRefe
   switch (field.type) {
     case 'text': return isLine(value);
     case 'markdown': return typeof value === 'string' && [...value].length <= MAX_FIELD_TEXT;
-    case 'number': return isNumber(value);
-    case 'rating': return isNumber(value) || (isLine(value) && textProblem(field, value) === null);
+    // A number, or text the field keeps as written (`+4 adv`, `10 + @dex`), as a note's own Number field does
+    case 'number': case 'rating': return isNumber(value) || (isLine(value) && textProblem(field, value) === null);
     case 'dice': return isDice(value, references);
     case 'choice': return fitsChoice(field, value);
     case 'list': return isPlainList(value);

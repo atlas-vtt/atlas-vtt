@@ -1,0 +1,25 @@
+import type { Translation } from '../../types';
+
+export const playerBar: Translation = {
+  'playerBar.bar': 'Janela dos jogadores',
+  'playerBar.fullScreen': 'Tela cheia na TV',
+  'playerBar.fullScreenHint': 'Preenche sua segunda tela com a janela dos jogadores',
+  'playerBar.leaveFullScreen': 'Sair da tela cheia',
+  'playerBar.connectScreen': 'Conecte uma segunda tela',
+  'playerBar.curtainDown': 'Ocultar o mapa',
+  'playerBar.curtainUp': 'Revelar o mapa',
+  'playerBar.toggleCurtain': 'Ocultar ou revelar o mapa na janela dos jogadores',
+  'playerBar.playersSee': 'Configurações da mesa',
+  'playerBar.close': 'Fechar janela dos jogadores',
+  'playerBar.freeze': 'Pausar a visão dos jogadores',
+  'playerBar.unfreeze': 'Retomar: a visão dos jogadores volta a seguir você',
+  'playerBar.freezeTrueScale': 'Com o TrueScale ligado, fixa os jogadores no enquadramento do seu mapa',
+  'playerBar.takeBack': 'Recolher o handout',
+  'playerBar.openHint': 'Mostrar a cena apresentada também num ecrã à mesa',
+  'playerBar.freezeOnline': 'Os jogadores online não podem mover as suas fichas enquanto estiver em pausa',
+  'playerBar.playMode': 'Modo de jogo',
+  'playerBar.modeTable': 'Controlo de fichas',
+  'playerBar.modeRemote': 'Comando',
+  'playerBar.modeTableHint': 'Cada jogador move as suas fichas no seu próprio mapa',
+  'playerBar.modeRemoteHint': 'Os telemóveis são comandos do ecrã partilhado',
+};

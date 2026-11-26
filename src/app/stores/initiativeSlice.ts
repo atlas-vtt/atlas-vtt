@@ -4,7 +4,8 @@
  */
 
 import type { TokenEntity } from '../types';
-import type { InitiativeState, InitiativeEntry, InitiativeConfig } from '../types/initiativeTypes';
+import type { InitiativeState, InitiativeEntry } from '../types/initiativeTypes';
+import type { SideId } from '../types/initiativeRulesTypes';
 import { createDefaultInitiativeState } from '../types/initiativeTypes';
 import { DEFAULT_INITIATIVE_RULES } from '../gameSystems/initiativeRules';
 import { combatantModifier, ownModifier } from '../initiative/initiativeModifier';
@@ -15,6 +16,7 @@ import { clearSittingOut } from '../initiative/rounds';
 import { createInitiativeTurnActions, type InitiativeTurnActions } from './initiativeTurnActions';
 import { fightDraws, roundChangesOf } from './initiativeFightStart';
 import { setInitiative } from '../initiative/awaitingInitiative';
+import { newId } from '../utils/ids';
 
 /**
  * Initiative slice state interface
@@ -42,9 +44,10 @@ export interface InitiativeSlice extends InitiativeTurnActions {
   reorderInitiative: (fromIndex: number, toIndex: number) => void;
   moveToFront: (id: string) => void;
   moveToBack: (id: string) => void;
+  /** The order the sides of this scene's fights by sides act in, as the GM dragged them (`InitiativeState.sideOrder`). */
+  setSideOrder: (order: SideId[]) => void;
   /** Removes every combatant and ends the fight. */
   resetInitiative: () => void;
-  setInitiativeConfig: (config: Partial<InitiativeConfig>) => void;
 }
 
 /**
@@ -63,21 +66,11 @@ interface InitiativeStoreState {
  */
 type ImmerSet = (fn: (draft: InitiativeStoreState) => void) => void;
 
-/**
- * Create the initial initiative state
- */
 export function createInitialInitiativeState(): Pick<InitiativeSlice, 'initiative' | 'initiativeTrackerOpen'> {
   return {
     initiative: createDefaultInitiativeState(),
     initiativeTrackerOpen: false,
   };
-}
-
-/**
- * Generate a unique initiative entry ID
- */
-function generateInitiativeId(): string {
-  return `init_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
 }
 
 /** A combatant's roll: the total and the modifier it added. */
@@ -116,7 +109,7 @@ export function createInitiativeActions(
     }),
 
     addToInitiative: (entry) => {
-      const id = generateInitiativeId();
+      const id = newId('init');
       set((draft) => {
         const order = draft.initiative.entries.length;
         const newEntry: InitiativeEntry = {
@@ -147,22 +140,25 @@ export function createInitiativeActions(
         // A number or modifier of its own replaces where Act Now placed it
         if (initiativeChanged || modifierChanged) delete entry.tieBreak;
 
-        // Re-sort if initiative value changed and autoSort is enabled
-        if (initiativeChanged && draft.initiative.config.autoSort) sortCombatants(draft.initiative);
+        // The order always follows the numbers
+        if (initiativeChanged) sortCombatants(draft.initiative);
       }
     }),
 
     rollAllInitiative: (roll = DEFAULT_ROLL, fromStatblocks) => {
-      const rolls = new Map(get().initiative.entries.map((entry): [string, RolledTotal] => {
-        const modifier = combatantModifier(ownModifier(entry), fromStatblocks?.get(entry.id));
-        return [entry.id, { total: rollInitiativeDice(roll, random) + modifier, modifier }];
-      }));
+      const rolls = new Map(get().initiative.entries
+        // Players at the table roll themselves; the GM types their number in
+        .filter(entry => entry.partyMemberId === undefined)
+        .map((entry): [string, RolledTotal] => {
+          const modifier = combatantModifier(ownModifier(entry), fromStatblocks?.get(entry.id));
+          return [entry.id, { total: rollInitiativeDice(roll, random) + modifier, modifier }];
+        }));
       set((draft) => {
         for (const entry of draft.initiative.entries) {
           const rolled = rolls.get(entry.id);
           if (rolled) applyRoll(entry, rolled);
         }
-        if (draft.initiative.config.autoSort) sortCombatants(draft.initiative);
+        sortCombatants(draft.initiative);
       });
     },
 
@@ -174,7 +170,7 @@ export function createInitiativeActions(
       set((draft) => {
         const current = draft.initiative.entries.find(e => e.id === id);
         if (current) applyRoll(current, rolled);
-        if (draft.initiative.config.autoSort) sortCombatants(draft.initiative);
+        sortCombatants(draft.initiative);
       });
     },
 
@@ -226,6 +222,10 @@ export function createInitiativeActions(
       }
     }),
 
+    setSideOrder: (order) => set((draft) => {
+      draft.initiative.sideOrder = order;
+    }),
+
     resetInitiative: () => set((draft) => {
       draft.initiative.entries = [];
       draft.initiative.isActive = false;
@@ -234,10 +234,6 @@ export function createInitiativeActions(
       delete draft.initiative.sides;
       delete draft.initiative.cards;
       clearSittingOut(draft.initiative);
-    }),
-
-    setInitiativeConfig: (config) => set((draft) => {
-      draft.initiative.config = { ...draft.initiative.config, ...config };
     }),
   };
 }

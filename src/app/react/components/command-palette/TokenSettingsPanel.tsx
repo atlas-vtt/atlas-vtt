@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useCallback, useSyncExternalStore } from 'react';
 import { SettingToggleRow } from './SettingRows';
 import type { AtlasView } from '../../../atlas-view';
-import { mapResources } from '../../../resources/collectionResources';
-import { rulesLookup } from '../../../services/mapRules';
+import { usePlayedSystemCampaign } from '../../../campaigns/usePlayedSystemCampaign';
 import { slottedResources } from '../../../resources/resourceSlots';
 import { toggleHidden } from '../../../resources/sceneVisibility';
+import { useResourcesOfMap } from '../../../resources/useMapResources';
 import { resourceToggleLabel } from './resourceToggleLabel';
 import { DEFAULT_TOKEN_SETTINGS } from '../../../storeFactory';
 import { t } from '../../../i18n';
@@ -20,11 +20,18 @@ interface TokenSettingsPanelProps {
   view: AtlasView | null;
 }
 
-/** What this map shows on its tokens: nameplates, instance numbers, and each resource of its collection. */
+/**
+ * What this map shows on its tokens: nameplates, instance numbers, and each resource of the rules it plays by,
+ * which a played campaign's game system replaces. The palette does not re-render on store changes or rule
+ * edits, so the panel follows the scene's settings and the rules itself.
+ */
 export function TokenSettingsPanel({ view }: TokenSettingsPanelProps): React.ReactElement {
   const store = view?.atlasStore;
-  const tokenSettings = store?.getState()?.tokenSettings ?? DEFAULT_TOKEN_SETTINGS;
-  const definitions = view && store ? mapResources(rulesLookup(view.app), store.getState().mapPath) : [];
+  const subscribe = useCallback((listener: () => void): (() => void) => store?.subscribe(listener) ?? ((): void => undefined), [store]);
+  const tokenSettings = useSyncExternalStore(subscribe, () => store?.getState().tokenSettings) ?? DEFAULT_TOKEN_SETTINGS;
+  const mapPath = useSyncExternalStore(subscribe, () => store?.getState().mapPath);
+  const definitions = useResourcesOfMap(view && store ? view.app : null, mapPath);
+  const played = usePlayedSystemCampaign(view?.app);
   const hidden = tokenSettings.hiddenResources ?? [];
 
   const change = (changes: Partial<typeof tokenSettings>): void => {
@@ -46,6 +53,7 @@ export function TokenSettingsPanel({ view }: TokenSettingsPanelProps): React.Rea
         ))}
       </div>
       <div className="atlas-command-palette-panel-column">
+        {played && <span className="atlas-setting-hint" role="note">{t('csm.playedCampaign', { name: played.campaign.name })}</span>}
         {slottedResources(definitions).map(({ definition, slot }) => (
           <SettingToggleRow
             key={definition.key}

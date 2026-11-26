@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useId } from 'react';
 import { motion } from 'framer-motion';
 import { MapIcon } from 'lucide-react';
 import type { AssetService } from '../../../services/AssetService';
@@ -7,6 +7,7 @@ import { useAtlasUI } from '../../../react/root/AtlasUIContext';
 import { CloseButton } from '../primitives/CloseButton';
 import { Button } from '../primitives/button';
 import { dialogOverlayMotion, useDialogWindowVariants } from '../primitives/dialogMotion';
+import { useFocusTrap } from '../primitives/useFocusTrap';
 import { TagPicker } from './token-creator/TagPicker';
 import { useAssetTags } from './token-creator/useAssetTags';
 import { t } from '../../../i18n';
@@ -31,12 +32,13 @@ export default function CreateSceneModal({
   onSceneCreated,
   backgroundPath,
   defaultName
-}: CreateSceneModalProps) {
+}: CreateSceneModalProps): React.JSX.Element | null {
   const [sceneName, setSceneName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const { tags, createTag, isCreatingTag } = useAssetTags(assetService, isOpen, selectedCollection, 'maps');
   const inputRef = useRef<HTMLInputElement>(null);
+  const nameId = useId();
   const { app } = useAtlasUI();
   const [hasSetDefaultName, setHasSetDefaultName] = useState(false);
 
@@ -66,21 +68,22 @@ export default function CreateSceneModal({
 
   // Handle Escape key globally
   useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
+    const handleEscape = (e: KeyboardEvent): void => {
       if (e.key === 'Escape' && isOpen) {
         onClose();
       }
     };
 
     if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
+      const doc = inputRef.current?.doc ?? activeDocument;
+      doc.addEventListener('keydown', handleEscape);
       return () => {
-        document.removeEventListener('keydown', handleEscape);
+        doc.removeEventListener('keydown', handleEscape);
       };
     }
   }, [isOpen, onClose]);
 
-  const handleCreate = async () => {
+  const handleCreate = async (): Promise<void> => {
     if (!sceneName.trim() || !assetService || isCreating || isCreatingTag) return;
 
     setIsCreating(true);
@@ -112,7 +115,7 @@ export default function CreateSceneModal({
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent): void => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       void handleCreate();
@@ -122,6 +125,9 @@ export default function CreateSceneModal({
   };
 
   const windowVariants = useDialogWindowVariants();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  useFocusTrap(containerRef, isOpen);
 
   if (!isOpen) return null;
 
@@ -149,8 +155,12 @@ export default function CreateSceneModal({
       style={{ outline: 'none' }}
     >
       <motion.div
+        ref={containerRef}
         className="atlas-create-scene-container"
         variants={windowVariants}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
         onClick={(e) => {
           // Prevent any clicks inside the container from bubbling up
           e.stopPropagation();
@@ -165,7 +175,7 @@ export default function CreateSceneModal({
         }}
       >
         <div className="atlas-create-scene-header">
-          <h3>
+          <h3 id={titleId}>
             <MapIcon />
             {t('am.scene.new')}
           </h3>
@@ -174,9 +184,10 @@ export default function CreateSceneModal({
 
         <div className="atlas-create-scene-body">
           <div className="atlas-create-scene-field">
-            <label className="atlas-create-scene-label">{t('am.scene.name')}</label>
+            <label htmlFor={nameId} className="atlas-create-scene-label">{t('am.scene.name')}</label>
             <input
               ref={inputRef}
+              id={nameId}
               type="text"
               className="atlas-create-scene-input"
               value={sceneName}

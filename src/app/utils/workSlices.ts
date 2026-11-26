@@ -13,6 +13,8 @@ interface YieldingScheduler {
  * would wait forever.
  */
 function yieldToMain(): Promise<void> {
+  // Only where a test has taken its document down while a job it started still runs: no browser waits for a turn.
+  if (typeof window === 'undefined') return Promise.resolve();
   const scheduler = (window as { scheduler?: YieldingScheduler }).scheduler;
   if (typeof scheduler?.yield === 'function') return scheduler.yield();
   return new Promise((resolve) => { window.setTimeout(resolve, 0); });

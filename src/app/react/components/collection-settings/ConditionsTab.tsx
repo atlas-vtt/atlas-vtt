@@ -12,7 +12,7 @@ import { conditionEffect, withConditionEffect } from '../../../gameSystems/condi
 import { conditionGlyph } from '../../../utils/conditionGlyph';
 import { WidgetIconPicker } from '../WidgetIconPicker';
 import { ConditionBadgePreview } from './ConditionBadgePreview';
-import { t } from '../../../i18n';
+import { t, tPointer } from '../../../i18n';
 
 interface ConditionsTabProps {
   conditions: ConditionDefinition[];
@@ -91,7 +91,7 @@ export function ConditionsTab({
   return (
     <>
       <p className="atlas-csm-hint">
-        {t('csm.conditions.intro')}
+        {tPointer('csm.conditions.intro')}
       </p>
       <p className="atlas-csm-hint">{t('csm.conditions.effectsHint')}</p>
 

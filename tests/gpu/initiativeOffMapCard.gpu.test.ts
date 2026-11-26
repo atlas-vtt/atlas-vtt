@@ -22,6 +22,9 @@ import { createDefaultInitiativeState, type InitiativeEntry } from '../../src/ap
 import type { Character } from '../../src/app/types';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 
+/** The numbers as they stand once shown (they show while the pointer is near the tracker), so they are measured at rest. */
+const SHOWN_NUMBERS = '.atlas-initiative-card__initiative, .atlas-initiative-card__dealt { opacity: 1 !important; scale: 1 !important; filter: none !important; transition: none !important; }';
+
 /** Obsidian's theme as the tracker meets it (as in `initiativeListsLayout.gpu.test.ts`). */
 const THEME = `
   body { margin: 0; font: 13px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #3a3f36; --background-primary: #1e1e1e; --background-secondary: #262626;
@@ -53,15 +56,15 @@ const entryOf = (tokenId: string, order: number, card?: number): InitiativeEntry
   isActive: order === 0, isNPC: true, order, ...(card === undefined ? {} : { card }),
 });
 
-interface View { names: boolean; dock: 'left' | 'right'; cards: boolean }
+interface View { names: boolean; dock: 'right'; cards: boolean }
 
 async function show({ names, dock, cards }: View): Promise<HTMLElement> {
   document.body.innerHTML = '';
   await page.viewport(1200, 900);
   const { app } = createInMemoryApp({ files: {} });
   const settings = new SettingsService(app);
-  settings.setInitiativeNames(names);
-  settings.setInitiativeLayout({ fromTurn: true, dock, collapsed: false });
+  settings.setCompactInitiative(names);
+  settings.setInitiativeLayout({ fromTurn: true, dock });
   const store = createViewAtlasStore(app, `off-map-card-${Math.random()}`);
   store.setState({
     persistenceEnabled: false,
@@ -79,43 +82,35 @@ async function show({ names, dock, cards }: View): Promise<HTMLElement> {
   return document.querySelector<HTMLElement>('.atlas-initiative-tracker')!;
 }
 
-const box = (element: Element | null): DOMRect => element!.getBoundingClientRect();
-const overlaps = (a: DOMRect, b: DOMRect): boolean => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
 
 describe('the card of a combatant kept beside the map', () => {
   const style = document.createElement('style');
-  style.textContent = THEME + css;
+  style.textContent = THEME + css + SHOWN_NUMBERS;
   beforeEach(() => document.head.append(style));
   afterEach(() => { style.remove(); document.body.innerHTML = ''; });
 
   const views: View[] = [
     { names: false, dock: 'right', cards: false },
     { names: true, dock: 'right', cards: false },
-    { names: true, dock: 'left', cards: true },
-    { names: false, dock: 'left', cards: true },
+    { names: true, dock: 'right', cards: true },
+    { names: false, dock: 'right', cards: true },
   ];
   for (const view of views) {
     const label = `${view.names ? 'names' : 'plain'}-${view.dock}${view.cards ? '-cards' : ''}`;
-    it(`marks it in a free corner of its portrait, clear of the other badges, conditions and its number (${label})`, async () => {
+    it(`draws it with a grey stroke instead of a badge, the turn's colour winning (${label})`, async () => {
       const tracker = await show(view);
-      const cards = [...tracker.querySelectorAll('.atlas-initiative-card')];
-      const marked = cards.filter((card) => card.querySelector('.atlas-initiative-card__off-map-badge'));
-      // Only the two goblins beside the map carry it, the hero on the map does not
-      expect(marked).toHaveLength(2);
-      for (const card of marked) {
-        const badge = box(card.querySelector('.atlas-initiative-card__off-map-badge'));
-        const frame = box(card);
-        expect(badge.width).toBe(18);
-        expect(badge.left).toBeGreaterThanOrEqual(frame.left);
-        expect(badge.right).toBeLessThanOrEqual(frame.right);
-        expect(badge.top).toBeGreaterThanOrEqual(frame.top);
-        const others = ['.atlas-initiative-card__instance-badge', '.atlas-initiative-card__hidden-badge', '.atlas-initiative-card__conditions',
-          '.atlas-initiative-card__dealt', '.atlas-initiative-card__initiative', '.atlas-initiative-card__name'];
-        for (const selector of others) {
-          const other = card.querySelector(selector);
-          if (other) expect(overlaps(badge, box(other)), selector).toBe(false);
-        }
-      }
+      const cards = [...tracker.querySelectorAll<HTMLElement>('.atlas-initiative-card')];
+      const beside = cards.filter((card) => card.classList.contains('atlas-initiative-card--off-map'));
+      // Only the two goblins beside the map, the hero on the map not
+      expect(beside).toHaveLength(2);
+      const border = (card: HTMLElement): string => getComputedStyle(card).borderTopColor;
+      const [holder, resting] = beside as [HTMLElement, HTMLElement];
+      const hero = cards.find((card) => !card.classList.contains('atlas-initiative-card--off-map'))!;
+      // A neutral grey, unlike the hero's side line; the goblin holding the turn keeps the turn's ring
+      expect(border(resting)).not.toBe(border(hero));
+      expect(border(resting)).toMatch(/oklch|rgb|color/);
+      if (holder.classList.contains('atlas-initiative-card--active')) expect(border(holder)).not.toBe(border(resting));
+      expect(tracker.querySelector('[class*="off-map-badge"]')).toBeNull();
       await page.screenshot({ path: `${SHOTS}/tracker-${label}.png`, element: tracker });
     });
   }

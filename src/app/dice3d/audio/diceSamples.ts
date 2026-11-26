@@ -1,4 +1,5 @@
 import { dataUrlToArrayBuffer } from '../../audio/dataUrl';
+import { resumeOnGesture } from '../../sound/engine/audioUnlock';
 import { followOutputDevice, forgetOutputFollower } from '../../sound/engine/outputDevice';
 import throw1 from '../../sounds/dice-sfx/dice-throw-1.mp3?inline';
 import throw2 from '../../sounds/dice-sfx/dice-throw-2.mp3?inline';
@@ -72,6 +73,7 @@ export function audio(): AudioContext | null {
     } catch {
       return null;
     }
+    resumeOnGesture(ctx);
     followOutputDevice(ctx);
     master = ctx.createGain();
     master.gain.value = masterLevel();

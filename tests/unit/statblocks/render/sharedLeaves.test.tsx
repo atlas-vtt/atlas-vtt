@@ -9,7 +9,7 @@ import { hitPointsAttribute, namesHitPoints } from '../../../../src/app/statbloc
 import { spellGroups } from '../../../../src/app/statblocks/render/shared/spellGroups';
 import { statblockImageSrc } from '../../../../src/app/statblocks/render/shared/statblockImage';
 import { useTokenPortrait, type StatblockPortrait } from '../../../../src/app/statblocks/render/shared/tokenPortrait';
-import { fakeApp } from './sheetTestKit';
+import { blockEl, fakeApp, renderSheet, templateOf } from './sheetTestKit';
 
 describe('spellGroups', () => {
   it('groups spell lines under their headers, with a header for lines before the first', () => {
@@ -47,6 +47,22 @@ describe('EntryLine', () => {
     expect(container.querySelector('.atlas-sb-trait-name')?.textContent).toBe('Claws');
     rerender(<EntryLine name="Ready?" text="Yes." nameStyle="run-in" />);
     expect(container.querySelector('.atlas-sb-trait-name')?.textContent).toBe('Ready?');
+  });
+
+  it('runs a name in a word space before its text, one space also where the text was padded by hand', () => {
+    const { container, rerender } = render(<EntryLine name="Club" text="+2 to hit" nameStyle="run-in" />);
+    expect(container.querySelector('.atlas-sb-trait')?.textContent).toBe('Club +2 to hit');
+    rerender(<EntryLine name="Sacred Flame" text="  The target saves." nameStyle="run-in" />);
+    expect(container.querySelector('.atlas-sb-trait')?.textContent).toBe('Sacred Flame The target saves.');
+  });
+
+  it("puts a word space between an entry's parts and its text", () => {
+    const template = templateOf(
+      [{ key: 'actions', label: 'Actions', type: 'entries', entry: { extras: [{ key: 'range', label: 'Range', type: 'text' }] } }],
+      [{ id: 'actions1', type: 'entries', field: 'actions' }],
+    );
+    const { container } = renderSheet(template, { actions: [{ name: 'Sling', range: '30 ft.', desc: 'One target.' }] });
+    expect(blockEl(container, 'actions1')!.querySelector('.atlas-sb-trait')?.textContent).toBe('Sling Range 30 ft. One target.');
   });
 
   it('keeps the name as written for the Fantasy Statblocks renderer and marks hit point entries', () => {

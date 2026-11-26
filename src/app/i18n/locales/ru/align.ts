@@ -23,4 +23,5 @@ export const align: Translation = {
   'align.tab.freehand': 'Вручную',
   'align.tab.intersections': 'Измерение',
   'align.title': 'Выравнивание сетки',
+  'align.waitingForTiles': 'Ждём фрагменты карты · {percent}%',
 };

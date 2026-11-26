@@ -1,14 +1,14 @@
 import type { AdvantageSide, DiceSet } from '../../types/diceSetTypes';
 import type { PlayerRoll, SharedRoll } from '../protocol/index.ts';
-import type { RollSceneLookup } from '../../services/playerRollSource';
 import type { DiceSource } from './atlasDice.ts';
 import type { SceneStore } from './atlasView.ts';
 import { rollFaceOf } from './log/logEntries.ts';
 import type { SpokenAs } from './log/TableLog.ts';
 import { LogSpeakers } from './logSpeakers.ts';
 import { PlayerRolls } from './PlayerRolls.ts';
+import { pinnedDesignedRoll, sceneDiceShelf } from './diceRowShare.ts';
 import { quietRoll } from './quietRoll.ts';
-import { RollShare, type RollNotes } from './RollShare.ts';
+import { RollShare, type NamedToken, type RollNotes } from './RollShare.ts';
 import type { SceneSharePorts } from './sceneSharePorts.ts';
 import { ownerIn } from './seatSource.ts';
 
@@ -22,8 +22,8 @@ export interface SceneDiceParts {
   listedToken(player: string, alias: string): string | undefined;
   /** The id players know a token by, while it is in a list they were sent. */
   listedAlias(tokenId: string): string | undefined;
-  /** A token of the scene as the players' frame shows it now; null when they do not see it. */
-  shownToken(mapPath: string, tokenId: string): ReturnType<RollSceneLookup['shownToken']>;
+  /** A token of the scene as the players' frame shows it now, and who sees it; null when nobody does. */
+  namedToken(mapPath: string, tokenId: string): NamedToken | null;
 }
 
 /**
@@ -47,7 +47,8 @@ export class SceneDice {
     this.share = new RollShare({
       send: (body, to) => ports.send(body, to),
       showGmRolls: () => ports.atlasSettings().showDiceRolls,
-      scene: () => ({ shownToken: (origin) => parts.shownToken(origin.mapPath, origin.tokenId) }),
+      named: (origin) => parts.namedToken(origin.mapPath, origin.tokenId),
+      players: () => seats?.onlinePlayers() ?? [],
       alias: (id) => parts.alias(id),
       logged: (roll, source) => ports.logRoll?.({ ...roll, ...rollFaceOf(source, store.getState().objects.tokens) }),
     });
@@ -63,6 +64,7 @@ export class SceneDice {
       rollAs: (who, run, notes) => this.share.rollAs(who, run, notes),
       quietRoll: (formula, set, setAppearance, advantage) => this.quietRoll(formula, set, setAppearance, advantage),
       request: (from, answer) => ports.rollRequest?.(from, answer) ?? null,
+      pinnedRoll: (id) => pinnedDesignedRoll(sceneDiceShelf(ports, store), id),
       logged: (roll) => ports.logRoll?.(roll),
       alias: (id) => parts.alias(id),
       send: (body, to) => ports.send(body, to),
@@ -106,14 +108,18 @@ export class SceneDice {
     return dice === null ? null : quietRoll(formula, set ?? dice.rules(), this.ports.randomId(), Date.now(), undefined, setAppearance, advantage);
   }
 
-  /** Runs a GM's roll on the shared tab's dice, carrying `notes` into the log; false where the tab has no dice or nothing was rolled. */
+  /**
+   * Runs a GM's public roll on the shared tab's dice, carrying `notes` into the log; false where the
+   * tab has no dice or nothing was rolled. The GM chose to show it, so players see it whatever the
+   * player view's "show dice rolls" setting says.
+   */
   rollAsGm(run: (dice: DiceSource) => boolean, notes: RollNotes): boolean {
     const dice = this.ports.dice?.() ?? null;
     if (dice === null) return false;
     let rolled = false;
     this.share.rollAs('gm', () => {
       rolled = run(dice);
-    }, notes);
+    }, notes, true);
     return rolled;
   }
 }

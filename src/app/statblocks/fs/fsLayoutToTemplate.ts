@@ -9,7 +9,8 @@
  * Atlas draws (`fsHeader.ts`).
  */
 
-import { isRecord, jsonRecordCopy, own } from '../format/jsonValues';
+import { jsonRecordCopy, own } from '../format/jsonValues';
+import { isRecord } from '../../utils/guards';
 import { TEMPLATE_FORMAT, TEMPLATE_VERSION, type StatblockTemplate, type TemplateLayout } from '../model/templateTypes';
 import { convertBlocks } from './fsBlocks';
 import { withFsHeader } from './fsHeader';

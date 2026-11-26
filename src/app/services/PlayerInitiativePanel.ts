@@ -1,34 +1,44 @@
 import { mapResources } from '../resources/collectionResources';
-import { rulesLookup } from './mapRules';
-import type { App } from 'obsidian';
+import { onMapRulesChange, rulesLookup } from './mapRules';
+import { setIcon, type App } from 'obsidian';
 import type { StoreApi } from 'zustand';
 import type { ViewAtlasState } from '../storeFactory';
 import type { PlayerBadgeNumbers } from '../pixi/token-renderer/PlayerBadgeNumbers';
-import { entryTokenOf, listedForPlayers, playerInitiativeList, renderPlayerInitiative, sideIdsOf, type EntryToken } from './playerInitiativeList';
+import { lendThemeIvy } from './themeIvy';
+import { initiativeMaxCardsOf, playerInitiativeList, playersEntryToken, renderPlayerInitiative, sideIdsOf, type EntryToken } from './playerInitiativeList';
+import { currentTurn, turnKey } from '../initiative/turnHolders';
 import { mapInitiativeRules } from './mapInitiativeRules';
 import { mapConditions } from '../gameSystems/mapRules';
 import { PlayerSceneOverlay, type PlayerSettings } from './PlayerSceneOverlay';
 import type { SettingsService } from './SettingsService';
+import type { InitiativeLayout } from '../initiative/initiativeLayout';
 import { portraitSrc } from '../utils/portraitSrc';
+import { withArtViewBox } from '../initiative/art/artInset';
+import { playerCardKey } from './playerInitiativeCard';
+import { PlayerInitiativeStage } from './playerInitiativeStage';
 
-/** Separates token ids in `InitiativeScene.visibleTokenIds`. */
-const TOKEN_ID_SEPARATOR = '\n';
+/** What of the GM's layout the list is drawn by: drawn anew when it changes. */
+const layoutKey = ({ fromTurn, edges, facesPlayers }: InitiativeLayout): string => [fromTurn, facesPlayers, ...edges].join();
 
 interface InitiativeScene {
   initiative: ViewAtlasState['initiative'];
   initiativeTrackerOpen: boolean;
-  /** Initiative tokens players may see, joined into a key so edits to other tokens compare equal. */
-  visibleTokenIds: string;
   mapPath: string | null;
-  /** What the list shows of every initiative token (`EntryToken`), in entry order, as a key that changes when one of them does. */
+  /**
+   * What the list shows of every entry (`playersEntryToken`; null for one players do not see), in
+   * entry order, as a key that changes when one of them does and compares equal after edits to other tokens.
+   */
   tokens: string;
   /** The scene's Show nameplates, which says with each token's own whom the list names. */
   mapShowsNameplates: boolean;
+  /** The card (`playerCardKey`) of the combatant whose conditions the GM's tracker names while it is hovered, or null. */
+  conditionsShown: string | null;
 }
 
 /**
- * Read-only initiative projection; never mounts the DM tracker or its controls. It lists the
- * GM's combatants without those whose token is hidden, in turn order or by sides as the fight runs.
+ * Read-only initiative projection; never mounts the DM tracker or its controls. While a fight runs
+ * it lists the GM's combatants without those whose token is hidden, in turn order or by sides.
+ * Players at the table (party entries, without a token) are always listed, on the players' side.
  * Look-alikes carry the GM's number where the players see their token (`PlayerBadgeNumbers`): the
  * list is drawn anew once the players' frame shows another set. It follows the GM's layout: the
  * edge it stands at and whether it starts at the turn.
@@ -40,21 +50,51 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
   private shownNumbers: ReadonlyMap<string, number> = new Map();
   private redrawQueued = false;
   private readonly stopLayout: () => void;
+  private readonly stopTheme: () => void;
+  private readonly stopRules: () => void;
+  /** The theme's ivy was lent to the lists' container; read again with each scene presented and when the theme changes. */
+  private ivyLent = false;
+  /** How the lists come, go and move (`PlayerInitiativeStage`), as on the online player page. */
+  private readonly stage = new PlayerInitiativeStage();
 
-  constructor(private readonly app: App, private readonly settings: SettingsService) {
+  /** `trueScale` says whether players see their TV at true scale (`PlayerWindowService.isTrueScale`): every card then shows its conditions. */
+  constructor(private readonly app: App, private readonly settings: SettingsService, private readonly trueScale: () => boolean = () => false) {
     super({ cls: 'atlas-player-initiative-container' }, settings);
-    // The GM's layout is no player setting: the list is drawn anew when the edge or the start changes
-    let { fromTurn, dock } = settings.initiativeLayout();
+    // The GM's layout is no player setting: the list is drawn anew when the edge or the start changes. Lists standing at
+    // other edges then leave towards theirs as the new ones come in from theirs, overlapping a little
+    let drawn = layoutKey(settings.initiativeLayout());
+    // TrueScale switched or a TV fitted (settings changes too) shows or takes away the cards' conditions
+    let shownTrueScale = this.trueScale();
     this.stopLayout = settings.onChange(() => {
-      const next = settings.initiativeLayout();
-      if (next.fromTurn === fromTurn && next.dock === dock) return;
-      ({ fromTurn, dock } = next);
+      const next = layoutKey(settings.initiativeLayout());
+      const nextTrueScale = this.trueScale();
+      if (next === drawn && nextTrueScale === shownTrueScale) return;
+      if (next !== drawn) this.stage.layoutChanged();
+      drawn = next;
+      shownTrueScale = nextTrueScale;
       this.refresh();
     });
+    // Another theme, or none: the ivy comes or goes with the Atlas VTT theme
+    const themeRef = app.workspace.on('css-change', () => {
+      this.ivyLent = false;
+      this.refresh();
+    });
+    this.stopTheme = () => app.workspace.offref(themeRef);
+    // Who is defeated and whose hit points players see follow the map's resources
+    this.stopRules = onMapRulesChange(app, 'any', () => this.reselect());
+  }
+
+  /** Draws anew, the lists gliding from where they stood (`PlayerInitiativeStage.glide`). */
+  override refresh(): void {
+    const before = this.stage.measure();
+    super.refresh();
+    this.stage.glide(before);
   }
 
   override destroy(): void {
     this.stopLayout();
+    this.stopTheme();
+    this.stopRules();
     super.destroy();
   }
 
@@ -62,6 +102,9 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
     this.letGoOfBadgeNumbers();
     this.badgeNumbers = badgeNumbers;
     this.stopBadgeNumbers = badgeNumbers?.onNumbersChange(() => this.redrawSoon());
+    // Another scene's fight is not a turn beginning, and its lists neither arrive nor leave
+    this.stage.reset();
+    this.ivyLent = false;
     super.present(store);
   }
 
@@ -86,53 +129,72 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
     this.badgeNumbers = undefined;
   }
 
-  protected select({ initiative, initiativeTrackerOpen, objects, mapPath, tokenSettings }: ViewAtlasState): InitiativeScene {
-    const tokens = objects?.tokens;
+  protected select({ initiative, initiativeTrackerOpen, objects, mapPath, tokenSettings, conditionsShownEntry }: ViewAtlasState): InitiativeScene {
     const entries = initiative?.entries ?? [];
     // Who is defeated follows the map's resources, as on the GM's cards
     const lookup = entries.length > 0 ? rulesLookup(this.app) : null;
     const definitions = lookup ? mapResources(lookup, mapPath) : [];
     // The conditions the map draws on the tokens, as players see them there
     const conditions = lookup ? mapConditions(lookup, mapPath) : [];
-    const visibleTokenIds = entries
-      .filter((entry) => listedForPlayers(tokens?.[entry.tokenId]))
-      .map((entry) => entry.tokenId)
-      .join(TOKEN_ID_SEPARATOR);
     // A token's side counts where the fight or the rules know it
     const sides = entries.length > 0 && initiative ? sideIdsOf(initiative, mapInitiativeRules(this.app, mapPath ?? null)) : undefined;
-    const entryTokens = JSON.stringify(entries.map((entry): EntryToken => entryTokenOf(tokens?.[entry.tokenId], definitions, conditions, sides)));
-    return { initiative, initiativeTrackerOpen, visibleTokenIds, mapPath: mapPath ?? null, tokens: entryTokens, mapShowsNameplates: tokenSettings?.showNameplates ?? false };
+    const entryTokens = JSON.stringify(entries.map((entry) => playersEntryToken(entry, objects?.tokens, definitions, conditions, sides)));
+    // The GM hovers a combatant in the tracker: the list shows it and names its conditions (`showConditionsTip`)
+    const shownEntry = entries.find((entry) => entry.id === conditionsShownEntry);
+    const conditionsShown = shownEntry ? playerCardKey(shownEntry) : null;
+    return { initiative, initiativeTrackerOpen, mapPath: mapPath ?? null, tokens: entryTokens, mapShowsNameplates: tokenSettings?.showNameplates ?? false, conditionsShown };
   }
 
   protected render(container: HTMLElement, scene: InitiativeScene, settings: PlayerSettings): void {
     const { initiative, initiativeTrackerOpen } = scene;
-    if (!settings.showInitiative || !initiativeTrackerOpen || !initiative) return;
-    const visibleTokenIds = new Set(scene.visibleTokenIds.split(TOKEN_ID_SEPARATOR));
-    const tokenOf = JSON.parse(scene.tokens) as EntryToken[];
-    // Players see HP where the map's rules show it to them
-    const hpVisible = mapResources(rulesLookup(this.app), scene.mapPath).some((definition) => definition.key === 'hp' && definition.visibleToPlayers);
+    const turn = currentTurn(initiative);
+    const turnFlash = this.stage.turnFlash(turn ? turnKey(turn) : null);
+    // Outside a fight there is no list to show players, however the GM prepares one
+    const drawn = settings.showInitiative && initiativeTrackerOpen && initiative?.isActive === true;
+    this.stage.begin(container, drawn, initiative?.isActive === true, () => this.settings.initiativeTurnOptions().banner);
+    if (!drawn) return;
+    const tokenOf = JSON.parse(scene.tokens) as (EntryToken | null)[];
     const list = playerInitiativeList(
       initiative,
-      (entry, index) => (visibleTokenIds.has(entry.tokenId) ? tokenOf[index] ?? { hp: null, showRing: true, side: 'opponents', defeated: false } : null),
+      (_entry, index) => tokenOf[index] ?? null,
       mapInitiativeRules(this.app, scene.mapPath),
-      hpVisible,
     );
     const live = this.badgeNumbers;
     const held = this.shownNumbers;
     const shown = new Map<string, number>();
-    for (const { entry } of list.combatants) {
-      const number = live ? live.numberOf(entry.tokenId) : held.get(entry.tokenId) ?? null;
-      if (number !== null) shown.set(entry.tokenId, number);
+    for (const { entry: { tokenId } } of list.combatants) {
+      // A player at the table has no token, nor a badge
+      if (tokenId === undefined) continue;
+      const number = live ? live.numberOf(tokenId) : held.get(tokenId) ?? null;
+      if (number !== null) shown.set(tokenId, number);
     }
     this.shownNumbers = shown;
-    const { fromTurn, dock } = this.settings.initiativeLayout();
-    renderPlayerInitiative(container, list, {
-      showNames: settings.showTokenNameplates,
-      mapShowsNameplates: scene.mapShowsNameplates,
-      fromTurn,
-      dock,
-      badgeNumber: (tokenId) => shown.get(tokenId) ?? null,
-      portraitSrc: (imagePath) => portraitSrc(this.app, imagePath),
-    });
+    const { fromTurn, edges, facesPlayers } = this.settings.initiativeLayout();
+    const maxCards = initiativeMaxCardsOf(settings.initiativeMaxCards);
+    if (!this.ivyLent) {
+      lendThemeIvy(container);
+      this.ivyLent = true;
+    }
+    // One copy at every edge players sit at
+    for (const dock of edges) {
+      const panel = renderPlayerInitiative(container, list, {
+        // Names the map shows on nameplates are no secret in the list either
+        showNames: settings.showTokenNameplates,
+        mapShowsNameplates: scene.mapShowsNameplates,
+        fromTurn,
+        dock,
+        faces: facesPlayers,
+        pulse: settings.initiativePulse,
+        turnFlash,
+        maxCards,
+        badgeNumber: (tokenId) => shown.get(tokenId) ?? null,
+        portraitSrc: (imagePath) => portraitSrc(this.app, imagePath),
+        artViewBox: (imagePath, apply) => withArtViewBox(this.app, imagePath, apply),
+        icon: setIcon,
+        trueScale: this.trueScale(),
+        conditionsShown: scene.conditionsShown ?? undefined,
+      });
+      if (panel) this.stage.add(panel);
+    }
   }
 }

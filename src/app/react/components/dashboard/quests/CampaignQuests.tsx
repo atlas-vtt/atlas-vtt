@@ -97,6 +97,7 @@ export function CampaignQuests({ app, campaign, campaigns, service, disabled }: 
           </div>
         )}
       </div>
+      <p className="campaign-quests__hint">{t('quest.placeHint')}</p>
     </section>
   );
 }

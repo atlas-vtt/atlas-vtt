@@ -14,7 +14,6 @@ export const color: Translation = {
   'color.white': 'Белый',
   'color.yellow': 'Жёлтый',
   'color.cyan': 'Голубой',
-  'color.darkGray': 'Тёмно-серый',
   'color.brown': 'Коричневый',
   'color.default': 'По умолчанию',
 };

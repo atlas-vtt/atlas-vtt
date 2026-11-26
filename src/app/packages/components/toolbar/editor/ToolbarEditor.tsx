@@ -5,7 +5,7 @@ import { useContextMenu } from '../../../../react/root/ContextMenuContext'
 import { useAtlasUI } from '../../../../react/root/AtlasUIContext'
 import { findAtlasLeafByViewId } from '../../../../utils/atlasLeafLookup'
 import { observeResize } from '../../../../utils/observeResize'
-import { UNDO_BAR_ID } from '../../../../toolbar/toolbarCatalog'
+import { isSideBarId } from '../../../../toolbar/toolbarCatalog'
 import type { ResponsiveToolbarItem } from '../toolbarTypes'
 import type { ToolbarMotion } from '../useLayoutMotion'
 import { useToolbarEdit, type ToolbarEditApi } from './toolbarEditContext'
@@ -18,7 +18,7 @@ import { faceItemOf } from './ToolbarFace'
 import { ToolbarTray } from './ToolbarTray'
 
 /** Where a press keeps edit mode open: the bars, the tray and its card, "More tools", and the editor's context menu. */
-const EDITOR_SURFACES = '.atlas-main-toolbar, .atlas-undo-bar, .atlas-toolbar-editor, .atlas-toolbar-ghost-layer, .atlas-ctx-menu'
+const EDITOR_SURFACES = '.atlas-main-toolbar, .atlas-side-bar, .atlas-toolbar-editor, .atlas-toolbar-ghost-layer, .atlas-ctx-menu'
 
 interface ToolbarEditorProps {
   /** Every control this view offers, in layout order: the tray shows the hidden ones, a flight any. */
@@ -64,8 +64,8 @@ export function ToolbarEditor({ items, motion: layoutMotion, viewId, focusOnEntr
 
   useLayoutEffect(() => {
     const row = rootRef.current?.parentElement
-    // The main bar's first tool, not the undo/redo bar's handle before it.
-    if (focusOnEntry && row) groupHandles(row, 'bar').find(handle => handle.dataset.control !== UNDO_BAR_ID)?.focus()
+    // The main bar's first tool, not the handle of a bar beside it.
+    if (focusOnEntry && row) groupHandles(row, 'bar').find(handle => !isSideBarId(handle.dataset.control ?? ''))?.focus()
   }, [focusOnEntry])
 
   // After a change is drawn, focus goes where the change asked; Done where that is gone.

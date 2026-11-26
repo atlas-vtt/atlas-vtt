@@ -1,4 +1,5 @@
 import { apiVersion, Platform, type App, type PluginManifest } from 'obsidian';
+import { isRecord } from '../utils/guards';
 
 export interface InstalledPlugin {
   id: string;
@@ -19,15 +20,20 @@ export interface IssueDiagnostics {
 
 const collator = new Intl.Collator('en');
 
+/** Obsidian's mobile apps first: an iPad also says it is a Mac (`Platform.isMacOS`), and Android says nothing else. */
 function operatingSystem(): string {
+  if (Platform.isIosApp) return Platform.isPhone ? 'iOS' : 'iPadOS';
+  if (Platform.isAndroidApp) return 'Android';
   if (Platform.isMacOS) return 'macOS';
   if (Platform.isWin) return 'Windows';
   if (Platform.isLinux) return 'Linux';
   return 'Unknown OS';
 }
 
-function nodeProcess(): NodeJS.Process | undefined {
-  return typeof process === 'undefined' ? undefined : process;
+/** Node's `process`, which only the desktop app has; one that some script put on the window says nothing of Node. */
+function nodeProcess(): { versions: Record<string, unknown>; arch: string } | undefined {
+  const candidate: unknown = typeof window === 'undefined' ? undefined : Reflect.get(window, 'process');
+  return isRecord(candidate) && isRecord(candidate.versions) && typeof candidate.arch === 'string' ? { versions: candidate.versions, arch: candidate.arch } : undefined;
 }
 
 function enabledPlugins(app: App, ownId: string): InstalledPlugin[] {
@@ -44,7 +50,7 @@ export function collectDiagnostics(app: App, manifest: PluginManifest): IssueDia
   return {
     pluginVersion: manifest.version,
     obsidianVersion: apiVersion,
-    electronVersion: proc?.versions.electron ?? null,
+    electronVersion: typeof proc?.versions.electron === 'string' ? proc.versions.electron : null,
     system: proc ? `${operatingSystem()} ${proc.arch}` : operatingSystem(),
     language: typeof navigator === 'undefined' ? 'unknown' : navigator.language,
     theme: app.customCss?.theme || 'Default',

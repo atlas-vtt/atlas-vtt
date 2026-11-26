@@ -1,14 +1,15 @@
-import type { EventEmitter } from 'events';
+import type { EventEmitter } from '../utils/typedEmitter';
 import type { StoreApi } from 'zustand';
 import type { ViewAtlasState } from '../storeFactory';
 import { nearestHexCenter, type HexLayout, type Point } from '../grid/hexGeometry';
 import { hexLayoutOfGrid } from '../grid/hexLinks';
 import { squareCellCentre, squareGridOf } from '../grid/squareLattice';
+import { switchApplies } from '../types/toolSwitches';
 
 /**
- * The note pin tool's preview under the pointer: a pin, or, while Shift is held,
- * the pin in the centre of the highlighted cell: the hex it would link on a hex
- * grid, the square it would sit in on a square grid.
+ * The note pin tool's preview under the pointer: a pin, or, while the tool's cell
+ * switch is on (Shift turns it around), the pin in the centre of the highlighted
+ * cell: the hex it would link on a hex grid, the square it would sit in on a square grid.
  */
 export class NotePinPreview {
   private active = false;
@@ -56,7 +57,12 @@ export class NotePinPreview {
     this.update();
   }
 
-  /** The grid's hex layout when a Shift-click links a hex; null on other grids. */
+  /** Whether a click goes to its cell: the tool's switch says so, turned around while Shift is `held`. */
+  toCell(held: boolean): boolean {
+    return switchApplies(this.store.getState(), 'pinCell', held);
+  }
+
+  /** The grid's hex layout when a click links a hex; null on other grids. */
   hexLayout(): HexLayout | null {
     return hexLayoutOfGrid(this.store.getState().grid);
   }
@@ -88,7 +94,7 @@ export class NotePinPreview {
 
   private update(): void {
     if (!this.active || this.held) return;
-    const centre = this.shiftDown && this.pointer ? this.cellCentre(this.pointer) : null;
+    const centre = this.toCell(this.shiftDown) && this.pointer ? this.cellCentre(this.pointer) : null;
     if (centre) {
       this.showCell(centre);
       return;

@@ -1,3 +1,5 @@
+import { DESKTOP_BUDGETS } from '../../platform/deviceBudgets';
+
 /**
  * Bytes of decoded pyramid levels that builds may hold together (decision 10
  * of the tiled map images plan). A build that does not fit waits until
@@ -9,8 +11,8 @@
  * cannot deadlock.
  */
 
-/** Decoded levels all builds of a worker may hold together. */
-export const DECODED_LEVELS_BUDGET = 1024 ** 3;
+/** Decoded levels all builds of a worker may hold together where it is told no budget of its device (`TesseraBudgets`). */
+export const DECODED_LEVELS_BUDGET = DESKTOP_BUDGETS.decodedLevelsBudget;
 
 export interface BudgetRequest {
   bytes: number;

@@ -65,7 +65,7 @@ function GhostView({ values, item, elements }: { values: GhostValues; item: Ghos
     return trayLook.on('change', align)
   }, [trayLook, elements, barFaceX, trayFaceX])
 
-  const barUnit = item.kind === 'undo-bar'
+  const barUnit = item.kind === 'side-bar'
   const style: MotionStyle = { x, y, width, height, scale, opacity, ...(barUnit && { '--atlas-ghost-bar-look': barLook }) }
   return (
     <motion.div ref={elements.ghost} className="atlas-toolbar-ghost" aria-hidden="true" inert {...(barUnit && { 'data-bar-unit': '' })} style={style}>

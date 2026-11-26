@@ -19,6 +19,10 @@ export interface SoundRecord {
   /** The GM's own correction on top of the measured loudness. */
   trimDb?: number;
   tags?: string[];
+  /** How long this track crossfades into the next, and at its loop seam. Unset is the setting's. */
+  crossfadeSeconds?: number;
+  /** Where it plays on its own, it begins at its loop in, not its start. */
+  startAtLoopIn?: true;
 }
 
 export const MAX_MOOD_LAYERS = 8;
@@ -69,7 +73,7 @@ export interface SceneSound {
 /** What the engine reads a sound through: the Opus cache on the GM's side, the store on a page. */
 export interface SoundBytes {
   readonly byteLength: number;
-  read(start: number, end: number): Promise<Uint8Array>;
+  read(start: number, end: number): Promise<Uint8Array<ArrayBuffer>>;
 }
 
 /** What the engine knows of a converted sound. */
@@ -80,6 +84,10 @@ export interface SoundInfo {
   /** Linear-free, in dB: `min(target - lufs, ceiling - truePeak) + trim`. */
   gainDb: number;
   loop?: { startFrame: number; endFrame: number };
+  /** As on `SoundRecord`, in ms. Read on the GM's side alone; never on the wire. */
+  crossfadeMs?: number;
+  /** As on `SoundRecord`: a play of it that goes round on its own begins at its loop in. Never on the wire. */
+  startAtLoopIn?: true;
   /**
    * Its copy is still being made: `frames` and `gainDb` are what can be told so far, and the sound plays from the
    * pages written yet, waiting where it runs ahead of them. Never on the wire.
@@ -106,6 +114,8 @@ export interface MusicPlay {
    * its middle starts there without changing its order or where its pass ends. Unset is 0.
    */
   listFrame?: number;
+  /** As on `LayerPlay`, for a track that goes round on its own. */
+  fromFrame?: number;
 }
 
 export interface LayerPlay {
@@ -116,6 +126,11 @@ export interface LayerPlay {
   /** As on `MusicPlay`. */
   reverb?: number;
   fade: SoundFade;
+  /**
+   * The sound's frame it begins at: a loop seam hands a sound that goes round over to a play of it that begins at its
+   * loop in, while the play before fades out at its loop out (`loopSeam.ts`). Unset is 0, the sound's start.
+   */
+  fromFrame?: number;
 }
 
 /** The room the table's reverb sounds like, and the crossfade that brought it. */

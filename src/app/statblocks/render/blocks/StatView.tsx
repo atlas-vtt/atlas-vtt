@@ -42,7 +42,8 @@ export function StatView({ block, display }: BlockViewProps<StatBlock>): React.J
   const value = <DisplayText display={display} />;
   const shown = display.state === 'value' ? display.text?.text ?? '' : '';
   const linked = dice ? <span {...diceLinkProps(dice)}>{value}</span> : <BonusLink text={shown} rollable={block.rollable}>{value}</BonusLink>;
-  const text = tracked ? <TrackedText field={block.field} value={tracked} /> : linked;
+  // The block's own pattern writes a tracked number ("Knight" for its Glory); without one it shows "2 / 3"
+  const text = tracked ? <TrackedText field={block.field} value={tracked}>{block.pattern ? linked : undefined}</TrackedText> : linked;
   // A tracked number whose maximum another field holds is filled in there
   const maxElsewhere = tracked !== null && state.tracked.get(block.field)?.maxField !== block.field;
   const slot = maxElsewhere ? text : <ValueSlot block={block}>{text}</ValueSlot>;

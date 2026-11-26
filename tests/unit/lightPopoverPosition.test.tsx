@@ -76,7 +76,7 @@ function setup(): Setup {
   const popover = (): HTMLElement => screen.getByRole('dialog', { name: 'Light' });
   return {
     store, torch, lantern, camera, ticks, pixiApp, popover, unmount,
-    frame: () => act(() => ticks.forEach((tick) => tick())),
+    frame: () => act(() => { ticks.forEach((tick) => tick()); }),
     position: () => {
       const [x, y] = popover().style.translate.split(' ').map((value) => Number.parseFloat(value));
       return { x: x!, y: y! };
@@ -87,7 +87,7 @@ function setup(): Setup {
 describe('the light popover on the map', () => {
   it('sits beyond the light\'s bright ring when it opens, growing out of the light', () => {
     const { store, torch, popover, position } = setup();
-    act(() => store.getState().openLightPopover(torch));
+    act(() => { store.getState().openLightPopover(torch); });
     // 300 + the 70 px ring + a 12 px gap
     expect(position()).toEqual({ x: 382, y: 230 });
     expect(popover().style.transformOrigin).toBe('-82px 170px');
@@ -96,7 +96,7 @@ describe('the light popover on the map', () => {
   it('follows the map on its frame clock while it is open, and leaves the clock once it has closed', async () => {
     const { store, torch, camera, ticks, pixiApp, frame, position } = setup();
     expect(ticks.size).toBe(0);
-    act(() => store.getState().openLightPopover(torch));
+    act(() => { store.getState().openLightPopover(torch); });
     expect(ticks.size).toBe(1);
 
     camera.x = -120;
@@ -110,24 +110,24 @@ describe('the light popover on the map', () => {
     expect(position().x).toBe(480 + 140 + 12);
     expect(position().y).toBe(800 - 8 - 340);
 
-    act(() => store.getState().closeLightPopover());
+    act(() => { store.getState().closeLightPopover(); });
     await waitFor(() => expect(ticks.size).toBe(0));
     expect(pixiApp.ticker?.remove).toHaveBeenCalledTimes(1);
   });
 
   it('follows its light when the light is dragged', () => {
     const { store, torch, frame, position } = setup();
-    act(() => store.getState().openLightPopover(torch));
-    act(() => store.getState().updateLight(torch, { x: 340, y: 430 }));
+    act(() => { store.getState().openLightPopover(torch); });
+    act(() => { store.getState().updateLight(torch, { x: 340, y: 430 }); });
     frame();
     expect(position()).toEqual({ x: 422, y: 260 });
   });
 
   it('stays where it is while its light\'s range is tuned', () => {
     const { store, torch, frame, position } = setup();
-    act(() => store.getState().openLightPopover(torch));
+    act(() => { store.getState().openLightPopover(torch); });
     const before = position();
-    act(() => store.getState().updateLight(torch, { emission: { ...genericLight('candle'), bright: 30, dim: 40 } }));
+    act(() => { store.getState().updateLight(torch, { emission: { ...genericLight('candle'), bright: 30, dim: 40 } }); });
     frame();
     expect(position()).toEqual(before);
   });
@@ -136,14 +136,14 @@ describe('the light popover on the map', () => {
     const { store, frame, position } = setup();
     // A candle shining to the right: its handle is 22 px beyond the 140 px dim arc, where the popover would sit.
     const beam = store.getState().addLight({ x: 600, y: 400, rotation: 90, emission: { ...genericLight('candle'), angle: 90 } });
-    act(() => store.getState().openLightPopover(beam));
+    act(() => { store.getState().openLightPopover(beam); });
     expect(position()).toEqual({ x: 600 - 70 - 12 - 272, y: 230 });
-    act(() => store.getState().updateLight(beam, { rotation: 265 }));
+    act(() => { store.getState().updateLight(beam, { rotation: 265 }); });
     frame();
     expect(position()).toEqual({ x: 246, y: 230 });
     // The slider is let go (here: a key on its thumb): the beam now points at the popover, which makes way.
     const direction = screen.getByRole('slider', { name: 'Direction' });
-    act(() => direction.focus());
+    act(() => { direction.focus(); });
     fireEvent.keyDown(direction, { key: 'ArrowRight' });
     expect(store.getState().objects.lights[beam]!.rotation).toBe(270);
     expect(position()).toEqual({ x: 600 + 70 + 12, y: 230 });
@@ -153,9 +153,9 @@ describe('the light popover on the map', () => {
     const animate = vi.fn();
     stub(HTMLElement.prototype, 'animate', { value: animate });
     const { store, torch, lantern, ticks, popover, position } = setup();
-    act(() => store.getState().openLightPopover(torch));
+    act(() => { store.getState().openLightPopover(torch); });
     const element = popover();
-    act(() => store.getState().openLightPopover(lantern));
+    act(() => { store.getState().openLightPopover(lantern); });
     expect(popover()).toBe(element);
     // The lantern is right of the middle: the popover goes to its roomier, left side.
     expect(position()).toEqual({ x: 900 - 82 - 272, y: 230 });
@@ -165,7 +165,7 @@ describe('the light popover on the map', () => {
 
   it('does not reach for a frame clock the map view has already destroyed', () => {
     const { store, torch, pixiApp, unmount } = setup();
-    act(() => store.getState().openLightPopover(torch));
+    act(() => { store.getState().openLightPopover(torch); });
     const destroyed = pixiApp.ticker!;
     // `Application.destroy` takes the ticker off the app; removing a listener from it then throws.
     destroyed.remove.mockImplementation(() => { throw new TypeError("Cannot read properties of null (reading 'next')"); });

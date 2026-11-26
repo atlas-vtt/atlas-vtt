@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ImageOverlayControls } from '../../src/app/services/imageOverlayControls';
+import { installPointerEvents, pointerEvent, type PointerInit } from '../helpers/pointerEvents';
 
 function setup(): { container: HTMLDivElement; image: HTMLImageElement; close: HTMLButtonElement; dismiss: ReturnType<typeof vi.fn>; controls: ImageOverlayControls } {
   const container = document.body.createDiv({ cls: 'atlas-image-display' });
@@ -13,13 +14,18 @@ function setup(): { container: HTMLDivElement; image: HTMLImageElement; close: H
   return { container, image, close, dismiss, controls };
 }
 
-function click(target: Element, from: { x: number; y: number }, to = from): void {
-  target.dispatchEvent(new MouseEvent('mousedown', { button: 0, clientX: from.x, clientY: from.y, bubbles: true }));
-  document.dispatchEvent(new MouseEvent('mousemove', { clientX: to.x, clientY: to.y, bubbles: true }));
-  document.dispatchEvent(new MouseEvent('mouseup', { button: 0, clientX: to.x, clientY: to.y, bubbles: true }));
+function click(target: Element, from: { x: number; y: number }, to = from, pointer: PointerInit = {}): void {
+  target.dispatchEvent(pointerEvent('pointerdown', { button: 0, clientX: from.x, clientY: from.y, ...pointer }));
+  document.dispatchEvent(pointerEvent('pointermove', { clientX: to.x, clientY: to.y, ...pointer }));
+  document.dispatchEvent(pointerEvent('pointerup', { button: 0, clientX: to.x, clientY: to.y, ...pointer }));
 }
 
-afterEach(() => { document.body.empty(); });
+beforeEach(() => { installPointerEvents(); });
+afterEach(() => {
+  document.body.empty();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 describe('ImageOverlayControls', () => {
   it('dismisses on a click beside the image', () => {
@@ -58,6 +64,32 @@ describe('ImageOverlayControls', () => {
     new ImageOverlayControls(container, image, window, vi.fn(), () => 90);
     click(container, { x: 20, y: 20 }, { x: 80, y: 20 });
     expect(image.style.transform).toBe('translate(0px, -60px) scale(1)');
+  });
+
+  it('pans under a finger as under the mouse, and a second finger changes nothing', () => {
+    const { container, image, dismiss } = setup();
+    const finger: PointerInit = { pointerType: 'touch', pointerId: 7 };
+    container.dispatchEvent(pointerEvent('pointerdown', { button: 0, clientX: 200, clientY: 200, ...finger }));
+    document.dispatchEvent(pointerEvent('pointermove', { clientX: 230, clientY: 210, ...finger }));
+    document.dispatchEvent(pointerEvent('pointermove', { clientX: 900, clientY: 900, pointerType: 'touch', pointerId: 8 }));
+    document.dispatchEvent(pointerEvent('pointerup', { clientX: 900, clientY: 900, pointerType: 'touch', pointerId: 8 }));
+    expect(image.style.transform).toBe('translate(30px, 10px) scale(1)');
+    expect(container.classList.contains('is-dragging')).toBe(true);
+    document.dispatchEvent(pointerEvent('pointerup', { clientX: 230, clientY: 210, ...finger }));
+    expect(container.classList.contains('is-dragging')).toBe(false);
+    expect(dismiss).not.toHaveBeenCalled();
+  });
+
+  it('keeps the image where a lost pointer left it, without dismissing it', () => {
+    const { container, image, dismiss } = setup();
+    const finger: PointerInit = { pointerType: 'touch', pointerId: 7 };
+    container.dispatchEvent(pointerEvent('pointerdown', { button: 0, clientX: 20, clientY: 20, ...finger }));
+    document.dispatchEvent(pointerEvent('pointermove', { clientX: 22, clientY: 21, ...finger }));
+    document.dispatchEvent(pointerEvent('pointercancel', { clientX: 22, clientY: 21, ...finger }));
+    expect(container.classList.contains('is-dragging')).toBe(false);
+    document.dispatchEvent(pointerEvent('pointermove', { clientX: 300, clientY: 300, ...finger }));
+    expect(image.style.transform).toBe('translate(2px, 1px) scale(1)');
+    expect(dismiss).not.toHaveBeenCalled();
   });
 
   it('stops listening once detached', () => {

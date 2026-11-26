@@ -18,8 +18,8 @@ export const issue: Translation = {
   'issue.type.feature': '功能请求',
   'issue.type.question': '问题或其他',
   'issue.area.maps': '地图、场景和网格',
-  'issue.area.tokens': '棋子',
-  'issue.area.notes': '笔记、图钉和属性块',
+  'issue.area.tokens': '指示物',
+  'issue.area.notes': '笔记、图钉和数据卡',
   'issue.area.vision': '战争迷雾和光照',
   'issue.area.combat': '先攻和战斗',
   'issue.area.dice': '骰子',
@@ -49,4 +49,5 @@ export const issue: Translation = {
   'issue.view': '查看 issue',
   'issue.sendFailed': '无法发送报告。',
   'issue.stillHere': '{message} 报告还在。可以再试一次，或复制下来保存。',
+  'issue.area.online': '在线游戏',
 };

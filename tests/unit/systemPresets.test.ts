@@ -288,6 +288,18 @@ describe('parseUserPresets', () => {
     }]);
   });
 
+  it('keeps the Manhattan diagonal rule and a custom unit\'s name, and drops a name no custom unit shows', () => {
+    const grid = { unitType: 'custom', unitName: ' mi ', unitDistance: 1, measurementMode: 'metric', diagonalRule: 'manhattan', abstractRangeBands: [] };
+    const parsed = parseUserPresets([
+      { ...valid, rules: { ...valid.rules, gridDefaults: grid } },
+      { ...valid, id: 'p2', rules: { ...valid.rules, gridDefaults: { ...grid, unitType: 'feet', diagonalRule: 'taxicab' } } },
+    ]);
+    expect(parsed.map((preset) => preset.rules.gridDefaults)).toEqual([
+      { unitType: 'custom', unitName: 'mi', unitDistance: 1, measurementMode: 'metric', diagonalRule: 'manhattan', abstractRangeBands: [] },
+      { unitType: 'feet', unitDistance: 1, measurementMode: 'metric', diagonalRule: 'equidistant', abstractRangeBands: [] },
+    ]);
+  });
+
   it('reads anything that is not a list as no presets', () => {
     expect(parseUserPresets(undefined)).toEqual([]);
     expect(parseUserPresets({})).toEqual([]);

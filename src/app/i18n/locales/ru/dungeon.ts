@@ -20,6 +20,8 @@ export const dungeon: Translation = {
 
   'dungeon.preview.label': 'Предпросмотр подземелья',
   'dungeon.preview.failed': 'Не удалось нарисовать предпросмотр.',
+  'dungeon.preview.cardsFailed': 'Не удалось нарисовать некоторые изображения.',
+  'dungeon.preview.retry': 'Попробовать снова',
   'dungeon.preview.floor': 'Показан этаж',
 
   'dungeon.name': 'Название',
@@ -230,4 +232,6 @@ export const dungeon: Translation = {
   'dungeon.terrain.mosaic': 'Мозаика',
   'dungeon.terrain.pool': 'Бассейн',
   'dungeon.terrain.portalRing': 'Круг стоячих камней',
+  'dungeon.theme.forest': 'Лес',
+  'dungeon.style.crayon': 'Мелок',
 };

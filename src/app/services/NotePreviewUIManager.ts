@@ -1,11 +1,11 @@
 import { App, WorkspaceLeaf, TFile, EventRef } from 'obsidian';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../utils/typedEmitter';
 import type { FederatedPointerEvent } from 'pixi.js';
 import type { NotePin } from '../types';
 import { toTokenVitals, type TokenVitals } from './statblockVitalsSync';
 import { NotePreviewWindow } from './NotePreviewWindow';
 import { StatblockPreviewWindow } from './StatblockPreviewWindow';
-import { isStatblockNote, statblockNoteKnown, unparsedFrontmatterStatblock } from '../statblocks/resolve/statblockNote';
+import { isStatblockNote, statblockNoteKnown } from '../statblocks/resolve/statblockNote';
 import { MapLinkPreview } from './MapLinkPreview';
 import { EncounterFolderPreview } from './EncounterFolderPreview';
 import { isEncounterFolderLink } from '../links/atlasLinkTargets';
@@ -19,6 +19,10 @@ import { t } from '../i18n';
 import { findAtlasLeafByViewId } from '../utils/atlasLeafLookup';
 import { readPinnedNotePreviews } from '../stores/pinnedNotePreviewSlice';
 import { isModHeld } from '../keyboard/modKey';
+import { OPEN_PREVIEW_EVENT, watchPressOutside } from './previewByHand';
+import { NOTE_PREVIEW_LAYER_CLASS } from './uiLayers';
+import { followEveryDocument } from '../platform/atlasDocuments';
+import { portalHost } from '../host/portalHost';
 import type { ViewAtlasStore } from '../storeFactory';
 import type { TokenRollContext } from '../types/diceRollOrigin';
 import { captureRollContext } from '../tools/diceRollOrigins';
@@ -94,8 +98,12 @@ export class NotePreviewUIManager {
   private boundHandleFocus!: () => void;
   /** The map view's container, once `setViewElement` was called. */
   private viewEl: HTMLElement | null = null;
+  private stopFollowingKeys: (() => void) | null = null;
   private activeLeafChangeRef: EventRef | null = null;
   private layoutChangeRef: EventRef | null = null;
+  /** The pin or token whose preview a menu's row opened, while it waits for a press outside it. */
+  private openedByHand: string | null = null;
+  private stopWatchingOutside: (() => void) | null = null;
   private zIndexCounter = 5; // stay below asset manager (50) and Obsidian overlays (~1000)
 
   constructor(app: App, eventBus: EventEmitter, store: ViewAtlasStore, viewId: string) {
@@ -139,6 +147,11 @@ export class NotePreviewUIManager {
       }
     });
 
+    // A menu's Preview row: the preview a held Mod would open, kept until a press outside it.
+    this.eventBus.on(OPEN_PREVIEW_EVENT, (data: { pin: PreviewAnchor; screenX: number; screenY: number; sourceLeaf?: WorkspaceLeaf | null }) => {
+      this.openByHand(data);
+    });
+
     this.eventBus.on('pin-hide-preview', (data: { pin: PreviewAnchor }) => {
       if (this.lastHoveredPinId === data.pin.id) {
           this.lastHoveredPinId = null; // Clear last hovered if mouse moves off it
@@ -148,7 +161,7 @@ export class NotePreviewUIManager {
       }
       // Only hide if not pinned and modifier is not down.
       // If modifier is still down, a new 'pin-hover-preview' will trigger for the new element.
-      if (!this.isModifierKeyDown) {
+      if (!this.isModifierKeyDown && this.openedByHand !== data.pin.id) {
         this.hidePreview(data.pin.id, false); // false = don't force if pinned
       }
     });
@@ -159,19 +172,21 @@ export class NotePreviewUIManager {
     this.boundHandleFocus = () => {
       this.isModifierKeyDown = false;
     };
-    
-    document.addEventListener('keydown', this.boundHandleKeyDown);
-    document.addEventListener('keyup', this.boundHandleKeyUp);
+    // Mod is followed in every window: a note in a popout opens previews too, and so does a map in one.
+    this.stopFollowingKeys = followEveryDocument(this.app.workspace, (doc) => {
+      doc.addEventListener('keydown', this.boundHandleKeyDown);
+      doc.addEventListener('keyup', this.boundHandleKeyUp);
+      return () => {
+        doc.removeEventListener('keydown', this.boundHandleKeyDown);
+        doc.removeEventListener('keyup', this.boundHandleKeyUp);
+      };
+    });
     window.addEventListener('blur', this.boundHideAllUnpinnedPreviewsOnBlur);
     // Reset modifier key state when window gains focus to avoid stuck state
     window.addEventListener('focus', this.boundHandleFocus);
 
-    // The pin's note opens in the workspace, which replaces its preview
-    this.eventBus.on('close-active-preview', (notePath: string) => {
-      const preview = this.findPreview(notePath);
-      if (preview?.originatingPin) this.store.getState().removePinnedNotePreview(preview.originatingPin.id);
-      preview?.hide(true);
-    });
+    // The pin's note opens in the workspace, which replaces its hover preview; a pinned one stays as it was left
+    this.eventBus.on('close-active-preview', (notePath: string) => this.hidePreview(notePath));
 
     // The map's state is about to be saved and replaced: record how each pinned note was left first
     this.eventBus.on('map-unloading', () => {
@@ -281,6 +296,28 @@ export class NotePreviewUIManager {
     if (preview.originatingPin) this.store.getState().removePinnedNotePreview(preview.originatingPin.id);
   }
 
+  /**
+   * Opens a preview no key is held for (a menu's Preview row). It stays while the pointer leaves
+   * its pin or token, until a press lands outside every preview window, or Escape; pinned, it
+   * stays as any pinned preview does.
+   */
+  private openByHand(data: { pin: PreviewAnchor; screenX: number; screenY: number; sourceLeaf?: WorkspaceLeaf | null }): void {
+    this.stopWatchingOutside?.();
+    this.openedByHand = data.pin.id;
+    this.showPreviewFor({
+      pin: data.pin, screenX: data.screenX, screenY: data.screenY, sourceLeaf: data.sourceLeaf ?? null,
+      originContext: 'type' in data.pin && data.pin.type === 'token'
+        ? captureRollContext(this.viewId, this.store.getState(), [data.pin.id])
+        : undefined,
+    });
+    const inside = (target: Node): boolean => [...this.activePreviews.values()].some((preview) => preview.element?.contains(target) === true);
+    this.stopWatchingOutside = watchPressOutside(this.previewDocument(data.sourceLeaf), inside, () => {
+      this.stopWatchingOutside = null;
+      this.openedByHand = null;
+      this.hideAllUnpinnedPreviews();
+    });
+  }
+
   private showPreviewFor(hover: NonNullable<typeof this.currentHover>): void {
     runInBackground(
       this.showOrCreatePreview(hover.pin, hover.screenX, hover.screenY, hover.sourceLeaf, hover.originContext),
@@ -367,10 +404,9 @@ export class NotePreviewUIManager {
     const file = this.app.vault.getAbstractFileByPath(linkedFilePath(pin.notePath));
     if (file instanceof TFile && 'type' in pin && pin.type === 'token') {
       // Only a note whose statblock is in a fence is read; a hide or another hover meanwhile wins.
-      // A frontmatter statblock Fantasy Statblocks has not parsed shows as the note, where the plugin draws any fence it holds.
+      // The same predicate as the asset manager's and the DM screen's, so all three draw a note alike.
       const hides = this.hideCount;
-      const isStatblock = !unparsedFrontmatterStatblock(this.app, file)
-        && (statblockNoteKnown(this.app, file) || await isStatblockNote(this.app, file));
+      const isStatblock = statblockNoteKnown(this.app, file) || await isStatblockNote(this.app, file);
       if (hides !== this.hideCount) return;
 
       if (isStatblock) {
@@ -383,7 +419,7 @@ export class NotePreviewUIManager {
           undefined,
           this.viewId,
           originContext,
-          this.previewDocument(sourceLeaf),
+          this.statblockHost(sourceLeaf),
         );
         
         if (statblockPreview.element) {
@@ -399,7 +435,7 @@ export class NotePreviewUIManager {
           const previewKey = `${pin.notePath}::${pin.id}`;
           this.activePreviews.set(previewKey, statblockPreview);
           this.raiseZIndex(statblockPreview);
-          statblockPreview.element.addEventListener('mousedown', () => this.raiseZIndex(statblockPreview));
+          statblockPreview.element.addEventListener('pointerdown', () => this.raiseZIndex(statblockPreview));
         } else {
           console.warn('[NotePreviewUIManager] Statblock preview element is null');
         }
@@ -446,7 +482,7 @@ export class NotePreviewUIManager {
     // Keyed by note path and pin ID so several pins of one note can each have a preview
     this.activePreviews.set(`${anchor.notePath}::${anchor.id}`, preview);
     this.raiseZIndex(preview);
-    preview.element.addEventListener('mousedown', () => this.raiseZIndex(preview));
+    preview.element.addEventListener('pointerdown', () => this.raiseZIndex(preview));
   }
 
   /**
@@ -525,12 +561,23 @@ export class NotePreviewUIManager {
 
   /** The document a preview opens in: that of the leaf it was hovered in (a note in a popout has its own), else the map view's. */
   private previewDocument(sourceLeaf: WorkspaceLeaf | null | undefined): Document {
-    return (sourceLeaf?.view.containerEl ?? this.viewEl)?.doc ?? document;
+    return (sourceLeaf?.view.containerEl ?? this.viewEl)?.doc ?? activeDocument;
+  }
+
+  /**
+   * Where a statblock preview joins the page: the note preview layer of the map it was hovered on, below the map's
+   * overlays (the DM screen and its sound page) and the dialogs over the map, else the portal host of the leaf's document.
+   */
+  private statblockHost(sourceLeaf: WorkspaceLeaf | null | undefined): HTMLElement {
+    const root = sourceLeaf?.view.containerEl ?? this.viewEl;
+    return root?.querySelector<HTMLElement>(`.${NOTE_PREVIEW_LAYER_CLASS}`) ?? portalHost(this.previewDocument(sourceLeaf));
   }
 
   public destroy(): void {
-    document.removeEventListener('keydown', this.boundHandleKeyDown);
-    document.removeEventListener('keyup', this.boundHandleKeyUp);
+    this.stopWatchingOutside?.();
+    this.stopWatchingOutside = null;
+    this.stopFollowingKeys?.();
+    this.stopFollowingKeys = null;
     window.removeEventListener('blur', this.boundHideAllUnpinnedPreviewsOnBlur);
     window.removeEventListener('focus', this.boundHandleFocus);
     if (this.activeLeafChangeRef) {

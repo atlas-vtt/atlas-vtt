@@ -8,6 +8,8 @@ import type { GlobalAssetManagerService } from '../services/GlobalAssetManagerSe
 import type { ImageDisplayService } from '../services/ImageDisplayService';
 import { openPlayerWindow, presentActiveTab } from '../services/PlayerWindowPresenter';
 import { PlayerWindowService } from '../services/PlayerWindowService';
+import { setTableCurtain } from '../services/tableControls';
+import { tableControlsStore } from '../stores/tableControlsStore';
 import { fullScreenAvailable, isPlayerWindowFullScreen, refreshPlayerWindowDisplay, setPlayerWindowFullScreen } from '../services/playerWindowDisplay';
 import { playerWindowStore } from '../stores/playerWindowStore';
 import { hasBestiaryFrontmatter } from '../services/statblockNoteSource';
@@ -18,6 +20,8 @@ import { openTemplateGallery } from '../statblocks/editor/gallery/openTemplateGa
 import { experimentalFeatureOn } from '../experimental/experimentalFeatures';
 import { runInBackground } from '../utils/backgroundTask';
 import { showNotice } from '../ui/notice';
+import { isDesktopApp } from '../platform/desktopOnly';
+import { toggleTableMode } from '../tableMode/viewTableMode';
 
 export interface CommandDependencies {
   imageDisplay: ImageDisplayService;
@@ -30,11 +34,18 @@ function isImageFile(file: TFile): boolean {
   return IMAGE_EXTENSIONS.includes(file.extension.toLowerCase());
 }
 
-async function openDashboard(plugin: Plugin): Promise<void> {
+/**
+ * Opens Atlas' start page in a new tab of the main window and brings it to the front. A new tab opens beside the active
+ * one, which may be in another window or a sidebar: the main window's last tab is made active first.
+ */
+export async function openDashboard(plugin: Plugin): Promise<void> {
   try {
-    const leaf = plugin.app.workspace.getLeaf(true);
+    const { workspace } = plugin.app;
+    const mainTab = workspace.getMostRecentLeaf(workspace.rootSplit);
+    if (mainTab) workspace.setActiveLeaf(mainTab, { focus: false });
+    const leaf = workspace.getLeaf(true);
     await leaf.setViewState({ type: DASHBOARD_VIEW_TYPE, state: {} });
-    plugin.app.workspace.setActiveLeaf(leaf);
+    workspace.setActiveLeaf(leaf);
   } catch (error) {
     console.error('[Atlas] Error opening dashboard:', error);
     showNotice(t('notice.dashboardOpenFailed'));
@@ -63,12 +74,6 @@ function registerPlayerViewCommands(plugin: Plugin, imageDisplay: ImageDisplaySe
       if (!checking) imageDisplay.closeImageDisplay();
       return true;
     },
-  });
-
-  plugin.addCommand({
-    id: 'send-map-to-player-view',
-    name: t('command.sendMapToPlayerView'),
-    callback: () => void presentActiveTab(plugin.app),
   });
 
   plugin.addCommand({
@@ -101,9 +106,9 @@ function registerPlayerViewCommands(plugin: Plugin, imageDisplay: ImageDisplaySe
     id: 'toggle-player-window-curtain',
     name: t('playerBar.toggleCurtain'),
     checkCallback: (checking) => {
-      const service = PlayerWindowService.getInstance();
-      if (!service?.isWindowOpen()) return false;
-      if (!checking) service.setCurtain(!service.isCurtained());
+      const { curtain, online } = tableControlsStore.getState();
+      if (!online && !PlayerWindowService.getInstance()?.isWindowOpen()) return false;
+      if (!checking) setTableCurtain(!curtain);
       return true;
     },
   });
@@ -125,6 +130,26 @@ function registerMapCommands(plugin: Plugin, deps: CommandDependencies): void {
     id: 'open-dashboard',
     name: t('command.openDashboard'),
     callback: () => void openDashboard(plugin),
+  });
+  // Atlas' one door in the ribbon: the start page leads to everything else.
+  plugin.addRibbonIcon('map', t('command.openAtlas'), () => void openDashboard(plugin));
+
+  // Presents the active map: in the player window on desktop, in Table mode or at the online table on mobile
+  plugin.addCommand({
+    id: 'send-map-to-player-view',
+    name: t('command.sendMapToPlayerView'),
+    callback: () => void presentActiveTab(plugin.app),
+  });
+
+  plugin.addCommand({
+    id: 'toggle-table-mode',
+    name: t('table.mode'),
+    checkCallback: (checking) => {
+      const view = app.workspace.getActiveViewOfType(AtlasView);
+      if (!view || isDesktopApp()) return false;
+      if (!checking) toggleTableMode(view);
+      return true;
+    },
   });
 
   plugin.addCommand({
@@ -182,6 +207,30 @@ function registerMapCommands(plugin: Plugin, deps: CommandDependencies): void {
   });
 
   plugin.addCommand({
+    id: 'reset-explored-areas',
+    name: t('sceneLight.forgetExplored'),
+    checkCallback: (checking) => {
+      const view = app.workspace.getActiveViewOfType(AtlasView);
+      if (!view || !view.getStore().getState().lighting.enabled) return false;
+      if (!checking) {
+        view.serviceManager.getEventBus().emit('lighting-reset-explored');
+      }
+      return true;
+    },
+  });
+
+  plugin.addCommand({
+    id: 'open-docs',
+    name: t('docs.command'),
+    checkCallback: (checking) => {
+      const view = app.workspace.getActiveViewOfType(AtlasView);
+      if (!view) return false;
+      if (!checking) view.getStore().getState().setDocsOpen(true);
+      return true;
+    },
+  });
+
+  plugin.addCommand({
     id: 'clean-up-missing-assets',
     name: t('command.cleanUpMissingAssets'),
     checkCallback: (checking) => {
@@ -219,7 +268,7 @@ function registerStatblockCommands(plugin: Plugin): void {
 
   plugin.addCommand({
     id: 'new-statblock-template',
-    name: 'New statblock template…',
+    name: t('command.newStatblockTemplate'),
     checkCallback: (checking) => {
       if (!experimentalFeatureOn(app, 'statblockEditor')) return false;
       if (!checking) runInBackground(openTemplateGallery(app), 'Opening the template gallery');
@@ -229,7 +278,8 @@ function registerStatblockCommands(plugin: Plugin): void {
 }
 
 export function registerCommands(plugin: Plugin, deps: CommandDependencies): void {
-  registerPlayerViewCommands(plugin, deps.imageDisplay);
+  // The player window, and showing an image in it, need a second window: desktop only
+  if (isDesktopApp()) registerPlayerViewCommands(plugin, deps.imageDisplay);
   registerMapCommands(plugin, deps);
   registerStatblockCommands(plugin);
 }

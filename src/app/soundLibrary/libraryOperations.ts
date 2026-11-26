@@ -105,7 +105,10 @@ export interface LibraryImportOutcome {
 /** Where imported files of a kind go: the root, whose default folder is linked if nothing is. Null where it is linked elsewhere and not here. */
 export function importRoot(library: SoundLibrary, kind: SoundKind): SoundLocation | null {
   const root = library.rootOf(kind);
-  if (root.status === 'unlinked') library.roots.linkVault(kind, DEFAULT_SOUND_FOLDERS[kind]);
+  if (root.status === 'unlinked') {
+    library.roots.linkVault(kind, DEFAULT_SOUND_FOLDERS[kind]);
+    library.roots.setOriginals(kind, 'trash');
+  }
   return isLinked(library.rootOf(kind)) ? library.locationOf(kind) : null;
 }
 

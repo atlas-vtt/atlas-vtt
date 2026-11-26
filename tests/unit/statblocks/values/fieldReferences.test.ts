@@ -102,6 +102,21 @@ describe('a statblock\'s values as its card shows them', () => {
   });
 });
 
+describe('references to a value written with a side', () => {
+  const sided = statblockLookup(TEMPLATE, { ...RECORD, ac: '10 + @dex.mod adv', perception: '+2 adv' });
+
+  it('read the number before the side, which belongs to the value\'s own roll', () => {
+    expect(fillReferences('1d20 + @perception', sided)).toMatchObject({ text: '1d20 + 2', unresolved: [] });
+    expect(fillReferences('@ac', sided)).toMatchObject({ text: '12', unresolved: [] });
+  });
+
+  it('show a Number field\'s sum as its total with the side after it, and a lone number as written', () => {
+    expect(withReferencesFilled({ ac: '10 + @dex.mod adv' }, FIELDS, sided).ac).toBe('12 adv');
+    expect(withReferencesFilled({ level: '@prof dis' }, FIELDS, sided).level).toBe('3 dis');
+    expect(withReferencesFilled({ ac: '+7 adv' }, FIELDS, sided).ac).toBe('+7 adv');
+  });
+});
+
 describe('values written with references', () => {
   it('are kept as typed in a Dice or Number field when they read as one', () => {
     expect(coerce('dice', '2d6 + @str.mod')).toEqual({ ok: true, value: '2d6 + @str.mod' });

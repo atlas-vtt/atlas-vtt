@@ -46,7 +46,7 @@ describe('the face counts of exploding dice', () => {
 
   it('keeps the lowest faces switched on while their field is empty', () => {
     render(<ExplodingDiceFields dice={rules({ lowFaces: NaN })} onChange={vi.fn()} />);
-    expect(screen.getByRole<HTMLInputElement>('checkbox', { name: 'Lowest face subtracts' }).checked).toBe(true);
+    expect(screen.getByRole('switch', { name: 'Lowest face subtracts' }).getAttribute('aria-checked')).toBe('true');
     expect(screen.getByLabelText<HTMLInputElement>('Lowest faces that subtract').value).toBe('');
   });
 

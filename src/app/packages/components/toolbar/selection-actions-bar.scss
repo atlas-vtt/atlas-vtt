@@ -1,0 +1,55 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// The bar above what is selected on the map (`SelectionActionsBar`): the look of a tool's
+// bars (`tool-options-bar.scss`), standing on the map above what it acts on
+// ═══════════════════════════════════════════════════════════════════════════
+// Imported inside the `.atlas-vtt-plugin` scope of styles/main.scss.
+
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+// A captioned button: its icon over one word, at least a finger wide and high.
+$captioned-size: $touch-target + $spacing-xs;
+
+.atlas-selection-actions {
+  // Placed with `translate` by useSelectionBarPlace, which also sets the middle of the edge that
+  // faces the selection as its transform origin, so the scale it opens and closes with grows out
+  // of what is selected.
+  position: absolute;
+  left: 0;
+  top: 0;
+  // Beside the bar under drawings and texts, under the light popover (45), above the map.
+  z-index: 44;
+  width: max-content;
+
+  // Under a finger nothing hovers: a button says what it does in a word under its icon.
+  .atlas-tool-button > span > .btn--icon.atlas-tool-button--captioned {
+    flex-direction: column;
+    gap: $spacing-xs * 0.5;
+    width: auto;
+    min-width: $captioned-size;
+    height: $captioned-size;
+    padding: 0 $spacing-s;
+  }
+}
+
+.atlas-tool-button__caption {
+  font-size: $font-ui-smaller;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+// An icon of Obsidian's as a button's icon: only its drawing takes room.
+.atlas-selection-actions__glyph {
+  display: contents;
+}
+
+// The part Select more adds lies in the bar as if its button stood there itself, a group's gap after the rest.
+.atlas-selection-actions__tail {
+  display: flex;
+  margin-left: $surface-inset;
+}
+
+// Delete says what it does in the theme's warning colour, as the menu's destructive rows do.
+.atlas-tool-bar button.btn.atlas-selection-actions__destructive:not(:disabled) {
+  color: var(--text-error) !important;
+}

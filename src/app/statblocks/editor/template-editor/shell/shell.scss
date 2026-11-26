@@ -76,7 +76,6 @@ $dock-clearance: calc(32px + 2 * #{$spacing-xs} + 2 * #{$border-width-m} + 2 * #
   }
 
   .atlas-te-capsule__save.btn {
-    @include atlas-corner-shape;
     height: var(--input-height);
 
     // Shown, not removed or `disabled`, so its tooltip still says what Save covers.

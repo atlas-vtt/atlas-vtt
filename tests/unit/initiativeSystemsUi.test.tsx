@@ -111,16 +111,26 @@ describe('the initiative fields of a fight by sides', () => {
     expect(screen.getAllByRole<HTMLButtonElement>('button', { name: 'Remove side' }).map((button) => button.disabled)).toEqual([true, true, false]);
   });
 
-  it('rolls for the order with a d6 once switched on, and keeps the order buttons while the order is rolled, disabled', () => {
+  it('selects when to roll and allows reordering the sides to break opening ties', () => {
     const onChange = vi.fn();
     const { rerender } = render(<InitiativeFields fieldSuggestions={[]} initiative={SIDES} onChange={onChange} />);
+    const chooseOrder = (name: string): void => {
+      fireEvent.click(screen.getByRole('combobox', { name: 'Side order' }));
+      fireEvent.click(screen.getByRole('option', { name }));
+    };
     expect(screen.getByLabelText<HTMLInputElement>('Side roll').disabled).toBe(true);
-    fireEvent.click(screen.getByLabelText('Roll for the order every round'));
-    expect(onChange).toHaveBeenLastCalledWith({ ...SIDES, sideRoll: '1d6' });
+    chooseOrder('Roll once at combat start');
+    expect(onChange).toHaveBeenLastCalledWith({ ...SIDES, sideRoll: '1d6', sideRollOnce: true });
 
-    rerender(<InitiativeFields fieldSuggestions={[]} initiative={{ ...SIDES, sideRoll: '1d6' }} onChange={onChange} />);
+    rerender(<InitiativeFields fieldSuggestions={[]} initiative={{ ...SIDES, sideRoll: '1d8', sideRollOnce: true }} onChange={onChange} />);
+    expect(screen.getByLabelText<HTMLInputElement>('Side roll').disabled).toBe(false);
+    expect(screen.getAllByRole<HTMLButtonElement>('button', { name: 'Act earlier' })[1]?.disabled).toBe(false);
+    chooseOrder('Roll for the order every round');
+    expect(onChange).toHaveBeenLastCalledWith({ ...SIDES, sideRoll: '1d8' });
+
+    rerender(<InitiativeFields fieldSuggestions={[]} initiative={{ ...SIDES, sideRoll: '1d8' }} onChange={onChange} />);
     expect(screen.getAllByRole<HTMLButtonElement>('button', { name: /Act (earlier|later)/ }).every((button) => button.disabled)).toBe(true);
-    fireEvent.click(screen.getByLabelText('Roll for the order every round'));
+    chooseOrder('Fixed order');
     expect(onChange).toHaveBeenLastCalledWith(SIDES);
   });
 });

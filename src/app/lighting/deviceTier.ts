@@ -1,4 +1,4 @@
-import type { LightingQualityLevel } from './lightingQuality';
+import { LIGHTING_QUALITY_LEVELS, type LightingQualityLevel } from './lightingQuality';
 
 /** What a device tells about its graphics without drawing anything (`readGpuFacts`). */
 export interface GpuFacts {
@@ -31,11 +31,22 @@ const INTEGRATED = [
  * Performance Mode from the largest texture the GPU takes: a software renderer or one that takes
  * no 8,192 px texture gets `saver`; graphics built into the processor, a GPU that takes no 16,384 px
  * texture, four processor threads or fewer, or 4 GB of memory or less get `balanced`; everything
- * else `high`. It is picked once and stored; the GM's choice in the settings always wins.
+ * else `high`, and never finer than `finest`, the finest level the device's memory lets Atlas pick
+ * by itself (a tablet's is `balanced`). It is picked once and stored; the GM's choice in the
+ * settings always wins.
  */
-export function pickLightingQuality(facts: GpuFacts): LightingQualityLevel {
+export function pickLightingQuality(facts: GpuFacts, finest: LightingQualityLevel = 'high'): LightingQualityLevel {
+  return coarser(pickByGraphics(facts), finest);
+}
+
+function pickByGraphics(facts: GpuFacts): LightingQualityLevel {
   if (SOFTWARE.test(facts.renderer) || facts.maxTextureSize < 8192) return 'saver';
   if (INTEGRATED.some((pattern) => pattern.test(facts.renderer)) || facts.maxTextureSize < 16384) return 'balanced';
   if ((facts.cores !== null && facts.cores <= 4) || (facts.memoryGb !== null && facts.memoryGb <= 4)) return 'balanced';
   return 'high';
+}
+
+/** The cheaper of two levels (`LIGHTING_QUALITY_LEVELS` runs from the finest to the cheapest). */
+function coarser(a: LightingQualityLevel, b: LightingQualityLevel): LightingQualityLevel {
+  return LIGHTING_QUALITY_LEVELS.indexOf(a) >= LIGHTING_QUALITY_LEVELS.indexOf(b) ? a : b;
 }

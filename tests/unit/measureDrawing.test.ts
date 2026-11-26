@@ -2,8 +2,9 @@
 import { describe, expect, it } from 'vitest';
 import { Container, Graphics, type Circle } from 'pixi.js';
 import { CANVAS_INK, INK_SHADE } from '../../src/app/pixi/utils/canvasInk';
-import { drawMeasureCircle, drawMeasureCone, drawMeasurement, measureLabelTarget, type MeasureRecord } from '../../src/app/pixi/utils/measureDrawing';
-import { MeasureInk, MeasureInkLayer, darkBands } from '../../src/app/pixi/utils/measureInk';
+import type { Measurement } from '../../src/app/measure/measureTypes';
+import { drawMeasureCircle, drawMeasureCone, drawMeasurement, measureLabelTarget } from '../../src/app/pixi/utils/measureDrawing';
+import { MEASURE_CASING, MeasureInk, MeasureInkLayer, darkBands } from '../../src/app/pixi/utils/measureInk';
 
 
 /** A measurement's three drawings on its layer: the area beneath, the dark bands and the accent. */
@@ -48,12 +49,12 @@ const ACCENT = 0x7f6df2;
 const start = { x: 105, y: 35 };
 
 describe('darkBands', () => {
-  it('lays the selection shade beyond the dark line, outermost first, so max blending leaves each band its own opacity', () => {
+  it('lays the selection shade beyond the casing, outermost first, so max blending leaves each band its own opacity', () => {
     const bands = darkBands(CANVAS_INK.stroke);
-    const keyline = CANVAS_INK.stroke + 2 * CANVAS_INK.keyline;
-    expect(bands.at(-1)).toEqual({ width: keyline, alpha: CANVAS_INK.keylineAlpha });
+    const cased = CANVAS_INK.stroke + 2 * MEASURE_CASING.width;
+    expect(bands.at(-1)).toEqual({ width: cased, alpha: MEASURE_CASING.alpha });
     expect(bands.slice(0, -1).map((band) => band.alpha)).toEqual(INK_SHADE.map((band) => band.alpha).reverse());
-    expect(bands[0]!.width).toBe(keyline + 2 * INK_SHADE.reduce((sum, band) => sum + band.width, 0));
+    expect(bands[0]!.width).toBe(cased + 2 * INK_SHADE.reduce((sum, band) => sum + band.width, 0));
     expect(bands.every((band, i) => i === 0 || band.width < bands[i - 1]!.width)).toBe(true);
   });
 });
@@ -62,7 +63,7 @@ describe('MeasureInk', () => {
   it('draws at its size on screen: a zoom of 2 doubles the points and halves the drawing back', () => {
     const ink = newInk();
     ink.begin(2);
-    drawMeasurement(ink, ACCENT, { shape: 'line', start: { x: 0, y: 0 }, end: { x: 100, y: 0 } }, 90);
+    drawMeasurement(ink, ACCENT, { shape: 'ruler', points: [{ x: 0, y: 0 }, { x: 100, y: 0 }] }, 90);
     expect(layers(ink).line.scale.x).toBe(0.5);
     expect(layers(ink).area.scale.x).toBe(0.5);
     const [line] = drawn(layers(ink).accent);
@@ -99,38 +100,43 @@ describe('MeasureInk', () => {
 });
 
 describe('drawMeasurement', () => {
-  it('strokes a line once in the accent, opaque and with round ends, and marks its start with a ring and its end with a dot', () => {
+  it('strokes a ruler once in its colour, opaque and with round ends, and marks its start with a ring and its end with a dot', () => {
     const ink = newInk();
     ink.begin(1);
-    drawMeasurement(ink, ACCENT, { shape: 'line', start, end: { x: 315, y: 175 } }, 90);
+    drawMeasurement(ink, ACCENT, { shape: 'ruler', points: [start, { x: 315, y: 175 }] }, 90);
     const strokes = drawn(layers(ink).accent).filter((step) => step.action === 'stroke');
     expect(strokes).toHaveLength(1);
     expect(strokes[0]!.style).toMatchObject({ width: CANVAS_INK.stroke, alpha: 1, cap: 'round', join: 'round' });
     // The end's dot, the start's ring and its white middle; nothing translucent among them.
     expect(circleRadii(layers(ink).accent)).toEqual([4, 5, 5 - CANVAS_INK.stroke]);
     expect(drawn(layers(ink).area)).toEqual([]);
+    // The casing under it: black, wider than the stroke by the casing on either side.
+    const casing = drawn(layers(ink).dark).filter((step) => step.action === 'stroke').at(-1)!;
+    expect(casing.style).toMatchObject({ width: CANVAS_INK.stroke + 2 * MEASURE_CASING.width, color: 0x000000, alpha: MEASURE_CASING.alpha });
+    expect(MEASURE_CASING.alpha).toBeGreaterThan(CANVAS_INK.keylineAlpha);
+    ink.destroy();
+  });
+
+  it('strokes a ruler with corners as one path through them, a dot on every corner', () => {
+    const ink = newInk();
+    ink.begin(1);
+    drawMeasurement(ink, 0xff8800, { shape: 'ruler', points: [start, { x: 315, y: 35 }, { x: 315, y: 175 }] }, 90);
+    const strokes = drawn(layers(ink).accent).filter((step) => step.action === 'stroke');
+    expect(strokes).toHaveLength(1);
+    expect(strokes[0]!.style).toMatchObject({ color: 0xff8800 });
+    expect(strokes[0]!.path.map((step) => step.data.slice(0, 2))).toEqual([[105, 35], [315, 35], [315, 175]]);
+    expect(circleRadii(layers(ink).accent)).toEqual([4, 4, 5, 5 - CANVAS_INK.stroke]);
     ink.destroy();
   });
 
   it('draws a circle as one wash inside one outline', () => {
     const ink = newInk();
     ink.begin(1);
-    drawMeasurement(ink, ACCENT, { shape: 'circle', start, end: { x: 245, y: 35 } }, 90);
+    drawMeasurement(ink, ACCENT, { shape: 'circle', points: [start, { x: 245, y: 35 }] }, 90);
     expect(drawn(layers(ink).area).map((step) => step.action)).toEqual(['fill']);
     expect(circleRadii(layers(ink).area)).toEqual([140]);
     expect(drawn(layers(ink).accent).filter((step) => step.action === 'stroke')).toHaveLength(1);
     ink.destroy();
-  });
-
-  it('draws a sphere as the circle of the same reach', () => {
-    const shapes = (['circle', 'sphere'] as const).map((shape) => {
-      const ink = newInk();
-      ink.begin(1);
-      drawMeasurement(ink, ACCENT, { shape, start, end: { x: 105, y: 245 } }, 90);
-      const outline = (graphics: Graphics): unknown[] => drawn(graphics).map(({ action, path }) => [action, path.map((step) => step.action)]);
-      return [outline(layers(ink).area), outline(layers(ink).accent), circleRadii(layers(ink).area), circleRadii(layers(ink).accent)];
-    });
-    expect(shapes[1]).toEqual(shapes[0]);
   });
 
   // Canvas 2D (the renderer without WebGL) throws on a negative arc radius, which stops the map from rendering.
@@ -161,11 +167,14 @@ describe('drawMeasurement', () => {
 
 describe('measureLabelTarget', () => {
   const end = { x: 315, y: 175 };
-  it('puts a line\'s distance beside it, a circle\'s above its centre and a cone\'s over the middle of its axis', () => {
-    const at = (shape: MeasureRecord['shape']): unknown => measureLabelTarget({ shape, start, end });
-    expect(at('line')).toEqual({ beside: [start, end] });
+  it('puts a ruler\'s distance beside it, a circle\'s above its centre and a cone\'s over the middle of its axis', () => {
+    const at = (shape: Measurement['shape']): unknown => measureLabelTarget({ shape, points: [start, end] });
+    expect(at('ruler')).toEqual({ beside: [start, end] });
     expect(at('circle')).toEqual({ beside: [start] });
-    expect(at('sphere')).toEqual({ beside: [start] });
     expect(at('cone')).toEqual({ over: { x: 210, y: 105 } });
+  });
+
+  it('puts the total of a ruler with corners beyond its end, where no leg\'s own length stands', () => {
+    expect(measureLabelTarget({ shape: 'ruler', points: [start, { x: 315, y: 35 }, end] })).toEqual({ beyond: { from: { x: 315, y: 35 }, to: end } });
   });
 });

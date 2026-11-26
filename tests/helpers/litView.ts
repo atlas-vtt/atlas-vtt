@@ -1,5 +1,5 @@
 import '../setup/obsidianDom';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { Application, Sprite, Texture } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
 import { GridSystem } from '../../src/app/grid/GridSystem';
@@ -9,6 +9,7 @@ import { RenderScheduler } from '../../src/app/pixi/RenderScheduler';
 import type { TokenRenderer } from '../../src/app/pixi/TokenRenderer';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { MEASURE_MOTION } from '../../src/app/pixi/measure/measurePresence';
 import { DEFAULT_LIGHTING_QUALITY, type LightingQuality } from '../../src/app/lighting/lightingQuality';
 
 export interface LitViewOptions {
@@ -88,4 +89,9 @@ export async function openLitView({ pane, map, floor = 0x8899aa, grid, quality, 
       app.destroy(true, { children: true });
     },
   };
+}
+
+/** Waits for kept measurements that came or went to finish their motion (`MEASURE_MOTION`): it runs on the browser's animation frames. */
+export async function measureMotionDone(): Promise<void> {
+  await new Promise((resolve) => window.setTimeout(resolve, Math.max(MEASURE_MOTION.enter.ms, MEASURE_MOTION.exit.ms) + 100));
 }

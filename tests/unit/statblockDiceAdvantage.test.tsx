@@ -59,7 +59,7 @@ describe('rolling a statblock\'s roll with advantage', () => {
       const { app } = mapApp(rules);
       const el = statblock(`<span class="atlas-dice-link" data-formula="${formula}">${formula}</span>`);
       const openMenu = vi.fn<(choices: readonly RollChoice[]) => void>();
-      const dispose = attachDiceRolling(el, app, () => ({}), undefined, undefined, openMenu);
+      const dispose = attachDiceRolling(el, app, () => ({}), { openMenu });
       fireEvent.contextMenu(link(el), { button: 2, clientX: 40, clientY: 30 });
       dispose();
       return openMenu.mock.lastCall?.[0].map((choice) => choice.label) ?? [];
@@ -74,7 +74,7 @@ describe('rolling a statblock\'s roll with advantage', () => {
     const { app } = mapApp();
     const el = statblock('<p data-hit-points><span class="atlas-dice-link" data-formula="2d8+2">2d8+2</span></p>');
     const openMenu = vi.fn();
-    const dispose = attachDiceRolling(el, app, () => ({}), vi.fn(), undefined, openMenu);
+    const dispose = attachDiceRolling(el, app, () => ({}), { onRollHitPoints: vi.fn(), openMenu });
     fireEvent.contextMenu(link(el), { button: 2 });
     expect(openMenu).not.toHaveBeenCalled();
     dispose();

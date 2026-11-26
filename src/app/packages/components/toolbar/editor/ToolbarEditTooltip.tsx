@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { namesHotkey } from '../../../../keyboard/mapHotkeys'
 import { useHotkeyLabels } from '../../../../keyboard/useMapHotkeys'
 import { toolbarUnit } from '../../../../toolbar/toolbarCatalog'
+import { unitHotkey } from './toolbarAnnouncements'
 import { useEditTooltip } from './useEditTooltip'
 
 interface ToolbarEditTooltipProps {
@@ -22,7 +23,7 @@ export function ToolbarEditTooltip({ active }: ToolbarEditTooltipProps): React.R
   const hotkeyLabel = useHotkeyLabels()
   const { content, image, motion: cardMotion } = useEditTooltip(cardRef, active)
   const control = content ? toolbarUnit(content.id) : null
-  const hotkey = control ? hotkeyLabel(control.hotkey) : ''
+  const hotkey = content ? unitHotkey(content.id, hotkeyLabel) : ''
 
   return (
     <motion.div

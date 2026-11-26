@@ -7,16 +7,20 @@ import type { InitiativeEntry } from '../../src/app/types/initiativeTypes';
 const state = vi.hoisted(() => ({
   objects: { tokens: {} as Record<string, unknown> },
   tokenSettings: { showInstanceBadges: true },
+  selectedIds: [] as string[],
   levels: undefined as unknown,
 }));
 
 vi.mock('../../src/app/react/root/AtlasUIContext', async () => ({
   AtlasUIContext: (await import('react')).createContext(null),
-  useAtlasUI: () => ({ app: { vault: { adapter: { getResourcePath: (path: string) => `app://${path}` } } }, view: null }),
+  useAtlasUI: () => ({
+    app: { vault: { adapter: { getResourcePath: (path: string) => `app://${path}` }, getAbstractFileByPath: () => null, on: () => ({}), offref: () => undefined } },
+    view: null,
+  }),
 }));
 vi.mock('../../src/app/react/ViewStoreContext', () => ({
   useAtlasStore: (selector: (s: typeof state) => unknown) => selector(state),
-  useViewStoreHook: () => ({ getState: () => state }),
+  useViewStoreHook: () => ({ getState: () => state, subscribe: () => () => undefined }),
 }));
 vi.mock('../../src/app/pixi/utils/tokenHighlight', () => ({ zoomToTokenWithHighlight: vi.fn() }));
 vi.mock('../../src/app/resources/useMapResources', () => ({ useMapResources: () => [] }));
@@ -32,25 +36,37 @@ const entry: InitiativeEntry = {
 function renderCard(token: Record<string, unknown>, shown: InitiativeEntry = entry): HTMLElement {
   state.objects.tokens = { t1: { id: 't1', kind: 'character', name: 'Troll', imagePath: 'tokens/troll.webp', x: 0, y: 0, ...token } };
   return render(
-    <InitiativeCard entry={shown} index={0} isHoveredForPreview={false}
-      onDragStart={vi.fn()} onDragOver={vi.fn()} onDragEnd={vi.fn()} onContextMenu={vi.fn()} onHover={vi.fn()} />,
+    <InitiativeCard entry={shown} isHoveredForPreview={false}
+      onContextMenu={vi.fn()} onHover={vi.fn()} />,
   ).container;
 }
 
 describe('InitiativeCard portrait', () => {
-  it('shows a token as the map does: its art inside its ring, in the ring\'s colour', () => {
+  it('fills the card with the token\'s art', () => {
     const card = renderCard({ ringColor: '#c0392b' });
 
-    expect(card.querySelector('.atlas-token-portrait')?.classList.contains('atlas-token-portrait--unframed')).toBe(false);
-    expect(card.querySelector<HTMLImageElement>('.atlas-token-portrait img')?.src).toBe('app://tokens/troll.webp');
-    expect(card.querySelector<HTMLElement>('.atlas-token-ring')?.style.getPropertyValue('--atlas-token-ring-color')).toBe('#c0392b');
+    expect(card.querySelector<HTMLImageElement>('.atlas-initiative-card__art img')?.src).toBe('app://tokens/troll.webp');
+    expect(card.querySelector('.atlas-initiative-card__art--framed')).toBeNull();
   });
 
-  it('shows a token without a ring unframed, with its whole art', () => {
+  it('crops the art of a token without a ring closer, so the frame it brings falls outside the card', () => {
     const card = renderCard({ showRing: false });
 
-    expect(card.querySelector('.atlas-token-portrait--unframed')).not.toBeNull();
-    expect(card.querySelector('.atlas-token-ring')).toBeNull();
+    expect(card.querySelector('.atlas-initiative-card__art--framed img')).not.toBeNull();
+  });
+
+  it('pulses its turn in its token\'s ring colour, else the accent', () => {
+    const style = (card: HTMLElement): CSSStyleDeclaration => card.querySelector<HTMLElement>('.atlas-initiative-card')!.style;
+    expect(style(renderCard({ ringColor: '#c0392b' })).getPropertyValue('--atlas-turn-color')).toBe('#c0392b');
+    expect(style(renderCard({})).getPropertyValue('--atlas-turn-color')).toBe('');
+  });
+
+  it('marks its card while its token is selected on the map', () => {
+    const selected = (): boolean => renderCard({}).querySelector('.atlas-initiative-card')!.classList.contains('atlas-initiative-card--selected');
+    expect(selected()).toBe(false);
+    state.selectedIds = ['t1'];
+    expect(selected()).toBe(true);
+    state.selectedIds = [];
   });
 
   it('keeps the icon for an entry without art', () => {
@@ -68,8 +84,8 @@ describe('InitiativeCard portrait', () => {
     const twin = (level: string): Record<string, unknown> => ({ t2: { id: 't2', kind: 'character', name: 'Troll', imagePath: 'tokens/troll.webp', x: 0, y: 0, instanceNumber: 2, level } });
     const badge = (): string | null | undefined => {
       const card = render(
-        <InitiativeCard entry={entry} index={0} isHoveredForPreview={false}
-          onDragStart={vi.fn()} onDragOver={vi.fn()} onDragEnd={vi.fn()} onContextMenu={vi.fn()} onHover={vi.fn()} />,
+        <InitiativeCard entry={entry} isHoveredForPreview={false}
+          onContextMenu={vi.fn()} onHover={vi.fn()} />,
       ).container;
       return card.querySelector('.atlas-initiative-card__instance-badge')?.textContent;
     };

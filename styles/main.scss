@@ -9,23 +9,36 @@
 @use './tokens' as *;
 @use './mixins' as *;
 @use '../src/app/onboarding/onboarding';
+@use '../src/app/keyboard/cheat-sheet';
 @use '../src/app/changelog/changelog';
 @use '../src/app/support/issue-report';
+@use '../src/app/support/tablet/tablet-diagnostics';
 @use '../src/app/online/gm/styles/dock';
 @use '../src/app/online/marks/styles/marks';
 @use '../src/app/online/tableLog/styles/table-log';
+@use '../src/app/noteDice/note-dice';
 @use './native-tooltips';
+@use './native-checkboxes';
+@use './button-press';
 @use './notices';
+@use './coarse-pointer';
+// At the root, outside the plugin's namespace: its scope includes the floating layer under <body>.
+@use '../src/app/packages/components/asset-manager/open-window';
 @use './scroll-lock';
 @use './portal-host';
 @use './native-prompts';
+@use './square-corners';
+// At the root too: Atlas' scroll areas are found by class, in every window and floating layer.
+@use './overlay-scrollbars';
+@use './touch';
 
-// Registered so `atlas-scrollbar-while-scrolling` can fade the thumb. At-rules
-// must stay at the root: inside the scope block below they would be invalid.
-@property --atlas-scrollbar-thumb {
-  syntax: '<color>';
-  inherits: false;
-  initial-value: transparent;
+// Atlas' scroll shadow (`atlas-scroll-shadow`): always dark, lighter on the light theme's pale surfaces.
+body.theme-dark {
+  --atlas-scroll-shadow: rgb(0 0 0 / 0.45);
+}
+
+body.theme-light {
+  --atlas-scroll-shadow: rgb(0 0 0 / 0.14);
 }
 
 /*! Fonts bundled below, unmodified:
@@ -33,12 +46,17 @@
  *  (https://fontforge.org/archive/sfds/toyfonts.html).
  *  Oxanium, Copyright 2019 The Oxanium Project Authors (https://github.com/sevmeyer/oxanium),
  *  licensed under the SIL Open Font License, Version 1.1.
+ *  Courier Prime, Copyright 2015 The Courier Prime Project Authors
+ *  (https://github.com/quoteunquoteapps/CourierPrime), licensed under the SIL Open Font License, Version 1.1.
+ *  Libron, Libron (c) 2026 Nico Verbruggen (https://github.com/nicoverbruggen/libron), with Reserved Font
+ *  Name Libron, based on Readerly (c) 2026 Nico Verbruggen and Newsreader (c) 2020 The Newsreader Project
+ *  Authors, licensed under the SIL Open Font License, Version 1.1.
  *  Licence text: https://openfontlicense.org
  *  Credits: https://github.com/atlas-vtt/atlas-vtt/blob/main/THIRD_PARTY_NOTICES.md
  */
 
-// Atlas' display face: the 3D dice panel's numbers (dice-roll.scss) and the dashboard's
-// wordmark. At-rules stay at the root, like @property above.
+// Atlas' display face: the 3D dice panel's numbers (dice-roll.scss), the dashboard's wordmark
+// and the Draw tool's medieval text. At-rules stay at the root, like @property above.
 @font-face {
   font-family: 'Atlas Fantaisie Artistique';
   src: url('../src/app/assets/fonts/fantaisie-artistique.ttf') format('truetype');
@@ -47,7 +65,7 @@
   font-display: swap;
 }
 
-// The sci-fi face of the dice, chosen in Dice settings; a variable font from 200 to 800.
+// The sci-fi face of the dice, chosen in Dice settings, and of the Draw tool's text; a variable font from 200 to 800.
 @font-face {
   font-family: 'Atlas Oxanium';
   src: url('../src/app/assets/fonts/oxanium.ttf') format('truetype');
@@ -56,10 +74,20 @@
   font-display: swap;
 }
 
+// The Draw tool's monospace text. One weight: bold and italic are the browser's own.
+@font-face {
+  font-family: 'Atlas Courier Prime';
+  src: url('../src/app/assets/fonts/courier-prime.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 // Root namespace for all Atlas VTT styles
 .atlas-vtt-plugin {
   // Export design tokens as CSS custom properties
   @include atlas-css-tokens;
+  @include atlas-host-layout;
 
   // Ensure proper CSS variable inheritance
   color: var(--text-normal);
@@ -90,10 +118,14 @@
   @import '../src/app/packages/components/primitives/context-menu.scss';
   @import '../src/app/packages/components/primitives/dropdown-menu.scss';
   @import '../src/app/packages/components/toolbar/scene-lighting-section.scss';
+  @import '../src/app/packages/components/toolbar/tool-options-bar.scss';
+  @import '../src/app/packages/components/toolbar/fog-tool-bar.scss';
+  @import '../src/app/packages/components/toolbar/selection-bar.scss';
+  @import '../src/app/packages/components/toolbar/selection-actions-bar.scss';
   @import '../src/app/packages/components/toolbar/editor/toolbar-editor';
   @import '../src/app/packages/components/toolbar/editor/toolbar-drag';
   @import '../src/app/packages/components/toolbar/editor/toolbar-card';
-  @import '../src/app/packages/components/toolbar/editor/toolbar-undo-bar';
+  @import '../src/app/packages/components/toolbar/editor/toolbar-side-bar';
   @import '../src/app/packages/components/primitives/toggle.scss';
   @import '../src/app/packages/components/primitives/input-modal.scss';
   @import '../src/app/packages/components/primitives/select.scss';
@@ -103,17 +135,22 @@
   @import '../src/app/packages/components/primitives/segmented-control.scss';
   @import '../src/app/packages/components/primitives/close-button.scss';
   @import '../src/app/react/components/dice/dice-dropdown.scss';
+  @import '../src/app/react/components/dice/dice-presets.scss';
+  @import '../src/app/react/components/dice/dice-preset-editor.scss';
   @import '../src/app/react/components/dice/dice-toast.scss';
   @import '../src/app/react/components/dice3d/dice-roll.scss';
   @import '../src/app/react/components/character-select-mode.scss';
   @import '../src/app/packages/token.scss';
     @import '../src/app/react/components/view-actions-menu.scss';
+    @import '../src/app/react/components/zoom-cluster.scss';
   @import '../src/app/react/components/undo-redo-controls.scss';
   @import '../src/app/react/components/dm-screen.scss';
   @import '../src/app/react/components/linked-note-panel.scss';
   @import '../src/app/react/components/dm-screen/sound/sound-pane.scss';
   @import '../src/app/react/components/dm-screen/sound/sound-moods.scss';
   @import '../src/app/react/components/dm-screen/sound/sound-dialog.scss';
+  @import '../src/app/react/components/dm-screen/sound/sound-downloads.scss';
+  @import '../src/app/react/components/dm-screen/sound/sound-consent.scss';
   @import '../src/app/react/components/dm-screen/sound/sound-desk.scss';
   @import '../src/app/react/components/dm-screen/sound/sound-music.scss';
   @import '../src/app/react/components/dm-screen/sound/sound-strips.scss';
@@ -121,7 +158,10 @@
   @import '../src/app/react/components/dm-screen/sound/library/library.scss';
   @import '../src/app/react/components/dm-screen/sound/library/library-head.scss';
   @import '../src/app/react/components/dm-screen/sound/library/library-rows.scss';
+  @import '../src/app/react/components/dm-screen/sound/library/library-foot.scss';
+  @import '../src/app/react/components/dm-screen/sound/library/library-offers.scss';
   @import '../src/app/react/components/dm-screen/sound/library/library-narrow.scss';
+  @import '../src/app/react/components/dm-screen/sound/library/library-sort.scss';
   @import '../src/app/react/components/player-dashboard.scss';
   @import '../src/app/react/components/dashboard/dashboard.scss';
   @import '../src/app/react/components/dashboard/dashboard-cards.scss';
@@ -135,8 +175,14 @@
   @import '../src/app/react/components/dice-log/dice-roll-log.scss';
   @import '../src/app/react/components/dice/rolled-dice.scss';
   @import '../src/app/react/components/loot/loot-roller.scss';
+  @import '../src/app/react/components/siteFrame/site-frame.scss';
+  @import '../src/app/armarium/armarium-pane.scss';
+  @import '../src/app/armarium/share/share-dialog.scss';
+  @import '../src/app/armarium/share/music-share.scss';
+  @import '../src/app/react/components/documentation/docs-panel.scss';
   @import '../src/app/pixi/lighting/light-panel.scss';
   @import '../src/app/pixi/lighting/light-popover.scss';
+  @import '../src/app/online/gm/doors/door-ask-popover.scss';
   @import '../src/app/react/components/loot/loot-source-tree.scss';
   @import '../src/app/react/components/loot/loot-roll-bar.scss';
   @import '../src/app/react/components/loot/loot-lists.scss';
@@ -163,6 +209,8 @@
   @import '../src/app/react/components/collection-settings/random-tables/random-tables-tab.scss';
   @import '../src/app/react/components/collection-settings/random-tables/item-rarities.scss';
   @import '../src/app/react/components/collection-settings/statblock-field-chips.scss';
+  @import '../src/app/react/components/collection-settings/setting-row.scss';
+  @import '../src/app/react/components/collection-settings/movement-rules.scss';
   @import '../src/app/react/components/collection-settings/dice-lab/dice-lab.scss';
   @import '../src/app/react/components/collection-settings/dice-lab/dice-lab-options.scss';
   @import '../src/app/react/components/collection-settings/dice-lab/dice-tray.scss';
@@ -172,12 +220,13 @@
   @import '../src/app/services/embedded-leaf.scss';
   @import '../src/app/react/components/atlas-toast.scss';
   @import '../src/app/ui/text-input-dialog.scss';
+  @import '../src/app/pixi/annotations/text-field.scss';
   @import '../src/app/packages/components/shared/DiceTextInput';
 
 
   // UI container styles
   .atlas-vtt-ui {
-    border-radius: $radius-l;
+    border-radius: $radius-m;
   }
 
   // Popover under a selected token's HP/stress bar; mounted in Atlas' host under document.body
@@ -195,9 +244,9 @@
   }
 
   .atlas-token-value-editor__input {
+    @include atlas-text-input;
     width: 56px;
     text-align: center;
-    border-radius: $radius-l;
     font-variant-numeric: tabular-nums;
 
     &[aria-invalid] {
@@ -211,7 +260,9 @@
     color: var(--text-muted);
   }
 
+  // The fields stand in the popover's corners; a label before them starts on the menus' text edge, $spacing-m inside its padding.
   .atlas-token-value-editor__label {
+    padding-inline-start: $spacing-m;
     white-space: nowrap;
   }
 
@@ -225,7 +276,7 @@
   //
   // The row is no layer of its own (absolute and without a z-index, where a
   // fixed element always is one): its bars stand at 100, below the map's
-  // overlays, while the dice rolls hanging from its right end stand above them.
+  // overlays such as the DM screen.
   .atlas-top-bar-row {
     position: absolute;
     top: $spacing-s;
@@ -264,11 +315,16 @@
       }
     }
 
+    // The player window bar and online play's table log tab stand side by side, the tab last,
+    // so what hangs below the scene tabs is one row
     .atlas-top-bar-start__below {
       display: flex;
-      flex-direction: column;
       align-items: flex-start;
       gap: $spacing-s;
+
+      > .atlas-online-log-tab-host {
+        order: 1;
+      }
     }
 
     .atlas-scene-tab-bar + .atlas-top-bar-start__below {
@@ -278,9 +334,10 @@
       margin-top: $spacing-s;
     }
 
-    // The right end holds the widget bar and, below it, the DM's dice rolls
-    // (dice-roll.scss). Without widgets it is empty and the rolls start at the
-    // top, as far from the top edge as from the right. When tabs and widgets
+    // The right end holds the widget bar and the mark the DM's dice rolls are
+    // placed by: they stand in its top right corner, over the widgets, in front
+    // of everything (dice-roll.scss). Without widgets it is empty and the rolls
+    // start at the top, as far from the top edge as from the right. When tabs and widgets
     // do not fit side by side the tabs scroll and the widgets stack
     // (useWidgetStack), so the widgets never give way themselves.
     > .atlas-top-bar-end {
@@ -304,19 +361,20 @@
       // is room for the cards' shadows, taken back by the margin, so the cards
       // stand where they would without it. A scroller clips its shadows at the
       // padding, and `--shadow-l` reaches 120px down and 90px aside (Obsidian's
-      // `0 30px 90px`), so below and left get all of it; above and right the
-      // view's edge is closer than that anyway. The rows scroll by wheel and
-      // touch without a scrollbar: one would take its width from the padding
-      // at the right, and the cards would end short of the view's edge.
+      // `0 30px 90px`), so below and to either side get all of it (the right
+      // too, since the bar slides away from the edge to clear the window's
+      // buttons); above, the view's edge is closer than that anyway. The rows scroll by wheel and
+      // touch without a scrollbar, not even the overlay one: it would stand at
+      // the edge of the shadows' room, far from the cards.
       > .atlas-widget-bar > .atlas-widget-container {
         $shadow-room: 120px;
 
-        max-height: 50vh;
+        max-height: #{atlas-view-height(50)};
         overflow: hidden auto;
         overscroll-behavior: contain;
-        scrollbar-width: none;
-        padding: $spacing-xl $spacing-xl $shadow-room $shadow-room;
-        margin: (-$spacing-xl) (-$spacing-xl) (-$shadow-room) (-$shadow-room);
+        @include atlas-scrollbar-none;
+        padding: $spacing-xl $shadow-room $shadow-room;
+        margin: (-$spacing-xl) (-$shadow-room) (-$shadow-room);
       }
 
       // A copy of the bar, in one row, that useWidgetStack measures.
@@ -376,13 +434,15 @@
         }
       }
 
-      > .atlas-widget-bar[data-stack='closed']:has(.atlas-widget-stack-opener:hover) > .atlas-widget-container > .atlas-widget {
-        &[data-stack-depth='1'] {
-          transform: translateY(2 * $stack-step) rotate(-3.5deg);
-        }
+      @media (hover: hover) {
+        > .atlas-widget-bar[data-stack='closed']:has(.atlas-widget-stack-opener:hover) > .atlas-widget-container > .atlas-widget {
+          &[data-stack-depth='1'] {
+            transform: translateY(2 * $stack-step) rotate(-3.5deg);
+          }
 
-        &[data-stack-depth='2'] {
-          transform: translateY(4 * $stack-step) rotate(2.6deg);
+          &[data-stack-depth='2'] {
+            transform: translateY(4 * $stack-step) rotate(2.6deg);
+          }
         }
       }
 
@@ -408,9 +468,10 @@
   // into its overflow menu when they do not fit.
   .atlas-bottom-toolbar-row {
     position: fixed;
-    bottom: $spacing-l;
-    left: $spacing-l;
-    right: $spacing-l;
+    // As far from the view's edges as the top bar row
+    bottom: $spacing-s;
+    left: $spacing-s;
+    right: $spacing-s;
     display: grid;
     grid-template-columns: minmax(max-content, 1fr) auto minmax(max-content, 1fr);
     align-items: end;
@@ -421,6 +482,13 @@
     > .atlas-vtt-toolbar {
       grid-area: 1 / 2;
     }
+
+    // A menu or tray open from the toolbar or a tool's bars, and the toolbar editor, stand over the
+    // map's floating panels, which would otherwise cover them. The command palette does not: like
+    // every other part of the map's interface it lies below them.
+    &:has(.atlas-toolbar-editor, [aria-expanded='true'], [data-state='open']) {
+      z-index: $z-atlas-map-panel + 1;
+    }
   }
 
   .atlas-bottom-toolbar-row__start,
@@ -430,46 +498,85 @@
     display: flex;
   }
 
+  // The active tool's own bars, from the toolbar's left edge (absolute, so the row's
+  // lines are named: an absolute grid child's auto line is the row's edge). The turn banner
+  // stands clear of them (`--atlas-toolbar-lift`, BottomToolbarRow); the toolbar's menus and
+  // the dice tray open in their own place, over the bars, so the bars lie below the toolbar
+  // and everything that hangs from it. One cell holds them all: the bars of the tool that was
+  // left fade where the next tool's rise, so those never start beside the ones leaving.
+  .atlas-bottom-toolbar-row__options {
+    position: absolute;
+    z-index: -1;
+    // From the toolbar's left edge to the row's right edge. Bars that need more room than that (a
+    // narrow view) lie in a track wider than the slot, which ends at the slot's end: they move
+    // left by what they lack and stay in the view.
+    grid-area: 1 / 2 / 2 / 4;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    justify-content: end;
+    justify-items: start;
+    padding-bottom: $spacing-s;
+    pointer-events: none;
+
+    > * {
+      grid-area: 1 / 1;
+    }
+
+    &:empty {
+      display: none;
+    }
+  }
+
   .atlas-bottom-toolbar-row__start {
     grid-column: 1;
   }
 
+  // Online play's button at the row's left edge, over the start slot's cell; the start slot keeps
+  // room for it (`OnlinePlayRoom`), so the two never overlap.
+  .atlas-bottom-toolbar-row__lead {
+    grid-row: 1;
+    grid-column: 1;
+    justify-self: start;
+    display: flex;
+
+    &:empty {
+      display: none;
+    }
+  }
+
+  // The view actions and the keyboard shortcuts bar, which keeps the bottom right corner.
   .atlas-bottom-toolbar-row__end {
     grid-column: 3;
+    align-items: center;
+    gap: $spacing-s;
   }
 
   // Main toolbar and undo/redo bar - uses elevated surface pattern
   .atlas-vtt-toolbar {
     display: flex;
     align-items: center;
-    gap: $spacing-s;  // Consistent spacing between all toolbar items
-    padding: $spacing-s;
+    gap: $surface-inset;
+    padding: $surface-inset;
     pointer-events: auto;
     @include atlas-elevated-surface;
-    @include atlas-panel-radius($radius-2xl);
+    @include atlas-panel-radius($surface-radius);
 
-    // The end controls sit $spacing-s inside the border, so their outer corners
-    // run concentric with the bar's. Tool buttons, tool groups and the toggle
-    // read these; the corners between controls keep their own radius. Controls
-    // in the overflow menu are hidden, so the ends are the first and last shown;
-    // a control on its way out of the main toolbar no longer holds an end.
-    > :nth-child(1 of :not([hidden], [data-collapsing])) { --atlas-bar-start-radius: #{atlas-panel-inset-radius-value($spacing-s)}; }
-    > :nth-last-child(1 of :not([hidden], [data-collapsing])) { --atlas-bar-end-radius: #{atlas-panel-inset-radius-value($spacing-s)}; }
+    // Every control sits $surface-inset inside the border, so all its corners run concentric with
+    // the bar's: rounded alike on every side, never one radius towards the bar's edge and another
+    // inside it. Tool buttons, tool groups and their chevrons read this (the switch keeps its own); a bar with
+    // another inset sets it anew.
+    --atlas-bar-control-radius: #{atlas-panel-inset-radius-value($surface-inset)};
 
-    // Menus opened from an end control are not part of the bar's outline.
+    // Menus opened from a control are not part of the bar's outline.
     .atlas-dropdown-content {
-      --atlas-bar-start-radius: initial;
-      --atlas-bar-end-radius: initial;
+      --atlas-bar-control-radius: initial;
     }
 
     .atlas-tool-button > span > .btn {
-      border-radius: var(--atlas-bar-start-radius, #{$radius-l}) var(--atlas-bar-end-radius, #{$radius-l})
-        var(--atlas-bar-end-radius, #{$radius-l}) var(--atlas-bar-start-radius, #{$radius-l});
-    }
-
-    .atlas-toolbar-end > .atlas-toggle {
-      border-radius: var(--atlas-bar-start-radius, #{$radius-xl}) var(--atlas-bar-end-radius, #{$radius-xl})
-        var(--atlas-bar-end-radius, #{$radius-xl}) var(--atlas-bar-start-radius, #{$radius-xl});
+      border-radius: var(--atlas-bar-control-radius, #{$radius-m});
     }
   }
 
@@ -501,6 +608,11 @@
     }
   }
 
+  // What stands before the GM view switch (a finger's peek button) keeps the bar's gap from it.
+  .atlas-toolbar-end {
+    gap: $surface-inset;
+  }
+
   // Keeps its own width while its slot opens or closes around it.
   .atlas-toolbar-item__content {
     flex-shrink: 0;
@@ -526,23 +638,13 @@
 .atlas-vtt-plugin {
   /* Ensure dropdown menu has the same radius as its content */
   .atlas-dropdown-menu {
-    border-radius: $radius-xl !important;
+    border-radius: $surface-radius !important;
   }
 
   /* Note pin dropdown styles moved to top-level .atlas-note-pin-dropdown block */
 
   /* Pin overlay styles - REPLACED WITH PIXI-BASED PIN RENDERER */
   // .atlas-pin-icon styles removed - now rendered in PIXI
-
-  /* Tab system styles */
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-    
-    &::-webkit-scrollbar {
-      display: none;
-    }
-  }
 
   /* Map picker modal styles */
   .atlas-map-picker-list {
@@ -554,11 +656,13 @@
   .atlas-map-picker-item {
     padding: 0.5rem 1rem;
     margin: 0.25rem 0;
-    border-radius: 4px;
+    border-radius: $radius-s;
     cursor: pointer;
     
-    &:hover {
-      background-color: var(--background-modifier-hover);
+    @media (hover: hover) {
+      &:hover {
+        background-color: var(--background-modifier-hover);
+      }
     }
   }
 
@@ -567,9 +671,11 @@
   $own-look: '.atlas-dice-tray *, .atlas-segmented__option, .atlas-toolbar-tray__done';
   // The bars whose buttons these rules shape: the toolbars, the toolbar editor's tray, and the
   // ghost of a tool moving between them.
-  $toolbars: ':is(.atlas-vtt-toolbar, .atlas-toolbar-tray, .atlas-toolbar-ghost)';
+  $toolbars: ':is(.atlas-vtt-toolbar, .atlas-toolbar-tray, .atlas-toolbar-ghost, .atlas-tool-bar)';
 
-  /* Make all buttons in toolbar transparent by default, except those with their own look. */
+  /* Make all buttons in toolbar transparent by default, except those with their own look.
+     None shows that it has the focus, by the pointer or by a key: a button that was clicked keeps
+     the focus, and the next hotkey would ring it beside the tool in hand. */
   #{$toolbars} button.btn:not(#{$own-look}),
   #{$toolbars} button.btn--toolbar {
     background: transparent !important;
@@ -585,25 +691,22 @@
     }
   }
 
-  // Pointer focus stays quiet; keyboard focus gets the shared ring. The quiet rule leaves
-  // :focus-visible alone: as `:focus:not(…)` it outranked the ring's rule below.
-  #{$toolbars} button.btn:focus:not(:focus-visible):not(#{$own-look}),
-  #{$toolbars} button.btn--toolbar:focus:not(:focus-visible) {
-    outline: none !important;
-    box-shadow: none !important;
+  // Nor does a segmented option of a toolbar, or of a menu that hangs from one: a click leaves the
+  // focus on it and the menu open. A chosen option keeps the shadow it rests with.
+  #{$toolbars} .atlas-segmented__option:focus-visible {
+    box-shadow: none;
+
+    &.atlas-active {
+      box-shadow: $segmented-chosen-shadow;
+    }
   }
 
-  // A segmented option keeps the button's own ring, as in a dialog (`:where`: no added weight).
-  #{$toolbars} button.btn:focus-visible:where(:not(.atlas-segmented__option)),
-  #{$toolbars} button.btn--toolbar:focus-visible {
-    outline: 2px solid var(--interactive-accent) !important;
-    outline-offset: -2px;
-  }
-
-  #{$toolbars} button.btn:hover:not(#{$own-look}),
-  #{$toolbars} button.btn--toolbar:hover {
-    background: var(--background-modifier-hover) !important;
-    color: var(--text-normal) !important;
+  @media (hover: hover) {
+    #{$toolbars} button.btn:hover:not(#{$own-look}),
+    #{$toolbars} button.btn--toolbar:hover {
+      background: var(--background-modifier-hover) !important;
+      color: var(--text-normal) !important;
+    }
   }
 
   // .btn.is-active outranks the tool group's transparent reset below
@@ -611,9 +714,11 @@
     background: var(--interactive-accent) !important;
     color: var(--text-on-accent) !important;
 
-    &:hover {
-      background: var(--interactive-accent-hover) !important;
-      color: var(--text-on-accent) !important;
+    @media (hover: hover) {
+      &:hover {
+        background: var(--interactive-accent-hover) !important;
+        color: var(--text-on-accent) !important;
+      }
     }
   }
 
@@ -642,45 +747,40 @@
   }
 
   /* -------------------------------------------------
-     Split-button tool group (tool + chevron)
+     Tool group (tool + options chevron)
      ------------------------------------------------- */
+  // As in Figma: the tool is a whole rounded button of its own, hovered, pressed and active like
+  // every other tool, and the chevron beside it is a separate, narrower one with its own hover.
+  // The group paints nothing; it only takes the bar's control corner (see .atlas-vtt-toolbar).
   .atlas-tool-group {
     position: relative;
     display: flex;
     align-items: center;
-    background: var(--background-secondary);
-    // At either end of the toolbar, the outer corners follow the bar's (see .atlas-vtt-toolbar).
-    @include atlas-corner-shape;
-    border-radius: var(--atlas-bar-start-radius, #{$radius-l}) var(--atlas-bar-end-radius, #{$radius-l})
-      var(--atlas-bar-end-radius, #{$radius-l}) var(--atlas-bar-start-radius, #{$radius-l});
+    gap: $spacing-xs;
     padding: 0;
-    gap: 0;
+    border-radius: var(--atlas-bar-control-radius, #{$radius-m});
 
-    // The two halves of the split button have no background or radius of their own. Only they:
-    // the options menu hangs inside the group, and its buttons are the menu's to shape
-    // (dropdown-menu.scss). `:where` keeps the reset below `.btn.is-active` above.
-    > :where(.atlas-tool-button) button.btn,
-    > :where(.atlas-dropdown-menu) > button.btn {
-      border-radius: 0 !important;
-      background: transparent !important;
+  }
+
+  // Muted until hovered; filled while its menu is open. Never takes the tool's accent.
+  #{$toolbars} .atlas-tool-group button.btn.atlas-tool-group__chevron {
+    // Wider under a finger (`_coarse-pointer.scss`).
+    width: var(--atlas-tool-chevron-width, #{$icon-m});
+    height: $button-height-l;
+    padding: 0;
+    color: var(--text-muted);
+    border-radius: var(--atlas-bar-control-radius, #{$radius-m}) !important;
+
+    &.atlas-is-active {
+      background: var(--background-modifier-hover) !important;
+      color: var(--text-normal) !important;
     }
 
-    // Round only the outer edges of the tool button
-    > .atlas-tool-button:first-child button.btn {
-      border-top-left-radius: var(--atlas-bar-start-radius, #{$radius-l}) !important;
-      border-bottom-left-radius: var(--atlas-bar-start-radius, #{$radius-l}) !important;
-    }
-
-    // …and of the chevron that ends the group
-    > .atlas-dropdown-menu:last-child > button.btn {
-      border-top-right-radius: var(--atlas-bar-end-radius, #{$radius-l}) !important;
-      border-bottom-right-radius: var(--atlas-bar-end-radius, #{$radius-l}) !important;
-    }
-
-    // Chevron: match parent height and subtle separator
-    .atlas-dropdown-trigger {
-      height: $button-height-l; // match tool button height (40px)
-      border-left: $border-width-s solid var(--divider-color);
+    @media (hover: hover) {
+      &:hover {
+        background: var(--background-modifier-hover) !important;
+        color: var(--text-normal) !important;
+      }
     }
   }
 
@@ -696,8 +796,10 @@
     &.atlas-dropdown-btn--destructive {
       color: var(--text-error) !important;
 
-      &:hover {
-        background: color-mix(in oklch, var(--background-modifier-error) 15%, transparent) !important;
+      @media (hover: hover) {
+        &:hover {
+          background: color-mix(in oklch, var(--background-modifier-error) 15%, transparent) !important;
+        }
       }
     }
   }
@@ -705,6 +807,12 @@
   /* -------------------------------------------------
      Button component (using design tokens)
      ------------------------------------------------- */
+
+  // The host of Atlas' buttons in Obsidian's settings rows (`addSettingButton`): it lends them Atlas'
+  // scope and leaves the row's layout to them.
+  &.atlas-setting-control {
+    display: contents;
+  }
 
   // Base
   .btn {
@@ -715,15 +823,17 @@
     white-space: nowrap;
     height: $button-height-l;
     padding: $spacing-s $spacing-l;
-    border-radius: $radius-l;
+    border-radius: $radius-m;
     font-size: $font-ui-small;
     font-weight: $font-weight-medium;
     transition: color $transition-normal $transition-ease,
                 background-color $transition-normal $transition-ease;
 
+    // No focus ring, Obsidian's own included: Atlas is played with hotkeys and shows no keyboard highlights. A
+    // clicked button would otherwise light up at the next key pressed while it holds the focus.
     &:focus-visible {
       outline: none;
-      box-shadow: 0 0 0 2px var(--background-modifier-border-focus), 0 0 0 4px var(--background-primary);
+      box-shadow: none;
     }
 
     &:disabled {
@@ -753,9 +863,11 @@
     background: var(--background-primary);
     color: var(--text-normal);
 
-    &:hover {
-      background: var(--interactive-hover);
-      color: var(--text-normal);
+    @media (hover: hover) {
+      &:hover {
+        background: var(--interactive-hover);
+        color: var(--text-normal);
+      }
     }
   }
 
@@ -763,20 +875,34 @@
     background: var(--interactive-normal);
     color: var(--text-normal);
 
-    &:hover {
-      background: var(--interactive-hover);
+    @media (hover: hover) {
+      &:hover {
+        background: var(--interactive-hover);
+      }
     }
   }
 
+  // No surface of its own: words on the panel until the pointer comes, then a soft fill; a firmer one while it is
+  // pressed; disabled, only its words fade.
   .btn--ghost {
     background: transparent;
     color: inherit;
     border: none;
     box-shadow: none;
 
-    &:hover {
-      background: var(--background-modifier-hover);
-      color: var(--text-normal);
+    @media (hover: hover) {
+      &:hover {
+        background: var(--background-modifier-hover);
+        color: var(--text-normal);
+      }
+    }
+
+    &:active:not(:disabled) {
+      background: var(--background-modifier-active-hover, color-mix(in oklch, var(--background-modifier-hover), var(--text-normal) 10%));
+    }
+
+    &:disabled {
+      background: transparent;
     }
   }
 
@@ -790,9 +916,11 @@
     border: none;
     outline: none;
 
-    &:hover {
-      background: var(--background-modifier-hover) !important;
-      color: var(--text-normal);
+    @media (hover: hover) {
+      &:hover {
+        background: var(--background-modifier-hover) !important;
+        color: var(--text-normal);
+      }
     }
 
     &.is-active {
@@ -806,9 +934,11 @@
     text-decoration: underline;
     text-underline-offset: 4px;
 
-    &:hover {
-      color: var(--text-accent-hover);
-      text-decoration: none;
+    @media (hover: hover) {
+      &:hover {
+        color: var(--text-accent-hover);
+        text-decoration: none;
+      }
     }
   }
 
@@ -836,38 +966,12 @@
     gap: $spacing-s;
     justify-content: flex-end;
     margin-top: $spacing-xl;
-
-    button {
-      padding: $spacing-s $spacing-l;
-      border: none;
-      border-radius: $radius-s;
-      cursor: pointer;
-      font-family: inherit;
-      font-size: 0.9rem;
-      
-      &.mod-cta {
-        @include atlas-accent-fill;
-      }
-
-      &.mod-warning {
-        @include atlas-danger-fill;
-      }
-
-      &:not(.mod-cta) {
-        background: var(--background-secondary);
-        color: var(--text-normal);
-        border: 1px solid var(--background-modifier-border);
-        
-        &:hover {
-          background: var(--background-modifier-hover);
-        }
-      }
-    }
   }
 }
 
-// Hide Obsidian's native view header (forward/back nav) in Atlas views
-.workspace-leaf-content[data-type="atlas-vtt"] {
+// Hide Obsidian's native view header (forward/back nav) in Atlas views. On mobile it stays: it holds
+// the navigation and the sidebar toggles, which have no other place there.
+body:not(.is-mobile) .workspace-leaf-content[data-type="atlas-vtt"] {
   .view-header {
     display: none !important;
   }
@@ -878,11 +982,32 @@
   }
 }
 
+// On mobile the header stays above the map (`emptyViewRoot`). Atlas' root is the whole leaf, so the map
+// fills it behind the header, and the row of the scene tabs and widgets begins below the header.
+body.is-mobile .workspace-leaf-content[data-type="atlas-vtt"] .atlas-top-bar-row {
+  top: calc(#{$spacing-s} + var(--view-header-height, 0px));
+}
+
+// What a tablet's on-screen keyboard covers of the window (`_viewport.scss`). Obsidian keeps its own
+// measure of it where it does not resize the web view, which stands until `keyboardViewport.ts`
+// has measured the visual viewport. Obsidian shrinks its workspace by that much, so a leaf already
+// ends above the keyboard: what stands inside a leaf gives it no room of its own.
+body {
+  --atlas-keyboard-inset: var(--keyboard-height, 0px);
+}
+
+.workspace-leaf {
+  --atlas-keyboard-inset: 0px;
+}
+
 // The leaf content elements our views take over as their root
+// `clip`, not `hidden`: a hidden overflow can still be scrolled, and focusing anything that pokes
+// past the view's edge (a panel dragged half out, a bar's control) scrolled the view sideways,
+// cutting off its left side until a reload. A clipped box never scrolls.
 .workspace-leaf-content.atlas-vtt-view {
   padding: 0;
   position: relative;
-  overflow: hidden;
+  overflow: clip;
 }
 
 .workspace-leaf-content.atlas-dashboard-view {
@@ -916,7 +1041,7 @@
   // Ensure the view maintains proper dimensions
   min-width: 100%;
   min-height: 100%;
-  overflow: hidden;
+  overflow: clip;
 
   // Ensure the canvas container doesn't shrink but doesn't cover header
   canvas {
@@ -939,7 +1064,7 @@
     font-weight: 600;
     background: var(--background-modifier-border);
     padding: 2px 6px;
-    border-radius: 4px;
+    border-radius: $radius-s;
     min-width: 25px;
     text-align: center;
   }
@@ -960,23 +1085,23 @@
 // Popover: icon palette (src/app/tools/pin-icon-palette.scss), search, results and a hint footer. Uniform
 // padding/gap so every section sits on the same rhythm.
 //
-// Corners are concentric and built outwards from the icon button: each surface's
-// radius is the radius of the surface inside it plus the inset between them
-// (padding + border). The shared 12px popover radius cannot hold two nested
-// levels at this padding, so the panel radius is derived instead.
+// Corners are concentric: the icon row spans the top, $surface-inset inside the surface with a
+// control's corner (`--pin-inset-radius`), and the row's buttons $surface-inset inside the row with
+// `$control-inset-radius` (`--pin-btn-radius`, set on the row). The results light up as rows at
+// $surface-inset too; the name switch and the search stand on the menus' text edge, $spacing-m inside the padding.
 
 .atlas-note-pin-dropdown {
   --pin-btn-radius: #{$radius-m};
-  --pin-inset-radius: calc(var(--pin-btn-radius) + #{$spacing-xs} + #{$border-width-s});
+  --pin-inset-radius: #{$radius-m};
 
   @include atlas-elevated-surface;
-  border-radius: calc(var(--pin-inset-radius) + #{$spacing-m} + #{$border-width-m});
-  @include atlas-flex-col($gap: $spacing-m);
+  @include atlas-panel-radius($surface-radius);
+  @include atlas-flex-col($gap: $surface-inset);
   position: fixed;
   z-index: $z-atlas-dropdown;
   width: fit-content;
   min-width: 300px;
-  padding: $spacing-m;
+  padding: $surface-inset;
   overflow: hidden;
   color: var(--text-normal);
   font-family: var(--font-interface);
@@ -988,9 +1113,11 @@
   }
 
   // ── Search ─────────────────────────────────────────────────────
+  // Between the icon row and the results, on the menus' text edge ($spacing-m inside the padding).
   .pin-search-wrapper {
     position: relative;
     flex-shrink: 0;
+    margin-inline: $spacing-m;
 
     .pin-search-icon {
       position: absolute;
@@ -1012,14 +1139,12 @@
   .pin-search-input {
     @include atlas-text-input;
     padding-left: calc(#{$spacing-s} + #{$icon-s} + #{$spacing-s});
-    // Same inset from the panel edge as the icon row, so the same radius
-    border-radius: var(--pin-inset-radius);
+    border-radius: $radius-m;
   }
 
   // ── Results ────────────────────────────────────────────────────
-  .pin-results {
+  .atlas-pin-results {
     @include atlas-flex-col($gap: $spacing-xs);
-    @include atlas-scrollbar;
     max-height: 240px;
     overflow-y: auto;
     // The icon row sets the panel's width; a long note name truncates instead of widening it
@@ -1157,7 +1282,8 @@
     @include atlas-flex-row($gap: $spacing-l);
     justify-content: center;
     flex-shrink: 0;
-    padding-top: $spacing-m;
+    // Words, not controls: they keep room around them inside the surface's inset.
+    padding: $spacing-s;
     border-top: var(--divider-width) solid var(--divider-color);
 
     .pin-footer-hint {
@@ -1196,6 +1322,20 @@ body.atlas-asset-manager-open > .menu {
 // The status bar would cover the bottom-right corner of a full-bleed Atlas view.
 body.atlas-hide-status-bar .status-bar {
   display: none;
+}
+
+// A frameless window on Windows and Linux draws its minimise, maximise and close buttons over the top-right
+// corner of an Atlas view, where a map keeps its widgets. They fade out and come back while the pointer is over them
+// (the container keeps its pointer events, so its hover still registers). macOS has native traffic lights instead.
+body.atlas-hide-window-controls:is(.mod-windows, .mod-linux) .titlebar-button-container.mod-right {
+  opacity: 0;
+  transition: opacity $transition-normal $transition-ease;
+
+  &:hover,
+  &:focus-within {
+    opacity: 1;
+    transition-duration: $transition-fast;
+  }
 }
 
 // File picker input used by "New map from image…"; only ever clicked programmatically.
@@ -1249,4 +1389,9 @@ input.atlas-offscreen-input {
 .atlas-color-probe {
   position: absolute;
   opacity: 0;
+}
+
+// The theme's accent, as the document a scene is shared from resolves it (`accentColour`).
+.atlas-color-probe--accent {
+  color: var(--interactive-accent);
 }

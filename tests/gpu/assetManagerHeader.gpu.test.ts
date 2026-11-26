@@ -38,6 +38,7 @@ function headerProps(tokens: number): HeaderProps {
       handleNavigateBack: noop,
       handleNavigateForward: noop,
     },
+    onShowArmarium: noop,
   };
 }
 

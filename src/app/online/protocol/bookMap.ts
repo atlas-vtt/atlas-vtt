@@ -45,6 +45,11 @@ export interface BookPin extends MapPlace {
   readonly body: string;
 }
 
+/** A place on a map the world map leads into: that map (`BookNestedMap.id`) and shares of its image's width and height. */
+export interface NestedMapPlace extends MapPlace {
+  readonly map: string;
+}
+
 /** A quest the GM gave the character: where it leads (or nowhere), what it pays, and how far it has got. */
 export interface BookQuest {
   readonly id: string;
@@ -57,7 +62,13 @@ export interface BookQuest {
   readonly text?: AssetRef;
   /** The images its text embeds (`questEmbeds`), each fetched by hash; none where it embeds none. */
   readonly images?: readonly QuestImage[];
+  /** Where it leads on the world map itself, or null. */
   readonly place: MapPlace | null;
+  /**
+   * Where it leads on a map the world map leads into, only where `place` is null; none where it leads
+   * to no such map. An older page reads none and shows the quest on no map.
+   */
+  readonly nestedPlace?: NestedMapPlace;
   /** Experience it brings; 0 for none named. */
   readonly xp: number;
   /** What else it brings, as text. */
@@ -90,6 +101,11 @@ function parsePlace(value: unknown): MapPlace | null | undefined {
   return isRecord(value) && isShare(value.x) && isShare(value.y) ? { x: value.x, y: value.y } : undefined;
 }
 
+function parseNestedPlace(value: unknown): NestedMapPlace | null | undefined {
+  if (value === undefined) return undefined;
+  return isRecord(value) && typeof value.map === 'string' && ID.test(value.map) && isShare(value.x) && isShare(value.y) ? { map: value.map, x: value.x, y: value.y } : null;
+}
+
 function parseRewards(value: unknown): string[] | null {
   if (value === undefined) return [];
   if (!Array.isArray(value) || value.length > MAX_QUEST_REWARDS) return null;
@@ -115,7 +131,7 @@ export function parseQuestImages(value: unknown): QuestImage[] | null | undefine
   return images;
 }
 
-/** A quest, cleaned; what it does not name (place, experience, rewards, whole text, images) is none. */
+/** A quest, cleaned; what it does not name (places, experience, rewards, whole text, images) is none. */
 export function parseBookQuest(value: unknown): BookQuest | null {
   if (!isRecord(value) || typeof value.id !== 'string' || !ID.test(value.id) || !oneOf(QUEST_KINDS, value.kind) || !oneOf(QUEST_STATES, value.state)) return null;
   const title = bookLine(value.title, MAX_MAP_TITLE);
@@ -123,9 +139,10 @@ export function parseBookQuest(value: unknown): BookQuest | null {
   const text = value.text === undefined ? undefined : parseTextAsset(value.text);
   const images = parseQuestImages(value.images);
   const place = parsePlace(value.place);
+  const nestedPlace = parseNestedPlace(value.nestedPlace);
   const xp = value.xp ?? 0;
   const rewards = parseRewards(value.rewards);
-  if (title === null || body === null || text === null || images === null || place === undefined || rewards === null) return null;
+  if (title === null || body === null || text === null || images === null || place === undefined || nestedPlace === null || rewards === null) return null;
   if (typeof xp !== 'number' || !Number.isInteger(xp) || xp < 0 || xp > MAX_TOKEN_VALUE) return null;
-  return { id: value.id, kind: value.kind, state: value.state, title, body, ...(text !== undefined && { text }), ...(images !== undefined && images.length > 0 && { images }), place, xp, rewards };
+  return { id: value.id, kind: value.kind, state: value.state, title, body, ...(text !== undefined && { text }), ...(images !== undefined && images.length > 0 && { images }), place, ...(place === null && nestedPlace !== undefined && { nestedPlace }), xp, rewards };
 }

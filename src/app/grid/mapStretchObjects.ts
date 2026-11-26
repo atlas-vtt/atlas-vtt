@@ -10,11 +10,23 @@ import type { Point } from './hexGeometry';
 import type { MapMove } from './mapStretch';
 import { isOffMap, sceneTokens } from '../tokens/offMap';
 import { liquidMovedWithMap } from '../liquids/liquids';
+import { anchorsAndHolesMoved } from '../annotations/annotationList';
+import { measureMovedWithMap } from '../measure/keptMeasures';
 
 type SceneObjects = ViewState['objects'];
 
 /** Which objects move with the map; without one, all of them. */
 export type MovesWithMap = (object: object) => boolean;
+
+/** The kinds of object a scene holds that `T` gives no move. */
+type Unmoved<T> = Exclude<keyof SceneObjects, keyof T>;
+
+/**
+ * `moved` itself, once it names every kind of object a scene holds. A kind added to the scene's
+ * objects does not compile here until it is given its move: left out, it would stay where it
+ * was while the map under it is drawn another way.
+ */
+const everyKind = <T>(moved: T & ([Unmoved<T>] extends [never] ? unknown : { unmoved: Unmoved<T> })): T => moved;
 
 /** A record a scene from an older version lacks stays missing; an entry `moves` leaves out (or that is no object) stays as it is. */
 function mapRecord<T>(record: Record<string, T>, change: (value: T) => T, moves?: MovesWithMap): Record<string, T> {
@@ -48,8 +60,7 @@ function movedFog(operation: FogOperation, move: MapMove): FogOperation {
  * objects it names follow the map: in a scene with levels, those on the level whose image changed.
  */
 export function objectsMovedWithMap(objects: SceneObjects, move: MapMove, moves?: MovesWithMap): SceneObjects {
-  return {
-    ...objects,
+  return { ...objects, ...everyKind({
     // A combatant kept beside the map has no place on its image and stays where it waits
     tokens: mapRecord(sceneTokens(objects), (token) => (isOffMap(token) ? token : placed<typeof token>(move)(token)), moves),
     pins: mapRecord(objects.pins, placed(move), moves),
@@ -57,7 +68,8 @@ export function objectsMovedWithMap(objects: SceneObjects, move: MapMove, moves?
     // An area light's area follows the map with its middle.
     lights: mapRecord(objects.lights, (light) => ({ ...placed<typeof light>(move)(light), ...(Array.isArray(light.area) && { area: light.area.map(move) }) }), moves),
     audios: mapRecord(objects.audios, placed(move), moves),
-    drawings: mapRecord(objects.drawings, (drawing) => ({ ...drawing, points: drawing.points.map(move) }), moves),
+    // A drawing's anchors and the holes of its fill lie with its points and follow the map with them.
+    drawings: mapRecord(objects.drawings, (drawing) => ({ ...drawing, points: drawing.points.map(move), ...anchorsAndHolesMoved(drawing, move) }), moves),
     walls: mapRecord(objects.walls, (wall) => ({ ...wall, p1: move(wall.p1), p2: move(wall.p2) }), moves),
     fog: mapRecord(objects.fog, (operation) => movedFog(operation, move), moves),
     ...(objects.lightZones ? { lightZones: mapRecord(objects.lightZones, (zone) => ({ ...zone, polygon: zone.polygon.map(move) }), moves) } : {}),
@@ -65,5 +77,6 @@ export function objectsMovedWithMap(objects: SceneObjects, move: MapMove, moves?
     ...(objects.levelSurfaces ? { levelSurfaces: mapRecord(objects.levelSurfaces, (surface) => (Array.isArray(surface.polygon) ? { ...surface, polygon: surface.polygon.map(move) } : surface), moves) } : {}),
     ...(objects.mapFeatures ? { mapFeatures: mapRecord(objects.mapFeatures, (feature) => (Array.isArray(feature.polygon) ? { ...feature, polygon: feature.polygon.map(move) } : feature), moves) } : {}),
     ...(objects.liquids ? { liquids: mapRecord(objects.liquids, (surface) => liquidMovedWithMap(surface, move), moves) } : {}),
-  };
+    ...(objects.measures ? { measures: mapRecord(objects.measures, (measure) => measureMovedWithMap(measure, move), moves) } : {}),
+  }) };
 }

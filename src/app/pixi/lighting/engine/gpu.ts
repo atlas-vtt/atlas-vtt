@@ -1,10 +1,14 @@
-import { Buffer, BufferUsage, Geometry, GlProgram, RenderTexture, Shader, type BLEND_MODES, type Container, type Renderer, type TextureSource, type TEXTURE_FORMATS, type UniformGroup, type WebGLRenderer } from 'pixi.js';
+import { Buffer, BufferUsage, Geometry, GlProgram, RenderTexture, Shader, type BLEND_MODES, type Container, type Renderer, type TextureSource, type UniformGroup, type WebGLRenderer } from 'pixi.js';
 import type { EngineShaderSource } from './engineShaders';
+import type { EngineTargetFormat } from './targetCheck';
 
 export const HIGHP = 'highp';
 
-/** A render texture the engine samples without mipmaps. Our shaders write clip space directly. */
-export function createTarget(width: number, height: number, format: TEXTURE_FORMATS, scaleMode: 'linear' | 'nearest' = 'linear'): RenderTexture {
+/**
+ * A render texture the engine samples without mipmaps. Our shaders write clip space directly.
+ * Only the formats the device is asked about before the engine draws (`unrenderableEngineTargets`).
+ */
+export function createTarget(width: number, height: number, format: EngineTargetFormat, scaleMode: 'linear' | 'nearest' = 'linear'): RenderTexture {
   return RenderTexture.create({
     width: Math.max(1, Math.ceil(width)),
     height: Math.max(1, Math.ceil(height)),
@@ -55,6 +59,14 @@ export function createShader(source: EngineShaderSource, resources: Record<strin
 /** The engine's WebGL context, or null on a renderer without one. */
 export function glOf(renderer: Renderer): WebGLRenderer['gl'] | null {
   return renderer.name === 'webgl' ? (renderer as WebGLRenderer).gl : null;
+}
+
+/** The longest texture side `renderer` draws; null on a renderer without WebGL and while its context is lost. */
+export function maxTextureSide(renderer: Renderer): number | null {
+  const gl = glOf(renderer);
+  if (!gl || gl.isContextLost()) return null;
+  const side: unknown = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+  return typeof side === 'number' ? side : null;
 }
 
 /** While its context is lost a renderer draws nothing, and PIXI throws when asked for a new program. */

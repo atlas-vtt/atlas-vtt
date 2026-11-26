@@ -8,7 +8,9 @@ import { t } from '../../../../i18n';
 export type FilterSuggestion =
   /** `negated`: typed after a `-`, so it completes to `-prefix:`. */
   | { kind: 'keyword'; keyword: FilterKeyword; negated: boolean }
-  | { kind: 'value'; label: string; insert: string; count?: number };
+  | { kind: 'value'; label: string; insert: string; count?: number }
+  /** A plain word that is a value of a filter ("beast"): picked, the whole `type:beast` replaces the word. */
+  | { kind: 'filter'; keyword: FilterKeyword; label: string; insert: string; count: number };
 
 export interface FilterSuggestions {
   /** Keywords while one is typed, values after its operator. */
@@ -24,8 +26,14 @@ interface SuggestionSources {
   keywords: readonly FilterKeyword[];
   lookup: ReadonlyMap<string, FilterKeyword>;
   facets: CreatureFacets | null;
+  /** The facets without the name search, which a plain word also is (`CreatureFilterPanel.wordFacets`). */
+  wordFacets?: CreatureFacets | null;
   tags: readonly Tag[];
 }
+
+/** A plain word shorter than this offers no filter values: two letters begin too many of them. */
+const MIN_WORD_LENGTH = 3;
+const MAX_WORD_FILTERS = 3;
 
 const STATBLOCK_CHOICES = [
   { label: 'yes', detail: 'with a statblock', value: 'linked' },
@@ -75,9 +83,35 @@ function valueItems(keyword: FilterKeyword, fragment: string, { facets, tags }: 
 }
 
 /**
+ * The filter values a plain word begins, over the filters of options (type, traits, alignment…): "beast" offers
+ * `type:beast`, so the filter is one Enter away instead of a name search that finds nothing. Tags are left out: a
+ * tag is the GM's own word, never a creature's type. A value named exactly comes first, then the commonest.
+ */
+function wordFilters(fragment: string, { keywords, wordFacets }: SuggestionSources): FilterSuggestion[] {
+  const word = fragment.toLowerCase();
+  if (word.length < MIN_WORD_LENGTH || !wordFacets) return [];
+  const found: Array<{ item: FilterSuggestion; exact: boolean; count: number }> = [];
+  for (const keyword of keywords) {
+    if (keyword.kind !== 'options') continue;
+    const facet = wordFacets.options.find((candidate) => candidate.definition.id === keyword.filterId);
+    for (const option of facet?.options ?? []) {
+      const label = option.label.toLowerCase();
+      if (option.count === 0 || !label.startsWith(word)) continue;
+      const insert = `${keyword.prefix}:${quoteValue(option.label)}`;
+      found.push({ item: { kind: 'filter', keyword, label: option.label, insert, count: option.count }, exact: label === word, count: option.count });
+    }
+  }
+  return found
+    .sort((a, b) => Number(b.exact) - Number(a.exact) || b.count - a.count)
+    .slice(0, MAX_WORD_FILTERS)
+    .map(({ item }) => item);
+}
+
+/**
  * What the dropdown under the search offers at the cursor: keywords while one
- * is typed, the values in view after its operator. Null while a plain word is
- * typed that is no keyword, so a name search is not interrupted.
+ * is typed, the values in view after its operator. A plain word that begins a
+ * filter's value offers that filter first. Null while a plain word is typed that
+ * is neither, so a name search is not interrupted.
  */
 export function filterSuggestions(text: string, cursor: number, sources: SuggestionSources): FilterSuggestions | null {
   const context = queryContextAt(text, cursor, sources.lookup);
@@ -88,7 +122,10 @@ export function filterSuggestions(text: string, cursor: number, sources: Suggest
     const fragment = negated ? context.fragment.slice(1) : context.fragment;
     const offered = (fragment ? sources.keywords : suggestedKeywords(sources.keywords, sources.facets, sources.tags.length > 0))
       .filter((keyword) => !negated || keyword.negatable);
-    const items = matchingKeywords(offered, fragment).map((keyword): FilterSuggestion => ({ kind: 'keyword', keyword, negated }));
+    const items = [
+      ...(negated ? [] : wordFilters(fragment, sources)),
+      ...matchingKeywords(offered, fragment).map((keyword): FilterSuggestion => ({ kind: 'keyword', keyword, negated })),
+    ];
     return items.length > 0 ? { mode: 'keyword', heading: negated ? t('filters.exclude') : t('filters.filterBy'), items, context } : null;
   }
   const { keyword } = context;

@@ -5,10 +5,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AMMO, HP, STRESS } from '../mocks/resourceFixtures';
 
 const definitions = vi.hoisted(() => ({ list: [] as unknown[] }));
-vi.mock('../../src/app/services/AssetService', () => ({ AssetService: { getInstance: () => ({}) } }));
+vi.mock('../../src/app/services/AssetService', () => ({ AssetService: { getInstance: () => ({ initialize: () => new Promise<void>(() => undefined) }) } }));
 vi.mock('../../src/app/resources/collectionResources', () => ({ mapResources: () => definitions.list }));
 
 import { TokenSettingsPanel } from '../../src/app/react/components/command-palette/TokenSettingsPanel';
+import { createInMemoryApp } from '../mocks/inMemoryVault';
 
 function view(hiddenResources: string[]) {
   const state = {
@@ -16,7 +17,7 @@ function view(hiddenResources: string[]) {
     tokenSettings: { showNameplates: false, hiddenResources, showInstanceBadges: true, tokenRingSize: 1 },
     setTokenSettings: vi.fn(),
   };
-  return { state, view: { app: {}, atlasStore: { getState: () => state } } as never };
+  return { state, view: { app: createInMemoryApp().app, atlasStore: { getState: () => state, subscribe: () => () => undefined } } as never };
 }
 const isOn = (name: string): boolean => screen.getByRole('switch', { name }).getAttribute('aria-checked') === 'true';
 

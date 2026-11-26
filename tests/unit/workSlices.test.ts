@@ -9,7 +9,10 @@ function fakeClock(): { advance: (ms: number) => void } {
   return { advance: (ms) => { now += ms; } };
 }
 
-afterEach(() => { vi.restoreAllMocks(); });
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 describe('workSlices', () => {
   it('lets the job run on while its slice has time left', () => {
@@ -17,6 +20,14 @@ describe('workSlices', () => {
     const pause = workSlices();
     clock.advance(WORK_SLICE_MS - 1);
     expect(pause()).toBeUndefined();
+  });
+
+  it('lets a job end that runs on after its test took the document down', async () => {
+    const clock = fakeClock();
+    const pause = workSlices();
+    clock.advance(WORK_SLICE_MS);
+    vi.stubGlobal('window', undefined);
+    await expect(pause()).resolves.toBeUndefined();
   });
 
   it('gives the browser a turn once a slice is used up, then starts a new one', async () => {

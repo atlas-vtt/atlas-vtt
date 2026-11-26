@@ -63,13 +63,14 @@ export function DiceRollLog({ isOpen, onClose }: DiceRollLogProps): React.ReactE
       }
     };
 
+    const doc = panelRef.current?.doc ?? activeDocument;
     const timer = window.setTimeout(() => {
-      document.addEventListener('mousedown', handleClickOutside);
+      doc.addEventListener('pointerdown', handleClickOutside);
     }, 0);
 
     return () => {
       window.clearTimeout(timer);
-      document.removeEventListener('mousedown', handleClickOutside);
+      doc.removeEventListener('pointerdown', handleClickOutside);
     };
   }, [isOpen, isPinned, onClose]);
 
@@ -99,7 +100,7 @@ export function DiceRollLog({ isOpen, onClose }: DiceRollLogProps): React.ReactE
         <div className="dice-roll-log__actions">
           {history.length > 0 && (
             <LabelTooltip label={t('dice.clearHistory')}>
-              <button
+              <button type="button"
                 className="btn btn--ghost btn--icon dice-roll-log__action-btn"
                 onClick={clearHistory}
               >
@@ -108,7 +109,7 @@ export function DiceRollLog({ isOpen, onClose }: DiceRollLogProps): React.ReactE
             </LabelTooltip>
           )}
           <LabelTooltip label={isPinned ? t('dice.unpin') : t('dice.pin')}>
-            <button
+            <button type="button"
               className={`btn btn--ghost btn--icon dice-roll-log__action-btn ${isPinned ? 'dice-roll-log__action-btn--active' : ''}`}
               onClick={() => setIsPinned(prev => !prev)}
             >
@@ -120,7 +121,7 @@ export function DiceRollLog({ isOpen, onClose }: DiceRollLogProps): React.ReactE
       </div>
 
       {/* Scrollable list */}
-      <div ref={listRef} className="dice-roll-log__list">
+      <div ref={listRef} className="atlas-dice-roll-log__list">
         {history.length === 0 ? (
           <div className="dice-roll-log__empty">
             <Dices className="dice-roll-log__empty-icon" />

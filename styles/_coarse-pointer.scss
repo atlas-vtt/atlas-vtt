@@ -1,0 +1,56 @@
+@use './tokens' as *;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Sizes under a coarse pointer (a finger)
+// ═══════════════════════════════════════════════════════════════════════════
+// Atlas marks every window's <body> while the pointer is coarse (`data-atlas-pointer`, `pointerAttribute.ts`). The
+// sizes of what is pressed are custom properties whose fallback is the fine pointer's size (`_tokens.scss` and the
+// components named below); set here, on the body, they reach every rule that reads them, in the plugin's roots and in
+// the floating layer alike, with no rule gaining specificity. Fonts stay as they are.
+//
+//   property                       fine    coarse   read by
+//   --atlas-control-height         30 px   40 px    Obsidian's --input-height inside Atlas: fields, small buttons,
+//                                                   menu and select rows, tab and segmented tracks, field-row buttons
+//   --atlas-button-height-s        24 px   40 px    $button-height-s: inline icon buttons (remove, reroll, play, tag)
+//   --atlas-button-height-m        32 px   40 px    $button-height-m: icon buttons, list rows, a tool's own bars
+//   --atlas-button-height-l        40 px   44 px    $button-height-l: buttons, the toolbar's tools
+//   --atlas-input-height-s         28 px   40 px    $input-height-s
+//   --atlas-input-height-m         36 px   44 px    $input-height-m
+//   --atlas-close-button-size      30 px   44 px    $close-button-size: the × of every panel
+//   --atlas-ctx-row-height         28 px   44 px    context menu rows (atlas-context-menu.scss)
+//   --atlas-tool-chevron-width     20 px   32 px    the chevron beside a tool that has options
+//   --atlas-scene-tab-height       28 px   40 px    scene tabs (scene-tab-bar.scss)
+//   --atlas-scene-tab-action       16 px   28 px    a scene tab's eye and ×
+//   --atlas-resize-edge            6–8 px  16 px    the edges that resize a panel (corners twice that)
+//   --atlas-toggle-m-width/height  60 × 40 66 × 44  the switch with an icon (toggle.scss)
+//   --atlas-toggle-s-width/height  36 × 20 50 × 28  the small switch, in a 44 px hit area
+//   --atlas-toggle-xs-width/height 28 × 16 42 × 24  the switch in a line of text, in a 44 px hit area
+// Not properties: a slider's disc is 16 → 28 px in a 44 px thumb (primitives/slider.css), and Obsidian's
+// --checkbox-size is 24 px on native checkboxes inside Atlas, in a 44 px hit area (_native-checkboxes.scss).
+body[data-atlas-pointer='coarse'] {
+  --atlas-control-height: 40px;
+  --atlas-button-height-s: 40px;
+  --atlas-button-height-m: 40px;
+  --atlas-button-height-l: #{$touch-target};
+  --atlas-input-height-s: 40px;
+  --atlas-input-height-m: #{$touch-target};
+  --atlas-close-button-size: #{$touch-target};
+  --atlas-ctx-row-height: #{$touch-target};
+  --atlas-tool-chevron-width: 32px;
+  --atlas-scene-tab-height: 40px;
+  --atlas-scene-tab-action: 28px;
+  --atlas-resize-edge: 16px;
+  --atlas-toggle-m-width: 66px;
+  --atlas-toggle-m-height: #{$touch-target};
+  --atlas-toggle-s-width: 50px;
+  --atlas-toggle-s-height: 28px;
+  --atlas-toggle-xs-width: 42px;
+  --atlas-toggle-xs-height: 24px;
+
+  // What Atlas floats outside its roots (menus, previews, the pin picker) reads Obsidian's control height from the
+  // body; inside Atlas' floating layer it is Atlas' own.
+  .atlas-portal-host,
+  .atlas-note-pin-dropdown {
+    --input-height: var(--atlas-control-height);
+  }
+}

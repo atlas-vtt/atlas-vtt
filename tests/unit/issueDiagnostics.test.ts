@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { App, PluginManifest } from 'obsidian';
 import { collectDiagnostics, formatDiagnostics } from '../../src/app/support/diagnostics';
 import { AtlasErrorLog, formatErrors } from '../../src/app/support/errorLog';
@@ -32,6 +32,27 @@ describe('issue diagnostics', () => {
     expect(text).toContain('- Obsidian: 1.13.1');
     expect(text).toContain('Enabled community plugins (0): none');
     expect(formatDiagnostics(diagnostics, { includePlugins: false })).not.toContain('community plugins');
+  });
+});
+
+describe('issue diagnostics where there is no Node', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('reports no Electron where there is no process, as in Obsidian\'s mobile apps', () => {
+    vi.stubGlobal('process', undefined);
+    const diagnostics = collectDiagnostics({} as App, manifest);
+    vi.unstubAllGlobals();
+    expect(diagnostics.electronVersion).toBeNull();
+    expect(diagnostics.system).toBe('Unknown OS');
+    expect(formatDiagnostics(diagnostics, { includePlugins: false })).toContain('- Obsidian: 1.13.1\n');
+  });
+
+  it.each([{ env: {} }, { versions: null, arch: 'arm64' }, { versions: {} }, 'process'])('takes a process a script put on the window (%j) for none', (shim) => {
+    vi.stubGlobal('process', shim);
+    const diagnostics = collectDiagnostics({} as App, manifest);
+    vi.unstubAllGlobals();
+    expect(diagnostics.electronVersion).toBeNull();
+    expect(diagnostics.system).toBe('Unknown OS');
   });
 });
 

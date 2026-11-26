@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { externalAudioPath, freeName, movedRelative, readExternalAudioPath, relativeBelow, safeName, safeRelative } from '../../../src/app/soundLibrary/soundPaths';
+import { externalAudioPath, freeName, movedRelative, readExternalAudioPath, relativeBelow, safeName, safeRelative, twinCandidates } from '../../../src/app/soundLibrary/soundPaths';
 
 describe('a path below a root', () => {
   it.each(['..', '../x', 'a/../../x', 'a/..', '/etc/passwd', 'C:/x', 'c:x', 'a\\..\\x', 'a//b', './a', 'a/./b', 'a/', 'a\0b'])('refuses %s', (path) => {
@@ -51,4 +51,22 @@ it('moves a path and what lies below it, and nothing else', () => {
   expect(movedRelative('a/b', 'a/b', 'c')).toBe('c');
   expect(movedRelative('a/b/d.mp3', 'a/b', 'c')).toBe('c/d.mp3');
   expect(movedRelative('a/bc.mp3', 'a/b', 'c')).toBeNull();
+});
+
+describe('the names one sound has, converted or not', () => {
+  it('of a source is its Opus name beside it', () => {
+    expect(twinCandidates('a/Tavern.mp3')).toEqual(['a/Tavern.opus']);
+    expect(twinCandidates('Tavern.FLAC')).toEqual(['Tavern.opus']);
+    expect(twinCandidates('atlas-sound:music/a/Tavern.ogg')).toEqual(['atlas-sound:music/a/Tavern.opus']);
+  });
+
+  it('of an Opus file is its source under every other audio extension', () => {
+    expect(twinCandidates('a/Tavern.opus')).toEqual(['a/Tavern.mp3', 'a/Tavern.wav', 'a/Tavern.flac', 'a/Tavern.ogg', 'a/Tavern.m4a', 'a/Tavern.aac', 'a/Tavern.webm']);
+  });
+
+  it('is none for what is no audio', () => {
+    expect(twinCandidates('a/Tavern')).toEqual([]);
+    expect(twinCandidates('a/Tavern.txt')).toEqual([]);
+    expect(twinCandidates('a/.opus')).toEqual([]);
+  });
 });

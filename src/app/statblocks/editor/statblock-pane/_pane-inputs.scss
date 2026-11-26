@@ -6,15 +6,16 @@
 @use '../../../../../styles/mixins' as *;
 
 .atlas-vtt-plugin {
-  // A block with values to edit. The wash reaches past the block by a shadow, never a margin.
+  // A block with values to edit. The wash reaches past the block by a shadow, never a margin, and
+  // its corner is a control's: the block, $spacing-xs inside it, runs concentric.
   .atlas-sb-sheet .atlas-sb-item.atlas-sb-pane-value {
     cursor: text;
 
-    border-radius: $radius-s;
+    border-radius: $control-inset-radius;
 
     // A Metric keeps its own box's corners, and the wash fills that box and reaches no further.
     &[data-block='metric'] {
-      border-radius: $radius-l;
+      border-radius: $radius-m;
     }
 
     // A list that holds abilities washes the one pointed at (interaction.scss); a Table, as Obsidian's, washes nothing.
@@ -156,12 +157,12 @@
 
   // The ring of what is being typed: a value's block (§6.3). An ability's fields and a Table's cell have their own.
   .atlas-sb-sheet .atlas-sb-item.atlas-sb-pane-editing:not(.atlas-sb-pane-editing--list, .atlas-sb-pane-editing--table) {
-    border-radius: $radius-s;
+    border-radius: $control-inset-radius;
     outline: 2px solid var(--interactive-accent);
     outline-offset: $spacing-xs;
 
     &[data-block='metric'] {
-      border-radius: $radius-l;
+      border-radius: $radius-m;
     }
   }
 
@@ -232,7 +233,7 @@
     overflow-y: auto;
     background: var(--menu-background);
     border: var(--menu-border-width, #{$border-width-s}) solid var(--menu-border-color);
-    border-radius: $radius-xl;
+    border-radius: $surface-radius;
     box-shadow: var(--menu-shadow, #{$shadow-md});
     font-style: normal;
     font-weight: $font-weight-normal;

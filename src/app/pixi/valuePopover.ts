@@ -1,4 +1,5 @@
 import { portalHost } from '../host/portalHost';
+import { visibleViewport } from '../host/visibleViewport';
 /**
  * The small popover in which a GM types a token's numbers over the map: it hangs below a point of
  * the canvas (above where there is no room), Enter or a press outside applies a valid value,
@@ -85,10 +86,11 @@ export function openValuePopover({ anchorEl, anchor, label, className, build, on
 
   const reposition = (next: BarAnchor): void => {
     const rect = anchorEl.getBoundingClientRect();
+    const seen = visibleViewport(win);
     const halfWidth = root.offsetWidth / 2;
-    const x = Math.min(Math.max(rect.left + next.x, VIEWPORT_MARGIN + halfWidth), win.innerWidth - VIEWPORT_MARGIN - halfWidth);
+    const x = Math.min(Math.max(rect.left + next.x, VIEWPORT_MARGIN + halfWidth), seen.right - VIEWPORT_MARGIN - halfWidth);
     const below = rect.top + next.bottom + POPOVER_GAP;
-    const fitsBelow = below + root.offsetHeight <= win.innerHeight - VIEWPORT_MARGIN;
+    const fitsBelow = below + root.offsetHeight <= seen.bottom - VIEWPORT_MARGIN;
     root.style.left = `${x}px`;
     root.style.top = `${fitsBelow ? below : rect.top + next.top - POPOVER_GAP - root.offsetHeight}px`;
   };

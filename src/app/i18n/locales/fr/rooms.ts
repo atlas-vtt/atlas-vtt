@@ -1,0 +1,25 @@
+import type { Translation } from '../../types';
+
+export const rooms: Translation = {
+  'rooms.carve': 'Creuser',
+  'rooms.fill': 'Combler',
+  'rooms.door': 'Porte',
+  'rooms.rectangle': 'Rectangle',
+  'rooms.points': 'Points',
+  'rooms.lasso': 'Lasso',
+  'rooms.brush': 'Pinceau',
+  'rooms.brushSize': 'Taille du pinceau',
+  'rooms.bucket': 'Seau',
+  'rooms.bucketTip': 'Cliquez ou faites glisser dans une salle pour creuser son sol jusqu\'aux murs dessinés',
+  'rooms.bucketRadius': 'Rayon du seau',
+  'rooms.bucketSensitivity': 'Sensibilité des bords',
+  'rooms.stabilize': 'Stabilisation',
+  'rooms.experimental.label': 'Seau de salles',
+  'rooms.experimental.hint': 'Le Seau du mode salles de l\'outil d\'éclairage : cliquez ou faites glisser sur une carte peinte et le sol est trouvé jusqu\'aux murs qu\'elle dessine, puis creusé. Désactivé, le seau est masqué.',
+  'rooms.bucketFoundNothing': 'Le seau n\'a trouvé aucun sol ici. Essayez un autre endroit ou une autre sensibilité',
+  'rooms.carveTip': 'Creuser une salle dans la roche. Maintenez Alt pour combler',
+  'rooms.fillTip': 'Combler avec de la roche. Maintenez Alt pour creuser',
+  'rooms.rectangleTip': 'Maintenez Shift pour aimanter à la grille',
+  'rooms.pointsTip': 'Cliquez les coins, puis de nouveau le premier pour fermer. Shift aimante à la grille',
+  'rooms.doorHint': 'Faites glisser à travers une ouverture. Maintenez Alt pour une porte secrète',
+};

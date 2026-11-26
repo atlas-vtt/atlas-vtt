@@ -34,6 +34,11 @@ export interface VaultReconciliation {
   missingFolders: string[];
 }
 
+/** The result of a check that moved no file and asks for none to be moved. */
+export function nothingReconciled(changed: boolean): VaultReconciliation {
+  return { changed, folderMoves: [], fileMoves: [], ops: { moves: [], trash: [] }, missingFolders: [] };
+}
+
 /** Every asset belongs to a collection with a record, and there is always a collection. */
 function ensureCollectionRecords(metadata: AssetMetadata): boolean {
   let changed = false;

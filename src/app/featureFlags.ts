@@ -15,9 +15,11 @@
 export const AMBIENT_AUDIO_ENABLED = false;
 
 /**
- * Limited walls (hedges, low walls: sight and light pass the first and stop at the second).
- * Off: the rule that counts them is not yet safe (see CLAUDE.md, "Limited walls"). While it is
- * off no wall reads as limited (`readWall`), so none of the code that counts them runs, and
- * the wall menu does not offer the switch. Do not switch it on before the open points are closed.
+ * Limited walls (hedges, low walls: sight and light pass the first and stop at the second). Off:
+ * `readWall` reads no wall as limited, so one whose file says so blocks like any wall, none of the
+ * code that counts them runs and the wall menu offers no switch. It stays off while the count is
+ * unsafe: walls within `LIMITED_JOIN` are one hedge, which shows what two drawn hedges must hide
+ * (beside an X, hedges side by side); light passes two hedges in a solid wall's soft shadow; two
+ * met at the same distance are told apart by rounding; a viewer or light on a hedge sees hairlines.
  */
 export const LIMITED_WALLS = false;

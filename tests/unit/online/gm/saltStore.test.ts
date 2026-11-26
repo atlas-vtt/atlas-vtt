@@ -1,7 +1,8 @@
+import { AtlasAccount } from '../../../../src/app/account/AtlasAccount';
 import { describe, expect, it } from 'vitest';
 import type { App } from 'obsidian';
 import { AccountControl } from '../../../../src/app/online/gm/account/AccountControl.ts';
-import type { HttpRequest, HttpResponse } from '../../../../src/app/online/gm/account/http.ts';
+import type { HttpRequest, HttpResponse } from '../../../../src/app/account/http.ts';
 import { SALT_SECRET_ID, saltOf, secretSaltStore, type SaltStore } from '../../../../src/app/online/gm/account/saltStore.ts';
 import { AssetSalt, SALT_RETRY_MS } from '../../../../src/app/online/gm/assets/assetSalt.ts';
 import type { StoreResult } from '../../../../src/app/online/gm/assets/storeClient.ts';
@@ -122,15 +123,19 @@ describe('the salt with the account', () => {
       now: () => 0,
       sleep: () => Promise.resolve(),
     });
-    holder.control = new AccountControl({
+    const timers = { now: () => 0, setTimer: (run: () => void) => (queueMicrotask(run), 1), clearTimer: () => undefined };
+    const atlasAccount = new AtlasAccount({
       http,
-      timers: { now: () => 0, setTimer: (run) => (queueMicrotask(run), 1), clearTimer: () => undefined },
+      timers,
       tokens: { get: () => token, set: (next) => (token = next), clear: () => (token = null) },
+      available: true,
       openUrl: () => undefined,
       notify: () => undefined,
-      signedIn: () => void salt.ensure(true),
-      signedOut: () => salt.clear(),
     });
+    // As online play hears the plugin's account (`OnlineFeature.onload`).
+    atlasAccount.onSignedIn(() => void salt.ensure(true));
+    atlasAccount.onSignedOut(() => salt.clear());
+    holder.control = new AccountControl({ http, timers, account: atlasAccount });
     return { control: holder.control, salt, secrets, requests };
   }
 
@@ -164,14 +169,18 @@ describe('the salt with the account', () => {
   it('runs what goes before a sign-out while the token still counts (the shared copies removed, where asked for)', async () => {
     let token: string | null = 'tok';
     const seenToken: (string | null)[] = [];
-    const control = new AccountControl({
-      http: () => Promise.resolve({ status: 200, json: null }),
-      timers: { now: () => 0, setTimer: () => 1, clearTimer: () => undefined },
+    const http = (): Promise<HttpResponse> => Promise.resolve({ status: 200, json: null });
+    const timers = { now: () => 0, setTimer: () => 1, clearTimer: () => undefined };
+    const atlasAccount = new AtlasAccount({
+      http,
+      timers,
       tokens: { get: () => token, set: (next) => (token = next), clear: () => (token = null) },
+      available: true,
       openUrl: () => undefined,
       notify: () => undefined,
-      beforeSignOut: () => Promise.resolve(void seenToken.push(token)),
     });
+    atlasAccount.beforeSignOut(() => Promise.resolve(void seenToken.push(token)));
+    const control = new AccountControl({ http, timers, account: atlasAccount });
     await control.signOut();
     expect(seenToken).toEqual(['tok']);
     expect(control.token()).toBeNull();

@@ -17,7 +17,7 @@ export interface BuiltPyramid {
  */
 export const MAX_BUILD_TRIES = 8;
 
-const STANDING_ORDER: readonly MapStanding[] = ['presented', 'watched', 'rest', 'staged'];
+const STANDING_ORDER: readonly MapStanding[] = ['presented', 'watched', 'rest', 'book', 'staged'];
 /** Whether a build stored tiles since the last one ended; notes how many the cache holds now. */
 function progressed(built: BuiltPyramid | 'stopped', wish: Wish): boolean {
   if (built === 'stopped' || built.stored === undefined || built.stored <= wish.stored) return false;

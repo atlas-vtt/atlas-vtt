@@ -19,8 +19,19 @@ const withinAsset = (text: string): string => (text.length > ASSET_CAPS.text ? t
  */
 export class SheetTexts {
   readonly wanted = new Set<string>();
+  /** The links this drawing asked the text of (`linkedText`). */
+  readonly links = new Set<string>();
 
-  constructor(private readonly refs: ReadonlyMap<string, AssetRef> = new Map()) {}
+  constructor(
+    private readonly refs: ReadonlyMap<string, AssetRef> = new Map(),
+    private readonly linked: ReadonlyMap<string, string> = new Map(),
+  ) {}
+
+  /** The text an ability's name links (`abilityLink`) as it was read before this drawing; empty where it was not. */
+  linkedText(link: string): string {
+    this.links.add(link);
+    return this.linked.get(link) ?? '';
+  }
 
   /** A text as the sheet carries it: cleaned as a book's text, its opening cut at a word, and the whole text by hash where it is longer. */
   of(value: string): SheetText {
