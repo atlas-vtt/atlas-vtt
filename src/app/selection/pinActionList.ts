@@ -15,7 +15,7 @@ import { actionOf, PRIMARY_ORDER, WHOLE_SELECTION, type SelectionAction } from '
 export function pinActions(store: ViewAtlasStore, pin: NotePin, at?: { x: number; y: number }): SelectionAction[] {
   const readable = readablePinEntry(store, pin);
   return [
-    { kind: 'run', id: 'copy-link', enabled: true, label: t('atlasLinks.copy'), icon: 'link', run: () => dispatchPinAction('copy-link', pin, store) },
+    { kind: 'run', id: 'copy-link', enabled: true, label: 'Copy link', icon: 'link', run: () => dispatchPinAction('copy-link', pin, store) },
     { kind: 'run', id: 'open', enabled: true, ...pinOpenLook(pin), run: () => dispatchPinAction('open', pin, store) },
     {
       kind: 'run', id: 'edit', enabled: true, label: t('pinMenu.edit'), icon: 'edit',
