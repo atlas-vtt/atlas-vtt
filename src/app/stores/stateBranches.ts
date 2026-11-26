@@ -20,6 +20,7 @@ import { levelAlignmentsOf, withoutAlignments } from '../levels/levelAlignment';
 import { firstLevelId, viewedLevelId } from '../levels/sceneLevels';
 import { withoutCollectionWidgets } from '../utils/collectionWidgets';
 import { isRecord } from '../utils/guards';
+import type { UndoDepths } from './history';
 
 type Action = (...args: never[]) => unknown;
 
@@ -29,11 +30,7 @@ type BranchKey = { [K in keyof ViewAtlasState]-?: NonNullable<ViewAtlasState[K]>
 /** A scene file's state as the store's `merge` is handed it: what `partialize` wrote, or an older Atlas did. */
 type SavedState = Partial<ViewAtlasState>;
 
-/**
- * How deep undo looks into a branch for the entities a step changed (`towards`): 0 puts the
- * branch back whole, 1 entry by entry, 2 collection by collection and entity by entity.
- */
-type UndoDepth = 0 | 1 | 2;
+type UndoDepth = UndoDepths[string];
 
 /** How the scene's file holds a branch. */
 interface FileForm<V> {
@@ -46,7 +43,7 @@ interface FileForm<V> {
 type BranchPolicy<V> = {
   /** Saved with the scene. Unset: never saved, and a load keeps what the view holds. */
   readonly file?: FileForm<V>;
-  /** Undoable, this deep. Unset: no undo step ever changes it. */
+  /** Undoable, this deep (`UndoDepths`). Unset: no undo step ever changes it. */
   readonly undo?: UndoDepth;
 } & (
   /** The scene's: a new store starts with `initial`, and a map switch puts it back. */
@@ -194,13 +191,8 @@ const BRANCHES = Object.entries(STATE_BRANCHES) as Array<[BranchKey, Policy]>;
 const SAVED = BRANCHES.flatMap(([key, { file }]) => (file ? [[key, file] as const] : []));
 const OF_SCENE = BRANCHES.filter(([, policy]) => policy.perScene);
 
-/** The branches undo tracks. */
-export type UndoBranch = { [K in keyof Branches]: Branches[K] extends { readonly undo: UndoDepth } ? K : never }[keyof Branches];
-
-/** How deep undo looks into each branch it tracks, in the order they are declared. */
-export const UNDO_DEPTHS = Object.fromEntries(
-  BRANCHES.flatMap(([key, { undo }]) => (undo === undefined ? [] : [[key, undo]])),
-) as Readonly<Record<UndoBranch, UndoDepth>>;
+/** The branches undo tracks, and how deep (`withHistory`). */
+export const UNDO_DEPTHS: UndoDepths = Object.fromEntries(BRANCHES.flatMap(([key, { undo }]) => (undo === undefined ? [] : [[key, undo]])));
 
 const valuesOf = (entries: Array<[BranchKey, Policy]>): Partial<ViewAtlasState> => (
   Object.fromEntries(entries.flatMap(([key, { initial }]) => (initial ? [[key, initial()]] : [])))

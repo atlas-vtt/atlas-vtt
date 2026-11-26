@@ -62,7 +62,7 @@ import { createPlayerFramesActions, type PlayerFramesSlice } from './stores/play
 import { readSceneSound } from './soundLibrary/sceneSound';
 import type { SceneSound } from './sound/soundTypes';
 import { movesWithFrame } from './levels/levelAlignment';
-import { clearedScene, initialBranches, loadedBranches, savedBranches } from './stores/stateBranches';
+import { clearedScene, initialBranches, loadedBranches, savedBranches, UNDO_DEPTHS } from './stores/stateBranches';
 import { levelsCarriedWithGrid, type CarriedLevels, type GridCarryScene } from './levels/levelGridCarry';
 
 // Individual store state interface (same as AtlasState but isolated)
@@ -442,7 +442,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
   const fight: FightBinding = { rules: rulesLookup(app), random: diceRandom };
 
   const store = create<ViewAtlasState>()(
-    withHistory(
+    withHistory(UNDO_DEPTHS)(
       subscribeWithSelector(
         persist(
           immer<ViewAtlasState>((set, get) => ({

@@ -1,10 +1,15 @@
-import { UNDO_DEPTHS, type UndoBranch } from '../stateBranches';
-
 /** Maximum number of undo steps kept per map. */
 export const HISTORY_LIMIT = 50;
 
-/** The tracked state: the branches the store declares undoable (`stateBranches.ts`), by reference; a store without one leaves it out. */
-export type HistorySnapshot = { readonly [K in UndoBranch]?: unknown };
+/**
+ * The branches undo tracks, by name, and how deep it looks into each for the entities a step
+ * changed (`towards`): 0 puts the branch back whole, 1 entry by entry, 2 collection by collection
+ * and entity by entity. The store declares them (`stores/stateBranches.ts`).
+ */
+export type UndoDepths = Readonly<Record<string, 0 | 1 | 2>>;
+
+/** The tracked state: the branches of the store's `UndoDepths`, by reference; a store without one leaves it out. */
+export type HistorySnapshot = Readonly<Record<string, unknown>>;
 
 /**
  * One undo step: the tracked state before and after one GM write or one outermost transaction.
@@ -15,12 +20,10 @@ export interface HistoryStep {
   readonly after: HistorySnapshot;
 }
 
-export const TRACKED_BRANCHES = Object.keys(UNDO_DEPTHS) as readonly UndoBranch[];
-
 /** The tracked branches of a state, by reference. */
-export function trackedSliceOf(state: HistorySnapshot): HistorySnapshot {
-  const slice: Partial<Record<UndoBranch, unknown>> = {};
-  for (const branch of TRACKED_BRANCHES) slice[branch] = state[branch];
+export function trackedSliceOf(state: HistorySnapshot, depths: UndoDepths): HistorySnapshot {
+  const slice: Record<string, unknown> = {};
+  for (const branch of Object.keys(depths)) slice[branch] = state[branch];
   return slice;
 }
 
@@ -29,6 +32,6 @@ export function trackedSliceOf(state: HistorySnapshot): HistorySnapshot {
  * unchanged branches, so this tells a write that changed tracked state from one that did not.
  */
 export function sameTrackedSlice(a: HistorySnapshot, b: HistorySnapshot): boolean {
-  for (const branch of TRACKED_BRANCHES) if (a[branch] !== b[branch]) return false;
-  return true;
+  const branches = Object.keys(a);
+  return branches.length === Object.keys(b).length && branches.every((branch) => a[branch] === b[branch]);
 }

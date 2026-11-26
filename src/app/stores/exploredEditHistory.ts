@@ -1,11 +1,11 @@
 import { getHistoryStore, type HistorySnapshot, type HistoryState, type HistoryStep } from './history';
-import { TRACKED_BRANCHES } from './history/trackedSlice';
 
 type Timeline = Pick<HistoryState, 'pastStates' | 'futureStates'>;
 
-const OTHER_BRANCHES = TRACKED_BRANCHES.filter((branch) => branch !== 'exploredEdits');
-
-const sameButForEdits = (a: HistorySnapshot, b: HistorySnapshot): boolean => OTHER_BRANCHES.every((branch) => a[branch] === b[branch]);
+/** Whether `state` holds what `side` holds on every branch of it but the count of memory edits. */
+const sameButForEdits = (side: HistorySnapshot, state: HistorySnapshot): boolean => (
+  Object.keys(side).every((branch) => branch === 'exploredEdits' || side[branch] === state[branch])
+);
 
 const counting = (side: HistorySnapshot, count: number): HistorySnapshot => ({ ...side, exploredEdits: count });
 
@@ -72,7 +72,7 @@ function futureWithoutEdits(steps: readonly HistoryStep[], present: HistorySnaps
  * may lie ahead of them (a transaction under way, an undo being announced); their sides next
  * to the present keep what they hold, so they still meet the store.
  */
-export function forgetExploredEdits(store: { getState: () => HistorySnapshot & { exploredEdits: number } }): void {
+export function forgetExploredEdits(store: { getState: () => { exploredEdits: number } }): void {
   const history = getHistoryStore(store);
   if (!history) return;
   const present = store.getState();
