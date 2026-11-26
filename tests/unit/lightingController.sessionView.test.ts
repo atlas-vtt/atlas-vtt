@@ -611,6 +611,16 @@ describe('tokens in session view', () => {
     collection.mockRestore();
   });
 
+  it('tells who follows what the players see of each change of their sight, as it does the GM\'s sight aids', () => {
+    const told = vi.fn();
+    setup({ onSightChange: told });
+    const { onSightChange } = lighting.deps as SceneLightingDeps;
+    told.mockClear();
+    onSightChange?.();
+    onSightChange?.();
+    expect(told).toHaveBeenCalledTimes(2);
+  });
+
   it('marks for the GM the tokens the players do not see, follows their sight, and shows none of it in the players\' view', async () => {
     const { controller, store, lurker } = scene();
     const { sightAids } = controller.gmOverlays();

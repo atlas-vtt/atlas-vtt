@@ -146,6 +146,8 @@ export class PixiRendererOrchestrator { // Renamed class
   private roofs?: ViewRoofs;
   /** Where gliding tokens are drawn: the token renderer notes them, the lighting reads its tokens there. */
   private readonly shownPlaces = new ShownPlaces();
+  /** Who follows what the players see beyond the store (`onPlayerSightChange`). */
+  private readonly sightListeners = new Set<() => void>();
   /** The players' frame, rendered at the player window's size; made when this view is first presented. */
   private playerFrames?: Pick<PlayerFrameTexture, 'canRender' | 'render' | 'copy' | 'release' | 'destroy'>;
   private audioRenderer?: AudioRenderer;
@@ -490,7 +492,7 @@ export class PixiRendererOrchestrator { // Renamed class
       mapSize: () => this.mapImage?.imageSize ?? null,
       bounds: () => this.getSceneMapRect(),
       lighting: () => this.lighting?.renderer,
-      onChange: () => this.tokenRenderer?.refreshPlayerSight(),
+      onChange: () => { this.tokenRenderer?.refreshPlayerSight(); this.tellPlayerSight(); },
     });
 
     if (!isPlayerView) {
@@ -524,6 +526,7 @@ export class PixiRendererOrchestrator { // Renamed class
           art: this.tokenArt,
         }),
         ...(quality && { quality }),
+        onSightChange: () => this.tellPlayerSight(),
       });
     }
 
@@ -794,6 +797,7 @@ export class PixiRendererOrchestrator { // Renamed class
     // alignment is applied.
     if (this.isPreviewingStretch()) this.fitZoomRangeToStretch();
     else this.mapSizeSettled();
+    this.tellPlayerSight();
   }
 
   private isPreviewingStretch(): boolean {
@@ -1099,6 +1103,14 @@ export class PixiRendererOrchestrator { // Renamed class
     return layers;
   }
 
+  /** Calls `listener` whenever what the players see may change without a store change: their sight, the roof, a token drawn once its art loaded, the map image of a level. Returns what stops it. */
+  public onPlayerSightChange(listener: () => void): () => void {
+    this.sightListeners.add(listener);
+    return () => void this.sightListeners.delete(listener);
+  }
+
+  private tellPlayerSight(): void { for (const listener of [...this.sightListeners]) listener(); }
+
   /**
    * The tokens a players' frame of `mapPath` shows now, among `tokenIds` (all without), by
    * the perception `withPlayerSafeFrame` composes: for rolls to name. Nothing once the view
@@ -1313,6 +1325,7 @@ export class PixiRendererOrchestrator { // Renamed class
   private makeTokenRenderer(viewport: Viewport, grid: GridSystem): TokenRenderer {
     const tokens = new TokenRenderer(this.obsApp, viewport, grid, () => { this.selectionManager?.requestSelectionOverlay(); requestRender(this.pixiAppManager.app); }, this.store, this.eventBus, this.viewId, this.shownPlaces, this.tokenArt);
     tokens.setPixiApp(this.pixiAppManager.app);
+    tokens.onTokenDrawn(() => this.tellPlayerSight());
     return tokens;
   }
 

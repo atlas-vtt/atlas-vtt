@@ -205,6 +205,8 @@ export class TokenRenderer {
   /** The tokens as the players' sight shows them: which are left out, and the outlines of sensed ones. */
   private readonly playerSight = new PlayerSightTokens({ tokens: () => mapTokens(levelObjects(this.store.getState())), sprites: () => this.tokenSprites, held: () => this.heldTokenIds });
   private readonly playersView = new PlayersViewWatch();
+  /** Who hears of each token drawn once its art loaded (`onTokenDrawn`). */
+  private readonly drawnListeners = new Set<() => void>();
   private readonly playerBadges = new ShownBadgeNumbers(() => this.store.getState());
   /** The marker on the tokens whose turn it is. */
   private turnMarkers!: TurnMarkers;
@@ -1176,25 +1178,13 @@ export class TokenRenderer {
             return;
           }
 
-          // Set up interaction handlers
           this.interactionController.attachInteractionHandlers(token.id, tokenGroup, token);
-          
-          // Add to container
           container.addChild(tokenGroup);
-          
-          // Store sprite reference
           this.tokenSprites[token.id] = tokenGroup;
-
           // The sync that added this token refreshed badges before its sprite existed
           this.refreshInstanceBadge(token.id);
-
-          // Remove from loading set
           this.tokensLoading.delete(token.id);
-          
-          // Check if all tokens are loaded
           this.checkAllTokensLoaded();
-          
-          // Create UI elements
           this.uiManager.createTokenUI(token.id, tokenGroup, character);
           this.placeInPile(token.id, tokenGroup);
           
@@ -1215,6 +1205,7 @@ export class TokenRenderer {
           
           // Also ensure viewport sorts its children to maintain UI above tokens
           this.viewport.sortChildren();
+          for (const listener of this.drawnListeners) listener();
 
           // Changes made while loading (an Alt-drag copy moving, a pasted token rotated) go
           // through the regular update path, diffed against the state the sprite was built from.
@@ -1599,6 +1590,12 @@ export class TokenRenderer {
   /** Calls `listener` whenever what the players see of the tokens may have changed. Returns the function that stops it. */
   public onPlayersViewChange(listener: () => void): () => void {
     return this.playersView.listen(listener);
+  }
+
+  /** Calls `listener` whenever a token's sprite is drawn, its art loaded after the write that placed it. Returns the function that stops it. */
+  public onTokenDrawn(listener: () => void): () => void {
+    this.drawnListeners.add(listener);
+    return () => { this.drawnListeners.delete(listener); };
   }
 
   /**
