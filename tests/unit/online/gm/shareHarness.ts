@@ -218,12 +218,14 @@ export const scenes = (sent: readonly Sent[]): unknown[] => sent.flatMap(({ body
 
 /**
  * The messages of a sequenced kind players hold after each one sent of it, in order: a whole one as
- * sent, a delta as the whole message it makes (as a player's browser reads them).
+ * sent, a delta as the whole message it makes (as a player's browser reads them). Only for messages
+ * that went to every page: what went to single players is read from their pages (`pages.of`).
  */
 export function sequenced<K extends DeltaOf>(sent: readonly Sent[], of: K): Extract<GmMessage, { t: K }>[] {
   const reader = new DeltaReader();
-  return sent.flatMap(({ body }) => {
+  return sent.flatMap(({ body, to }) => {
     if (body.t !== of && !(body.t === 'delta' && body.of === of)) return [];
+    if (to !== undefined) throw new Error(`a ${of} message went to ${to} alone: read it from their page (pages.of)`);
     const read = reader.read(parseGmMessage(JSON.parse(JSON.stringify(body))) ?? body);
     if (read === null || read === 'gap' || read.t !== of) throw new Error(`a ${of} message that does not follow on`);
     return [read as Extract<GmMessage, { t: K }>];
