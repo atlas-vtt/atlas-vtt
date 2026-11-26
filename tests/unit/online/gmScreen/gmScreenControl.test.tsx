@@ -3,8 +3,10 @@ import React from 'react';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ARM_MS } from '../../../../src/app/online/gm/armedCards.ts';
-import { setGmScreenSession } from '../../../../src/app/online/gmScreen/gmScreenSlot.ts';
+import type { GmScreenSession } from '../../../../src/app/online/gmScreen/index.ts';
+import { setGmScreenHost } from '../../../../src/app/online/gmScreen/gmScreenSlot.ts';
 import { GmScreenControl } from '../../../../src/app/online/gmScreen/ui/GmScreenControl';
+import { accountRig } from '../gm/accountRig.ts';
 import { deviceId, RelaySocket, sessionRig, type Rig } from './sessionRig.ts';
 
 const PHONE = deviceId('p');
@@ -14,14 +16,21 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
-  setGmScreenSession(null);
+  setGmScreenHost(null);
   vi.unstubAllGlobals();
 });
 
+/** Names the session for the control, with an account that may host. */
+async function hosted(session: GmScreenSession): Promise<void> {
+  const account = accountRig('bearer-token');
+  await account.control.refresh();
+  setGmScreenHost({ session, account: account.control });
+}
+
 /** The control over a session the rig runs. */
-function shown(): Rig {
+async function shown(): Promise<Rig> {
   const rig = sessionRig();
-  setGmScreenSession(rig.session);
+  await hosted(rig.session);
   render(<GmScreenControl />);
   return rig;
 }
@@ -44,7 +53,7 @@ describe('the DM screen\'s control for the GM screen', () => {
   });
 
   it('starts from its panel and then shows the QR code, the link with its key, and no device yet', async () => {
-    const rig = shown();
+    const rig = await shown();
     await startedFromPanel(rig);
     const link = rig.session.view().link ?? '';
     expect(link).toContain(`#${rig.saved.at(-1)?.link.code}.${rig.saved.at(-1)?.link.key}`);
@@ -55,7 +64,7 @@ describe('the DM screen\'s control for the GM screen', () => {
   });
 
   it('asks about a device with its name and number, opening the panel, and takes the answer only once the prompt stood', async () => {
-    const rig = shown();
+    const rig = await shown();
     await startedFromPanel(rig);
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
     expect(screen.queryByRole('dialog')).toBeNull();
@@ -76,7 +85,7 @@ describe('the DM screen\'s control for the GM screen', () => {
   });
 
   it('lists an allowed device as connected, and removes it', async () => {
-    const rig = shown();
+    const rig = await shown();
     await startedFromPanel(rig);
     await rig.device(PHONE);
     await act(async () => {
@@ -98,7 +107,7 @@ describe('the DM screen\'s control for the GM screen', () => {
 
   it('stops from its panel, and says why a start was refused', async () => {
     const rig = sessionRig(null, () => Promise.resolve({ refused: 'Sign in to your Atlas account to start Sidekick.' }));
-    setGmScreenSession(rig.session);
+    await hosted(rig.session);
     render(<GmScreenControl />);
     fireEvent.click(screen.getByRole('button', { name: 'Start Sidekick' }));
     fireEvent.click(within(panel()).getByRole('button', { name: 'Start Sidekick' }));
@@ -110,7 +119,7 @@ describe('the DM screen\'s control for the GM screen', () => {
   });
 
   it('stops: the room ends and the panel offers Start again', async () => {
-    const rig = shown();
+    const rig = await shown();
     await startedFromPanel(rig);
     const socket = rig.socket();
     fireEvent.click(screen.getByRole('button', { name: 'Stop Sidekick' }));
