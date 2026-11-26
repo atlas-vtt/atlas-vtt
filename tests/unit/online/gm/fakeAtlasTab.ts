@@ -31,6 +31,8 @@ export interface FakeTabOptions {
   /** The grid's options as Atlas's `GridSystem` holds them. */
   readonly grid?: () => Record<string, unknown> | null;
   readonly collections?: CollectionLookup | null;
+  /** The app the view belongs to, where the user's game system presets are found. */
+  readonly app?: object;
   readonly tokenSize?: number;
 }
 
@@ -81,7 +83,7 @@ export function fakeAtlasTab(options: FakeTabOptions): { readonly renderer: obje
     getRendererService: () => ({ getRenderer: () => renderer }),
     getAssetService: () => options.collections ?? null,
   };
-  return { renderer, view: { serviceManager } };
+  return { renderer, view: { serviceManager, app: options.app } };
 }
 
 /** The companion's map layer source over a fake tab (`fakeAtlasTab`). */
