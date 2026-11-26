@@ -137,14 +137,6 @@ export interface RemoteState {
   rollsShown: boolean;
 }
 
-/** Commands that read this computer's pointer, which only a controller on this computer has. */
-const POINTER_COMMANDS: ReadonlySet<RemoteCommand['type']> = new Set(['showHoveredImage']);
-
-/** Whether a command acts on what the GM's pointer rests on here, so a controller elsewhere cannot mean it. */
-export function needsThisPointer(command: RemoteCommand): boolean {
-  return POINTER_COMMANDS.has(command.type);
-}
-
 const SIMPLE = new Set(['nextMood', 'stopAll', 'pause', 'nextTrack', 'previousTrack', 'shuffle', 'repeat', 'muteMusic', 'combat', 'rollInitiative', 'present', 'freeze', 'curtain', 'takeBackHandout', 'showHoveredImage', 'shareRolls']);
 const MAX_ID = 200;
 /** No dial turns further in one event. */
