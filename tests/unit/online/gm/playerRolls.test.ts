@@ -9,6 +9,7 @@ import { boundOwnership } from './fakeSeats.ts';
 import { playerFormula, rollableFormula, rolledFormula } from '../../../../src/app/online/gm/PlayerRolls.ts';
 import { TOKEN_INTERVAL_MS } from '../../../../src/app/online/gm/TokenShare.ts';
 import { DICE_TOOL, realDice, type DiceToolClass, type RealDice } from './realDice.ts';
+import { toAll } from './playerPages.ts';
 import { sceneState, shareHarness, token, tokenLists, type ShareHarness } from './shareHarness.ts';
 
 const { DiceTool } = (await import(/* @vite-ignore */ DICE_TOOL)) as { DiceTool: DiceToolClass };
@@ -68,7 +69,8 @@ describe('players\' rolls', () => {
     const sent = rollsSent(gm.sent);
     expect(sent.map(({ who, token: named }) => [who, named])).toEqual([[ANA, gm.alias(1)], [ANA, null]]);
     expect(sent[0]?.result).toMatchObject({ total: 27, crit: 'high', formula: '1d20 + 5' });
-    expect(gm.sent.filter(({ body }) => body.t === 'roll').every(({ to }) => to === undefined)).toBe(true);
+    const rolls = gm.sent.filter(({ body }) => body.t === 'roll');
+    expect(toAll(rolls)).toEqual(rolls);
     expect(JSON.stringify(sent)).not.toMatch(/hero|Hero|Player|art\//);
   });
 

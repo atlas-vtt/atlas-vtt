@@ -59,6 +59,11 @@ export class PlayerPage {
   get tokens(): readonly SharedToken[] {
     return this.last('tokens')?.tokens ?? [];
   }
+
+  /** What this page sees by now: the last sight it holds, undefined before any. */
+  get sight(): Of<'sight'> | undefined {
+    return this.last('sight');
+  }
 }
 
 /**

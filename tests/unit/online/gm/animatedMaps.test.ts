@@ -76,6 +76,7 @@ const withLiquids = (liquids: Record<string, LiquidSurface> | undefined, changes
 async function liquidTable(state: SceneState, seats?: SeatSource, images = new Map([['maps/cave.webp', IMAGE]])): Promise<ShareHarness & { show(next: SceneState): Promise<void> }> {
   let current = state;
   const table = shareHarness(current, images, seats);
+  if (seats !== undefined) table.pages.join(...seats.onlinePlayers());
   table.layers = fakeLayers({ state: () => current, source: GENERIC_SOURCE, bounds: { width: 2000, height: 2000 }, grid: () => null, collections: null });
   table.share.start();
   await table.settle();
@@ -165,7 +166,7 @@ describe('the liquids that move on the map', () => {
     const table = await liquidTable(state, seats, new Map([['maps/ground.webp', IMAGE], ['maps/upper.webp', POSTER]]));
     table.presented = 'ground';
     await table.advance(1000);
-    const of = (player: string): (readonly SharedLiquid[])[] => table.sent.filter(({ to, body }) => body.t === 'liquids' && (to === player || to === undefined)).map(({ body }) => (body as Extract<GmMessage, { t: 'liquids' }>).liquids);
+    const of = (player: string): (readonly SharedLiquid[])[] => table.pages.of(player).all('liquids').map(({ liquids: shared }) => shared);
     expect(of(ANA).at(-1)?.map(({ liquid, polygon }) => [liquid, polygon[0]])).toEqual([['water', 0]]);
     expect(of(BEN).at(-1)?.map(({ liquid, polygon }) => [liquid, polygon[0]])).toEqual([['acid', 400]]);
     expect(of(ANA).flat().some(({ liquid }) => liquid === 'acid')).toBe(false);

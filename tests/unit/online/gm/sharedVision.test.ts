@@ -15,7 +15,8 @@ import { fakeAtlasTab } from './fakeAtlasTab.ts';
 import { FakeLaser } from './markHarness.ts';
 import type { Measurements } from '../../../../src/app/pixi/measure/measurements';
 import { GENERIC_SOURCE, gmPerception, PLAYER_SETTINGS } from './gmLighting.ts';
-import { sceneState, sequenced, shareHarness, token, tokenLists, type Sent, type ShareHarness } from './shareHarness.ts';
+import { toAll, type PlayerPage } from './playerPages.ts';
+import { sceneState, shareHarness, token, type ShareHarness } from './shareHarness.ts';
 
 const ANA = 'a'.repeat(20);
 const BEN = 'b'.repeat(20);
@@ -70,6 +71,7 @@ let basis: Basis = 'cpu';
 
 async function started(state: SceneState, sharedVision: boolean): Promise<ShareHarness> {
   const table = shareHarness(state, IMAGES, seats);
+  table.pages.join(ANA, BEN, CARA);
   if (basis === 'renderer') table.basis = pictureBasisOf(fakeAtlasTab({ state: () => table.state(), source: GENERIC_SOURCE, bounds: MAP }).renderer);
   table.settings = { ...PLAYER_SETTINGS, sharedVision, showDiceRolls: true };
   table.dice = dice;
@@ -81,11 +83,10 @@ async function started(state: SceneState, sharedVision: boolean): Promise<ShareH
   return table;
 }
 
-/** What one player was sent, in order: to them, and to all. */
-const toPlayer = (sent: readonly Sent[], player: string): Sent[] => sent.filter(({ to }) => to === player || to === undefined);
-const names = (sent: readonly Sent[]): string[] => (tokenLists(sent).at(-1)?.tokens ?? []).map((entry) => entry.name ?? '?').sort();
+const page = (table: ShareHarness, player: string): PlayerPage => table.pages.of(player);
+const names = (shown: PlayerPage): string[] => shown.tokens.map((entry) => entry.name ?? '?').sort();
 /** Where the tokens stand that a player's page lights the scene from. */
-const seers = (sent: readonly Sent[]): string[] => (sequenced(sent, 'sight').at(-1)?.tokens ?? []).filter((entry) => entry.vision !== undefined).map(({ x, y }) => `${x},${y}`).sort();
+const seers = (shown: PlayerPage): string[] => (shown.sight?.tokens ?? []).filter((entry) => entry.vision !== undefined).map(({ x, y }) => `${x},${y}`).sort();
 type RollTold = Extract<GmMessage, { t: 'roll' }>;
 
 /** The GM rolls for a token's statblock, which every player hears; the roll as each player was told it, and how many messages told it. */
@@ -95,13 +96,13 @@ function rollFor(table: ShareHarness, tokenId: string): { readonly to: (player: 
     source: { type: 'statblock', tokenId, statblockPath: `Bestiary/${tokenId}.md`, tokenName: tokenId, tokenImagePath: `art/${tokenId}.webp`, abilityName: 'Bite' },
   };
   const from = table.sent.length;
+  const mark = table.pages.mark();
   bus.emit('dice-rolled', roll, { viewId: 'view-1', mapPath: table.state().mapPath ?? '', tokenId });
-  const told = table.sent.slice(from).filter(({ body }) => body.t === 'roll');
-  const to = (player: string): RollTold | undefined => told.flatMap(({ body, to: who }) => (body.t === 'roll' && (who === player || who === undefined) ? [body] : [])).at(-1);
-  return { to, messages: told.length };
+  const heard = table.pages.since(mark, 'roll');
+  return { to: (player) => heard[player]?.at(-1), messages: table.sent.slice(from).filter(({ body }) => body.t === 'roll').length };
 }
 const namesToken = (told: RollTold | undefined): boolean => told?.token != null && told.result.source?.abilityName === 'Bite';
-const doors = (sent: readonly Sent[]): number => sent.flatMap(({ body }) => (body.t === 'doors' ? [body.doors.length] : [])).at(-1) ?? 0;
+const doors = (shown: PlayerPage): number => shown.last('doors')?.doors.length ?? 0;
 
 describe.each<Basis>(['cpu', 'renderer'])('players\' own pictures cut from the %s picture', (from) => {
   beforeEach(() => {
@@ -111,8 +112,8 @@ describe.each<Basis>(['cpu', 'renderer'])('players\' own pictures cut from the %
   describe('Shared vision off', () => {
     it('lights each player\'s page from their own token alone and lists only what it sees', async () => {
       const table = await started(rooms(), false);
-      const ana = toPlayer(table.sent, ANA);
-      const ben = toPlayer(table.sent, BEN);
+      const ana = page(table, ANA);
+      const ben = page(table, BEN);
       expect(seers(ana)).toEqual(['200,200']);
       expect(seers(ben)).toEqual(['800,200']);
       expect(names(ana)).toEqual(['Ana', 'Rat']);
@@ -123,39 +124,39 @@ describe.each<Basis>(['cpu', 'renderer'])('players\' own pictures cut from the %
       const table = await started(rooms(), false);
       await table.set(rooms({ goblin: { x: 920 } }));
       await table.advance(1000);
-      const ana = toPlayer(table.sent, ANA);
-      expect(JSON.stringify(ana.map(({ body }) => body))).not.toContain('Goblin');
-      const places = sequenced(ana, 'sight').flatMap((message) => message.tokens.map(({ x }) => x));
+      const ana = page(table, ANA);
+      expect(JSON.stringify(ana.inbox)).not.toContain('Goblin');
+      const places = ana.all('sight').flatMap((message) => message.tokens.map(({ x }) => x));
       expect(places).not.toContain(900);
       expect(places).not.toContain(920);
     });
 
     it('shows a player only the doors their own token sees', async () => {
       const table = await started(rooms(), false);
-      expect(doors(toPlayer(table.sent, ANA))).toBe(0);
-      expect(doors(toPlayer(table.sent, BEN))).toBe(1);
+      expect(doors(page(table, ANA))).toBe(0);
+      expect(doors(page(table, BEN))).toBe(1);
     });
 
     it('shows a player without a token of their own nothing live: their page is told it is blind', async () => {
       const table = await started(rooms(), false);
-      const cara = toPlayer(table.sent, CARA);
+      const cara = page(table, CARA);
       expect(names(cara)).toEqual([]);
       expect(seers(cara)).toEqual([]);
-      expect(sequenced(cara, 'sight').at(-1)?.blind).toBe(true);
+      expect(cara.sight?.blind).toBe(true);
       expect(doors(cara)).toBe(0);
     });
 
     it('shows a player whose only character does not see that character alone, seeing nothing by it', async () => {
       const table = await started(rooms({ ana: { vision: { ...DARKVISION, enabled: false } } }), false);
-      const ana = toPlayer(table.sent, ANA);
+      const ana = page(table, ANA);
       expect(names(ana)).toEqual(['Ana']);
-      expect(sequenced(ana, 'sight').at(-1)?.tokens.flatMap(({ x, vision }) => (vision === undefined ? [] : [{ x, vision }]))).toEqual([{ x: 200, vision: { senses: [], sightRange: 0 } }]);
-      expect(sequenced(toPlayer(table.sent, BEN), 'sight').at(-1)?.blind).toBeUndefined();
+      expect(ana.sight?.tokens.flatMap(({ x, vision }) => (vision === undefined ? [] : [{ x, vision }]))).toEqual([{ x: 200, vision: { senses: [], sightRange: 0 } }]);
+      expect(page(table, BEN).sight?.blind).toBeUndefined();
     });
 
     it('lets a player move their own character that does not see, as an owner always may', async () => {
       const table = await started(rooms({ ana: { vision: { ...DARKVISION, enabled: false } } }), false);
-      const listed = tokenLists(toPlayer(table.sent, ANA)).at(-1);
+      const listed = page(table, ANA).last('tokens');
       const ana = listed?.tokens.find((entry) => entry.name === 'Ana');
       table.share.receive(ANA, { t: 'move', scene: listed?.scene ?? '', id: ana?.id ?? '', x: 260, y: 200 });
       await table.settle();
@@ -191,7 +192,7 @@ describe.each<Basis>(['cpu', 'renderer'])('players\' own pictures cut from the %
   describe('readable pins with Shared vision off', () => {
     it('reach only a player whose own token sees them, and only that player may open them', async () => {
       const table = await started(rooms(), false);
-      const pinsOf = (player: string): Extract<GmMessage, { t: 'pins' }> | undefined => toPlayer(table.sent, player).flatMap(({ body }) => (body.t === 'pins' ? [body] : [])).at(-1);
+      const pinsOf = (player: string): Extract<GmMessage, { t: 'pins' }> | undefined => page(table, player).last('pins');
       expect(pinsOf(ANA)?.pins).toEqual([]);
       const den = pinsOf(BEN)?.pins[0];
       const scene = pinsOf(BEN)?.scene ?? '';
@@ -214,9 +215,9 @@ describe.each<Basis>(['cpu', 'renderer'])('players\' own pictures cut from the %
       };
     };
     /** The areas `player` was last told of, an aura by `aura`. */
-    const kept = (table: ShareHarness, player: string): string[] => (toPlayer(table.sent, player).flatMap(({ body }) => (body.t === 'marks' ? [body] : [])).at(-1)?.measures ?? [])
+    const kept = (table: ShareHarness, player: string): string[] => (page(table, player).last('marks')?.measures ?? [])
       .flatMap((entry) => entry.full?.kept ?? []).map((area) => (area.aura === undefined ? 'area' : 'aura'));
-    const marksTo = (table: ShareHarness): (string | undefined)[] => [...new Set(table.sent.filter(({ body }) => body.t === 'marks').map(({ to }) => to))];
+    const marks = (table: ShareHarness): ShareHarness['sent'] => table.sent.filter(({ body }) => body.t === 'marks');
 
     it('is told, with Shared vision off, to each player whose own picture shows that token, and to nobody else', async () => {
       const off = await started(rooms(), false);
@@ -225,7 +226,7 @@ describe.each<Basis>(['cpu', 'renderer'])('players\' own pictures cut from the %
       expect(kept(off, BEN)).toEqual(['aura', 'area']);
       expect(kept(off, ANA)).toEqual(['area']);
       expect(kept(off, CARA)).toEqual(['area']);
-      expect(marksTo(off)).not.toContain(undefined);
+      expect(toAll(marks(off))).toEqual([]);
     });
 
     it('is told to all in one message where every picture agrees', async () => {
@@ -233,12 +234,14 @@ describe.each<Basis>(['cpu', 'renderer'])('players\' own pictures cut from the %
       auraAroundGoblin(on);
       await on.advance(2000);
       expect(kept(on, ANA)).toEqual(['aura', 'area']);
-      expect(marksTo(on)).toEqual([undefined]);
+      expect(marks(on).length).toBeGreaterThan(0);
+      expect(toAll(marks(on))).toEqual(marks(on));
       // The goblin walks into the dark beyond Ben's door: with Shared vision off nobody sees it, and the area goes to all at once.
       const off = await started(rooms({ goblin: { x: 2500, y: 2500 } }), false);
       auraAroundGoblin(off);
       await off.advance(2000);
-      expect(marksTo(off)).toEqual([undefined]);
+      expect(marks(off).length).toBeGreaterThan(0);
+      expect(toAll(marks(off))).toEqual(marks(off));
       expect(kept(off, BEN)).toEqual(['area']);
     });
   });
@@ -246,23 +249,26 @@ describe.each<Basis>(['cpu', 'renderer'])('players\' own pictures cut from the %
   describe('Shared vision on', () => {
     it('sends every player the party\'s picture in one message to all, as before', async () => {
       const table = await started(rooms(), true);
-      const sequencedTo = new Set(table.sent.filter(({ body }) => body.t === 'tokens' || body.t === 'sight' || body.t === 'delta').map(({ to }) => to));
-      expect(sequencedTo).toEqual(new Set([undefined]));
-      expect(names(table.sent)).toEqual(['Ana', 'Ben', 'Goblin', 'Rat']);
-      expect(seers(table.sent)).toEqual(['200,200', '800,200']);
+      const pictures = table.sent.filter(({ body }) => body.t === 'tokens' || body.t === 'sight' || body.t === 'delta');
+      expect(pictures.length).toBeGreaterThan(0);
+      expect(toAll(pictures)).toEqual(pictures);
+      for (const player of [ANA, BEN, CARA]) {
+        expect(names(page(table, player))).toEqual(['Ana', 'Ben', 'Goblin', 'Rat']);
+        expect(seers(page(table, player))).toEqual(['200,200', '800,200']);
+      }
     });
   });
 
   describe('a player acting on a token only others see', () => {
     it('learns nothing of where it stands from a refused move', async () => {
       const table = await started(rooms(), true);
-      const goblin = tokenLists(table.sent).at(-1)?.tokens.find((entry) => entry.name === 'Goblin');
-      const scene = tokenLists(table.sent).at(-1)?.scene ?? '';
+      const goblin = page(table, ANA).tokens.find((entry) => entry.name === 'Goblin');
+      const scene = page(table, ANA).last('tokens')?.scene ?? '';
       table.settings = { ...PLAYER_SETTINGS, sharedVision: false };
       await table.advance(1000);
       table.share.receive(ANA, { t: 'move', scene, id: goblin?.id ?? '', x: 400, y: 400 });
       await table.settle();
-      const refused = toPlayer(table.sent, ANA).flatMap(({ body }) => (body.t === 'move-refused' ? [body] : []));
+      const refused = page(table, ANA).all('move-refused');
       expect(refused).toEqual([{ t: 'move-refused', scene, id: goblin?.id, x: null, y: null }]);
       expect(table.state().objects.tokens.goblin).toMatchObject({ x: 900, y: 300 });
     });
@@ -273,9 +279,10 @@ describe.each<Basis>(['cpu', 'renderer'])('players\' own pictures cut from the %
       tableControlsStore.setState({ playMode: 'remote' });
       try {
         const table = await started(rooms(), false);
-        const sequencedTo = new Set(table.sent.filter(({ body }) => body.t === 'tokens' || body.t === 'sight' || body.t === 'delta').map(({ to }) => to));
-        expect(sequencedTo).toEqual(new Set([undefined]));
-        expect(names(table.sent)).toEqual(['Ana', 'Ben', 'Goblin', 'Rat']);
+        const pictures = table.sent.filter(({ body }) => body.t === 'tokens' || body.t === 'sight' || body.t === 'delta');
+        expect(pictures.length).toBeGreaterThan(0);
+        expect(toAll(pictures)).toEqual(pictures);
+        for (const player of [ANA, BEN, CARA]) expect(names(page(table, player))).toEqual(['Ana', 'Ben', 'Goblin', 'Rat']);
       } finally {
         tableControlsStore.setState({ playMode: 'table' });
       }
@@ -287,13 +294,13 @@ describe.each<Basis>(['cpu', 'renderer'])('players\' own pictures cut from the %
       const table = await started(rooms(), false);
       table.settings = { ...PLAYER_SETTINGS, sharedVision: true };
       await table.advance(1000);
-      expect(names(toPlayer(table.sent, ANA))).toEqual(['Ana', 'Ben', 'Goblin', 'Rat']);
-      expect(seers(toPlayer(table.sent, ANA))).toEqual(['200,200', '800,200']);
+      expect(names(page(table, ANA))).toEqual(['Ana', 'Ben', 'Goblin', 'Rat']);
+      expect(seers(page(table, ANA))).toEqual(['200,200', '800,200']);
       table.settings = { ...PLAYER_SETTINGS, sharedVision: false };
       await table.advance(1000);
-      expect(names(toPlayer(table.sent, ANA))).toEqual(['Ana', 'Rat']);
-      expect(seers(toPlayer(table.sent, ANA))).toEqual(['200,200']);
-      expect(names(toPlayer(table.sent, CARA))).toEqual([]);
+      expect(names(page(table, ANA))).toEqual(['Ana', 'Rat']);
+      expect(seers(page(table, ANA))).toEqual(['200,200']);
+      expect(names(page(table, CARA))).toEqual([]);
     });
   });
 });
