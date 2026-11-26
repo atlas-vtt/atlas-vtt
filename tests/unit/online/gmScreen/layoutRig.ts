@@ -51,12 +51,13 @@ export async function layoutRig(data: PluginData = memoryPluginData(), world: So
   const rig = sessionRig();
   const settings = new SettingsService(new App(), undefined, data);
   await settings.initialize();
-  rig.session.plug(new LayoutScreen({ store: settingsLayouts(settings), library: () => worldLibrary(world), outlet: rig.session, timers: rig.timers }));
+  const store = settingsLayouts(settings, rig.timers);
+  rig.session.plug(new LayoutScreen({ store, library: () => worldLibrary(world), outlet: rig.session, timers: rig.timers }));
   await rig.session.start();
   rig.socket().welcome();
   await rig.settle();
   return {
-    ...rig, settings, data, world,
+    ...rig, settings, data, world, store,
     /** A device says which kind it is, and holds the grid Atlas answered with. */
     async ask(device: Device, kind: GmScreenDevice): Promise<GmScreenLayout | undefined> {
       const before = layoutHeard(device).length;

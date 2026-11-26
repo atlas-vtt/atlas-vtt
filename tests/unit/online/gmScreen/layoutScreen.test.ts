@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defaultLayout } from '../../../../src/app/online/gmScreen/keys/defaultLayouts.ts';
 import { LayoutScreen } from '../../../../src/app/online/gmScreen/keys/LayoutScreen.ts';
-import { settingsLayouts } from '../../../../src/app/online/gmScreen/keys/settingsLayouts.ts';
+import { LAYOUT_SAVE_QUIET_MS, settingsLayouts } from '../../../../src/app/online/gmScreen/keys/settingsLayouts.ts';
 import { GRID_SLOTS, type GmScreenLayout, type LayoutSlot } from '../../../../src/app/online/protocol/index.ts';
 import { memoryPluginData } from '../../../mocks/pluginData';
 import { allowedDevice, keysRig, settleUntil } from './keysRig.ts';
@@ -60,6 +60,7 @@ describe("the Keys screen's grid on Atlas's side", () => {
     expect(lastLayout(second)).toEqual(lastLayout(phone));
     await rig.settle();
     expect(layoutHeard(tablet)).toHaveLength(heardBefore.tablet);
+    rig.timers.advance(LAYOUT_SAVE_QUIET_MS);
     await rig.settings.saveSettingsNow();
 
     RelaySocket.all = [];
@@ -84,7 +85,7 @@ describe("the Keys screen's grid on Atlas's side", () => {
     ]);
     await settleUntil(rig, () => [phone, second].every((device) => layoutHeard(device).filter((message) => message.t === 'layout-answer').length === 2));
     await rig.settle();
-    const stored = rig.settings.getGmScreenKeys().phone;
+    const stored = rig.store.layout('phone');
     expect(lastLayout(phone)).toEqual(stored);
     expect(lastLayout(second)).toEqual(stored);
     expect(at(stored, 12)).toEqual({ k: 'dice', formula: '3d4' });
@@ -102,6 +103,7 @@ describe("the Keys screen's grid on Atlas's side", () => {
     const phone = await joinedDevice(rig, PHONE);
     expect(JSON.parse(JSON.stringify(await rig.ask(phone, 'phone')))).toEqual(stored);
     expect(await rig.edit(phone, 1, { op: 'put', at: [14], key: { k: 'roll', id: 'attack' } })).toBeNull();
+    rig.timers.advance(LAYOUT_SAVE_QUIET_MS);
     await rig.settings.saveSettingsNow();
     const saved = (rig.data.stored() as { gmScreenKeys: Record<string, { slots: unknown[] }> }).gmScreenKeys;
     expect(saved.phone?.slots.slice(0, 4)).toEqual(stored.slots.slice(0, 4));
@@ -117,7 +119,8 @@ describe("the Keys screen's grid on Atlas's side", () => {
     expect(await rig.edit(phone, 2, { op: 'put', at: [12], key: { k: 'folder', name: 'One', glyph: 'skull' } })).toBeNull();
     expect(await rig.edit(phone, 3, { op: 'put', at: [12, 0], key: { k: 'folder', name: 'Two', glyph: 'skull' } })).toBeNull();
     expect(await rig.edit(phone, 4, { op: 'put', at: [12, 0, 0], key: { k: 'folder', name: 'Three', glyph: 'skull' } })).toBeNull();
-    const before = JSON.stringify(rig.settings.getGmScreenKeys());
+    await rig.settle();
+    const before = JSON.stringify(rig.store.layout('phone'));
     const sent = layoutHeard(phone).filter((message) => message.t === 'layout').length;
     const hostile: Array<[Record<string, unknown>, string]> = [
       [{ op: 'remove', at: [GRID_SLOTS.phone] }, 'malformed'],
@@ -149,8 +152,9 @@ describe("the Keys screen's grid on Atlas's side", () => {
       else expect(answer, JSON.stringify(edit)).toBe(reason);
     }
     // The one change taken above (a second folder at 13) is all that changed.
-    const after = JSON.parse(JSON.stringify(rig.settings.getGmScreenKeys())) as { phone: { slots: unknown[] } };
-    expect({ ...after.phone, slots: after.phone.slots.map((slot, place) => (place === 13 ? null : slot)) }).toEqual((JSON.parse(before) as { phone: unknown }).phone);
+    const after = rig.store.layout('phone');
+    expect(JSON.stringify({ ...after, slots: after.slots.map((slot, place) => (place === 13 ? null : slot)) })).toBe(before);
+    await rig.settle();
     expect(layoutHeard(phone).filter((message) => message.t === 'layout')).toHaveLength(sent + 1);
   });
 
@@ -183,6 +187,7 @@ describe("the Keys screen's grid on Atlas's side", () => {
     await rig.settle();
     expect(lastLayout(phone)).toEqual(defaultLayout('phone'));
     // Back at the default, nothing of the grid is stored.
+    rig.timers.advance(LAYOUT_SAVE_QUIET_MS);
     expect(rig.settings.getGmScreenKeys()).toEqual({});
   });
 
@@ -248,7 +253,7 @@ describe('a page that knows no grid', () => {
   it('gets the Keys screen as before and no layout message, beside a device that asks', async () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
     const rig = await keysRig();
-    const store = settingsLayouts({ getGmScreenKeys: () => ({}), setGmScreenKeys: () => undefined, onChange: () => () => undefined });
+    const store = settingsLayouts({ getGmScreenKeys: () => ({}), setGmScreenKeys: () => undefined, onChange: () => () => undefined }, rig.timers);
     rig.session.plug(new LayoutScreen({ store, library: () => worldLibrary(rig.world), outlet: rig.session, timers: rig.timers }));
     const older = await allowedDevice(rig, PHONE);
     const newer = await allowedDevice(rig, TABLET);

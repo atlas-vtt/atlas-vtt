@@ -47,7 +47,7 @@ describe('what changes to the grid cost', () => {
 
     expect(answersOf(editor)).toEqual(Array.from({ length: CHANGES }, (_, index) => index + 1));
     for (const grid of grids) expect(grid).toBeLessThanOrEqual(Math.min(Math.ceil(took / LAYOUT_GAP_MS) + 1, CHANGES / 4));
-    const stored = JSON.parse(JSON.stringify(rig.settings.getGmScreenKeys().phone ?? null)) as unknown;
+    const stored = JSON.parse(JSON.stringify(rig.store.layout('phone'))) as unknown;
     for (const phone of phones) expect(lastLayout(phone)).toEqual(stored);
     // Each grid the editor heard holds only changes already answered.
     let answered = 0;

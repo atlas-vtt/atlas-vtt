@@ -12,7 +12,10 @@ export const LAYOUT_GAP_MS = 500;
 /** Where the GM's grids are kept: one per kind of device, the default until the GM changes it. */
 export interface LayoutStore {
   layout(device: GmScreenDevice): GmScreenLayout;
+  /** Keeps a changed grid: `layout` reads it at once, the settings file may get it later. */
   save(device: GmScreenDevice, layout: GmScreenLayout): void;
+  /** Writes every grid that still waits; true where one did. */
+  flush(): boolean;
   /** Calls `listener` whenever the grids may have changed, here or synced from another computer; returns what stops that. */
   onChange(listener: () => void): () => void;
 }
@@ -70,7 +73,10 @@ export class LayoutScreen implements GmScreen {
   closed(device: string): void {
     this.kinds.delete(device);
     this.shown.delete(device);
-    if (this.kinds.size === 0) this.dispose();
+    if (this.kinds.size > 0) return;
+    this.dispose();
+    // Nobody is left to arrange keys (the GM stopped the room, or the devices went): what they changed is written now.
+    this.deps.store.flush();
   }
 
   /** Stops watching the store and drops a grid waiting to go: no device is left to show it. */

@@ -18,8 +18,9 @@ export function plugLayoutScreen(app: App, session: GmScreenSession, timers: Tim
   const settings = SettingsService.forApp(app);
   if (settings === undefined) return () => undefined;
   const table = remoteTableOf(app, new HoveredElement(app.workspace));
+  const store = settingsLayouts(settings, timers);
   const screen = new LayoutScreen({
-    store: settingsLayouts(settings),
+    store,
     library: () => ({
       moodName: (id) => MoodStore.forApp(app).mood(id)?.name ?? null,
       rollName: (id) => savedRollsOnMap(table).find((roll) => roll.id === id)?.name ?? null,
@@ -32,5 +33,7 @@ export function plugLayoutScreen(app: App, session: GmScreenSession, timers: Tim
   return () => {
     unplug();
     screen.dispose();
+    // Atlas unloads, or online play was switched off: the grids that wait are written now, whatever unloads next.
+    if (store.flush()) void settings.saveSettingsNow();
   };
 }
