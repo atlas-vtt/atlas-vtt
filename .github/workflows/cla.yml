@@ -34,3 +34,9 @@ jobs:
           branch: cla-signatures
           allowlist: ByteMirror,T3 Code,dependabot[bot],github-actions[bot]
           lock-pullrequest-aftermerge: false
+          # The action names who must sign only when a PR has several committers.
+          custom-notsigned-prcomment: >-
+            Thank you for your contribution! Before it can be merged, please sign our
+            [Contributor License Agreement](https://github.com/atlas-vtt/atlas-vtt/blob/main/CLA.md)
+            by posting the comment below. Post it from the GitHub account your commits are
+            authored by (shown on the Commits tab): a signature from another account does not count.
