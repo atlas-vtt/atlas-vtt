@@ -90,7 +90,7 @@ export class FloorPicture {
     this.tokens.setScene(scene?.id ?? null);
     this.live?.setScene(scene);
     this.inputs.setScene(scene);
-    this.explored.setScene(scene);
+    this.explored.feed.setScene(scene);
     this.layers.setScene(scene);
   }
 
@@ -98,7 +98,7 @@ export class FloorPicture {
   clear(): void {
     this.tokens.setScene(null);
     this.inputs.setScene(null);
-    this.explored.setScene(null);
+    this.explored.feed.setScene(null);
     this.layers.setScene(null);
   }
 
@@ -129,7 +129,7 @@ export class FloorPicture {
   resend(to?: string): void {
     this.tokens.resend(to);
     this.inputs.resend(to);
-    this.explored.resend(to);
+    this.explored.feed.resend(to);
     this.layers.resend(to);
     this.mine?.resend(to);
   }
@@ -161,7 +161,7 @@ export class FloorPicture {
     this.tokens.stop();
     this.live?.stop();
     this.inputs.stop();
-    this.explored.stop();
+    this.explored.feed.stop();
     this.layers.stop();
   }
 }
