@@ -1,6 +1,7 @@
 import { expect, vi } from 'vitest';
 import { ARM_MS } from '../../../../src/app/online/gm/armedCards.ts';
 import { KeysScreen, type KeysSource } from '../../../../src/app/online/gmScreen/keys/KeysScreen.ts';
+import { tableOnline } from '../../../../src/app/online/gmScreen/keys/tableOnline.ts';
 import type { GmScreenMessage, KeysMessage } from '../../../../src/app/online/protocol/index.ts';
 import type { Mood } from '../../../../src/app/sound/soundTypes';
 import type { ActiveMood } from '../../../../src/app/soundDirector/soundMix';
@@ -78,7 +79,7 @@ export async function keysRig(world: SoundWorld = soundWorld(), table?: TableSou
   rig.session.plug(new KeysScreen({
     open: () => {
       const control = world.control(table);
-      const source: KeysSource = { control, moods: () => world.moods };
+      const source: KeysSource = { control, moods: () => world.moods, online: tableOnline };
       const dispose = control.dispose.bind(control);
       vi.spyOn(control, 'dispose').mockImplementation(() => (disposed.push(source), dispose()));
       opened.push(source);

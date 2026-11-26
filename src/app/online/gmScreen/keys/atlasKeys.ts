@@ -7,6 +7,7 @@ import { RemoteControl } from '../../../soundRemote/remoteControl';
 import type { Timers } from '../../gm/companionTimers.ts';
 import type { GmScreenSession } from '../GmScreenSession.ts';
 import { KeysScreen } from './KeysScreen.ts';
+import { tableOnline } from './tableOnline.ts';
 
 /**
  * Plugs the Keys and Sound screens into the session, on a sound remote control of their own: the Stream
@@ -18,7 +19,7 @@ export function plugKeysScreen(app: App, session: GmScreenSession, timers: Timer
     open: () => {
       const moods = MoodStore.forApp(app);
       const control = new RemoteControl({ director: SoundDirector.forApp(app), moods, table: remoteTableOf(app, new HoveredElement(app.workspace)) });
-      return { control, moods: () => moods.moods() };
+      return { control, moods: () => moods.moods(), online: tableOnline };
     },
     outlet: session,
     timers,

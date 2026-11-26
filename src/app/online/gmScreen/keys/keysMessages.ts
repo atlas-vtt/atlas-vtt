@@ -22,11 +22,15 @@ function keysRoll(roll: RemoteRoll): KeysState['rolls'][number] {
   return { id: roll.id, name: cut(roll.name), formula: cut(roll.formula), look: { ...look, rule: cut(look.rule, MAX_LOOK_TEXT), rest: cut(look.rest, MAX_LOOK_TEXT) } };
 }
 
-/** The sound remote's state as a device reads it: the same fields, each text and list within what the device's parser takes. */
-export function keysStateOf(state: RemoteState): KeysState {
+/**
+ * The sound remote's state as a device reads it: the same fields, each text and list within what the device's
+ * parser takes, and whether an online table runs (`online`), which the Stream Deck's state does not say.
+ */
+export function keysStateOf(state: RemoteState, online: boolean): KeysState {
   const { music, levels } = state;
   return {
     ...state,
+    player: { ...state.player, online },
     mood: state.mood !== null && pressable(state.mood) ? state.mood : null,
     music: music === null ? null : { ...music, levelDb: db(music.levelDb), track: cutOrNull(music.track) },
     nowPlaying: cutOrNull(state.nowPlaying),

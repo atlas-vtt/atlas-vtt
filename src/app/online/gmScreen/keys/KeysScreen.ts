@@ -24,6 +24,14 @@ export type KeysRefusal =
 export interface KeysSource {
   readonly control: Pick<RemoteControl, 'run' | 'state' | 'watch' | 'dispose'>;
   moods(): readonly Mood[];
+  /** Whether an online table runs, which the pause and the curtain reach without the player window. */
+  readonly online: OnlineTable;
+}
+
+export interface OnlineTable {
+  now(): boolean;
+  /** Calls `listener` when an online table starts or ends; returns what stops that. */
+  onChange(listener: () => void): () => void;
 }
 
 export interface KeysScreenDeps {
@@ -31,6 +39,13 @@ export interface KeysScreenDeps {
   open(): KeysSource;
   readonly outlet: GmScreenOutlet;
   readonly timers: Timers;
+}
+
+/** The source while a device is connected, and what tells the screen it changed. */
+interface Live {
+  readonly source: KeysSource;
+  readonly watch: RemoteWatch;
+  readonly stopOnline: () => void;
 }
 
 /** What one device was last sent: what it shows now. */
@@ -46,7 +61,7 @@ interface Shown {
  */
 export class KeysScreen implements GmScreen {
   readonly takes = ['press'] as const;
-  private live: { source: KeysSource; watch: RemoteWatch } | null = null;
+  private live: Live | null = null;
   private readonly shown = new Map<string, Shown>();
   private timer: number | null = null;
   private sentAt = Number.NEGATIVE_INFINITY;
@@ -56,7 +71,7 @@ export class KeysScreen implements GmScreen {
   opened(device: string): void {
     const { source } = this.start();
     const moods = gmScreenMoods(source.moods());
-    const state = keysStateOf(source.control.state());
+    const state = keysStateOf(source.control.state(), source.online.now());
     this.shown.set(device, { moods, state: JSON.stringify(state) });
     this.deps.outlet.send({ t: 'moods', moods }, device);
     this.deps.outlet.send({ t: 'keys', state }, device);
@@ -82,12 +97,12 @@ export class KeysScreen implements GmScreen {
     return source.control.run(command);
   }
 
-  private start(): { source: KeysSource; watch: RemoteWatch } {
+  private start(): Live {
     if (this.live !== null) return this.live;
     const source = this.deps.open();
     // The watch says when the state or the moods may have changed, and looks at the state every second.
     const watch = source.control.watch(() => this.schedule());
-    this.live = { source, watch };
+    this.live = { source, watch, stopOnline: source.online.onChange(() => this.schedule()) };
     return this.live;
   }
 
@@ -97,6 +112,7 @@ export class KeysScreen implements GmScreen {
     const { live } = this;
     this.live = null;
     live?.watch.stop();
+    live?.stopOnline();
     live?.source.control.dispose();
   }
 
@@ -115,7 +131,7 @@ export class KeysScreen implements GmScreen {
     const { live } = this;
     if (live === null) return;
     const moods = gmScreenMoods(live.source.moods());
-    const state = keysStateOf(live.source.control.state());
+    const state = keysStateOf(live.source.control.state(), live.source.online.now());
     const json = JSON.stringify(state);
     let sent = false;
     for (const device of this.deps.outlet.devices) {

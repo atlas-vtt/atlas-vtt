@@ -42,6 +42,8 @@ export interface KeysCombat {
 
 export interface KeysPlayer {
   readonly open: boolean;
+  /** An online table reaches players, so the pause and the curtain do without the player window; absent from an Atlas that does not say. */
+  readonly online?: boolean;
   readonly presented: boolean;
   readonly frozen: boolean;
   readonly trueScale: boolean;
@@ -121,7 +123,8 @@ function parsePlayer(value: unknown): KeysPlayer | null {
   if (!isRecord(value)) return null;
   const { open, presented, frozen, trueScale, hidden, handout } = value;
   if (![open, presented, frozen, trueScale, hidden, handout].every(isBoolean)) return null;
-  return { open: open === true, presented: presented === true, frozen: frozen === true, trueScale: trueScale === true, hidden: hidden === true, handout: handout === true };
+  const player = { open: open === true, presented: presented === true, frozen: frozen === true, trueScale: trueScale === true, hidden: hidden === true, handout: handout === true };
+  return isBoolean(value.online) ? { ...player, online: value.online } : player;
 }
 
 function parseRoll(value: unknown): KeysRoll | null {

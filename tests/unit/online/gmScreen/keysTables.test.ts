@@ -48,7 +48,7 @@ describe('the Keys screen in each way of playing', () => {
   it('with neither a table nor a player window: the table keys say why they do nothing, sound keys work', async () => {
     const rig = await keysRig(soundWorld(), table);
     const phone = await allowedDevice(rig, PHONE);
-    expect(heardOf(phone, 'keys')[0]?.state).toMatchObject({ combat: null, player: { open: false, frozen: false, hidden: false } });
+    expect(heardOf(phone, 'keys')[0]?.state).toMatchObject({ combat: null, player: { open: false, online: false, frozen: false, hidden: false } });
     await rig.press(phone, 1, { type: 'curtain' });
     await rig.press(phone, 2, { type: 'freeze' });
     await rig.press(phone, 3, { type: 'combat' });
@@ -66,7 +66,19 @@ describe('the Keys screen in each way of playing', () => {
     expect(answers(phone)).toEqual([null, null]);
     expect(tableControlsStore.getState()).toMatchObject({ curtain: true, paused: true });
     rig.tick(1000);
-    await settleUntil(rig, () => JSON.stringify(player(phone)) === JSON.stringify({ open: false, presented: false, frozen: true, trueScale: false, hidden: true, handout: false }));
+    await settleUntil(rig, () => JSON.stringify(player(phone)) === JSON.stringify({ open: false, presented: false, frozen: true, trueScale: false, hidden: true, handout: false, online: true }));
+  });
+
+  it('tells a device when an online table starts and ends, so it knows whether the pause and the curtain reach anyone', async () => {
+    const rig = await keysRig(soundWorld(), table);
+    const phone = await allowedDevice(rig, PHONE);
+    expect(heardOf(phone, 'keys').at(-1)?.state.player.online).toBe(false);
+    tableControlsStore.setState({ online: true });
+    rig.tick(200);
+    await settleUntil(rig, () => heardOf(phone, 'keys').at(-1)?.state.player.online === true);
+    tableControlsStore.setState({ online: false });
+    rig.tick(200);
+    await settleUntil(rig, () => heardOf(phone, 'keys').at(-1)?.state.player.online === false);
   });
 
   it('with only a local player window: the window freezes and the curtain falls on it', async () => {
@@ -79,6 +91,6 @@ describe('the Keys screen in each way of playing', () => {
     expect(local.service.freezeCamera).toHaveBeenCalledOnce();
     expect(local.service.setCurtain).toHaveBeenCalledWith(true);
     rig.tick(1000);
-    await settleUntil(rig, () => JSON.stringify(player(phone)) === JSON.stringify({ open: true, presented: false, frozen: true, trueScale: false, hidden: true, handout: false }));
+    await settleUntil(rig, () => JSON.stringify(player(phone)) === JSON.stringify({ open: true, presented: false, frozen: true, trueScale: false, hidden: true, handout: false, online: false }));
   });
 });

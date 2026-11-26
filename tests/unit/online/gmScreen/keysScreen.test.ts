@@ -72,7 +72,7 @@ describe('the Keys screen on Atlas\'s side', () => {
       expect(intents(rig.world), command.type).toEqual(intents(streamDeck));
       rig.tick(1000);
       // The state the phone holds once it settled is the Stream Deck's after the same press.
-      const expected = JSON.stringify(keysStateOf(control.state()));
+      const expected = JSON.stringify(keysStateOf(control.state(), false));
       await settleUntil(rig, () => JSON.stringify(heardOf(phone, 'keys').at(-1)?.state) === expected);
       control.dispose();
     }
@@ -145,7 +145,7 @@ describe('the Keys screen on Atlas\'s side', () => {
     expect(streamDeck.run({ type: 'curtain' })).toBeNull();
     rig.tick(1000);
     await settleUntil(rig, () => heardOf(phone, 'keys').at(-1)?.state.player.hidden === true);
-    expect(heardOf(phone, 'keys').at(-1)?.state).toEqual(keysStateOf(streamDeck.state()));
+    expect(heardOf(phone, 'keys').at(-1)?.state).toEqual(keysStateOf(streamDeck.state(), false));
     streamDeck.dispose();
   });
 

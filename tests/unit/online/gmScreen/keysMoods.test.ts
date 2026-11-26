@@ -107,7 +107,7 @@ describe('the state a device\'s keys show', () => {
     director.shelf = { recordOfKey: () => ({ name: 'A very long track name '.repeat(30) }) } as never;
     const table = fakeTable();
     table.map.savedRolls = () => [{ id: 'r', name: 'Roll '.repeat(80), formula: '1d20+'.repeat(60) }];
-    const state = keysStateOf(remoteState(director, () => null, table.table));
+    const state = keysStateOf(remoteState(director, () => null, table.table), false);
     expect(state.music?.track?.length).toBe(200);
     expect(parseKeysMessage(JSON.parse(JSON.stringify({ t: 'keys', state })))).toEqual({ t: 'keys', state });
   });
