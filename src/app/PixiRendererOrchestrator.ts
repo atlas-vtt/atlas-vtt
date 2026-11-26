@@ -61,7 +61,7 @@ import { prefersReducedMotion } from './utils/motion';
 import { ViewRoofs } from './pixi/roofs/ViewRoofs';
 import { ShownPlaces } from './lighting/shownPlaces';
 import type { SceneFrame } from './pixi/lighting/engine/types';
-import { captureSceneFrame } from './pixi/sceneFrameCapture';
+import { captureSceneFrame, type SceneFrameParts } from './pixi/sceneFrameCapture';
 import { AudioTool } from './tools/AudioTool';
 import { openAudioConfigPanel } from './pixi/audio/AudioConfigPanel';
 import { AudioRenderer } from './pixi/audio/AudioRenderer';
@@ -1109,7 +1109,7 @@ export class PixiRendererOrchestrator { // Renamed class
   /** What a players' frame changes on the stage: everything players must not see, hidden for one render. */
   private playerFrameLayers(settings: AtlasSettings['localPlayerView']): LayerVisibility[] {
     // The grid is left as the GM set it: players see it exactly as the GM does, hidden included.
-    const layers = this.markerLayers(true);
+    const layers = [...(this.pinRenderer?.playerLayers() ?? []), ...this.gmMarkLayers()];
     if (this.roofs) layers.push({ layer: this.roofs.modeLayer, visible: true });
     // The lighting's part is the list session view holds on this canvas (`SessionLighting`).
     const sight = this.lighting?.playerSight();
@@ -1150,13 +1150,9 @@ export class PixiRendererOrchestrator { // Renamed class
     return this.tokenRenderer?.playersSeeInFrame(sight) ?? NOTHING_SEEN;
   }
 
-  /**
-   * The GM's markers on the map and the selection: neither the players nor a picture of the scene
-   * show them. The players' frame (`players`) shows the pins the GM shows them instead.
-   */
-  private markerLayers(players = false): LayerVisibility[] {
+  /** The GM's marks on the map and the selection: neither the players' frame nor a picture of the scene shows them. */
+  private gmMarkLayers(): LayerVisibility[] {
     const layers: LayerVisibility[] = [];
-    if (this.pinRenderer) layers.push(...(players ? this.pinRenderer.playerLayers() : this.pinRenderer.pictureLayers()));
     if (this.hexLinkRenderer) layers.push({ layer: this.hexLinkRenderer.container, visible: false });
     if (this.levelLinks) layers.push({ layer: this.levelLinks.view, visible: false });
     const ghost = this.floorGhost?.layer;
@@ -1164,8 +1160,6 @@ export class PixiRendererOrchestrator { // Renamed class
     for (const layer of this.tokenPlacer?.layers ?? []) layers.push({ layer, visible: false });
     layers.push(...(this.selectionManager?.getPlayerViewLayers() ?? []));
     layers.push(...(this.pixiAppManager.getGestures()?.hiddenLayers() ?? []));
-    // A picture of the scene leaves out what the GM keeps from the players, as their frame does
-    if (!players) layers.push(...(this.annotations?.getPictureLayers() ?? []));
     return layers;
   }
 
@@ -1185,7 +1179,7 @@ export class PixiRendererOrchestrator { // Renamed class
     // Every drawing the picture shows is drawn for it, also what the canvas does not show now
     const restoreAnnotations = this.annotations?.showFor(picture ?? null);
     try {
-      return captureSceneFrame({ gmViewLayers: this.gmViewLayers(), markerLayers: this.markerLayers(false), lighting: this.lighting, roofs: this.roofs }, frame, render);
+      return captureSceneFrame({ ...this.pictureLayers(), lighting: this.lighting, roofs: this.roofs }, frame, render);
     } finally {
       restoreAnnotations?.();
       restoreEffects?.();
@@ -1197,12 +1191,16 @@ export class PixiRendererOrchestrator { // Renamed class
   }
 
   /**
-   * Tokens and fog as the GM view shows them, for a picture taken while the canvas is in session
-   * view. Session view must hide through these layers' `visible` and `alpha`; what it hides in
-   * another way is added here.
+   * What a picture of the scene changes on the stage: tokens, fog and measurements as the GM view
+   * shows them, also while the canvas shows the players' picture (session view must hide through
+   * these layers' `visible` and `alpha`; what it hides in another way is added here), and none of
+   * the GM's markers nor of what the GM keeps from the players, as their frame leaves it out.
    */
-  private gmViewLayers(): LayerVisibility[] {
-    return [...(this.tokenRenderer?.getGmViewLayers() ?? []), ...(this.fogRenderer?.getGmViewLayers() ?? []), ...(this.measureRenderer?.getGmViewLayers() ?? [])];
+  private pictureLayers(): Pick<SceneFrameParts, 'gmViewLayers' | 'markerLayers'> {
+    return {
+      gmViewLayers: [...(this.tokenRenderer?.getGmViewLayers() ?? []), ...(this.fogRenderer?.getGmViewLayers() ?? []), ...(this.measureRenderer?.getGmViewLayers() ?? [])],
+      markerLayers: [...(this.pinRenderer?.pictureLayers() ?? []), ...this.gmMarkLayers(), ...(this.annotations?.getPictureLayers() ?? [])],
+    };
   }
 
   getViewportInstance(): Viewport | null { return this.pixiAppManager.getViewport(); }
