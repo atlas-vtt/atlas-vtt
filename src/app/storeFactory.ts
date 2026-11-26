@@ -8,7 +8,7 @@ import type { StorageValue } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 import type { App, Plugin } from 'obsidian';
 import type AtlasVTTPlugin from '../../main';
-import type { TokenEntity, Character, NotePin } from './types';
+import type { TokenEntity, NotePin } from './types';
 import type { WallSegment, WallInput } from './types/wallTypes';
 import { DEFAULT_SCENE_LIGHTING, type LightChanges, type LightInput, type LightZoneChanges, type LightZoneInput, type SceneLightingChanges, type SceneLightingOption } from './types/lightingTypes';
 import type { AudioSource, AudioInput } from './types/audioTypes';
@@ -88,26 +88,8 @@ export interface ViewAtlasState extends ViewState {
   setCamera: (partial: Partial<CameraState>) => void;
 
   // Token actions
-  addToken: (data: TokenInput) => string;
   /** Adds several tokens in one store write, so spawning a group is a single undo step. */
   addTokens: (data: TokenInput[]) => string[];
-
-  addCharacter: (data: {
-    x: number;
-    y: number;
-    imagePath: string;
-    name: string;
-    notePath?: string;
-    snapped?: boolean;
-    ringColor?: string;
-    showRing?: boolean;
-  }) => string;
-
-  addTokenWithId: (
-    id: string,
-    data: { x: number; y: number; imagePath: string; snapped?: boolean },
-    extra: Pick<Character, 'name' | 'notePath'>
-  ) => void;
 
   moveToken: (id: string, x: number, y: number) => void;
   updateToken: (id: string, updates: TokenUpdates) => void;
@@ -117,7 +99,6 @@ export interface ViewAtlasState extends ViewState {
   retargetRenamedFile: (oldPath: string, newPath: string) => void;
   /** Points what the scene names at or below a renamed folder (a pin's folder of encounters) at its new place. */
   retargetRenamedFolder: (oldPath: string, newPath: string) => void;
-  deleteToken: (id: string) => void;
   setTokens: (map: Record<string, TokenEntity>) => void;
   setTokenRing: (id: string, color: string | null) => void;
   /** Adds (`active`) or removes a condition on every token in one store write, so it is a single undo step. */
@@ -143,8 +124,6 @@ export interface ViewAtlasState extends ViewState {
   addNotePin: (x: number, y: number, notePath: string, icon?: string, options?: { hex?: boolean; sceneLevel?: string; showName?: boolean }) => string;
   /** A field given as undefined is removed. */
   updateNotePin: (id: string, updates: { [K in keyof Omit<NotePin, 'id' | 'kind'>]?: NotePin[K] | undefined }) => void;
-  moveNotePin: (id: string, x: number, y: number) => void;
-  deleteNotePin: (id: string) => void;
 
   // Drawings and texts (from annotationsSlice.ts)
   addText: AnnotationsSlice['addText'];
@@ -697,9 +676,6 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             }
           }),
 
-          // Add a new token and return its ID
-          addToken: (data) => get().addTokens([data])[0]!,
-
           addTokens: (entries) => {
             const ids: string[] = [];
             set((draft) => {
@@ -714,55 +690,6 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               raiseTokens(draft.objects.tokens, ids);
             });
             return ids;
-          },
-
-          // Add a new character and return its ID
-          addCharacter: (data) => {
-            const id = newId('char');
-            const normalizedImagePath = normalizeImagePath(data.imagePath);
-
-            const instanceNumber = computeNextInstanceNumber(get().objects.tokens, normalizedImagePath);
-
-            const token: Character = {
-              id,
-              kind: 'character',
-              x: data.x,
-              y: data.y,
-              imagePath: normalizedImagePath,
-              name: data.name,
-              instanceNumber,
-              ...(data.notePath && { notePath: data.notePath }),
-              ...(data.snapped !== undefined && { snapped: data.snapped }),
-              ...(data.ringColor && { ringColor: data.ringColor }),
-              ...(data.showRing !== undefined && { showRing: data.showRing }),
-            };
-            set((draft) => {
-              draft.objects.tokens[id] = { ...token, ...placedOnViewedLevel(draft) };
-              raiseTokens(draft.objects.tokens, [id]);
-            });
-            return id;
-          },
-
-          addTokenWithId: (id, data, extra) => {
-            const normalizedImagePath = normalizeImagePath(data.imagePath);
-            const instanceNumber = computeNextInstanceNumber(get().objects.tokens, normalizedImagePath);
-
-            set((draft) => {
-              const char: Character = {
-                id,
-                kind: 'character',
-                x: data.x,
-                y: data.y,
-                imagePath: normalizedImagePath,
-                name: extra.name,
-                instanceNumber,
-                ...(extra.notePath && { notePath: extra.notePath }),
-                ...(data.snapped !== undefined && { snapped: data.snapped }),
-                ...placedOnViewedLevel(draft),
-              };
-              draft.objects.tokens[id] = char;
-              raiseTokens(draft.objects.tokens, [id]);
-            });
           },
 
           moveToken: (id, x, y) => set((draft) => {
@@ -790,11 +717,6 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
 
           retargetRenamedFolder: (oldPath, newPath) => set((draft) => {
             rewriteMapReferences(draft, movedFolderPathOf([{ from: oldPath, to: newPath }]));
-          }),
-
-          deleteToken: (id) => set((draft) => {
-            delete draft.objects.tokens[id];
-            dropTokenAuras(draft, [id]);
           }),
 
           setTokens: (map) => set((draft) => {
@@ -1090,21 +1012,6 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
                   pin.label = nextPinLabel(draft.objects.pins, pin.icon);
                 }
               }
-            }
-          }),
-
-          moveNotePin: (id, x, y) => set((draft) => {
-            const pin = draft.objects.pins[id];
-            if (pin) {
-              pin.x = x;
-              pin.y = y;
-            }
-          }),
-
-          deleteNotePin: (id) => set((draft) => {
-            if (draft.objects.pins[id]) {
-              delete draft.objects.pins[id];
-              draft.selectedIds = draft.selectedIds.filter(selectedId => selectedId !== id);
             }
           }),
 

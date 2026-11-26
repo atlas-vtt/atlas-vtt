@@ -150,9 +150,9 @@ describe('what the view holds is what the scene works out from nothing', () => {
 
     s().setSceneLighting({ enabled: true, ambient: 0 });
     s().addWall({ type: 'solid', p1: { x: 450, y: 0 }, p2: { x: 450, y: 450 }, closed: true });
-    const v = s().addToken({ id: 'v', x: 300, y: 300, imagePath: 'v.png', vision: { enabled: true, senses: [{ id: 'dnd5e-darkvision', range: 60 }] } } as never);
-    const m = s().addToken({ id: 'm', x: 600, y: 300, imagePath: 'm.png' } as never);
-    s().addToken({ id: 'n', x: 300, y: 700, imagePath: 'n.png' } as never);
+    const v = s().addTokens([{ id: 'v', x: 300, y: 300, imagePath: 'v.png', vision: { enabled: true, senses: [{ id: 'dnd5e-darkvision', range: 60 }] } } as never])[0]!;
+    const m = s().addTokens([{ id: 'm', x: 600, y: 300, imagePath: 'm.png' } as never])[0]!;
+    s().addTokens([{ id: 'n', x: 300, y: 700, imagePath: 'n.png' } as never]);
     await check('initial');
     expect(w.controller.playerSight()!(m)).toBe('unseen');
     expect(w.controller.playerSight()!('n')).toBe('seen');
@@ -227,7 +227,7 @@ describe('what the view holds is what the scene works out from nothing', () => {
 
     // A token that follows its statblock.
     current.frontmatter[GOBLIN]!.senses = 'darkvision 60 ft., passive Perception 9';
-    const g = s().addToken({ id: 'g', x: 900, y: 900, imagePath: 'g.png', statblockPath: GOBLIN, vision: { enabled: true } } as never);
+    const g = s().addTokens([{ id: 'g', x: 900, y: 900, imagePath: 'g.png', statblockPath: GOBLIN, vision: { enabled: true } } as never])[0]!;
     await check('statblock token added (unread)');
     await vi.waitFor(() => expect(CreatureIndex.forApp(current.app).get(GOBLIN)).toBeTruthy());
     await check('statblock read');
@@ -238,15 +238,15 @@ describe('what the view holds is what the scene works out from nothing', () => {
     await check('statblock edited');
     s().updateToken(g, { vision: { enabled: true, range: 100 } });
     await check('statblock token gets its own range');
-    s().deleteToken(g);
+    s().deleteTokens([g]);
     await check('statblock token deleted');
 
     // Another scene of the same collection.
     s().setMapLoading(true);
     s().setMapPath(OTHER);
     s().clearMapState();
-    s().addToken({ id: 'v2', x: 200, y: 200, imagePath: 'v.png', vision: { enabled: true, senses: [{ id: 'dnd5e-tremorsense', range: 30 }] } } as never);
-    s().addToken({ id: 'm2', x: 260, y: 200, imagePath: 'm.png', conditions: ['dnd5e-invisible'] } as never);
+    s().addTokens([{ id: 'v2', x: 200, y: 200, imagePath: 'v.png', vision: { enabled: true, senses: [{ id: 'dnd5e-tremorsense', range: 30 }] } } as never]);
+    s().addTokens([{ id: 'm2', x: 260, y: 200, imagePath: 'm.png', conditions: ['dnd5e-invisible'] } as never]);
     s().setSceneLighting({ enabled: true });
     s().setMapLoading(false);
     await check('scene switched');
@@ -254,8 +254,8 @@ describe('what the view holds is what the scene works out from nothing', () => {
     s().setMapLoading(true);
     s().setMapPath('maps/loose.atlasmap');
     s().clearMapState();
-    s().addToken({ id: 'v3', x: 200, y: 200, imagePath: 'v.png', vision: { enabled: true, darkvision: 30 } } as never);
-    s().addToken({ id: 'm3', x: 260, y: 200, imagePath: 'm.png', conditions: ['dnd5e-invisible'] } as never);
+    s().addTokens([{ id: 'v3', x: 200, y: 200, imagePath: 'v.png', vision: { enabled: true, darkvision: 30 } } as never]);
+    s().addTokens([{ id: 'm3', x: 260, y: 200, imagePath: 'm.png', conditions: ['dnd5e-invisible'] } as never]);
     s().setSceneLighting({ enabled: true });
     s().setMapLoading(false);
     await check('scene outside a collection');
@@ -269,7 +269,7 @@ describe('the lighting controller reads the rules of its map\'s collection', () 
     const { current, store, controller } = world();
     current.frontmatter[GOBLIN]!.senses = 'darkvision 60 ft., passive Perception 9';
     store.getState().setSceneLighting({ enabled: true, ambient: 0 });
-    store.getState().addToken({ id: 'g', x: 900, y: 900, imagePath: 'g.png', statblockPath: GOBLIN, vision: { enabled: true } } as never);
+    store.getState().addTokens([{ id: 'g', x: 900, y: 900, imagePath: 'g.png', statblockPath: GOBLIN, vision: { enabled: true } } as never]);
     await vi.waitFor(() => expect(CreatureIndex.forApp(current.app).get(GOBLIN)).toBeTruthy());
     await nextFrame();
     await nextFrame();
@@ -282,7 +282,7 @@ describe('the lighting controller reads the rules of its map\'s collection', () 
     const thermal = { ...dnd.rules.senses!.find((sense) => sense.id === 'dnd5e-darkvision')!, id: 'home-thermal', name: 'Thermal sight' };
     save({ senses: [...dnd.rules.senses!, thermal], gridDefaults: { ...structuredClone(dnd.rules.gridDefaults), unitType: 'meters', unitDistance: 1.5 } });
     store.getState().setSceneLighting({ enabled: true, ambient: 0 });
-    const id = store.getState().addToken({ id: 'v', x: 900, y: 900, imagePath: 'v.png', vision: { enabled: true, range: 18, senses: [{ id: 'home-thermal', range: 7.5 }] } } as never);
+    const id = store.getState().addTokens([{ id: 'v', x: 900, y: 900, imagePath: 'v.png', vision: { enabled: true, range: 18, senses: [{ id: 'home-thermal', range: 7.5 }] } } as never])[0]!;
     store.getState().setSelection([id]);
     await nextFrame();
     await nextFrame();

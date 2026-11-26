@@ -497,8 +497,8 @@ describe('tokens in session view', () => {
     const made = setup();
     const { store } = made;
     store.getState().setSceneLighting({ enabled: true });
-    store.getState().addToken({ x: 100, y: 100, imagePath: 'h.png', vision: { enabled: true } });
-    const lurker = store.getState().addToken({ x: 400, y: 100, imagePath: 'l.png' });
+    store.getState().addTokens([{ x: 100, y: 100, imagePath: 'h.png', vision: { enabled: true } }]);
+    const lurker = store.getState().addTokens([{ x: 400, y: 100, imagePath: 'l.png' }])[0]!;
     lighting.sight = computeSight([{ tokenId: 'hero', origin: { x: 100, y: 100 }, range: 1000, senses: [] }], [wall]);
     return { ...made, lurker };
   }

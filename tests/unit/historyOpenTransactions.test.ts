@@ -21,7 +21,7 @@ function audioScene(): { store: ViewAtlasStore; history: () => HistoryState; aud
   const store = createViewAtlasStore(app, `open-transactions-${Math.random()}`);
   store.setState({ persistenceEnabled: false });
   const audio = store.getState().addAudio({ x: 0, y: 0, innerRadius: 70, outerRadius: 140, volume: 0.5, soundId: 'fire', loop: true });
-  const piece = store.getState().addToken({ x: 0, y: 0, imagePath: 'art/x.png' });
+  const piece = store.getState().addTokens([{ x: 0, y: 0, imagePath: 'art/x.png' }])[0]!;
   const history = getHistoryStore(store)!;
   history.getState().clear();
   return { store, history: () => history.getState(), audio, piece };
@@ -55,7 +55,7 @@ describe('undo and redo while the audio panel holds its edit open', () => {
 
   it('takes back a file renamed while the panel was open together with the panel\'s step', () => {
     const { store, history, audio, piece } = audioScene();
-    const other = store.getState().addToken({ x: 0, y: 0, imagePath: 'art/y.png' });
+    const other = store.getState().addTokens([{ x: 0, y: 0, imagePath: 'art/y.png' }])[0]!;
     history().clear();
     store.getState().moveToken(piece, 70, 0);
     act(() => openAudioConfigPanel(audio, store, registry));
@@ -73,7 +73,7 @@ describe('undo and redo during a light\'s ring drag', () => {
 
   function dragScene(): ReturnType<typeof setup> & { piece: string } {
     const scene = setup();
-    const piece = scene.store.getState().addToken({ x: 0, y: 0, imagePath: 'art/x.png' });
+    const piece = scene.store.getState().addTokens([{ x: 0, y: 0, imagePath: 'art/x.png' }])[0]!;
     getHistoryStore(scene.store)!.getState().clear();
     scene.store.getState().moveToken(piece, 70, 0);
     return { ...scene, piece };
@@ -125,7 +125,7 @@ describe('undo and redo between the writes of a slider gesture', () => {
   it('give the slices of before after every press', () => {
     const { store, torch, piece } = (() => {
       const scene = setup();
-      const piece = scene.store.getState().addToken({ x: 0, y: 0, imagePath: 'art/x.png' });
+      const piece = scene.store.getState().addTokens([{ x: 0, y: 0, imagePath: 'art/x.png' }])[0]!;
       getHistoryStore(scene.store)!.getState().clear();
       scene.store.getState().moveToken(piece, 70, 0);
       return { ...scene, piece };

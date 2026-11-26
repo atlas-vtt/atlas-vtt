@@ -25,7 +25,7 @@ afterEach(() => {
 describe('a renamed file of the token an edit moved', () => {
   it('comes back with the token\'s move on redo', () => {
     const { store, history } = openStore();
-    const a = store.getState().addToken({ x: 0, y: 0, imagePath: 'art/a.png' });
+    const a = store.getState().addTokens([{ x: 0, y: 0, imagePath: 'art/a.png' }])[0]!;
     store.getState().moveToken(a, 70, 0);
     const steps = history().pastStates.length;
     rename(store, 'art/a.png', 'art/a2.png');
@@ -39,7 +39,7 @@ describe('a renamed file of the token an edit moved', () => {
 
   it('comes back when the move is undone again after a redo', () => {
     const { store, history } = openStore();
-    const a = store.getState().addToken({ x: 0, y: 0, imagePath: 'art/a.png' });
+    const a = store.getState().addTokens([{ x: 0, y: 0, imagePath: 'art/a.png' }])[0]!;
     store.getState().moveToken(a, 70, 0);
     history().undo();
     rename(store, 'art/a.png', 'art/a2.png');
@@ -85,7 +85,7 @@ describe('resources Atlas starts for the token an edit moved', () => {
     let definitions: readonly ResourceDefinition[] = [HP];
     const sync = new StatblockTokenSync(fixture.app, store, fixture.links, () => definitions);
     const history = getHistoryStore(store)!;
-    store.getState().addToken(character({ resources: { hp: { current: 2, max: 7 } } }));
+    store.getState().addTokens([character({ resources: { hp: { current: 2, max: 7 } } })]);
     store.getState().moveToken('hero', 70, 20);
     definitions = [HP, STRESS];
     sync.fillMissingResources();

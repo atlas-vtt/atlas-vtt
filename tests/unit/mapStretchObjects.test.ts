@@ -20,7 +20,7 @@ describe('objects on a map that is drawn another way', () => {
 
   it('moves every kind of object with the map and leaves its other fields alone', () => {
     const s = store.getState();
-    const token = s.addToken({ x: 100, y: 200, imagePath: 'a.png', size: 2 } as Parameters<typeof s.addToken>[0]);
+    const token = s.addTokens([{ x: 100, y: 200, imagePath: 'a.png', size: 2 } as Parameters<typeof s.addTokens>[0][number]])[0]!;
     const wall = s.addWall({ type: 'door', p1: { x: 100, y: 0 }, p2: { x: 200, y: 50 }, closed: true });
     const light = s.addLight({ x: 300, y: 300, emission: { bright: 10, dim: 20, color: '#ffffff', intensity: 1, animation: 'none' } } as Parameters<typeof s.addLight>[0]);
     const zone = s.addLightZone({ polygon: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }], ambient: 0.2 } as Parameters<typeof s.addLightZone>[0]);
@@ -63,7 +63,7 @@ describe('objects on a map that is drawn another way', () => {
 
   it('aligns the grid and moves the objects in one undo step', () => {
     const s = store.getState();
-    const token = s.addToken({ x: 100, y: 200, imagePath: 'a.png' } as Parameters<typeof s.addToken>[0]);
+    const token = s.addTokens([{ x: 100, y: 200, imagePath: 'a.png' } as Parameters<typeof s.addTokens>[0][number]])[0]!;
     const before = store.temporal.getState().pastStates.length;
     const aligned: GridState = { ...GRID, type: 'hex-vertical', size: 64, mapStretch: { x: 1.1, y: 1 } };
 
@@ -84,7 +84,7 @@ describe('objects on a map that is drawn another way', () => {
 
   it('sets the grid alone where the map stays as it is drawn', () => {
     const s = store.getState();
-    const token = s.addToken({ x: 100, y: 200, imagePath: 'a.png' } as Parameters<typeof s.addToken>[0]);
+    const token = s.addTokens([{ x: 100, y: 200, imagePath: 'a.png' } as Parameters<typeof s.addTokens>[0][number]])[0]!;
     const objects = store.getState().objects;
 
     store.getState().alignGrid({ ...GRID, size: 64 });

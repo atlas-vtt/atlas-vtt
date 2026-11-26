@@ -55,8 +55,8 @@ export function fogTokenScenes(): { scene: typeof createScene } {
     tokens.setFogCoverageProvider(() => fog.getCommittedCoverage());
     const covered: Character = { id: 'covered', x: 64, y: 64, size: 1, imagePath: '', kind: 'character', name: 'Covered token name outside fog', showNameplate: true };
     const clear: Character = { id: 'clear', x: 192, y: 64, size: 1, imagePath: '', kind: 'character', name: 'Clear', showNameplate: true };
-    store.getState().addToken(covered);
-    store.getState().addToken(clear);
+    store.getState().addTokens([covered]);
+    store.getState().addTokens([clear]);
     await expect.poll(() => Object.values(tokens.getTokenSprites()).filter((sprite) => sprite instanceof Container).length).toBe(2);
     const target = RenderTexture.create({ width: 256, height: 256 });
     cleanups.push(() => {

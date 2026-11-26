@@ -61,7 +61,7 @@ function setup(): { app: App; store: ViewAtlasStore; id: string } {
   store.setState({ mapLoaded: true, initiativeTrackerOpen: true });
   let id = '';
   act(() => {
-    const tokenId = store.getState().addToken({ kind: 'character', name: 'Captain', x: 0, y: 0, imagePath: 'tokens/c.webp', statblockPath: CAPTAIN });
+    const tokenId = store.getState().addTokens([{ kind: 'character', name: 'Captain', x: 0, y: 0, imagePath: 'tokens/c.webp', statblockPath: CAPTAIN }])[0]!;
     id = store.getState().addToInitiative(initiativeEntryForToken(store.getState().objects.tokens[tokenId]!));
   });
   render(

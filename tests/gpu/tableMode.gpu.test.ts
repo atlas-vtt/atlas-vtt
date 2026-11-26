@@ -92,7 +92,7 @@ async function table(): Promise<Table> {
   state.addWall({ type: 'door', closed: true, p1: { x: 900, y: 200 }, p2: { x: 900, y: 280 } });
   state.addLight({ x: 1000, y: 600, emission: { bright: 2, dim: 4, color: '#ffc080', intensity: 1, animation: 'none' } });
   const spy: Character = { id: 'spy', x: 480, y: 200, size: 1, imagePath: '', kind: 'character', name: 'Spy', isHidden: true };
-  state.addToken(spy);
+  state.addTokens([spy]);
   await expect.poll(() => Object.keys(m.tokens.getTokenSprites()).length).toBe(2);
   m.store.setState({ mapLoaded: true });
   getHistoryStore(m.store)?.getState().clear();

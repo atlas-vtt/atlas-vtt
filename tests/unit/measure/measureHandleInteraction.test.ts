@@ -460,7 +460,7 @@ describe('the handle of a measurement that starts on a token', () => {
     expect(Math.hypot(rim().x - 105, rim().y - 105)).toBeCloseTo(GRID * 1.5, 9);
     s.store.getState().updateTokens([{ id: 'hero', changes: { x: 525, y: 525, size: 1 } }]);
     expect(places(s)).toEqual([[105, 105]]);
-    s.store.getState().deleteToken('hero');
+    s.store.getState().deleteTokens(['hero']);
     expect(places(s)).toEqual([[105, 105]]);
   });
 

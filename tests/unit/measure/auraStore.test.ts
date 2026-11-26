@@ -83,7 +83,6 @@ describe('the auras of tokens in the store', () => {
   it.each([
     ['the selection is deleted', (store: ViewAtlasStore): void => store.getState().removeMapObjects(['hero'])],
     ['it is deleted as a map object', (store: ViewAtlasStore): void => store.getState().deleteMapObject('token', 'hero')],
-    ['it is deleted by id', (store: ViewAtlasStore): void => store.getState().deleteToken('hero')],
     ['tokens are deleted by ids', (store: ViewAtlasStore): void => store.getState().deleteTokens(['hero'])],
   ])('go with their token when %s, in the same undo step, and come back with it', (_case, remove) => {
     const { store, steps, undo, redo, auras } = setup();
@@ -205,7 +204,7 @@ describe('a measurement that names a token and is no aura', () => {
   it('stays when its token is deleted', () => {
     const { store } = setup();
     store.setState({ objects: { ...store.getState().objects, measures: { ruler: ruler() } } });
-    store.getState().deleteToken('hero');
+    store.getState().deleteTokens(['hero']);
     expect(store.getState().objects.tokens.hero).toBeUndefined();
     expect(store.getState().objects.measures).toEqual({ ruler: ruler() });
   });

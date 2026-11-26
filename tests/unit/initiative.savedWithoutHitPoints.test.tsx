@@ -64,7 +64,7 @@ describe('a creature with a statblock but no hit points in the initiative', () =
     const store = await openScene(app, 'no-hp-session');
     act(() => {
       store.getState().setInitiativeTrackerOpen(true);
-      store.getState().addToken({ kind: 'character', name: 'Acid Burrower', statblockPath: STATBLOCK, x: 0, y: 0, imagePath: 'tokens/burrower.webp' });
+      store.getState().addTokens([{ kind: 'character', name: 'Acid Burrower', statblockPath: STATBLOCK, x: 0, y: 0, imagePath: 'tokens/burrower.webp' }]);
       store.getState().addToInitiative(initiativeEntryForToken(Object.values(store.getState().objects.tokens)[0]!));
     });
 

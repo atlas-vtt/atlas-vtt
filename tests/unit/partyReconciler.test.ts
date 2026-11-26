@@ -32,7 +32,7 @@ const hpOf = (store: ViewAtlasStore, id: string): number | undefined => store.ge
 describe('a player character\'s values in a view store', () => {
   it('keeps a value mirrored in after a move when the move is undone', () => {
     const { store, history } = scene();
-    const id = store.getState().addToken(ayla(0, 20));
+    const id = store.getState().addTokens([ayla(0, 20)])[0]!;
     expect(store.getState().partyValues[HP]).toEqual({ current: 20, max: 20 });
     store.getState().moveToken(id, 140, 0);
     const steps = history.getState().pastStates.length;

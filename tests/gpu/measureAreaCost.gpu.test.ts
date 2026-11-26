@@ -131,7 +131,7 @@ describe('the cost of dragging an area on a walled map', () => {
     const walls = wallIn(s);
     // Tokens in and around the circle's room.
     for (let index = 0; index < 12; index++) {
-      s.store.getState().addToken({ id: `t${index}`, kind: 'token', imagePath: '', size: 1, x: 1085 + (index % 4) * 3 * CELL, y: 1085 + Math.floor(index / 4) * 4 * CELL } as TokenEntity);
+      s.store.getState().addTokens([{ id: `t${index}`, kind: 'token', imagePath: '', size: 1, x: 1085 + (index % 4) * 3 * CELL, y: 1085 + Math.floor(index / 4) * 4 * CELL } as TokenEntity]);
     }
     s.store.getState().setMeasureTool({ mode: 'circle' });
     s.store.getState().setActiveTool('measure');

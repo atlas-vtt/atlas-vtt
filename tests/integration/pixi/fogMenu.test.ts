@@ -267,7 +267,7 @@ describe('the fog\'s menu on the map', () => {
   });
 
   it('leaves the right-click to a token or a pin under the pointer', async () => {
-    store.getState().addToken({ id: 'goblin', ...IN_HALL, size: 1, imagePath: GOBLIN_IMAGE, layer: 0, isHidden: false, rotation: 0 });
+    store.getState().addTokens([{ id: 'goblin', ...IN_HALL, size: 1, imagePath: GOBLIN_IMAGE, layer: 0, isHidden: false, rotation: 0 }]);
     await vi.waitFor(() => expect(tokens.getTokenSprites().goblin).toBeInstanceOf(Container));
     rightClick(IN_HALL);
     // The token's own menu, not the fog's.
