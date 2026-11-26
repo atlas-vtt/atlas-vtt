@@ -4,7 +4,6 @@ import type { SceneState } from '../../../../src/app/online/gm/atlasView.ts';
 import { STROKE_KEPT_MS } from '../../../../src/app/online/gm/gmStrokes.ts';
 import { MAP_LAYER_INTERVAL_MS } from '../../../../src/app/online/gm/MapLayerShare.ts';
 import type { SeatSource } from '../../../../src/app/online/gm/seatSource.ts';
-import { TOKEN_POLL_MS } from '../../../../src/app/online/gm/TokenShare.ts';
 import { GM_LEVEL, MARKS_INTERVAL_MS, parseGmMessage, PLAYERS_DRAW_GM_LEVEL, type DrawLook, type DrawMine, type GmMessage, type MarksMessage } from '../../../../src/app/online/protocol/index.ts';
 import type { DrawingStroke } from '../../../../src/app/types';
 import type { FogOperation } from '../../../../src/app/types/fogTypes';
@@ -41,7 +40,7 @@ async function started(settings = DRAWING, state = sceneState({ grid: GRID }), s
   table.layers = fakeLayers({ state: () => table.state(), source: GENERIC_SOURCE, bounds: { width: 2000, height: 2000 }, grid: () => null, collections: null });
   table.share.start();
   await table.set(state);
-  await table.advance(TOKEN_POLL_MS);
+  await table.advance(1000);
   return table;
 }
 
@@ -75,7 +74,7 @@ describe('whether players may draw', () => {
   it('follows the GM\'s switch while the table runs: the rules name the cell sizes are shares of, and stop naming it', async () => {
     const table = await started(PLAYER_SETTINGS);
     table.settings = DRAWING;
-    await table.advance(TOKEN_POLL_MS);
+    await table.advance(1000);
     expect(ofKind(table.sent, 'rules').at(-1)?.body.draw).toEqual({ cell: CELL });
     expect(mineOf(table, ANA)).toMatchObject({ drawings: [], texts: [], seen: 0 });
     await draws(table, ANA, [100, 100, 200, 200]);
@@ -86,7 +85,7 @@ describe('whether players may draw', () => {
     await draws(table, ANA, [100, 100, 200, 200]);
     expect(drawn(table)).toHaveLength(1);
     expect(ofKind(table.sent, 'draw-refused').at(-1)?.body.reason).toBe('off');
-    await table.advance(TOKEN_POLL_MS);
+    await table.advance(1000);
     expect(ofKind(table.sent, 'rules').at(-1)?.body).not.toHaveProperty('draw');
     // What was drawn stays on the map: it is the scene's.
     expect(drawn(table)[0]?.by).toBe(ANA);
@@ -242,7 +241,7 @@ describe('a player on another floor than the GM looks at', () => {
     table.layers = fakeLayers({ state: () => table.state(), source: GENERIC_SOURCE, bounds: { width: 2000, height: 2000 }, grid: () => null, collections: null });
     table.share.start();
     await table.set(table.state());
-    await table.advance(TOKEN_POLL_MS);
+    await table.advance(1000);
     const ground = table.pages.of(ANA).scene?.id ?? '';
     const upper = table.pages.of(BEN).scene?.id ?? '';
     expect(upper).not.toBe('');

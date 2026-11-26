@@ -69,7 +69,8 @@ const dice: DiceSource = { viewId: 'view-1', rollDice: () => null, rules: () => 
 type Basis = 'cpu' | 'renderer';
 let basis: Basis = 'cpu';
 
-async function started(state: SceneState, sharedVision: boolean): Promise<ShareHarness> {
+/** A table of Ana, Ben and Cara on `state`; `prepare` gives the GM's renderer what it has before the table starts. */
+async function started(state: SceneState, sharedVision: boolean, prepare: (table: ShareHarness) => void = () => undefined): Promise<ShareHarness> {
   const table = shareHarness(state, IMAGES, seats);
   table.pages.join(ANA, BEN, CARA);
   if (basis === 'renderer') table.basis = pictureBasisOf(fakeAtlasTab({ state: () => table.state(), source: GENERIC_SOURCE, bounds: MAP }).renderer);
@@ -77,6 +78,7 @@ async function started(state: SceneState, sharedVision: boolean): Promise<ShareH
   table.dice = dice;
   table.layers = partyLayers;
   table.perception = gmPerception(state, GENERIC_SOURCE, MAP);
+  prepare(table);
   table.share.start();
   await table.set(state);
   await table.advance(1000);
@@ -220,8 +222,7 @@ describe.each<Basis>(['cpu', 'renderer'])('players\' own pictures cut from the %
     const marks = (table: ShareHarness): ShareHarness['sent'] => table.sent.filter(({ body }) => body.t === 'marks');
 
     it('is told, with Shared vision off, to each player whose own picture shows that token, and to nobody else', async () => {
-      const off = await started(rooms(), false);
-      auraAroundGoblin(off);
+      const off = await started(rooms(), false, auraAroundGoblin);
       await off.advance(2000);
       expect(kept(off, BEN)).toEqual(['aura', 'area']);
       expect(kept(off, ANA)).toEqual(['area']);
@@ -230,15 +231,13 @@ describe.each<Basis>(['cpu', 'renderer'])('players\' own pictures cut from the %
     });
 
     it('is told to all in one message where every picture agrees', async () => {
-      const on = await started(rooms(), true);
-      auraAroundGoblin(on);
+      const on = await started(rooms(), true, auraAroundGoblin);
       await on.advance(2000);
       expect(kept(on, ANA)).toEqual(['aura', 'area']);
       expect(marks(on).length).toBeGreaterThan(0);
       expect(toAll(marks(on))).toEqual(marks(on));
       // The goblin walks into the dark beyond Ben's door: with Shared vision off nobody sees it, and the area goes to all at once.
-      const off = await started(rooms({ goblin: { x: 2500, y: 2500 } }), false);
-      auraAroundGoblin(off);
+      const off = await started(rooms({ goblin: { x: 2500, y: 2500 } }), false, auraAroundGoblin);
       await off.advance(2000);
       expect(marks(off).length).toBeGreaterThan(0);
       expect(toAll(marks(off))).toEqual(marks(off));
@@ -265,7 +264,7 @@ describe.each<Basis>(['cpu', 'renderer'])('players\' own pictures cut from the %
       const goblin = page(table, ANA).tokens.find((entry) => entry.name === 'Goblin');
       const scene = page(table, ANA).last('tokens')?.scene ?? '';
       table.settings = { ...PLAYER_SETTINGS, sharedVision: false };
-      await table.advance(1000);
+      await table.settle();
       table.share.receive(ANA, { t: 'move', scene, id: goblin?.id ?? '', x: 400, y: 400 });
       await table.settle();
       const refused = page(table, ANA).all('move-refused');
@@ -293,11 +292,11 @@ describe.each<Basis>(['cpu', 'renderer'])('players\' own pictures cut from the %
     it('moves players between their own picture and the party\'s, each time sent whole', async () => {
       const table = await started(rooms(), false);
       table.settings = { ...PLAYER_SETTINGS, sharedVision: true };
-      await table.advance(1000);
+      await table.settle();
       expect(names(page(table, ANA))).toEqual(['Ana', 'Ben', 'Goblin', 'Rat']);
       expect(seers(page(table, ANA))).toEqual(['200,200', '800,200']);
       table.settings = { ...PLAYER_SETTINGS, sharedVision: false };
-      await table.advance(1000);
+      await table.settle();
       expect(names(page(table, ANA))).toEqual(['Ana', 'Rat']);
       expect(seers(page(table, ANA))).toEqual(['200,200']);
       expect(names(page(table, CARA))).toEqual([]);

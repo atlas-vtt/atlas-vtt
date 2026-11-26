@@ -1481,6 +1481,19 @@ describe('TokenRenderer Integration Tests', () => {
       expect((tokenRenderer as unknown as { uiManager: { getTokenUIs(): Record<string, { playersView: boolean }> } }).uiManager.getTokenUIs().orc!.playersView).toBe(true);
     });
 
+    it('tells who follows what the players see of each token drawn once its art has loaded, in the GM\'s view too, and no more once stopped', async () => {
+      const drawn = vi.fn();
+      const stop = view.audience.onSightChange(drawn);
+      store.getState().addToken(token({ id: 'goblin' }));
+      expect(drawn).not.toHaveBeenCalled();
+      await waitForTokens('goblin');
+      expect(drawn).toHaveBeenCalledTimes(1);
+      stop();
+      store.getState().addToken(token({ id: 'orc', x: 300 }));
+      await waitForTokens('orc');
+      expect(drawn).toHaveBeenCalledTimes(1);
+    });
+
     it('tells its listeners after every pass over the players\' sight and every change of the tokens', async () => {
       const listener = vi.fn();
       const stop = view.audience.onChange(listener);

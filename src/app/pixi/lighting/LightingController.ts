@@ -58,7 +58,7 @@ export interface LightingControllerDeps {
   eventBus: EventEmitter;
   obsApp: App;
   viewId: string;
-  audience: Pick<CanvasAudience, 'refresh'>;
+  audience: Pick<CanvasAudience, 'refresh' | 'sightChanged'>;
   bounds: () => MapBounds | null;
   /** The map image, for the colours light bounces off. */
   albedo: () => Texture | null;
@@ -307,12 +307,13 @@ export class LightingController {
     requestRender(this.deps.app);
   }
 
-  /** In the players' view, tokens show and hide as the sight they are checked against changes; in the GM's, the sight aids follow. The players' door badges follow in both. */
+  /** In the players' view, tokens show and hide as the sight they are checked against changes; in the GM's, the sight aids follow. The players' door badges follow in both, and the audience hears of every change. */
   private onSightChange(): void {
     if (!this.constructed) return;
     this.doors.refreshPlayers();
-    if (this.tokens && this.session.active) this.deps.audience.refresh();
-    else this.sightAids.schedule();
+    const shown = this.tokens !== null && this.session.active;
+    if (!shown) this.sightAids.schedule();
+    this.deps.audience.sightChanged({ kind: 'lighting', shown });
   }
 
   private listen(): void {

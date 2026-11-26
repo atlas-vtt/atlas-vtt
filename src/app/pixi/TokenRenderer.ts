@@ -625,7 +625,6 @@ export class TokenRenderer {
     const token = mapTokens(levelObjects(this.store.getState()))[tokenId];
     const tokenGroup = this.tokenSprites[tokenId];
     if (token && tokenGroup) this.drawInstanceBadge(token, tokenGroup, this.countTokensWithImage(token.imagePath));
-    this.audience.tokensChanged();
   }
 
   private countTokensWithImage(imagePath: string): number {
@@ -1048,22 +1047,12 @@ export class TokenRenderer {
             return;
           }
 
-          // Add to container
           container.addChild(tokenGroup);
-          
-          // Store sprite reference
           this.tokenSprites[token.id] = tokenGroup;
-
           // The sync that added this token refreshed badges before its sprite existed
           this.refreshInstanceBadge(token.id);
-
-          // Remove from loading set
           this.tokensLoading.delete(token.id);
-          
-          // Check if all tokens are loaded
           this.checkAllTokensLoaded();
-          
-          // Create UI elements
           this.uiManager.createTokenUI(token.id, tokenGroup, character);
           this.placeInPile(token.id, tokenGroup);
           
@@ -1084,6 +1073,7 @@ export class TokenRenderer {
           
           // Also ensure viewport sorts its children to maintain UI above tokens
           this.viewport.sortChildren();
+          this.audience.sightChanged({ kind: 'token' });
 
           // Changes made while loading (an Alt-drag copy moving, a pasted token rotated) go
           // through the regular update path, diffed against the state the sprite was built from.

@@ -137,7 +137,7 @@ export class OnlineTable {
       nameOf: (player) => ownership.nameOf(player),
       setTimer: (run, ms) => timers.setTimer(run, ms),
       clearTimer: (timer) => timers.clearTimer(timer),
-      changed: () => events.log(),
+      changed: () => void (events.log(), this.bound()?.share.layers.update()),
       speaker: (who, key) => this.bound()?.share.dice.speaker(who, key) ?? Promise.resolve(null),
       rollInline: (formula) => this.bound()?.share.dice.quietRoll(formula) ?? null,
     }, savedLog);

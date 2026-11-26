@@ -62,8 +62,9 @@ describe("the map's layers players are sent", () => {
     expect(last(shared.sent, 'grid')?.grid).toEqual({
       type: 'hex-horizontal', size: 64, offsetX: 5, offsetY: 6, colour: '#336699', alpha: 0.4, lineWidth: 2, lineType: 'dotted', numbers: { format: 'column-row', opacity: 0.5 },
     });
+    // The GM hides the grid: a write of the store, which the grid Atlas draws follows.
     options.grid = { ...options.grid, enabled: false };
-    await shared.advance(1000);
+    await shared.show({ ...shared.state() });
     expect(last(shared.sent, 'grid')?.grid).toBeNull();
   });
 

@@ -3,6 +3,7 @@ import { Sprite, type Application, type Container } from 'pixi.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { KeptMeasure } from '../../src/app/measure/measureTypes';
 import { AnnotationsRenderer } from '../../src/app/pixi/annotations/AnnotationsRenderer';
+import type { SightChange } from '../../src/app/pixi/audience/CanvasAudience';
 import { FogOfWarRenderer } from '../../src/app/pixi/fog/FogOfWarRenderer';
 import { measurePlayersView } from '../../src/app/pixi/measurePlayersView';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
@@ -166,5 +167,40 @@ describe('whom the canvas is drawn for, without a token renderer', () => {
     expect(view.audience.takesPlayersPerspective()).toBe(true);
     s.store.getState().setGMView(true);
     expect(view.audience.takesPlayersPerspective()).toBe(false);
+  });
+});
+
+describe('what the players see without a store change', () => {
+  const changes: Array<[string, SightChange, number]> = [
+    ['the lighting\'s sight the canvas shows', { kind: 'lighting', shown: true }, 1],
+    ['the lighting\'s sight the canvas does not show', { kind: 'lighting', shown: false }, 0],
+    ['the roof', { kind: 'roof' }, 1],
+    ['a token drawn once its art loaded', { kind: 'token' }, 1],
+    ['a level\'s map image', { kind: 'map-image' }, 0],
+  ];
+
+  it.each(changes)('tells whoever follows it of %s in the GM\'s view and in session view, and the canvas\'s listeners only in session view (%#)', (_name, change, sessionNotices) => {
+    const view = scene();
+    const heard = vi.fn();
+    view.view.audience.onSightChange(heard);
+    view.notices();
+    view.view.audience.sightChanged(change);
+    expect([heard.mock.calls.length, view.notices()]).toEqual([1, 0]);
+    view.s.store.getState().setGMView(false);
+    view.notices();
+    view.view.audience.sightChanged(change);
+    expect([heard.mock.calls.length, view.notices()]).toEqual([2, sessionNotices]);
+  });
+
+  it('tells nobody once stopped or destroyed', () => {
+    const { view } = scene();
+    const stopped = vi.fn();
+    const kept = vi.fn();
+    view.audience.onSightChange(stopped)();
+    view.audience.onSightChange(kept);
+    view.audience.sightChanged({ kind: 'roof' });
+    view.audience.destroy();
+    view.audience.sightChanged({ kind: 'roof' });
+    expect([stopped.mock.calls.length, kept.mock.calls.length]).toEqual([0, 1]);
   });
 });

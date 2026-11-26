@@ -108,6 +108,14 @@ export class CursorShare {
     return shown;
   }
 
+  /** When the first cursor shown at `now` comes to rest, the GM's own (`gm`) among them; undefined while none shows. */
+  restsAt(gm: CursorSource | null, now: number): number | undefined {
+    if (!this.ports.shown()) return undefined;
+    const moved = [...[...this.cursors.values()].map(({ movedAt }) => movedAt), gm?.movedAt() ?? Number.NEGATIVE_INFINITY];
+    const rests = moved.map((at) => at + CURSOR_REST_MS).filter((at) => at > now);
+    return rests.length === 0 ? undefined : Math.min(...rests);
+  }
+
   /** Whether a cursor that last moved at `movedAt` is shown at `now`. */
   private shows(who: string, movedAt: number, now: number): boolean {
     return now - movedAt < CURSOR_REST_MS && !this.ports.pointing(who);

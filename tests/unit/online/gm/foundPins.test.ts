@@ -88,7 +88,9 @@ function setUp(pins: Record<string, NotePin>, lit: boolean): Table {
   };
   const log = new TableLog({
     send: deliver, clock: () => 1, now: () => 0, randomId: () => crypto.randomUUID().replace(/-/g, '').slice(0, 24),
-    nameOf: (player) => NAMES[player] ?? null, setTimer: () => 0, clearTimer: () => undefined, changed: () => undefined,
+    nameOf: (player) => NAMES[player] ?? null, setTimer: () => 0, clearTimer: () => undefined,
+    // As the table hands every change of the log on to the shared scene's pins.
+    changed: () => harness.share.layers.update(),
   });
   log.welcome([{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }]);
   const found = new FoundShare(log, {

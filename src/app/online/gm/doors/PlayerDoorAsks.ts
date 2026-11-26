@@ -84,7 +84,6 @@ export class PlayerDoorAsks {
   private readonly bumps = new MoveRate(BUMP_BURST, BUMPS_PER_SECOND);
   /** By the door's wall id, then by player. */
   private readonly pending = new Map<string, Map<string, Pending>>();
-  private unsubscribe: (() => void) | null = null;
 
   constructor(store: SceneStore, ports: PlayerDoorPorts) {
     this.store = store;
@@ -113,7 +112,6 @@ export class PlayerDoorAsks {
     const door = askedDoor(levelObjects(state).walls, message.door, own.token, cell);
     if (door === 'open') return this.ports.send({ t: 'door-answer', scene: message.scene, door: message.door, open: true }, from);
     if (typeof door === 'string' || this.pending.get(door.id)?.has(from) === true) return;
-    this.watch();
     const answer = (open: boolean): void => this.answer(door.id, from, open);
     const withdraw = this.ports.ask({
       key: `${door.id}:${from}`,
@@ -141,8 +139,11 @@ export class PlayerDoorAsks {
   stop(): void {
     for (const asks of this.pending.values()) for (const ask of asks.values()) ask.withdraw();
     this.pending.clear();
-    this.unsubscribe?.();
-    this.unsubscribe = null;
+  }
+
+  /** The store changed: doors that opened answer their asks, doors that are gone withdraw theirs. */
+  storeChanged(state: SceneState): void {
+    if (this.pending.size > 0) this.check(state);
   }
 
   private answer(wallId: string, player: string, open: boolean): void {
@@ -175,10 +176,6 @@ export class PlayerDoorAsks {
     if (ask.scene === this.ports.scene()) this.ports.send({ t: 'door-answer', scene: ask.scene, door: ask.ends, open }, player);
   }
 
-  private watch(): void {
-    this.unsubscribe ??= this.store.subscribe((state) => this.check(state));
-  }
-
   /** Doors that opened answer their asks; doors that are gone, or no longer doors, withdraw theirs. */
   private check(state: SceneState): void {
     const walls = state.objects.walls;
@@ -193,10 +190,6 @@ export class PlayerDoorAsks {
         }
       }
       if (asks.size === 0) this.pending.delete(wallId);
-    }
-    if (this.pending.size === 0) {
-      this.unsubscribe?.();
-      this.unsubscribe = null;
     }
   }
 }

@@ -1,5 +1,4 @@
 import type { GmMessage, PlayerResync, SharedScene } from '../protocol/index.ts';
-import { tableControlsStore } from '../../stores/tableControlsStore';
 import type { TokenSeen } from '../../vision/measureOrigin';
 import { ownPolicy, PLAYER_SIGHT_POLICY, type SightPolicy } from '../../vision/tokenSightPolicy';
 import type { SceneStore } from './atlasView.ts';
@@ -12,6 +11,7 @@ import type { MarkAudience } from './gmMeasureAudiences.ts';
 import { FloorMemories } from './memory/FloorMemories.ts';
 import { memoryFloorOf } from './memory/PlayerMemoryEdits.ts';
 import { partyMemory } from './partyMemory.ts';
+import type { SceneChange } from './sceneSignal.ts';
 
 /** What a player's own picture reads by: the tokens they see through, as a key, their policy and the sources cut by it. */
 interface OwnLook {
@@ -72,12 +72,7 @@ export class FloorPictures {
    * when it comes back to a running table, and a message without an addressee reaches every connected page.
    */
   private get sharedByAll(): boolean {
-    return this.pictures.size === 1 && (this.sharedVision() || !sightHides(this.store.getState()));
-  }
-
-  /** In remote mode everyone watches one screen, which shows the party's picture: their phones are remotes. */
-  private sharedVision(): boolean {
-    return this.ports.atlasSettings().sharedVision === true || tableControlsStore.getState().playMode === 'remote';
+    return this.pictures.size === 1 && (this.ports.atlas().sharedVision || !sightHides(this.store.getState()));
   }
 
   /** The picture `player` sees, worked out now for a player not yet placed. */
@@ -95,7 +90,7 @@ export class FloorPictures {
     try {
       const seats = this.ports.seats;
       const players = [...new Set([...(seats?.onlinePlayers() ?? []), ...extra])];
-      const inputs = { state: this.store.getState(), sharedVision: this.sharedVision(), rules: this.ports.lightingSource()?.rules() };
+      const inputs = { state: this.store.getState(), sharedVision: this.ports.atlas().sharedVision, rules: this.ports.lightingSource()?.rules() };
       const eyes = floorEyes({ ...inputs, ownerOf: (id, token) => seats?.ownerOf(id, token) }, players);
       this.remembering = sightHides(inputs.state);
       const before = this.eyes;
@@ -128,10 +123,13 @@ export class FloorPictures {
     for (const picture of this.pictures.values()) picture.clear();
   }
 
-  update(): void {
-    this.assign();
-    this.observeRemovals();
-    for (const picture of this.pictures.values()) picture.update();
+  /** Something the pictures are made of changed (`SceneChange`): whose eyes each player sees through and what the GM took from the memory follow the store and Atlas, each picture all of them. */
+  changed(change: SceneChange): void {
+    if (change !== 'sight') {
+      this.assign();
+      this.observeRemovals();
+    }
+    for (const picture of this.pictures.values()) picture.changed(change);
   }
 
   /** Counts what the GM took away from a lit floor's memory since it last looked; what a load took reaches each player's own memory too. */
@@ -191,11 +189,6 @@ export class FloorPictures {
     this.removals.loading();
   }
 
-  poll(): void {
-    this.assign();
-    for (const picture of this.pictures.values()) picture.poll();
-  }
-
   playerLeft(player: string): void {
     this.eyes.delete(player);
     this.memories?.update();
@@ -237,7 +230,7 @@ export class FloorPictures {
         const owned = new Set(eyes.owns);
         const policy = ownPolicy((token) => seeing.has(token.id), (token) => owned.has(token.id));
         this.looks.set(key, { tokens, policy, sources: this.ports.eyes(policy) });
-        this.pictures.get(key)?.update();
+        this.pictures.get(key)?.changed('store');
       }
     }
     if (this.pictures.has(key)) return false;

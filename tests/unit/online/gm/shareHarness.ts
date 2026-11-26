@@ -3,9 +3,10 @@ import type { LoggedRoll, RollRequest } from '../../../../src/app/online/gm/log/
 import { produce } from 'immer';
 import type { NotePin, TokenEntity } from '../../../../src/app/types';
 import type { TokenPerception } from '../../../../src/app/vision/tokenPerception';
-import type { SceneState, SceneStore } from '../../../../src/app/online/gm/atlasView.ts';
+import type { ObservedStore, SceneState } from '../../../../src/app/online/gm/atlasView.ts';
 import type { SeatSource } from '../../../../src/app/online/gm/seatSource.ts';
 import { imageMimeType, SceneShare } from '../../../../src/app/online/gm/SceneShare.ts';
+import { SceneSignal } from '../../../../src/app/online/gm/sceneSignal.ts';
 import type { DiceSource } from '../../../../src/app/online/gm/atlasDice.ts';
 import type { AtlasPlayerSettings, LightingSource } from '../../../../src/app/online/gm/atlasLighting.ts';
 import type { MapLayerSource } from '../../../../src/app/online/gm/atlasMapLayers.ts';
@@ -55,8 +56,13 @@ export interface ShareHarness {
   perception: TokenPerception | undefined;
   /** Whether the tab has a renderer. */
   rendered: boolean;
+  /** The GM's renderer tells that what players see changed without a store change (their sight, a token drawn): set `perception`, `layers` or `basis` first. */
+  sightChanged(): void;
+  /** Atlas tells of a change beside its settings: the map's rules, a statblock, a library token, the theme. */
+  atlasChanged(): void;
   /** Where the GM's lighting reads its rules, or null while it cannot be read. */
   lighting: LightingSource | null;
+  /** Atlas's settings for the players' view; setting them tells the share, as Atlas's settings service does. */
   settings: AtlasPlayerSettings;
   /** The tab's dice, read when the share starts; none by default. */
   dice: DiceSource | null;
@@ -80,7 +86,7 @@ export interface ShareHarness {
   foundPin: (mapPath: string, pinId: string) => string | null;
   /** Told of the shared map's pins whenever they changed; nobody listens by default. */
   pinsChanged: (mapPath: string, pins: Readonly<Record<string, NotePin>>) => void;
-  /** The level of a scene with several Atlas presents to its player view; unset is the first. */
+  /** The level of a scene with several Atlas presents to its player view; unset is the first. Setting it tells the store's listeners. */
   presented: string | undefined;
   /** The vault's animated maps by path, whose posters are their entries in the images; none by default. */
   videos: Map<string, Uint8Array<ArrayBuffer>>;
@@ -105,10 +111,10 @@ const counterId = (count: number): string => count.toString(16).padStart(24, '0'
  * `stored` hands players assets the store keeps (by default all of them, `fakeStoring`); `memory` keeps each
  * player's own explored memory (none by default).
  */
-export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Uint8Array<ArrayBuffer>>, seats?: SeatSource, real?: SceneStore, stored?: AssetStoring, memory?: MemoryPorts): ShareHarness {
+export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Uint8Array<ArrayBuffer>>, seats?: SeatSource, real?: ObservedStore, stored?: AssetStoring, memory?: MemoryPorts): ShareHarness {
   let current = initial;
   const listeners: ((next: SceneState) => void)[] = [];
-  const store: SceneStore = real ?? {
+  const store: ObservedStore = real ?? {
     getState: () => current,
     setState: (recipe) => void harness.set(produce(current, recipe)),
     subscribe: (listener) => (listeners.push(listener), () => undefined),
@@ -120,6 +126,16 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
   const settle = settled;
   const source = fakeTokenSource(() => store.getState(), () => harness.perception, () => GRID_SIZE);
   const pages = new PlayerPages();
+  const sight = new Set<() => void>();
+  const settingsFollowers = new Set<() => void>();
+  const atlas = new Set<() => void>();
+  const followed = (followers: Set<() => void>) => (listener: () => void): (() => void) => {
+    followers.add(listener);
+    return () => void followers.delete(listener);
+  };
+  let settings: AtlasPlayerSettings = { ...PLAYER_SETTINGS, sharedVision: seats === undefined };
+  let presented: string | undefined;
+  const signal = new SceneSignal({ store, sight: followed(sight), settings: { read: () => settings, follow: followed(settingsFollowers) }, accent: () => null, atlas: [followed(atlas)] });
   const sent = (body: GmMessage, to: string | undefined): void => {
     harness.sent.push({ body, to });
     pages.deliver(body, to);
@@ -130,8 +146,16 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
     notices: [],
     perception: undefined,
     rendered: true,
+    sightChanged: () => sight.forEach((listener) => listener()),
+    atlasChanged: () => atlas.forEach((listener) => listener()),
     lighting: GENERIC_SOURCE,
-    settings: { ...PLAYER_SETTINGS, sharedVision: seats === undefined },
+    get settings() {
+      return settings;
+    },
+    set settings(next) {
+      settings = next;
+      settingsFollowers.forEach((listener) => listener());
+    },
     dice: null,
     layers: null,
     basis: null,
@@ -143,10 +167,17 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
     requests: () => null,
     foundPin: () => null,
     pinsChanged: () => undefined,
-    presented: undefined,
+    get presented() {
+      return presented;
+    },
+    // Atlas presenting another level of the scene tells the store's listeners, as `PresentedStore.present` does.
+    set presented(next) {
+      presented = next;
+      for (const listener of listeners) listener(store.getState());
+    },
     videos: new Map(),
     videoReads: 0,
-    share: new SceneShare(store, {
+    share: new SceneShare(store, signal, {
       presentedLevel: () => harness.presented,
       logRoll: (roll) => harness.logged.push(roll),
       rollRequest: (from, answer) => harness.requests(from, answer),
@@ -155,9 +186,8 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
       mapLayers: () => harness.layers,
       pictureBasis: () => harness.basis,
       lightingSource: () => harness.lighting,
-      atlasSettings: () => harness.settings,
+      atlas: () => signal.inputs.atlas,
       dice: () => harness.dice,
-      showNames: () => harness.settings.showNames,
       tokenRules: () => harness.rules,
       tokenSource: () => (harness.rendered ? source : null),
       gmDragRuler: () => harness.gmRuler,

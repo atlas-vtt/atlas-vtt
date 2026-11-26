@@ -32,6 +32,8 @@ export class MineShare {
   private listed: ListedTokens | null = null;
   /** What each player was last sent: scene and ids. */
   private readonly sent = new Map<string, string>();
+  /** Each connected player's tokens of the list, as worked out at the last list or change of who owns or plays. */
+  private owned = new Map<string, [string, string][]>();
 
   constructor(source: MineSource, send: (body: GmMessage, to: string) => void) {
     this.source = source;
@@ -48,10 +50,18 @@ export class MineShare {
   update(): void {
     const listed = this.listed;
     if (listed === null) return;
-    const online = new Set(this.source.onlinePlayers());
-    for (const player of this.sent.keys()) if (!online.has(player)) this.sent.delete(player);
-    for (const player of online) {
-      const owned = ownedBy(player, listed, (tokenId) => this.source.ownerOf(tokenId));
+    this.owned = new Map(this.source.onlinePlayers().map((player) => [player, ownedBy(player, listed, (tokenId) => this.source.ownerOf(tokenId))]));
+    this.tell(listed);
+  }
+
+  /** The dice of the players' tokens may read otherwise (a token's statblock or art changed): told again where they did, the owners as last worked out. */
+  diceChanged(): void {
+    if (this.listed !== null) this.tell(this.listed);
+  }
+
+  private tell(listed: ListedTokens): void {
+    for (const player of this.sent.keys()) if (!this.owned.has(player)) this.sent.delete(player);
+    for (const [player, owned] of this.owned) {
       const dice = Object.fromEntries(owned.flatMap(([tokenId, alias]) => {
         const own = this.source.diceOf?.(tokenId);
         return own === undefined ? [] : [[alias, own] as const];

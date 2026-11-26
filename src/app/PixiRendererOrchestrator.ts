@@ -510,7 +510,7 @@ export class PixiRendererOrchestrator { // Renamed class
       mapSize: () => this.mapImage?.imageSize ?? null,
       bounds: () => this.getSceneMapRect(),
       lighting: () => this.lighting?.renderer,
-      onChange: () => this.audience.refresh(),
+      onChange: () => this.audience.sightChanged({ kind: 'roof' }),
     });
 
     if (!isPlayerView) {
@@ -819,6 +819,7 @@ export class PixiRendererOrchestrator { // Renamed class
     // alignment is applied.
     if (this.isPreviewingStretch()) this.fitZoomRangeToStretch();
     else this.mapSizeSettled();
+    this.audience.sightChanged({ kind: 'map-image' });
   }
 
   private isPreviewingStretch(): boolean {

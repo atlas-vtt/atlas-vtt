@@ -13,7 +13,7 @@ import type { ListedPin } from './pins/ReadablePins.ts';
 import { playerFloors, sharedFloor, type Floor } from './playerFloors.ts';
 import { SceneDice } from './SceneDice.ts';
 import type { SceneSharePorts } from './sceneSharePorts.ts';
-import { TOKEN_POLL_MS } from './TokenShare.ts';
+import type { SceneChange, SceneSignal } from './sceneSignal.ts';
 import { hasLevels, resolveLevel, viewedLevelId } from '../../levels/sceneLevels';
 
 export { imageMimeType, isLit, LIGHTING_REFUSAL };
@@ -31,9 +31,11 @@ const CATCH_UP_MS = 1000;
  * one. A floor's messages reach its players alone (`FloorAudience`); a scene of one floor goes to all
  * as it always did. The floor the GM's view shows reads the players' picture from the GM's renderer,
  * any other works it out on the CPU (`FloorSight`). A token that takes stairs takes its player along.
+ * Every change of what players see reaches it as one signal (`SceneSignal`), which it hands to each floor.
  */
 export class SceneShare {
   private readonly store: SceneStore;
+  private readonly signal: SceneSignal;
   private readonly ports: SceneSharePorts;
   private readonly floors = new Map<string, FloorShare>();
   private readonly audience = new FloorAudience();
@@ -50,7 +52,6 @@ export class SceneShare {
   private assigned: readonly unknown[] = [];
   private assigning = false;
   private unsubscribe: (() => void) | null = null;
-  private poll: number | undefined;
   /** Tells the GM a notice once, however many floors tell it. */
   private readonly notice: (text: string) => void;
   /** The shared scene's rolls and speakers in the log. */
@@ -58,8 +59,9 @@ export class SceneShare {
   /** The readable pins players see now, on whichever floor they are. */
   readonly layers: { readablePin(player: string, sceneId: string, alias: string): (ListedPin & { readonly map: string }) | null; update(): void };
 
-  constructor(store: SceneStore, ports: SceneSharePorts) {
+  constructor(store: SceneStore, signal: SceneSignal, ports: SceneSharePorts) {
     this.store = store;
+    this.signal = signal;
     this.ports = ports;
     this.notice = noticeOnce(ports);
     this.tokens = new FloorTokens({ store, ports, floors: this.floors, shareOf: (player) => this.shareOf(player) });
@@ -73,17 +75,14 @@ export class SceneShare {
   }
 
   start(): void {
-    this.unsubscribe = this.store.subscribe(() => this.assign());
+    this.unsubscribe = this.signal.listen((change) => this.changed(change));
     this.assign();
-    this.schedulePoll();
     this.dice.start();
   }
 
   stop(): void {
     this.unsubscribe?.();
     this.unsubscribe = null;
-    if (this.poll !== undefined) this.ports.clearTimer(this.poll);
-    this.poll = undefined;
     for (const share of this.floors.values()) share.stop();
     this.floors.clear();
     this.audience.clear();
@@ -181,6 +180,18 @@ export class SceneShare {
   /** The tokens among `tokenIds` that the players of each token's floor see now, as their frame names them: what the books read. */
   shown(mapPath: string, tokenIds: readonly string[]): ReadonlyMap<string, ShownRollToken> {
     return this.tokens.shown(mapPath, tokenIds);
+  }
+
+  /**
+   * Something players see changed: a change of the store may move players to other floors first, then
+   * every floor open before it hears of it (a floor opened by it has just read everything).
+   */
+  private changed(change: SceneChange): void {
+    const open = [...this.floors.values()];
+    if (change === 'store') this.assign();
+    const { state } = this.signal.inputs;
+    const still = new Set(this.floors.values());
+    for (const share of open) if (still.has(share)) share.changed(change, state);
   }
 
   /** Whether the scene has several floors now. */
@@ -296,14 +307,5 @@ export class SceneShare {
     if (!hasLevels(state.levels)) return undefined;
     if (this.group?.map !== state.mapPath) this.group = { map: state.mapPath, id: this.ports.randomId() };
     return sharedFloor(state, floor, this.group.id);
-  }
-
-  /** Looks again every `TOKEN_POLL_MS`: Atlas may present another floor without a change of the store. */
-  private schedulePoll(): void {
-    this.poll = this.ports.setTimer(() => {
-      this.poll = undefined;
-      this.assign();
-      this.schedulePoll();
-    }, TOKEN_POLL_MS);
   }
 }

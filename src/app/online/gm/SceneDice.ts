@@ -46,7 +46,7 @@ export class SceneDice {
     const seats = ports.seats;
     this.share = new RollShare({
       send: (body, to) => ports.send(body, to),
-      showGmRolls: () => ports.atlasSettings().showDiceRolls,
+      showGmRolls: () => ports.atlas().settings.showDiceRolls,
       named: (origin) => parts.namedToken(origin.mapPath, origin.tokenId),
       players: () => seats?.onlinePlayers() ?? [],
       alias: (id) => parts.alias(id),

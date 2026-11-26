@@ -3,7 +3,7 @@ import type { TokenEntity } from '../../../../src/app/types';
 import type { Perception } from '../../../../src/app/vision/perception';
 import { describe, expect, it } from 'vitest';
 import { sha256Hex } from '../../../../src/app/online/gm/assetServe.ts';
-import { TOKEN_INTERVAL_MS, TOKEN_POLL_MS } from '../../../../src/app/online/gm/TokenShare.ts';
+import { TOKEN_INTERVAL_MS } from '../../../../src/app/online/gm/TokenShare.ts';
 import { sceneState, shareHarness, token, tokenLists, type Sent } from './shareHarness.ts';
 
 /** A seeded generator (mulberry32), so a failing trial can be replayed by its seed. */
@@ -80,7 +80,7 @@ describe('what players are sent of the tokens', () => {
         for (const entry of generated) visible.set(entry.id, entry.role === 'free' ? PERCEPTIONS[Math.floor(random() * 3)] === 'seen' : false);
         table.perception = (id) => (visible.get(id) === true ? 'seen' : PERCEPTIONS[1 + Math.floor(random() * 2)] ?? 'unseen');
         await table.set(next);
-        await table.advance(random() < 0.5 ? TOKEN_INTERVAL_MS : TOKEN_POLL_MS);
+        await table.advance(random() < 0.5 ? TOKEN_INTERVAL_MS : 1000);
         const expected = generated.filter((entry) => visible.get(entry.id) === true && next.objects.tokens[entry.id]?.isHidden !== true).map((entry) => entry.name);
         expect(tokenLists(table.sent).at(-1)?.tokens.map((entry) => entry.name).sort(), `trial ${trial} step ${step}: the players' tokens`).toEqual(expected.sort());
       }

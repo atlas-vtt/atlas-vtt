@@ -6,7 +6,7 @@ import { levelObjects } from '../../levels/levelObjects';
 import { difficultCells } from '../../mapFeatures/featureIndex';
 import { mapFeatureList } from '../../mapFeatures/mapFeatures';
 import { diceSourceOf } from './atlasDice.ts';
-import { accentColour, atlasPlayerSettings, lightingSourceOf, measurementOf, tabAreaMap } from './atlasLighting.ts';
+import { accentColour, lightingSourceOf, measurementOf, tabAreaMap } from './atlasLighting.ts';
 import { mapLayerSourceOf, pictureBasisOf, rulesLookupOf, showsViewedLevel } from './atlasMapLayers.ts';
 import { asTokenSource, call, drawnTokenPlaces, tokenRulesOf, type PlayerTokenSource, type SceneStore } from './atlasView.ts';
 import { bookSceneOf, type BookScene } from './book/bookScene.ts';
@@ -22,6 +22,8 @@ import { ownerIn, type SeatSource } from './seatSource.ts';
 import type { PresentedTab } from './presentedScene.ts';
 import { PresentedStore } from './presentedStore.ts';
 import { SceneShare } from './SceneShare.ts';
+import { SceneSignal } from './sceneSignal.ts';
+import { sceneSources } from './sceneSources.ts';
 import type { AtlasTab, TabBinding } from './sharedTab.ts';
 import type { VaultImage } from './TokenShare.ts';
 import type { AssetStoring } from './assets/assetUses.ts';
@@ -112,7 +114,9 @@ export function bindScene(ports: SceneBindingPorts, tab: AtlasTab, presented: Pr
     marks.showPlayerCursors([]);
     marks.showPlayerStrokes([]);
   });
-  const share: SceneShare = new SceneShare(store, {
+  // The theme is read once at each change of it, not with every message that carries the accent.
+  const signal = new SceneSignal(sceneSources(ports.app, store, renderer, lastWhileShown(shown, () => accentColour(leaf.view.containerEl.ownerDocument))));
+  const share: SceneShare = new SceneShare(store, signal, {
     tokenSource: () => asTokenSource(shownRenderer()),
     lightingSource: () => lightingSourceOf(shownRenderer()),
     measurement,
@@ -123,12 +127,10 @@ export function bindScene(ports: SceneBindingPorts, tab: AtlasTab, presented: Pr
     showPlayerCursors: (cursors) => shown() && marks.showPlayerCursors(cursors),
     showPlayerStrokes: (strokes) => shown() && marks.showPlayerStrokes(strokes),
     nameOf: (player) => ports.nameOf(player),
-    accent: lastWhileShown(shown, () => accentColour(leaf.view.containerEl.ownerDocument)),
-    atlasSettings: () => atlasPlayerSettings(ports.app),
+    atlas: () => signal.inputs.atlas,
     dice: () => (shown() ? diceSourceOf(leaf) : null),
     mapLayers: () => (shown() ? mapLayerSourceOf(renderer, leaf.view) : null),
     pictureBasis: () => (shown() ? pictureBasisOf(renderer) : null),
-    showNames: () => atlasPlayerSettings(ports.app).showNames,
     tokenRules: () => tokenRulesOf(shownRenderer()),
     tokenMoves: () => tokenMovesOf(shownRenderer()),
     readImage: (path) => ports.readImage(path),
