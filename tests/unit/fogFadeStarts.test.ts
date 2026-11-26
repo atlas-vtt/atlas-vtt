@@ -8,6 +8,7 @@ import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFa
 import type { FogOperation, FogRectangleFill } from '../../src/app/types/fogTypes';
 import { MOTION_NORMAL_MS } from '../../src/app/utils/motion';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { viewAudience } from '../helpers/viewAudience';
 
 // The mesh that mixes two pictures needs WebGL; what it draws is measured in tests/gpu/fogFade.gpu.test.ts.
 vi.mock('../../src/app/pixi/fog/fogEdgeMesh', () => ({
@@ -57,7 +58,7 @@ describe('when a change of the fog starts a fade', () => {
     store.setState((state) => ({ mapPath: 'maps/a.atlasmap', isMapLoading: false, isGMView: true, objects: { ...state.objects, fog } }));
     const viewport = Object.assign(new Container(), { options: {}, scale: { x: 1, y: 1 }, toWorld: (point: { x: number; y: number }) => ({ x: point.x, y: point.y }) });
     const app = { canvas: createEl('canvas'), renderer: { name: 'webgl' } };
-    const renderer = new FogOfWarRenderer(viewport as never, app as never, new EventEmitter() as never, store, () => map);
+    const renderer = new FogOfWarRenderer(viewport as never, app as never, new EventEmitter() as never, store, () => map, viewAudience(store).audience);
     views.push(renderer);
     return {
       store, fog: renderer,

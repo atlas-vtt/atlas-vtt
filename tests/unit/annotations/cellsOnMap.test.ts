@@ -227,12 +227,10 @@ describe('the Draw tool on the map: cells', () => {
 
   it('fills nothing while the canvas shows the players\' picture, and nothing more on a level that is full', () => {
     const s = scene();
-    s.players.shown = true;
-    s.renderer.refreshVisibility();
+    s.peek(true);
     s.drag([mid(1, 1), mid(2, 1)]);
     expect(s.drawings()).toEqual([]);
-    s.players.shown = null;
-    s.renderer.refreshVisibility();
+    s.peek(false);
     const { objects } = s.store.getState();
     const pen = (id: string): DrawingStroke => ({ id, kind: 'drawing', timestamp: 1, type: 'pen', points: [{ x: 900, y: 900 }, { x: 910, y: 900 }], color: '#ffffff', width: 4, opacity: 1 });
     s.store.setState({ objects: { ...objects, drawings: Object.fromEntries(Array.from({ length: MAX_DRAWINGS }, (_unused, index) => [`d${index}`, pen(`d${index}`)])) } });

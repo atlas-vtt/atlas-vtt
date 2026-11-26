@@ -2,7 +2,7 @@ import { CursorOverlay, CursorTap, MarkOverlay, PointerTap, type CursorViewport,
 import { LIVE_INTERVAL_MS, type SharedCursor, type SharedStroke } from '../protocol/index.ts';
 import { Container } from 'pixi.js';
 import { placeUnderTokens } from '../../pixi/measure/MeasureLayer';
-import type { HeldPlayout } from '../../pixi/token-renderer/TokenGlide';
+import type { HeldPlayout } from '../../pixi/token-renderer/TokenPlaces';
 import type { App } from 'obsidian';
 import type { UnderWaySource } from '../../annotations/underWay';
 import { FogCoverageCache } from '../../fog/FogCoverageCache';
@@ -49,7 +49,7 @@ function setHeldPlayout(tokens: unknown, playout: HeldPlayout | null): void {
 /** Shows a layer to the players' frame alone (`PixiRendererOrchestrator.addPlayerFrameLayer`). */
 type PlayerFrameLayer = NonNullable<OverlayHost['playerFrame']>;
 
-function rendererParts(renderer: unknown): { readonly measurements: SceneSource<Measurements> | null; readonly viewport: Viewport; readonly canvas: HTMLCanvasElement; readonly tokens: unknown; readonly layBodies: LayBodies | null; readonly playerFrame: PlayerFrameLayer | null } | null {
+function rendererParts(renderer: unknown): { readonly measurements: SceneSource<Measurements> | null; readonly viewport: Viewport; readonly canvas: HTMLCanvasElement; readonly tokens: unknown; readonly audience: unknown; readonly layBodies: LayBodies | null; readonly playerFrame: PlayerFrameLayer | null } | null {
   const viewport = call(renderer, 'getViewportInstance');
   const canvas = call(renderer, 'getCanvasElement');
   if (!hasMethods(viewport, ['on', 'off', 'toWorld']) || !hasMethods(canvas, ['addEventListener', 'getContext'])) return null;
@@ -60,7 +60,7 @@ function rendererParts(renderer: unknown): { readonly measurements: SceneSource<
   // The players' measurements in the player window too, where this Atlas build can show a layer to its players' frame alone.
   const addLayer = field(renderer, 'addPlayerFrameLayer');
   const playerFrame: PlayerFrameLayer | null = isFunction(addLayer) ? (layer) => (addLayer as PlayerFrameLayer).call(renderer, layer) : null;
-  return { measurements, viewport: viewport as Viewport, canvas: canvas as HTMLCanvasElement, tokens: call(renderer, 'getTokenRenderer'), layBodies, playerFrame };
+  return { measurements, viewport: viewport as Viewport, canvas: canvas as HTMLCanvasElement, tokens: call(renderer, 'getTokenRenderer'), audience: call(renderer, 'getCanvasAudience'), layBodies, playerFrame };
 }
 
 /**
@@ -131,8 +131,8 @@ export class GmMarks {
         return (id) => shown?.has(id) === true;
       },
       onPlayersViewChange: (listener) => {
-        const subscribe = field(parts.tokens, 'onPlayersViewChange');
-        const stop: unknown = isFunction(subscribe) ? (subscribe as (listener: () => void) => unknown).call(parts.tokens, listener) : undefined;
+        const subscribe = field(parts.audience, 'onChange');
+        const stop: unknown = isFunction(subscribe) ? (subscribe as (listener: () => void) => unknown).call(parts.audience, listener) : undefined;
         return isFunction(stop) ? () => void stop() : () => undefined;
       },
     };

@@ -5,7 +5,7 @@ import type { InitiativeState } from '../../types/initiativeTypes';
 import { currentTurnKey } from '../../initiative/turnHolders';
 import { playTurnMotion, snapshotTurn, type TurnSnapshot } from '../../initiative/motion/turnMotion';
 import { enterList, exitList, morphList, type Outward } from '../../initiative/motion/listPresence';
-import { TURN_FLASH_MS } from '../../services/playerInitiativeList';
+import { TURN_FLASH_MS } from '../../services/playerInitiativeView';
 
 /** What a change of the tracker's order is read by: the round, the turn and every combatant's place. */
 function orderOf(initiative: InitiativeState): string {

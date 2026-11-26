@@ -61,7 +61,7 @@ import { prefersReducedMotion } from './utils/motion';
 import { ViewRoofs } from './pixi/roofs/ViewRoofs';
 import { ShownPlaces } from './lighting/shownPlaces';
 import type { SceneFrame } from './pixi/lighting/engine/types';
-import { captureSceneFrame } from './pixi/sceneFrameCapture';
+import { captureSceneFrame, type SceneFrameParts } from './pixi/sceneFrameCapture';
 import { AudioTool } from './tools/AudioTool';
 import { openAudioConfigPanel } from './pixi/audio/AudioConfigPanel';
 import { AudioRenderer } from './pixi/audio/AudioRenderer';
@@ -101,6 +101,9 @@ import { mapTokens } from './tokens/offMap';
 import { installFoggedPartyRings } from './pixi/token-renderer/FoggedPartyRings';
 import { TokenPlacer } from './pixi/tokenPlacement/TokenPlacer';
 import { PlacementHand } from './pixi/tokenPlacement/placementHand';
+import { MapPointer } from './pixi/pointer/MapPointer';
+import { listenToViewport } from './pixi/pointer/viewportPointer';
+import { CanvasAudience } from './pixi/audience/CanvasAudience';
 
 /** How long a reveal waits at most for the lighting a load traces ahead (`scene-hydrated`), in ms. */
 const SCENE_PREPARE_WAIT_MS = 1000;
@@ -109,6 +112,11 @@ export class PixiRendererOrchestrator { // Renamed class
   private _isDestroyed: boolean = false;
   private pixiAppManager: PixiAppManager;
   private tokenRenderer?: TokenRenderer; // Add TokenRenderer instance
+  /** Which layer of the map takes a press, a menu, a tap and a move; every layer attaches itself where it is built. */
+  private pointer?: MapPointer;
+  private stopPointer: (() => void) | undefined;
+  /** Whom the canvas is drawn for now, and what the players see of its tokens: everything that draws for them follows it. */
+  private readonly audience: CanvasAudience;
   private readonly tokenArt: TextureCache;
   private pinRenderer?: PinRenderer; // Add PinRenderer instance
   private hexLinkRenderer?: HexLinkRenderer;
@@ -128,16 +136,12 @@ export class PixiRendererOrchestrator { // Renamed class
   private selectionBar?: SelectionBarSource;
   private fogRenderer?: FogOfWarRenderer; // Add FogRenderer instance
   private measureRenderer?: MeasureRenderer; // Add MeasureRenderer instance
-  /** Ends the measurements' watch on what the players see of the tokens. */
-  private stopMeasuresFollowingPlayers: (() => void) | undefined;
   private stopMeasuresFollowingRules: (() => void) | undefined;
   private stopMeasuresFollowingHeights: (() => void) | undefined;
   private stopMeasuresFollowingLeaving: (() => void) | undefined;
   private laserPointerRenderer?: LaserPointerRenderer; // Add LaserPointerRenderer instance
   /** The drawings and texts on the map, and the Draw tool that makes them. */
   private annotations?: AnnotationsRenderer;
-  private stopAnnotationsFollowingPlayers: (() => void) | undefined;
-  private stopFogFollowingPlayers: (() => void) | undefined;
   /** The GM view's walls, lights and sight; the player view has none. */
   private lighting?: LightingController;
   /** The lighting's work ahead for the scene being loaded (`scene-hydrated`), until its reveal waits for it. */
@@ -218,6 +222,7 @@ export class PixiRendererOrchestrator { // Renamed class
     this.store = store;
     this.viewId = viewId;
     this.tokenArt = new TextureCache(obsApp);
+    this.audience = new CanvasAudience({ store, eventBus, peeking: () => this.lighting?.peeking() ?? false });
     this.setupEventBusListeners(); // Call this to set up other listeners if any
   }
 
@@ -359,11 +364,11 @@ export class PixiRendererOrchestrator { // Renamed class
           viewport: currentViewport,
           placing: () => this.tokenPlacer?.active ?? false,
           marqueePending: () => this.selectionManager?.marqueePending ?? false,
-          menuAt: (x, y) => this.tokenRenderer?.menuAt(x, y) ?? false,
-          tapActsAt: (x, y) => this.tokenRenderer?.tapActsAt(x, y) ?? false,
+          menuAt: (x, y) => this.pointer?.menuAt(x, y) ?? false,
+          tapActsAt: (x, y) => this.pointer?.tapActsAt(x, y) ?? false,
           pressActs: {
             onCanvas: (x, y) => pressActsOnCanvas(this.pixiAppManager.getApp().renderer.events, x, y),
-            onMap: (x, y) => this.tokenRenderer?.pressActsAt(x, y) ?? false,
+            onMap: (x, y) => this.pointer?.pressActsAt(x, y) ?? false,
           },
           fingers: FingerSettings.forApp(this.obsApp),
           lightingTapPlacing: () => this.lighting?.tapPlacing() ?? null,
@@ -410,7 +415,12 @@ export class PixiRendererOrchestrator { // Renamed class
     // The map sprite draws the background; the canvas around it stays black
     this.pixiAppManager.app.renderer.background.color = 0x000000;
     requestRender(this.pixiAppManager.app);
-    
+
+    // Before anything else listens to the viewport's presses: whoever leaves a claimed press alone hears it after the claim
+    const pointer = new MapPointer({ store: this.store, gmView: () => !this.audience.showsPlayers(), placing: () => this.tokenPlacer?.active ?? false });
+    this.pointer = pointer;
+    this.stopPointer = listenToViewport(pointer, viewport, this.pixiAppManager.getCanvasElement());
+
     // Initialize TokenRenderer first if GridSystem is ready
     // This also means tokenContainer will be added to viewport earlier
     if (this.gridSystem) {
@@ -425,6 +435,7 @@ export class PixiRendererOrchestrator { // Renamed class
     this.pinRenderer = new PinRenderer(viewport, this.eventBus, this.store, isPlayerView);
     const pinnedSceneLevels = (pin: NotePin): Promise<readonly SceneLevel[] | null> => linkedSceneLevels(this.obsApp, this.store.getState(), pin.notePath);
     this.pinRenderer.setPinnedSceneLevels(pinnedSceneLevels);
+    pointer.attach('pins', this.pinRenderer.pointerLayer((type, pin, e) => this.emitNoteHover(type, pin, e)));
 
     this.hexLinkRenderer = new HexLinkRenderer({
       viewport,
@@ -440,6 +451,7 @@ export class PixiRendererOrchestrator { // Renamed class
       onNoteHover: (type, pin, e) => this.emitNoteHover(type, pin, e),
       pinnedSceneLevels,
     });
+    pointer.attach('hexLinks', this.hexLinkInteraction);
 
     if (!isPlayerView) {
       this.levelLinks = new LevelLinkEditor({
@@ -449,10 +461,16 @@ export class PixiRendererOrchestrator { // Renamed class
         onFull: () => showNotice(t('levels.stairsFull', { count: MAX_LEVEL_LINKS })),
       });
       const stairs = this.levelLinks;
+      pointer.attach('stairs', stairs);
       this.eventBusUnsubscribers.push(onLeavingView({ eventBus: this.eventBus, obsApp: this.obsApp, viewId: this.viewId }, () => stairs.stop()));
       const features = new MapFeatureInteraction(this.store, this.pixiAppManager.getCanvasElement());
       this.mapFeatures = features;
+      pointer.attach('mapFeatures', features);
       this.eventBusUnsubscribers.push(onLeavingView({ eventBus: this.eventBus, obsApp: this.obsApp, viewId: this.viewId }, () => features.leave()));
+      // The GM's labels of map features go once the canvas shows the players' picture
+      this.eventBusUnsubscribers.push(this.audience.onChange(() => {
+        if (this.audience.showsPlayers()) features.leave();
+      }));
     }
 
     this.selectionManager = new SelectionManager(
@@ -463,10 +481,12 @@ export class PixiRendererOrchestrator { // Renamed class
     );
     this.selectionManager.barsProvider = (tokenId) => this.tokenRenderer?.bars(tokenId) ?? NO_BARS;
     const selection = this.selectionManager;
+    pointer.attach('groupFrame', { contains: (x, y) => selection.groupFrameContains(x, y) });
     this.eventBusUnsubscribers.push(addBeforeRender(this.pixiAppManager.app, () => selection.drawAskedOverlay(), BEFORE_RENDER_ORDER.selection));
 
     // Initialize FogOfWarRenderer after pins so it can be on top when active
-    this.fogRenderer = new FogOfWarRenderer(viewport, this.app, this.eventBus, this.store, () => this.getSceneMapRect());
+    this.fogRenderer = new FogOfWarRenderer(viewport, this.app, this.eventBus, this.store, () => this.getSceneMapRect(), this.audience);
+    pointer.attach('fog', this.fogRenderer.menuPointer());
     // A polygon placed click by click holds Enter, Backspace, Escape and the undo key: only while they are this map's
     this.fogRenderer.keysBelongToMap = (event) => canRunMapHotkeys(event, this.viewId);
     this.fogRenderer.isUndoKey = (event) => matchesHotkey(event, (SettingsService.forApp(this.obsApp)?.getHotkeys() ?? DEFAULT_MAP_HOTKEYS).undo, true);
@@ -492,7 +512,7 @@ export class PixiRendererOrchestrator { // Renamed class
       mapSize: () => this.mapImage?.imageSize ?? null,
       bounds: () => this.getSceneMapRect(),
       lighting: () => this.lighting?.renderer,
-      onChange: () => { this.tokenRenderer?.refreshPlayerSight(); this.tellPlayerSight(); },
+      onChange: () => { this.audience.refresh(); this.tellPlayerSight(); },
     });
 
     if (!isPlayerView) {
@@ -504,6 +524,7 @@ export class PixiRendererOrchestrator { // Renamed class
         eventBus: this.eventBus,
         obsApp: this.obsApp,
         viewId: this.viewId,
+        audience: this.audience,
         bounds: () => this.getSceneMapRect(),
         albedo: () => this.mapImage?.albedoTexture() ?? null,
         mapImage: () => this.mapImage,
@@ -528,11 +549,16 @@ export class PixiRendererOrchestrator { // Renamed class
         ...(quality && { quality }),
         onSightChange: () => this.tellPlayerSight(),
       });
+      const { lights, walls, doors } = this.lighting.pointerLayers();
+      pointer.attach('lights', lights);
+      pointer.attach('walls', walls);
+      pointer.attach('doors', doors);
     }
 
     // Initialize Audio system
     this.audioRenderer = new AudioRenderer(viewport, this.store);
     this.audioTool = new AudioTool(this.eventBus);
+    pointer.attach('sounds', { pointerDown: (x, y) => this.handleAudioPointerDown(x, y) });
 
     // Initialize SoundRegistry and SpatialAudioEngine
     const pluginDir = this.store.getState().plugin?.manifest?.dir ?? `${this.obsApp.vault.configDir}/plugins/atlas-vtt`;
@@ -542,9 +568,8 @@ export class PixiRendererOrchestrator { // Renamed class
     this.spatialAudioEngine = new SpatialAudioEngine(this.store, this.bufferCache);
 
 
-    // Wire viewport-level event dispatch providers (only if TokenRenderer is available now;
-    // otherwise initGrid() will wire them when TokenRenderer is created later)
-    this.wireViewportDispatchProviders();
+    // Connect the tokens if they are drawn already; otherwise initGrid() does when it draws them
+    this.wireTokens();
 
     // Initialize MeasureRenderer if GridSystem is ready
     if (this.gridSystem) {
@@ -571,16 +596,28 @@ export class PixiRendererOrchestrator { // Renamed class
       mapRect: () => this.getMapRect(),
       sharpness: this.textSharpnessHost(),
       keysBelongToMap: (event) => canRunMapHotkeys(event, this.viewId),
-      // Before the tokens are drawn nobody knows of a peek: the store's own view switches say it then
-      showsPlayers: () => (this.tokenRenderer ? this.tokenRenderer.playersSeeOnCanvas() !== null : null),
+      audience: this.audience,
       requestRender: () => requestRender(this.pixiAppManager.app),
-      dragTokens: (event) => this.tokenRenderer?.dragSelectedTokens(event),
+      dragTokens: (event) => this.tokenRenderer?.pointer.dragSelected(event),
       // A linked hex opens its note from under the drawings on the map, as a token takes the press from them
       overMap: (point) => (this.hexLinkInteraction?.hitTest(point.x, point.y) ?? null) !== null,
     });
     this.annotations = annotations;
+    pointer.attach('annotations', {
+      gripDown: (x, y, e) => annotations.selecting.pointer.gripDown(x, y, e),
+      pointerDown: (x, y, e) => annotations.selecting.pointer.pointerDown(x, y, e),
+      menuAt: (x, y) => annotations.selecting.pointer.menuAt(x, y),
+      openMenu: (x, y, e) => annotations.selecting.pointer.openMenu(x, y, e),
+      dragAlong: (e) => annotations.selecting.pointer.dragAlong(e),
+      cursorAt: (x, y, covered, free) => annotations.pointer.cursorAt(x, y, covered, free),
+      leave: () => annotations.pointer.leave(),
+    });
     this.eventBusUnsubscribers.push(onLeavingView({ eventBus: this.eventBus, obsApp: this.obsApp, viewId: this.viewId }, () => annotations.leave()));
-    this.wireAnnotations();
+    // The selection marks what the annotations' own handles do not frame, and turns them with a group of tokens
+    selection.setAnnotationHost({
+      framedIds: () => annotations.selecting.framedIds,
+      turnAlong: (ids) => annotations.selecting.turnAlong(ids),
+    });
   }
 
   /** Builds the grid over `mapImage`, or brings the existing grid `options` and the image. */
@@ -625,14 +662,7 @@ export class PixiRendererOrchestrator { // Renamed class
     // Ensure TokenRenderer is initialized or updated if gridSystem was just created/updated
     if (!this.tokenRenderer && this.gridSystem && currentViewport) {
         this.tokenRenderer = this.makeTokenRenderer(currentViewport, this.gridSystem);
-        // Wire viewport-level dispatch providers (pins, selection hit-testing)
-        this.wireViewportDispatchProviders();
-        // Re-order SelectionManager listeners so they fire after TokenRenderer's viewport handlers
-        this.selectionManager?.reorderViewportListeners();
-        // So do the tools that leave a press the dispatch claimed alone: they were built before it
-        this.pinRenderer?.reorderViewportListeners();
-        this.annotations?.hearPressesLast();
-        this.fogRenderer?.reorderViewportListeners();
+        this.wireTokens();
         // If tokens were just initialized, re-ensure pins are on top
         if (this.pinRenderer && this.pinRenderer.getPinContainer().parent) {
             currentViewport.removeChild(this.pinRenderer.getPinContainer());
@@ -640,11 +670,6 @@ export class PixiRendererOrchestrator { // Renamed class
         if (this.pinRenderer) {
             currentViewport.addChild(this.pinRenderer.getPinContainer());
         }
-    } else if (this.tokenRenderer && this.gridSystem) {
-        // If TokenRenderer exists, ensure it has the latest gridSystem if it was re-created (though not typical)
-        // And ensure the callback is correctly wired if SelectionManager was created after TokenRenderer
-        // For simplicity, we assume gridSystem isn't re-created, just updated.
-        // And TokenRenderer is given the callback at its creation.
     }
     
     // Initialize or update MeasureRenderer if it doesn't exist yet
@@ -1088,7 +1113,7 @@ export class PixiRendererOrchestrator { // Renamed class
   /** What a players' frame changes on the stage: everything players must not see, hidden for one render. */
   private playerFrameLayers(settings: AtlasSettings['localPlayerView']): LayerVisibility[] {
     // The grid is left as the GM set it: players see it exactly as the GM does, hidden included.
-    const layers = this.markerLayers(true);
+    const layers = [...(this.pinRenderer?.playerLayers() ?? []), ...this.gmMarkLayers()];
     if (this.roofs) layers.push({ layer: this.roofs.modeLayer, visible: true });
     // The lighting's part is the list session view holds on this canvas (`SessionLighting`).
     const sight = this.lighting?.playerSight();
@@ -1137,13 +1162,9 @@ export class PixiRendererOrchestrator { // Renamed class
     return this.tokenRenderer?.playersSeeInFrame(sight) ?? NOTHING_SEEN;
   }
 
-  /**
-   * The GM's markers on the map and the selection: neither the players nor a picture of the scene
-   * show them. The players' frame (`players`) shows the pins the GM shows them instead.
-   */
-  private markerLayers(players = false): LayerVisibility[] {
+  /** The GM's marks on the map and the selection: neither the players' frame nor a picture of the scene shows them. */
+  private gmMarkLayers(): LayerVisibility[] {
     const layers: LayerVisibility[] = [];
-    if (this.pinRenderer) layers.push(...(players ? this.pinRenderer.playerLayers() : this.pinRenderer.pictureLayers()));
     if (this.hexLinkRenderer) layers.push({ layer: this.hexLinkRenderer.container, visible: false });
     if (this.levelLinks) layers.push({ layer: this.levelLinks.view, visible: false });
     const ghost = this.floorGhost?.layer;
@@ -1151,8 +1172,6 @@ export class PixiRendererOrchestrator { // Renamed class
     for (const layer of this.tokenPlacer?.layers ?? []) layers.push({ layer, visible: false });
     layers.push(...(this.selectionManager?.getPlayerViewLayers() ?? []));
     layers.push(...(this.pixiAppManager.getGestures()?.hiddenLayers() ?? []));
-    // A picture of the scene leaves out what the GM keeps from the players, as their frame does
-    if (!players) layers.push(...(this.annotations?.getPictureLayers() ?? []));
     return layers;
   }
 
@@ -1172,7 +1191,7 @@ export class PixiRendererOrchestrator { // Renamed class
     // Every drawing the picture shows is drawn for it, also what the canvas does not show now
     const restoreAnnotations = this.annotations?.showFor(picture ?? null);
     try {
-      return captureSceneFrame({ gmViewLayers: this.gmViewLayers(), markerLayers: this.markerLayers(false), lighting: this.lighting, roofs: this.roofs }, frame, render);
+      return captureSceneFrame({ ...this.pictureLayers(), lighting: this.lighting, roofs: this.roofs }, frame, render);
     } finally {
       restoreAnnotations?.();
       restoreEffects?.();
@@ -1184,18 +1203,24 @@ export class PixiRendererOrchestrator { // Renamed class
   }
 
   /**
-   * Tokens and fog as the GM view shows them, for a picture taken while the canvas is in session
-   * view. Session view must hide through these layers' `visible` and `alpha`; what it hides in
-   * another way is added here.
+   * What a picture of the scene changes on the stage: tokens, fog and measurements as the GM view
+   * shows them, also while the canvas shows the players' picture (session view must hide through
+   * these layers' `visible` and `alpha`; what it hides in another way is added here), and none of
+   * the GM's markers nor of what the GM keeps from the players, as their frame leaves it out.
    */
-  private gmViewLayers(): LayerVisibility[] {
-    return [...(this.tokenRenderer?.getGmViewLayers() ?? []), ...(this.fogRenderer?.getGmViewLayers() ?? []), ...(this.measureRenderer?.getGmViewLayers() ?? [])];
+  private pictureLayers(): Pick<SceneFrameParts, 'gmViewLayers' | 'markerLayers'> {
+    return {
+      gmViewLayers: [...(this.tokenRenderer?.getGmViewLayers() ?? []), ...(this.fogRenderer?.getGmViewLayers() ?? []), ...(this.measureRenderer?.getGmViewLayers() ?? [])],
+      markerLayers: [...(this.pinRenderer?.pictureLayers() ?? []), ...this.gmMarkLayers(), ...(this.annotations?.getPictureLayers() ?? [])],
+    };
   }
 
   getViewportInstance(): Viewport | null { return this.pixiAppManager.getViewport(); }
   getCanvasElement(): HTMLCanvasElement { return this.pixiAppManager.getCanvasElement(); }
   getGridSystem(): GridSystem | null { return this.gridSystem || null; }
   getTokenRenderer(): TokenRenderer | null { return this.tokenRenderer || null; }
+  /** Whom this view's canvas is drawn for now, and what the players see of its tokens. */
+  getCanvasAudience(): CanvasAudience { return this.audience; }
 
   /** What the bar above a selection reads of this view (`SelectionBarSource`); null until the map's tokens can be drawn. */
   getSelectionBar(): SelectionBarSource | null {
@@ -1323,73 +1348,30 @@ export class PixiRendererOrchestrator { // Renamed class
   }
 
   private makeTokenRenderer(viewport: Viewport, grid: GridSystem): TokenRenderer {
-    const tokens = new TokenRenderer(this.obsApp, viewport, grid, () => { this.selectionManager?.requestSelectionOverlay(); requestRender(this.pixiAppManager.app); }, this.store, this.eventBus, this.viewId, this.shownPlaces, this.tokenArt);
+    const tokens = new TokenRenderer(this.obsApp, viewport, grid, () => { this.selectionManager?.requestSelectionOverlay(); requestRender(this.pixiAppManager.app); }, this.store, this.eventBus, this.audience, this.viewId, this.shownPlaces, this.tokenArt);
     tokens.setPixiApp(this.pixiAppManager.app);
     tokens.onTokenDrawn(() => this.tellPlayerSight());
+    this.pointer?.attach('tokens', tokens.pointer);
     return tokens;
   }
 
-  /** Wires viewport-level event dispatch providers between TokenRenderer and other renderers.
-   *  Must be called after TokenRenderer is available (either from setupRenderersAndManagers or initGrid). */
-  private wireViewportDispatchProviders(): void {
-    if (!this.tokenRenderer) return;
-
+  /**
+   * Connects the tokens with the renderers they follow (roofs, fog, the selection, the lighting).
+   * The tokens are drawn with the first grid, which may come before the other renderers or after
+   * them, so this runs at the end of either.
+   */
+  private wireTokens(): void {
+    const tokens = this.tokenRenderer;
+    if (!tokens) return;
     const roofs = this.roofs;
-    if (roofs) this.tokenRenderer.setRoofProvider((point) => roofs.covers(point));
-    this.tokenRenderer.setPlacementGuard(() => this.tokenPlacer?.active ?? false);
-
-    if (this.fogRenderer) {
-      this.tokenRenderer.setFogCoverageProvider(() => this.fogRenderer!.getCommittedCoverage());
-      this.wireFogMenu(this.fogRenderer, this.tokenRenderer);
-    }
-    // The drawings and texts are made after the first wiring pass, so they are resolved when asked
-    this.tokenRenderer.setAnnotationHandlers({
-      gripDown: (x, y, e) => this.annotations?.selecting.pointer.gripDown(x, y, e) ?? false,
-      pointerDown: (x, y, e) => this.annotations?.selecting.pointer.pointerDown(x, y, e) ?? false,
-      menuAt: (x, y) => this.annotations?.selecting.pointer.menuAt(x, y) ?? false,
-      openMenu: (x, y, e) => this.annotations?.selecting.pointer.openMenu(x, y, e) ?? false,
-      dragAlong: (e) => this.annotations?.selecting.pointer.dragAlong(e),
-      cursorAt: (x, y, covered, free) => this.annotations?.pointer.cursorAt(x, y, covered, free) ?? null,
-      leave: () => this.annotations?.pointer.leave(),
-    });
-    this.wireAnnotations();
-    if (this.pinRenderer) {
-      this.tokenRenderer.setPinHitTestProvider(
-        (x, y) => this.pinRenderer!.hitTestPins(x, y)
-      );
-      this.tokenRenderer.setPinClickHandler(
-        (pinId, e) => this.pinRenderer!.handleViewportPinPointerDown(pinId, e)
-      );
-      this.tokenRenderer.setPinHoverHandler((type, pinId, e) => {
-        const pin = this.store.getState().objects.pins[pinId];
-        if (pin) this.emitNoteHover(type, pin, e);
-      });
-    }
-    if (this.hexLinkInteraction) {
-      this.tokenRenderer.setHexLinkHandlers(this.hexLinkInteraction);
-    }
-    if (this.levelLinks) this.tokenRenderer.setStairsTool(this.levelLinks);
-    if (this.mapFeatures) this.tokenRenderer.setMapFeatureHandlers(this.mapFeatures);
+    if (roofs) tokens.setRoofProvider((point) => roofs.covers(point));
+    const fog = this.fogRenderer;
+    if (fog) tokens.setFogCoverageProvider(() => fog.getCommittedCoverage());
     if (this.selectionManager) {
-      this.selectionManager.setHitTestTokensProvider(
-        (x, y) => this.tokenRenderer!.hitTestTokens(x, y)
-      );
-      this.tokenRenderer.setGroupFrameHitTest((x, y) => this.selectionManager?.groupFrameContains(x, y) ?? false);
-      this.selectionManager.setGroupTurnHost(this.tokenRenderer.groupTurnHost());
+      this.selectionManager.setHitTestTokensProvider((x, y) => tokens.hitTestTokens(x, y));
+      this.selectionManager.setGroupTurnHost(tokens.groupTurnHost());
     }
-
-    this.lighting?.wire(this.tokenRenderer);
-    if (this.measureRenderer) this.tokenRenderer.setMeasureHandlers(this.measureRenderer.pointer);
-
-    // Wire audio tool viewport handlers
-    if (this.audioRenderer && this.audioTool) {
-      this.tokenRenderer.setAudioPointerDownHandler((worldX, worldY, _e) => {
-        return this.handleAudioPointerDown(worldX, worldY);
-      });
-      this.tokenRenderer.setAudioPointerMoveHandler((_worldX, _worldY, _e) => {
-        // Future: hover feedback for audio sources
-      });
-    }
+    this.lighting?.wire(tokens);
   }
 
   /** The fog of the level shown as it is committed; null where there is none to ask, or it cannot be worked out. */
@@ -1397,30 +1379,7 @@ export class PixiRendererOrchestrator { // Renamed class
     return this.fogRenderer?.getCommittedCoverage() ?? null;
   }
 
-  /** The fog's menu opens on a right-click, and the fog tool's marks show, only while the canvas shows the GM's view: not in session view, a peek or the palette's player mode. */
-  private wireFogMenu(fog: FogOfWarRenderer, tokens: TokenRenderer): void {
-    tokens.setFogMenuHandlers(fog.menuPointer());
-    fog.showsPlayers = () => tokens.playersSeeOnCanvas() !== null;
-    this.stopFogFollowingPlayers?.();
-    this.stopFogFollowingPlayers = tokens.onPlayersViewChange(() => fog.refreshVisibility());
-    fog.refreshVisibility();
-  }
-
-  /** What only the GM sees of the drawings and texts follows what the canvas shows: session view, a peek, the palette's player mode. */
-  private wireAnnotations(): void {
-    const annotations = this.annotations;
-    if (!annotations) return;
-    this.stopAnnotationsFollowingPlayers?.();
-    this.stopAnnotationsFollowingPlayers = this.tokenRenderer?.onPlayersViewChange(() => annotations.refreshVisibility());
-    annotations.refreshVisibility();
-    // The selection marks what the annotations' own handles do not frame, and turns them with a group of tokens
-    this.selectionManager?.setAnnotationHost({
-      framedIds: () => annotations.selecting.framedIds,
-      turnAlong: (ids) => annotations.selecting.turnAlong(ids),
-    });
-  }
-
-  /** Lets MeasureRenderer read the current map's measurement settings and hear when they change, and follow what the players see of the tokens. */
+  /** Lets MeasureRenderer read the current map's measurement settings and hear when they change, and follow whom the canvas is drawn for. */
   private wireMeasureRendererProvider(): void {
     const measure = this.measureRenderer;
     if (!measure) return;
@@ -1430,10 +1389,8 @@ export class PixiRendererOrchestrator { // Renamed class
     // Auras and grouped measurements go with their token as it glides to its place.
     measure.followShown(this.shownPlaces);
     const grid = this.gridSystem;
-    if (grid) measure.playersView = measurePlayersView({ store: this.store, grid, tokens: () => this.tokenRenderer, lighting: () => this.lighting?.playerSight() });
-    this.tokenRenderer?.setMeasureHandlers(measure.pointer);
-    this.stopMeasuresFollowingPlayers?.();
-    this.stopMeasuresFollowingPlayers = this.tokenRenderer?.onPlayersViewChange(() => measure.refreshVisibility());
+    if (grid) measure.playersView = measurePlayersView({ store: this.store, grid, tokens: () => this.tokenRenderer, lighting: () => this.lighting?.playerSight(), audience: this.audience });
+    this.pointer?.attach('measureHandles', measure.pointer);
     this.stopMeasuresFollowingRules?.();
     this.stopMeasuresFollowingRules = onMapRulesChange(this.obsApp, () => this.store.getState().mapPath, () => measure.rulesChanged(), rules);
     // A ruler that starts or ends on a token counts its height, so it is written again when that changes
@@ -1541,6 +1498,7 @@ export class PixiRendererOrchestrator { // Renamed class
     // Remove drawing tool handlers
 
     this.tokenPlacer?.destroy();
+    this.stopPointer?.();
     this.tokenRenderer?.destroy(); // Destroy TokenRenderer
     this.pinRenderer?.destroy(); // Destroy PinRenderer
     this.hexLinkInteraction?.destroy();
@@ -1553,14 +1511,11 @@ export class PixiRendererOrchestrator { // Renamed class
     this.mapFeatures?.destroy();
     this.liquids?.destroy();
     this.fogRenderer?.destroy(); // Destroy FogRenderer
-    this.stopMeasuresFollowingPlayers?.();
     this.stopMeasuresFollowingRules?.();
     this.stopMeasuresFollowingHeights?.();
     this.stopMeasuresFollowingLeaving?.();
     this.measureRenderer?.destroy(); // Destroy MeasureRenderer
     this.laserPointerRenderer?.destroy(); // Destroy LaserPointerRenderer
-    this.stopAnnotationsFollowingPlayers?.();
-    this.stopFogFollowingPlayers?.();
     this.annotations?.destroy();
     this.lighting?.destroy();
     this.tokenArt.destroyAll();
@@ -1572,6 +1527,7 @@ export class PixiRendererOrchestrator { // Renamed class
     this.bufferCache?.dispose();
     this.gridSystem?.destroy(); // Destroy GridSystem
     this.selectionManager?.destroy(); // Destroy SelectionManager
+    this.audience.destroy();
     
     this.releaseMapImage();
 

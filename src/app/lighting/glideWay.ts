@@ -17,7 +17,7 @@ export function wayIsClear(walls: readonly WallSegment[], from: Point, to: Point
 }
 
 /**
- * Whether a token may be drawn on its way from `from` to `to` (`TokenGlide`). On a lit scene its
+ * Whether a token may be drawn on its way from `from` to `to` (`TokenPlaces`). On a lit scene its
  * sight, footprint and carried light follow it there (`followShownPlaces`), so its way must not
  * cross a wall, nor a joint the lighting closes between walls (`sealedWalls`, at the same texel
  * as the lighting): from behind one it would show, and the explored memory keep, what it never

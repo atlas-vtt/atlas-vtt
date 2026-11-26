@@ -232,11 +232,16 @@ describe('a door\'s badge, which opens its door as it is pressed', () => {
     const doors = new DoorIcons(m.store, m.canvas);
     m.viewport.addChild(doors.view);
     // As the lighting wires it: the press opens or closes, and the gestures are told where it would
-    m.tokens.setDoorClickHandler((x, y) => {
-      const doorId = doors.hitTest(x, y);
-      if (doorId) doors.toggle(doorId);
-      return doorId !== null;
-    }, (x, y) => doors.hitTest(x, y) !== null);
+    m.pointer.attach('doors', {
+      click: (x, y) => {
+        const doorId = doors.hitTest(x, y);
+        if (doorId) doors.toggle(doorId);
+        return doorId !== null;
+      },
+      pressActsAt: (x, y) => doors.hitTest(x, y) !== null,
+      menuHitTest: () => null,
+      openMenu: () => undefined,
+    });
     getHistoryStore(m.store)?.getState().clear();
     await frame();
     return { m, closed: () => m.store.getState().objects.walls[door]!.closed === true };

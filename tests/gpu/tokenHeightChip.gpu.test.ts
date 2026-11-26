@@ -46,7 +46,7 @@ describe('the height chip of a token', () => {
     expect(samePixels(s.frame(), empty.frame())).toBe(true);
     s.store.getState().setGMView(false);
     empty.store.getState().setGMView(false);
-    s.tokens.refreshPlayerSight();
+    s.audience.refresh();
     expect(samePixels(s.canvas(), empty.canvas())).toBe(true);
   });
 

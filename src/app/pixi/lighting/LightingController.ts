@@ -16,17 +16,17 @@ import { mapSenseRulesSource } from '../../services/mapSenseRules';
 import { rulesLookup } from '../../services/mapRules';
 import type { ViewAtlasState, ViewAtlasStore } from '../../storeFactory';
 import { perceptionOptions } from '../../vision/perception';
-import type { SightRules } from '../../vision/sightRules';
 import type { MapBounds } from '../../vision/visibility';
 import type { Point } from '../../types/visionTypes';
 import type { HideableLayer, LayerVisibility } from '../playerSafeFrame';
 import { requestRender } from '../RenderScheduler';
 import type { TokenRenderer } from '../TokenRenderer';
+import type { CanvasAudience } from '../audience/CanvasAudience';
 import { createSceneLighting } from './createSceneLighting';
 import { GmSightAids } from './GmSightAids';
 import { DoorIcons } from './DoorIcons';
 import { showDoorMenu, showWallMenu, wallMenuAt, type LightingMenuContext } from './lightingMenus';
-import { wireLightingPointer } from './lightingPointer';
+import { lightingPointerLayers, type LightingLayers } from './lightingPointer';
 import { listenToLightingSceneEvents } from './lightingSceneEvents';
 import { LightInteraction } from './LightInteraction';
 import { LightMarkers } from './LightMarkers';
@@ -58,6 +58,7 @@ export interface LightingControllerDeps {
   eventBus: EventEmitter;
   obsApp: App;
   viewId: string;
+  audience: Pick<CanvasAudience, 'refresh'>;
   bounds: () => MapBounds | null;
   /** The map image, for the colours light bounces off. */
   albedo: () => Texture | null;
@@ -134,7 +135,7 @@ export class LightingController {
     });
     this.renderer = createSceneLighting({
       viewport, app, store, obsApp, measurement, bounds: deps.bounds, albedo: deps.albedo, ...(deps.grid && { grid: deps.grid }),
-      rules: () => this.sightRules(),
+      rules: () => this.rules.current(),
       onSightChange: () => this.onSightChange(),
       exploredWatcher: this.modes.memory,
       ...(deps.quality && { quality: deps.quality }),
@@ -144,7 +145,7 @@ export class LightingController {
     });
     this.sightAids = new GmSightAids({
       viewport, store: scene, measurement, bounds: deps.bounds,
-      rules: () => this.sightRules(),
+      rules: () => this.rules.current(),
       perception: () => this.playerSight(),
       frames: () => this.frames(),
     });
@@ -182,20 +183,26 @@ export class LightingController {
     this.onSightChange();
   }
 
-  /** Routes the pointer from the token renderer's dispatch: lights and door badges with any tool, walls with the lighting tool. */
+  /** The tokens follow the players' sight, glide along the ways it leaves clear and fall to the levels it lays out. */
   wire(tokens: TokenRenderer): void {
     this.tokens = tokens;
-    tokens.setPlayerSightProvider(() => (this.session.active ? this.playerSight() : undefined), () => this.session.active, () => this.renderer.sightIsCurrent());
+    tokens.setPlayerSightProvider(() => (this.session.active ? this.playerSight() : undefined), () => this.renderer.sightIsCurrent());
     tokens.setGlideWay((from, to) => glideWayIsClear(this.deps.store.getState(), this.deps.bounds(), from, to));
     tokens.setArtFloors(() => this.renderer.artFloors?.());
-    wireLightingPointer(tokens, {
-      lights: this.lights, editor: this.editor, modes: this.modes, doors: this.doors,
-      wallMenu: (x, y, screenX, screenY) => showWallMenu(this.menuContext(), x, y, screenX, screenY),
-      wallMenuAt: (x, y) => wallMenuAt(this.menuContext(), x, y),
-      doorMenu: (doorId, screenX, screenY) => showDoorMenu(this.deps.store, doorId, screenX, screenY),
-    });
     // The token renderer brings the outlines of sensed tokens, which the view now shows or hides.
     this.session.sync();
+  }
+
+  /** Whether the peek key holds the players' lighting on the canvas now. */
+  readonly peeking = (): boolean => this.session.peeking;
+
+  /** Lights and door badges take the map's pointer with any tool, walls with the lighting tool. */
+  pointerLayers(): LightingLayers {
+    return lightingPointerLayers({
+      lights: this.lights, editor: this.editor, modes: this.modes, doors: this.doors,
+      wallMenu: (x, y, screenX, screenY) => showWallMenu(this.menuContext(), x, y, screenX, screenY), wallMenuAt: (x, y) => wallMenuAt(this.menuContext(), x, y),
+      doorMenu: (doorId, screenX, screenY) => showDoorMenu(this.deps.store, doorId, screenX, screenY),
+    });
   }
 
   /** What a finger's tap places with the lighting tool now; null where a press is a stroke's start, or the editor does not show. */
@@ -235,12 +242,7 @@ export class LightingController {
   /** How the players perceive each token, for their frame and for session view; sight hides nothing in an unlit scene. */
   playerSight(): TokenPerception | undefined {
     const state = this.deps.store.getState();
-    return playerTokenSight(this.renderer, mapTokens(levelObjects(state)), perceptionOptions(this.sightRules(), heldForSight(state)), this.perceptions);
-  }
-
-  /** The senses and conditions of the map's collection, and how each token perceives. */
-  private sightRules(): SightRules {
-    return this.rules.current();
+    return playerTokenSight(this.renderer, mapTokens(levelObjects(state)), perceptionOptions(this.rules.current(), heldForSight(state)), this.perceptions);
   }
 
   /** The window the canvas is in: a popout has its own frames. */
@@ -303,7 +305,7 @@ export class LightingController {
     if (players) this.lights.cancel();
     this.editor.afterVisibilityChange();
     this.modes.afterVisibilityChange();
-    this.tokens?.refreshPlayerSight();
+    this.deps.audience.refresh();
     requestRender(this.deps.app);
   }
 
@@ -311,7 +313,7 @@ export class LightingController {
   private onSightChange(): void {
     if (!this.constructed) return;
     this.doors.refreshPlayers();
-    if (this.tokens && this.session.active) this.tokens.refreshPlayerSight();
+    if (this.tokens && this.session.active) this.deps.audience.refresh();
     else this.sightAids.schedule();
     this.deps.onSightChange?.();
   }

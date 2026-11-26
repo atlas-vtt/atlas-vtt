@@ -8,6 +8,8 @@ vi.mock('events', async () => import('eventemitter3'));
 import { GridSystem, type GridOptions } from '../../src/app/grid/GridSystem';
 import { mapImageViewOf } from './fakeMapImageView';
 import { TokenRenderer } from '../../src/app/pixi/TokenRenderer';
+import { MapPointer } from '../../src/app/pixi/pointer/MapPointer';
+import { listenToViewport } from '../../src/app/pixi/pointer/viewportPointer';
 import { FogOfWarRenderer } from '../../src/app/pixi/fog/FogOfWarRenderer';
 import { MeasureRenderer } from '../../src/app/pixi/measure/MeasureRenderer';
 import { captureWithLayerVisibility, type LayerVisibility } from '../../src/app/pixi/playerSafeFrame';
@@ -19,6 +21,8 @@ import { createTestRenderer } from '../../src/app/pixi/lighting/engine/__tests__
 import { watchGl } from '../../src/app/pixi/lighting/engine/__tests__/strictGl';
 import { destroyTree } from '../../src/app/pixi/utils/destroyTree';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { viewAudience } from './viewAudience';
+import type { CanvasAudience } from '../../src/app/pixi/audience/CanvasAudience';
 import type { TokenPerception } from '../../src/app/vision/tokenPerception';
 import type { TokenEntity } from '../../src/app/types';
 import type { FogOperation } from '../../src/app/types/fogTypes';
@@ -43,6 +47,10 @@ export interface PlayerViewScene {
   viewport: Viewport;
   grid: GridSystem;
   tokens: TokenRenderer;
+  /** Whom the canvas is drawn for, as the view's renderer makes it. */
+  audience: CanvasAudience;
+  /** The map's pointer, which hands the tools their presses and moves. */
+  mapPointer: MapPointer;
   fog: FogOfWarRenderer;
   measure: MeasureRenderer;
   store: ReturnType<typeof createViewAtlasStore>;
@@ -50,7 +58,7 @@ export interface PlayerViewScene {
   settings: SettingsService;
   events: EventEmitter;
   /** The scene's lighting as the players see it: `unseen`, `sensed` or `seen` per token; none on an unlit scene. */
-  lighting: { perception: TokenPerception | undefined; peeking: boolean };
+  lighting: { perception: TokenPerception | undefined };
   setFog(operations: Record<string, FogOperation>): void;
   /** Adds tokens and waits until they are drawn, with what they load later (a hidden token's icon). */
   add(...tokens: Array<Partial<TokenEntity> & { id: string; x: number; y: number }>): Promise<void>;
@@ -95,21 +103,27 @@ export function playerViewScenes(): { scene: (options?: PlayerViewSceneOptions) 
     store.getState().setPersistenceEnabled(false);
     store.setState({ mapPath: 'maps/a.atlasmap', isMapLoading: false, isGMView: true });
     const events = new EventEmitter();
+    const view = viewAudience(store, events);
+    const { audience } = view;
     const grid = new GridSystem(app, viewport, mapImageViewOf(floor), { size: CELL, enabled: false, color: 0xffffff, ...gridOptions });
-    const tokens = new TokenRenderer(obsidian, viewport, grid, () => {}, store, events, 'player-view-test');
+    // As the view builds it: the map's pointer listens before every other listener of the viewport
+    const mapPointer = new MapPointer({ store, gmView: () => !audience.showsPlayers(), placing: () => false });
+    const stopPointer = listenToViewport(mapPointer, viewport, app.canvas);
+    const tokens = new TokenRenderer(obsidian, viewport, grid, () => {}, store, events, audience, 'player-view-test');
     tokens.setPixiApp(app);
-    const fog = new FogOfWarRenderer(viewport, app, events, store, () => null);
+    mapPointer.attach('tokens', tokens.pointer);
+    const fog = new FogOfWarRenderer(viewport, app, events, store, () => null, audience);
     viewport.addChild(fog.getContainer());
     tokens.setFogCoverageProvider(() => fog.getCommittedCoverage());
-    const lighting: PlayerViewScene['lighting'] = { perception: undefined, peeking: false };
-    // As the lighting wires it: its sight while the canvas shows the players' view.
-    const showsPlayers = (): boolean => lighting.peeking || !store.getState().isGMView;
-    tokens.setPlayerSightProvider(() => (showsPlayers() ? lighting.perception : undefined), showsPlayers);
+    const lighting: PlayerViewScene['lighting'] = { perception: undefined };
+    // As the lighting wires it: its sight while the canvas shows the players' lighting, in session view and the peek.
+    tokens.setPlayerSightProvider(() => (view.peeking() || !store.getState().isGMView ? lighting.perception : undefined));
     const measure = new MeasureRenderer(viewport, store, grid);
-    const unwire = wirePlayerMeasurements({ measure, tokens, store, grid, lighting: () => lighting.perception });
+    const unwire = wirePlayerMeasurements({ measure, tokens, audience, pointer: mapPointer, store, grid, lighting: () => lighting.perception });
     const target = RenderTexture.create({ width: pane.width, height: pane.height });
     cleanups.push(() => {
       unwire();
+      stopPointer();
       measure.destroy();
       tokens.destroy();
       fog.destroy();
@@ -137,7 +151,7 @@ export function playerViewScenes(): { scene: (options?: PlayerViewSceneOptions) 
       viewport.emit(type, event);
     };
     const scene: PlayerViewScene = {
-      app, renderer, viewport, grid, tokens, fog, measure, store, settings, events, lighting, pointer,
+      app, renderer, viewport, grid, tokens, audience, mapPointer, fog, measure, store, settings, events, lighting, pointer,
       setFog(operations): void { store.setState((state) => ({ objects: { ...state.objects, fog: operations } })); },
       async add(...added): Promise<void> {
         for (const token of added) store.getState().addToken({ kind: 'token', imagePath: '', size: 1, ...token } as TokenEntity);
@@ -170,10 +184,7 @@ export function playerViewScenes(): { scene: (options?: PlayerViewSceneOptions) 
         });
         return result;
       },
-      peek(held): void {
-        lighting.peeking = held;
-        tokens.refreshPlayerSight();
-      },
+      peek: view.peek,
     };
     return scene;
   }

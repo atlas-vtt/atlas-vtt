@@ -10,7 +10,7 @@ import type { PolygonAreaOverlay } from './PolygonAreaOverlay';
 /** What a press needs of the pointer event: Alt places a corner freely, without snapping. */
 export type AreaKeys = { altKey: boolean };
 
-/** What a tool that draws areas takes of the pointer, from the token renderer's viewport dispatch. */
+/** What a tool that draws areas takes of the pointer, from the map's pointer (`MapPointer`). */
 export interface AreaToolPointer {
   /** A left press at a world point; true when the tool took it. */
   pointerDown(point: Point, keys: AreaKeys): boolean;

@@ -333,15 +333,12 @@ describe('the peek', () => {
     const seen = gm(s);
     const theirs = players(s);
     expect(apart(seen, theirs)).toBeGreaterThan(100);
-    let held = true;
-    s.fog.showsPlayers = () => held;
-    s.fog.refreshVisibility();
+    s.peek(true);
     // Opaque fog, and no mark on the hall
     expect(apart(gm(s), theirs)).toBe(0);
     // A picture of the scene is still the GM's
     expect(red(picture(s), IN_KEPT)).toBeGreaterThan(100);
-    held = false;
-    s.fog.refreshVisibility();
+    s.peek(false);
     expect(apart(gm(s), seen)).toBe(0);
   });
 });

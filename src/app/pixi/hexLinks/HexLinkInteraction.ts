@@ -14,7 +14,7 @@ import type { HexLinkRenderer } from './HexLinkRenderer';
 import { t } from '../../i18n';
 import { levelObjects } from '../../levels/levelObjects';
 
-/** What the viewport-level pointer dispatch calls for linked hexes. */
+/** What the map's pointer (`MapPointer`) calls for linked hexes. */
 export interface HexLinkPointerHandlers {
   hitTest(worldX: number, worldY: number): string | null;
   /** The pointer moved onto a linked hex, or off every linked hex (null). */
