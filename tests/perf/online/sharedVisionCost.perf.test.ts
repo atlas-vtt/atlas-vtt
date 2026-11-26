@@ -92,6 +92,7 @@ class GmRenderer {
     table.layers = {
       grid: () => null,
       rules: () => null,
+      presets: () => [],
       doorsSeen: (walls, fog) => playerDoorSight(lighting, { ...walls }, fog),
       pointsSeen: (points, fog) => playerPointSight(lighting, points, fog),
       sightParts: () => [model.sight, model.ambient, model.reaches],

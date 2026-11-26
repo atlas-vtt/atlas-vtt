@@ -56,7 +56,7 @@ function rooms(tokens: Record<string, Partial<TokenEntity>> = {}): SceneState {
 const seats: SeatSource = { onlinePlayers: () => [ANA, BEN, CARA], ownerOf: (id) => OWNERS[id], claimOf: (_map, id) => (OWNERS[id] === undefined ? null : 'taken') };
 
 /** The party's map layers as the GM's renderer tells them: it sees the door. */
-const partyLayers: MapLayerSource = { grid: () => null, rules: () => null, doorsSeen: () => new Set(['door']), pointsSeen: (points) => points.map(() => true), sensed: () => [] };
+const partyLayers: MapLayerSource = { grid: () => null, rules: () => null, presets: () => [], doorsSeen: () => new Set(['door']), pointsSeen: (points) => points.map(() => true), sensed: () => [] };
 
 const bus = new EventEmitter();
 const dice: DiceSource = { viewId: 'view-1', rollDice: () => null, rules: () => DEFAULT_DICE_RULES, on: (event, listener) => bus.on(event, listener), off: (event, listener) => bus.off(event, listener) };

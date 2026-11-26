@@ -30,7 +30,7 @@ vi.mock('obsidian', () => ({
     return Promise.resolve(seen.created);
   },
   PluginSettingTab: class {},
-  Setting: class {},
+  Setting: class {}, Platform: { isMacOS: false },
 }));
 
 // The GM's marks draw with PIXI over Atlas's canvas; here they only record what was built and let go.
