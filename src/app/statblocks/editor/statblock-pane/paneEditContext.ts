@@ -24,8 +24,8 @@ export interface EditTarget {
    * list is drawn as it is and nothing is typed into a neighbour.
    */
   anchor?: FieldValue | undefined;
-  /** Entries: the part focused, and where its caret stands. */
-  part?: 'name' | 'text' | undefined;
+  /** Entries: the part focused, or the first control when reached with Tab. */
+  part?: 'first' | 'name' | 'text' | undefined;
   caret?: readonly [number, number] | undefined;
 }
 

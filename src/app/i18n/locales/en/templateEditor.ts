@@ -266,4 +266,9 @@ export const templateEditor = {
   'templateEditor.usedInCollection': 'Used in this collection',
   'templateEditor.valueKind': 'Kind of value: {kind}',
   'templateEditor.valueN': 'Value {n}',
+  'templateEditor.beforeName': 'Position before name',
+  'templateEditor.afterName': 'Position after name',
+  'templateEditor.afterDescription': 'Position after desc',
+  'templateEditor.positionOf': 'Position of {name}',
+  'templateEditor.hideLabel': 'Hide label',
 } as const satisfies Record<string, Message>;

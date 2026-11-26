@@ -1,5 +1,8 @@
 ## Improved
 
+- Statblocks Choices blocks now formats several choices in the expected YAML format. This allows existing "showWhen" conditional formatting to work with several choices.
+- You can now determine the positioning of entries extras fields to appear before the entry's or after the entry's description, including after the name which is the current default behaviour. This behaviour can be set via the template editor.
+- You can now toggle if entries extras fields' labels are shown or hidden.  This behaviour can be set via the template editor.
 - Atlas Online: players see your changes at once instead of up to a second later, such as Shared vision, remote mode, letting players draw, a character's dice and what your lighting shows them
 
 ## Fixed

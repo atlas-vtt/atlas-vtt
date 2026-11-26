@@ -2,7 +2,7 @@ import React, { useContext, useMemo } from 'react';
 import type { EntriesBlock, EntryShape, FieldValue } from '../../model/templateTypes';
 import { keyedEntryItems } from '../../values/entryKeys';
 import { readField } from '../../values/fieldValues';
-import { entryExtras, entryName, entryText } from '../../values/entryValues';
+import { EntryExtra, entryExtras, entryName, entryText } from '../../values/entryValues';
 import { singular } from '../../values/entryNoun';
 import { valueText } from '../../values/valueText';
 import { EntryLine } from '../shared/EntryLine';
@@ -13,17 +13,19 @@ import { StandIn, ValueText } from '../values/ValueText';
 import { ValueEditingContext, ValueSlot } from '../valueSlot';
 import type { BlockViewProps } from './blockViewProps';
 
-/** An entry's labelled parts before its text: "Range 30 ft. Cost 2". */
-function EntryExtras({ entry, shape }: { entry: FieldValue; shape: EntryShape | undefined }): React.JSX.Element | null {
+/** The labelled parts of an entry: "Range 30 ft. Cost 2". */
+function EntryExtras({ extras }: { extras: EntryExtra[] }): React.JSX.Element | null {
   const { app, sourcePath } = useSheet();
-  const extras = entryExtras(entry, shape);
   if (!extras.length) return null;
   return (
     <>
       <span className="atlas-sb-entry-extras">
         {extras.map((extra) => (
           <span key={extra.key} className="atlas-sb-entry-extra">
-            <span className="atlas-sb-entry-extra-label">{extra.label}</span> <InlineText text={valueText(extra.value)} app={app} sourcePath={sourcePath} dice />
+            {!extra.hideLabel && (
+              <span className="atlas-sb-entry-extra-label">{extra.label} </span>
+            )}
+            <InlineText text={valueText(extra.value)} app={app} sourcePath={sourcePath} dice />
           </span>
         ))}
       </span>{' '}
@@ -65,6 +67,11 @@ export function EntriesView({ block, display }: BlockViewProps<EntriesBlock>): R
         {display.state !== 'value' && <StandIn display={display} />}
         {entries.map(({ item, key, index }, shown) => {
           const drawn = drawnItems[index] ?? item;
+          const extras = entryExtras(drawn, shape);
+          const extrasBeforeName = extras.filter((extra) => extra.position === 'beforeName');
+          const extrasAfterName = extras.filter((extra) => extra.position === 'afterName' || extra.position === undefined);
+          const extrasAfterDescription = extras.filter((extra) => extra.position === 'afterDescription');
+
           const line = (
             <EntryLine
               itemKey={key}
@@ -74,9 +81,10 @@ export function EntriesView({ block, display }: BlockViewProps<EntriesBlock>): R
               app={app}
               sourcePath={sourcePath}
               nameStyle={block.nameStyle ?? 'run-in'}
-            >
-              <EntryExtras entry={drawn} shape={shape} />
-            </EntryLine>
+              entriesBeforeName={<EntryExtras extras={extrasBeforeName} />}
+              entriesAfterName={<EntryExtras extras={extrasAfterName} />}
+              entriesAfterDescription={<EntryExtras extras={extrasAfterDescription} />}
+            />
           );
           return <React.Fragment key={key}>{editing?.entry ? editing.entry(block, { item, key, index, shown }, line) : line}</React.Fragment>;
         })}

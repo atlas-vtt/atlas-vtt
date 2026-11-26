@@ -5,6 +5,7 @@ import type { App } from 'obsidian';
 import { MARSH_CREATURE } from '../../../fixtures/statblockTemplateFixtures';
 import { TemplateLibrary } from '../../../../src/app/statblocks/library/TemplateLibrary';
 import type { TemplateField } from '../../../../src/app/statblocks/model/templateTypes';
+import { applyFrontmatterPatches } from '../../../../src/app/statblocks/notes/frontmatterPatch';
 import { MARSH_ID, MARSH_PATH, marshText } from '../library/templateTexts';
 import { blockOf, NOTE_PATH, renderPane, type PaneHarness } from './paneKit';
 
@@ -52,19 +53,22 @@ describe('a choice with several picks, each with a number', () => {
     expect(within(screen.getByRole('listbox')).getAllByRole('option').map((option) => option.textContent)).toEqual(['blindsight', 'tremorsense']);
   });
 
-  it('writes a picked option, then its number, as the one line the note keeps', async () => {
+  it('writes several picks and their numbers as a YAML-list value', async () => {
     const { result, writer, source } = await pane('darkvision 60 ft.');
     fireEvent.click(blockOf(result.container, SENSES_BLOCK));
     fireEvent.focus(screen.getByRole('combobox', { name: 'Add to Senses' }));
     await act(async () => { fireEvent.click(screen.getByRole('option', { name: 'blindsight' })); });
-    expect(writer.patches()).toEqual([{ op: 'set', path: ['senses'], base: 'darkvision 60 ft.', next: 'darkvision 60 ft., blindsight' }]);
+    expect(writer.patches()).toEqual([{ op: 'set', path: ['senses'], base: 'darkvision 60 ft.', next: ['darkvision 60 ft.', 'blindsight'] }]);
+    const updated = applyFrontmatterPatches('---\nsenses: darkvision 60 ft.\n---\n', writer.patches());
+    expect(updated.conflicts).toEqual([]);
+    expect(updated.text).toContain('senses:\n  - darkvision 60 ft.\n  - blindsight');
 
-    await act(async () => { source.set(NOTE_PATH, { statblock: true, 'atlas-template': MARSH_ID, name: 'Marsh Warden', senses: 'darkvision 60 ft., blindsight' }); });
+    await act(async () => { source.set(NOTE_PATH, { statblock: true, 'atlas-template': MARSH_ID, name: 'Marsh Warden', senses: ['darkvision 60 ft.', 'blindsight'] }); });
     const number = screen.getByRole('textbox', { name: 'Senses: blindsight' });
     expect(document.activeElement).toBe(number);
     fireEvent.change(number, { target: { value: '10' } });
     await act(async () => { fireEvent.keyDown(number, { key: 'Enter' }); });
-    expect(writer.patches().at(-1)).toEqual({ op: 'set', path: ['senses'], base: 'darkvision 60 ft., blindsight', next: 'darkvision 60 ft., blindsight 10 ft.' });
+    expect(writer.patches().at(-1)).toEqual({ op: 'set', path: ['senses'], base: ['darkvision 60 ft.', 'blindsight'], next: ['darkvision 60 ft.', 'blindsight 10 ft.'] });
   });
 
   it('finishes on Enter without adding an option nobody stepped to or typed', async () => {
@@ -84,7 +88,7 @@ describe('a choice with several picks, each with a number', () => {
     const add = screen.getByRole('combobox', { name: 'Add to Senses' });
     fireEvent.change(add, { target: { value: 'trem' } });
     await act(async () => { fireEvent.keyDown(add, { key: 'Enter' }); });
-    expect(writer.patches()).toEqual([{ op: 'set', path: ['senses'], base: 'darkvision 60 ft.', next: 'darkvision 60 ft., tremorsense' }]);
+    expect(writer.patches()).toEqual([{ op: 'set', path: ['senses'], base: 'darkvision 60 ft.', next: ['darkvision 60 ft.', 'tremorsense'] }]);
   });
 
   it('removes a pick, and keeps a part that names no option until it is removed', async () => {
@@ -92,7 +96,7 @@ describe('a choice with several picks, each with a number', () => {
     fireEvent.click(blockOf(result.container, SENSES_BLOCK));
     expect(screen.getByText('truesight 5 miles')).toBeTruthy();
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Remove darkvision' })); });
-    expect(writer.patches()).toEqual([{ op: 'set', path: ['senses'], base: 'darkvision 60 ft., truesight 5 miles', next: 'truesight 5 miles' }]);
+    expect(writer.patches()).toEqual([{ op: 'set', path: ['senses'], base: 'darkvision 60 ft., truesight 5 miles', next: ['truesight 5 miles'] }]);
   });
 });
 

@@ -5,7 +5,7 @@ import {
 } from '../../src/app/react/components/dice/diceShelf';
 import { presetCount, presetTerm, withDie, withPreset, withoutPresetTerms } from '../../src/app/react/components/dice/diceTrayText';
 import { diceCounts } from '../../src/app/react/components/dice/diceTrayPool';
-import { presetFaceParts } from '../../src/app/react/components/dice/presetFace';
+import { presetFaceParts } from '../../src/app/react/components/dice/presetFaceParts';
 import type { DicePreset } from '../../src/app/types/dicePresetTypes';
 
 const sword: DicePreset = { id: 'a', name: 'Longsword', formula: '1d8+3[slashing]' };

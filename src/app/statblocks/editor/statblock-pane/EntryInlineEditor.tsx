@@ -122,7 +122,12 @@ export function EntryInlineEditor({ block, field, editing }: EntryInlineEditorPr
   const opening = useRef({ part: target?.part ?? 'name', caret: target?.caret });
   useLayoutEffect(() => {
     const { part, caret } = opening.current;
-    if (part === 'text' && textRef.current) {
+    const first = part === 'first'
+      ? rootRef.current?.querySelector<HTMLElement>(`[${ENTRY_PART_CONTROL}], [data-entry-part="name"]`)
+      : null;
+    if (first && first !== nameRef.current) {
+      first.focus();
+    } else if (part === 'text' && textRef.current) {
       textRef.current.focus();
       placeCaret(textRef.current, caret?.[0] ?? textOf(textRef.current).length);
     } else if (nameRef.current) {
@@ -180,15 +185,30 @@ export function EntryInlineEditor({ block, field, editing }: EntryInlineEditorPr
     else pane.start({ blockId: block.id, field: field.key, add: true, anchor: done, entry: shown });
   };
 
-  /** Enter in the name or a part: on to the next part, else the text. */
+  /** Enter in the name or a part: on to the next control, else the text. */
   const focusAfter = (from: EventTarget): void => {
-    const parts = [...(rootRef.current?.querySelectorAll<HTMLElement>(`[${ENTRY_PART_CONTROL}]`) ?? [])];
-    const next = from === nameRef.current ? parts[0] : parts[parts.indexOf(from as HTMLElement) + 1];
-    if (next) next.focus();
-    else if (textRef.current) {
-      textRef.current.focus();
-      placeCaret(textRef.current, textOf(textRef.current).length);
+    const parts = [...(rootRef.current?.querySelectorAll<HTMLElement>(
+      `[${ENTRY_PART_CONTROL}], [data-entry-part="name"], [data-entry-part="text"]`,
+    ) ?? [])];
+    const next = parts[parts.findIndex((part) => part === from) + 1];
+    if (next) {
+      next.focus();
+      if (next === textRef.current) {
+        placeCaret(textRef.current, textOf(textRef.current).length);
+      }
     }
+  };
+
+  /** Forward Tab from the description visits any parts placed after it before leaving the editor. */
+  const controlAfterText = (): HTMLElement | undefined => {
+    const root = rootRef.current;
+    const text = textRef.current;
+    if (!root || !text) return undefined;
+    const parts = [...root.querySelectorAll<HTMLElement>(
+      `[${ENTRY_PART_CONTROL}], [data-entry-part="name"], [data-entry-part="text"]`,
+    )];
+    const textAt = parts.indexOf(text);
+    return parts.slice(textAt + 1).find((part) => part.hasAttribute(ENTRY_PART_CONTROL));
   };
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLElement>): void => {
@@ -203,6 +223,7 @@ export function EntryInlineEditor({ block, field, editing }: EntryInlineEditorPr
     const inText = event.target === textRef.current;
     const inName = event.target === nameRef.current;
     const inPart = !inText && !inName && (event.target as Partial<Element>).hasAttribute?.(ENTRY_PART_CONTROL) === true;
+    const nextAfterText = event.key === 'Tab' && inText && !event.shiftKey ? controlAfterText() : undefined;
     const step = event.altKey && editing.kind === 'edit' ? (event.key === 'ArrowUp' ? -1 : event.key === 'ArrowDown' ? 1 : 0) : 0;
     if (event.key === 'Escape') {
       event.preventDefault();
@@ -228,7 +249,11 @@ export function EntryInlineEditor({ block, field, editing }: EntryInlineEditorPr
     } else if (event.key === 'Enter' && inText && event.shiftKey) {
       event.preventDefault();
       if (textRef.current) insertAtCaret(textRef.current, '\n');
-    } else if (event.key === 'Tab' && (inText ? !event.shiftKey : inName && event.shiftKey)) {
+    } else if (nextAfterText) {
+      event.preventDefault();
+      nextAfterText.focus();
+    } else if (event.key === 'Tab' && (inText ? !event.shiftKey : event.shiftKey && event.target ===
+      rootRef.current?.querySelector(`[${ENTRY_PART_CONTROL}], [data-entry-part="name"]`))) {
       event.preventDefault();
       commit();
       pane.move(field.key, event.shiftKey ? -1 : 1);
@@ -275,6 +300,11 @@ export function EntryInlineEditor({ block, field, editing }: EntryInlineEditorPr
       onBlur={onBlur}
       onMouseDown={keepFocusOnBareParts}
     >
+      <EntryExtraInputs
+        extras={shape?.extras?.filter((extra) => extra.position === 'beforeName') ?? []}
+        textOf={(key) => extraDrafts.value(key, startExtras[key] ?? '')}
+        onChange={extraDrafts.change}
+      />
       <span className="atlas-sb-trait-name">
         <input
           ref={nameRef}
@@ -290,7 +320,7 @@ export function EntryInlineEditor({ block, field, editing }: EntryInlineEditorPr
         />
       </span>
       <EntryExtraInputs
-        extras={shape?.extras ?? []}
+        extras={shape?.extras?.filter((extra) => extra.position === 'afterName' || extra.position === undefined) ?? []}
         textOf={(key) => extraDrafts.value(key, startExtras[key] ?? '')}
         onChange={extraDrafts.change}
       />
@@ -309,6 +339,11 @@ export function EntryInlineEditor({ block, field, editing }: EntryInlineEditorPr
         data-placeholder={t('statblockEditor.whatItDoes')}
         tabIndex={0}
         onInput={(event) => { textNow.current = textOf(event.currentTarget); }}
+      />
+      <EntryExtraInputs
+        extras={shape?.extras?.filter((extra) => extra.position === 'afterDescription') ?? []}
+        textOf={(key) => extraDrafts.value(key, startExtras[key] ?? '')}
+        onChange={extraDrafts.change}
       />
     </div>
   );

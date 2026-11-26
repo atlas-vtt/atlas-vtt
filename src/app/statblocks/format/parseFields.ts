@@ -6,8 +6,8 @@
 
 import { isReservedKey } from '../model/reservedKeys';
 import {
-  FIELD_MEANINGS, FIELD_TYPES, TABLE_ALIGNS, type CounterPreset, type EntryShape, type FieldTracking, type TableAlign, type TableCell,
-  type TemplateField,
+  FIELD_MEANINGS, FIELD_TYPES, TABLE_ALIGNS, type CounterPreset, type EntryExtraPosition, type EntryShape, type FieldTracking,
+  type TableAlign, type TableCell, type TemplateField,
 } from '../model/templateTypes';
 import { COUNTER_PRESET_KEYS, ENTRY_EXTRA_KEYS, ENTRY_SHAPE_KEYS, FIELD_KEYS, FIELD_TRACKING_KEYS } from './formatKeys';
 import { describeValue, own } from './jsonValues';
@@ -19,6 +19,12 @@ type EntryExtra = NonNullable<EntryShape['extras']>[number];
 
 const TEXT = 'text';
 const EXTRA_TYPES = ['text', 'number', 'list', 'dice', 'choice'] as const satisfies readonly EntryExtra['type'][];
+const EXTRA_POSITION_TYPES = ['beforeName', 'afterName', 'afterDescription'] as const satisfies readonly EntryExtra['position'][];
+const readEntryExtraPosition = (value: unknown): EntryExtraPosition | undefined => {
+  if (value === 'before') return 'beforeName';
+  if (value === 'after') return 'afterName';
+  return asOneOf(EXTRA_POSITION_TYPES)(value);
+};
 
 export interface FieldContext {
   readonly problems: string[];
@@ -137,5 +143,7 @@ function readEntryExtra(raw: unknown, index: number, where: string, problems: st
     type: r.withDefault('type', asOneOf(EXTRA_TYPES), 'text', choices(EXTRA_TYPES)),
     ...r.optList('options', asString, TEXT),
     ...r.opt('several', asBoolean, 'true or false'),
+    ...r.opt('position', readEntryExtraPosition, choices(EXTRA_POSITION_TYPES)),
+    ...r.opt('hideLabel', asBoolean, 'true or false'),
   });
 }

@@ -68,7 +68,7 @@ export const FIELD_TRACKING_KEYS = keyOrder<keyof FieldTracking>({ counts: true,
 export const COUNTER_PRESET_KEYS = keyOrder<keyof CounterPreset>({ name: true, max: true, regain: true });
 
 export const ENTRY_SHAPE_KEYS = keyOrder<keyof EntryShape>({ nameKey: true, textKey: true, extras: true });
-export const ENTRY_EXTRA_KEYS = keyOrder<keyof EntryExtra>({ key: true, label: true, type: true, options: true, several: true });
+export const ENTRY_EXTRA_KEYS = keyOrder<keyof EntryExtra>({ key: true, label: true, type: true, options: true, several: true, position: true, hideLabel: true });
 export const LAYOUT_KEYS = keyOrder<keyof TemplateLayout>({ maxColumns: true, columnWidth: true, blocks: true });
 export const CONDITION_KEYS = keyOrder<KeysOfUnion<Condition>>({ field: true, is: true, value: true });
 export const SCORE_COLUMN_KEYS = keyOrder<keyof ScoreColumn>({ label: true, field: true, formula: true, display: true });

@@ -2,7 +2,7 @@ import React, { useId } from 'react';
 import { X } from 'lucide-react';
 import { Select } from '../../../../packages/components/primitives/Select';
 import { ToolButton } from '../../../../packages/components/primitives/ToolButton';
-import type { EntryExtraShape, EntryExtraType } from '../../../model/templateTypes';
+import type { EntryExtraPosition, EntryExtraShape, EntryExtraType } from '../../../model/templateTypes';
 import type { EditorSession } from '../sessionTypes';
 import { listFromText, sameList, textFromList } from './blockEdits';
 import { SwitchSetting, TextSetting } from './InspectorControls';
@@ -12,6 +12,12 @@ import { t } from '../../../../i18n';
 const EXTRA_TYPES: Array<{ value: EntryExtraType; label: string }> = [
   { value: 'text', label: t('templateEditor.fieldType.text') }, { value: 'number', label: t('templateEditor.look.number') }, { value: 'dice', label: t('templateEditor.fieldType.dice') },
   { value: 'list', label: t('templateEditor.primitive.list') }, { value: 'choice', label: t('templateEditor.fieldType.choice') },
+];
+
+const POSITIONS: Array<{ value: EntryExtraPosition; label: string }> = [
+  { value: 'beforeName', label: t('templateEditor.beforeName') },
+  { value: 'afterName', label: t('templateEditor.afterName') },
+  { value: 'afterDescription', label: t('templateEditor.afterDescription') },
 ];
 
 /** The part as another type: what only a choice has goes when it is no choice any more. */
@@ -49,15 +55,32 @@ export interface EntryPartRowProps {
 export function EntryPartRow({ extra, index, session, disabled, onEdit, onRemove }: EntryPartRowProps): React.JSX.Element {
   const labelId = useId();
   const typeId = useId();
+  const positionId = useId();
   const label = useGestureText({ value: extra.label, session, onText: (text) => { if (text.trim()) onEdit((current) => ({ ...current, label: text })); } });
   return (
     <div className="atlas-te-entry-part">
       <div className="atlas-te-setting__inline">
         <span id={labelId} hidden>{t('templateEditor.partN', { n: index + 1 })}</span>
         <span id={typeId} hidden>{t('templateEditor.typeOf', { name: extra.label })}</span>
+        <span id={positionId} hidden>{t('templateEditor.positionOf', { name: extra.label })}</span>
         <input {...label} type="text" className="atlas-te-input" aria-labelledby={labelId} disabled={disabled} spellCheck={false} />
         <Select<EntryExtraType> value={extra.type} options={EXTRA_TYPES} onChange={(type) => onEdit((current) => retyped(current, type))} labelledBy={typeId} disabled={disabled} />
         <ToolButton icon={X} label={t('templateEditor.remove')} isActive={false} disabled={disabled} onClick={onRemove} />
+      </div>
+      <div className="atlas-te-setting__inline">
+        <Select<EntryExtraPosition>
+          value={extra.position ?? 'afterName'}
+          options={POSITIONS}
+          onChange={(position) => onEdit((current) => ({ ...current, position }))}
+          labelledBy={positionId}
+          disabled={disabled}
+        />
+        <SwitchSetting
+          label={t('templateEditor.hideLabel')}
+          value={extra.hideLabel === true}
+          disabled={disabled}
+          onChange={(hideLabel) => onEdit((current) => ({ ...current, hideLabel }))}
+        />
       </div>
       {extra.type === 'choice' && (
         <div className="atlas-te-entry-part__choice">
