@@ -1,19 +1,15 @@
-import { Container, RenderTexture, Sprite, Texture } from 'pixi.js';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { PixiRendererOrchestrator } from '../../src/app/PixiRendererOrchestrator';
-import { PixiAppManager } from '../../src/app/pixi/PixiAppManager';
-import type { MosaicCanvas } from '../../src/app/pixi/mosaicCanvas/MosaicCanvas';
+import { Container, RenderTexture } from 'pixi.js';
+import { afterEach, describe, expect, it } from 'vitest';
+import type { PixiRendererOrchestrator } from '../../src/app/PixiRendererOrchestrator';
 import { LIGHTING_PEEK_EVENT } from '../../src/app/lighting/lightingPeek';
-import { SettingsService } from '../../src/app/services/SettingsService';
-import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
+import type { ViewAtlasStore } from '../../src/app/storeFactory';
 import type { DrawingStroke, TokenEntity } from '../../src/app/types';
 import type { KeptMeasure } from '../../src/app/measure/measureTypes';
 import type { PlayerFrame } from '../../src/app/types/playerFrame';
-import { EventEmitter } from '../../src/app/utils/typedEmitter';
-import { createInMemoryApp } from '../mocks/inMemoryVault';
-import { fakeMapImageView } from '../helpers/fakeMapImageView';
+import type { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { fogRectangle } from '../helpers/fogOperations';
 import { measureMotionDone } from '../helpers/litView';
+import { openMapView } from '../helpers/mapView';
 
 const SIZE = 256;
 const FLOOR = 0x808080;
@@ -66,45 +62,10 @@ describe('whom the map view\'s canvas is drawn for', () => {
   const cleanup: Array<() => void> = [];
   afterEach(() => {
     while (cleanup.length) cleanup.pop()!();
-    vi.unstubAllGlobals();
   });
 
   async function open(lit = false): Promise<View> {
-    vi.stubGlobal('createEl', (tag: string): HTMLElement => document.createElement(tag));
-    vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: () => undefined, removeEventListener: () => undefined }));
-    const pane = document.createElement('div');
-    Object.assign(pane.style, { position: 'absolute', left: '0', top: '0', width: `${SIZE}px`, height: `${SIZE}px` });
-    document.body.appendChild(pane);
-    const obsidian = createInMemoryApp().app;
-    new SettingsService(obsidian);
-    const store = createViewAtlasStore(obsidian, 'audience-view');
-    store.getState().setPersistenceEnabled(false);
-    const events = new EventEmitter();
-    const manager = new PixiAppManager(SIZE, SIZE);
-    const view = new PixiRendererOrchestrator(obsidian, manager, events, store, 'audience-view');
-    await view.init(pane);
-    const viewport = manager.getViewport()!;
-    viewport.moveCenter(SIZE / 2, SIZE / 2);
-    const floor = new Sprite(Texture.WHITE);
-    floor.tint = FLOOR;
-    floor.setSize(SIZE, SIZE);
-    const layer = new Container({ label: 'map-image' });
-    layer.addChild(floor);
-    const restore = (): (() => void) => () => undefined;
-    const image = Object.assign(fakeMapImageView(SIZE, SIZE, { layer }), {
-      mapStretch: { x: 1, y: 1, rotation: 0 },
-      load: () => Promise.resolve(),
-      setStretch: () => undefined,
-      setVideoMode: () => undefined,
-      drawFor: restore,
-      hideVideoFor: restore,
-      addDemandRegion: restore,
-      albedoTexture: () => null,
-      clear: () => undefined,
-      destroy: () => undefined,
-    });
-    store.setState({ mapPath: 'maps/audience.atlasmap', isMapLoading: false, mapLoaded: true, isGMView: true });
-    view.initGrid({ size: 40, enabled: false, color: 0xffffff }, image as unknown as MosaicCanvas);
+    const { view, app, store, events, settings, destroy } = await openMapView({ size: SIZE, floor: FLOOR });
     store.setState((state) => ({
       lighting: lit ? { ...state.lighting, enabled: true, ambient: 1 } : state.lighting,
       objects: {
@@ -118,13 +79,11 @@ describe('whom the map view\'s canvas is drawn for', () => {
       ({ id, kind: 'token', imagePath: '', size: 1, x: 0, y: 0, ...more } as TokenEntity);
     store.getState().addToken(token('ghost', { ...GHOST, isHidden: true }));
     store.getState().addToken(token('hero', { x: 180, y: 60, vision: { enabled: true } } as Partial<TokenEntity>));
-    const app = manager.getApp();
     await expect.poll(() => ['ghost', 'hero'].every((id) => view.getTokenRenderer()?.getTokenSprites()[id] instanceof Container)).toBe(true);
     const target = RenderTexture.create({ width: SIZE, height: SIZE });
     cleanup.push(() => {
       target.destroy(true);
-      view.destroy();
-      pane.remove();
+      destroy();
     });
     const lookOf = (pixels: Uint8ClampedArray | Uint8Array, floorAt: (point: { x: number; y: number }) => number): Look => {
       const at = ({ x, y }: { x: number; y: number }): number => pixels[(y * SIZE + x) * 4]!;
@@ -154,7 +113,7 @@ describe('whom the map view\'s canvas is drawn for', () => {
         composed.width = SIZE;
         composed.height = SIZE;
         const context = composed.getContext('2d')!;
-        view.withPlayerSafeFrame((piece) => context.drawImage(piece.image, piece.x, piece.y, piece.width, piece.height, piece.left, piece.top, piece.width, piece.height), SettingsService.forApp(obsidian)!.getLocalPlayerViewSettings(), FRAME);
+        view.withPlayerSafeFrame((piece) => context.drawImage(piece.image, piece.x, piece.y, piece.width, piece.height, piece.left, piece.top, piece.width, piece.height), settings.getLocalPlayerViewSettings(), FRAME);
         const frame = lookOf(context.getImageData(0, 0, SIZE, SIZE).data, floorShade);
         return { frame, after: lookOf(render(), floorShade) };
       },
