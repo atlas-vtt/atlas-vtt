@@ -1,5 +1,5 @@
-import { sha256 } from '../utils/hashing';
-import { REMOTE_HEADER } from './remoteProtocol';
+import { sha256 } from '../../utils/hashing';
+import { REMOTE_HEADER } from './remoteHttp';
 
 /** The headers of a request, as Node gives them: names in lower case. */
 export type RequestHeaders = Readonly<Record<string, string | string[] | undefined>>;

@@ -1,11 +1,9 @@
-import type { Mood } from '../sound/soundTypes';
+import type { RemoteControl } from '../remoteControl';
+import { parseRemoteCommand } from '../remoteProtocol';
 import { bearerToken, newRemoteToken, remoteTokenHash, requestRefusal, sameHash } from './remoteAccess';
-import { RemoteCommands, type RemoteDirector } from './remoteCommands';
-import { RemoteFeed } from './remoteFeed';
-import { MAX_REMOTE_BODY, parseClientName, parseRemoteCommand, REMOTE_API_VERSION, type RemoteHello } from './remoteProtocol';
+import { RemoteEvents } from './remoteEvents';
+import { MAX_REMOTE_BODY, parseClientName, REMOTE_API_VERSION, type RemoteHello } from './remoteHttp';
 import type { RemoteSettingsStore } from './remoteSettings';
-import { isTableCommand, runTableCommand, type TableSource } from './remoteTable';
-import { remoteMoods, remoteState, type RemoteSource } from './remoteState';
 import type { NodeHttpModule, NodeRequest, NodeResponse, NodeServer } from './nodeHttp';
 
 /** What a pairing prompt gives back: the GM's answer, and a way to take the prompt away. */
@@ -14,19 +12,11 @@ export interface PairingPrompt {
   cancel(): void;
 }
 
-export interface MoodSource {
-  moods(): readonly Mood[];
-  mood(id: string): Mood | null;
-  onChange(listener: () => void): () => void;
-}
-
 export interface SoundRemoteDeps {
   http: NodeHttpModule;
   port: number;
-  director: RemoteDirector & RemoteSource & { subscribe(listener: () => void): () => void };
-  moods: MoodSource;
-  /** The fight on the GM's map and the player window, which keys act on whether sound is on or not. */
-  table: TableSource;
+  /** Runs the commands and hands out the state; whoever made it disposes of it. */
+  control: RemoteControl;
   settings: RemoteSettingsStore;
   askToPair(client: string): PairingPrompt;
   /** The port could not be opened (another program holds it). */
@@ -75,24 +65,18 @@ function readJson(request: NodeRequest): Promise<unknown> {
 }
 
 /**
- * The sound remote: an HTTP server on 127.0.0.1 that lets a paired controller (the Atlas Stream Deck plugin)
- * press moods, stop, pause, skip and set levels, start and end fights, roll initiative and work the player window,
- * and pushes what plays and the table's state so its keys light up. It sends the
- * director the same intents the palette and the Sound page send, and holds no sound state of its own.
+ * The sound remote over HTTP on 127.0.0.1: lets a paired controller (the Atlas Stream Deck plugin) run the
+ * control's commands, and pushes the control's state as server-sent events so its keys light up. It owns the
+ * routes, the pairing and the token, and holds no sound or table state of its own.
  */
 export class SoundRemoteServer {
   private server: NodeServer | null = null;
-  private readonly commands: RemoteCommands;
-  private readonly feed: RemoteFeed;
+  private readonly events: RemoteEvents;
   private pairing: PairingPrompt | null = null;
   private readonly stops: Array<() => void> = [];
 
   constructor(private readonly deps: SoundRemoteDeps) {
-    this.commands = new RemoteCommands(deps.director, (id) => deps.moods.mood(id));
-    this.feed = new RemoteFeed({
-      moods: () => remoteMoods(deps.moods.moods()),
-      state: () => remoteState(deps.director, (id) => deps.moods.mood(id), deps.table),
-    });
+    this.events = new RemoteEvents(deps.control);
   }
 
   start(): void {
@@ -107,26 +91,18 @@ export class SoundRemoteServer {
     server.listen(deps.port, '127.0.0.1', () => undefined);
     this.server = server;
     let trusted = deps.settings.get().tokenHash;
-    this.stops.push(
-      deps.director.subscribe(() => this.feed.changed()),
-      deps.moods.onChange(() => {
-        this.feed.moodsChanged();
-        this.feed.changed();
-      }),
-      // A revoked or replaced token ends the streams it opened; their reconnect is refused.
-      deps.settings.onChange(() => {
-        if (deps.settings.get().tokenHash === trusted) return;
-        trusted = deps.settings.get().tokenHash;
-        this.feed.closeAll();
-      }),
-    );
+    // A revoked or replaced token ends the streams it opened; their reconnect is refused.
+    this.stops.push(deps.settings.onChange(() => {
+      if (deps.settings.get().tokenHash === trusted) return;
+      trusted = deps.settings.get().tokenHash;
+      this.events.closeAll();
+    }));
   }
 
   stop(): void {
     for (const stop of this.stops.splice(0)) stop();
     this.pairing?.cancel();
-    this.commands.dispose();
-    this.feed.closeAll();
+    this.events.closeAll();
     this.server?.closeAllConnections?.();
     this.server?.close();
     this.server = null;
@@ -156,8 +132,8 @@ export class SoundRemoteServer {
       send(response, 401, { error: 'not-paired' });
       return;
     }
-    if (route === 'GET /v1/events') this.feed.open(response);
-    else if (route === 'GET /v1/state') send(response, 200, { moods: this.feed.moods(), state: this.feed.state() });
+    if (route === 'GET /v1/events') this.events.open(response);
+    else if (route === 'GET /v1/state') send(response, 200, { moods: this.deps.control.moods(), state: this.deps.control.state() });
     else await this.command(request, response);
   }
 
@@ -188,15 +164,12 @@ export class SoundRemoteServer {
       send(response, 400, { error: 'unknown-command' });
       return;
     }
-    const onTable = isTableCommand(command);
-    const refused = onTable ? runTableCommand(this.deps.table, command) : this.commands.run(command);
+    const refused = this.deps.control.run(command);
     if (refused) {
       send(response, refused === 'no-mood' ? 404 : 409, { error: refused });
       return;
     }
     send(response, 204);
-    // The table tells nobody it changed; the next look would find it within a second
-    if (onTable) this.feed.changed();
   }
 
   /** One prompt at a time; the token is made only once the GM allowed it, and replaces the one before. */

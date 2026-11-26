@@ -1,5 +1,5 @@
-import type { DeviceStorage } from '../soundDirector/deviceFacts';
-import { isFiniteNumber, isRecord } from '../utils/guards';
+import type { DeviceStorage } from '../../soundDirector/deviceFacts';
+import { isFiniteNumber, isRecord } from '../../utils/guards';
 
 /**
  * Whether this computer listens for a remote, and the controller it trusts. A device fact, never synced:

@@ -1,4 +1,4 @@
-import { isDesktopApp } from '../platform/desktopOnly';
+import { isDesktopApp } from '../../platform/desktopOnly';
 import type { RequestHeaders } from './remoteAccess';
 
 /** The part of Node's `http` request the remote reads. */

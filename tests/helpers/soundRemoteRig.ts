@@ -4,7 +4,7 @@ import { addLayer, startMusic } from '@/app/soundDirector/liveEdits';
 import { EMPTY_MIX, type SoundMix } from '@/app/soundDirector/soundMix';
 import type { SoundSnapshot } from '@/app/soundDirector/soundSnapshot';
 import { EMPTY_TABLE_SOUND } from '@/app/soundDirector/tableSound';
-import { RemoteSettingsStore } from '@/app/soundRemote/remoteSettings';
+import { RemoteSettingsStore } from '@/app/soundRemote/http/remoteSettings';
 import type { TableSource } from '@/app/soundRemote/remoteTable';
 import { DEFAULT_INITIATIVE_RULES } from '@/app/gameSystems/initiativeRules';
 import type { ViewAtlasState } from '@/app/storeFactory';
@@ -66,7 +66,7 @@ export function memoryRemoteSettings(): RemoteSettingsStore {
   return new RemoteSettingsStore({ loadLocalStorage: (key: string) => stored.get(key), saveLocalStorage: (key: string, value: unknown) => { stored.set(key, value); } } as never);
 }
 
-/** A table as the remote sees it: one map whose tracker holds `combatants`, and a player window; the actions are spies. */
+/** A table as the remote sees it: one map whose tracker holds `combatants`, a player window and whether an online table runs; the actions are spies. */
 export function fakeTable(options: { combatants?: number; rules?: InitiativeRules; map?: boolean } = {}) {
   const state = {
     mapPath: 'Maps/Cave.atlasmap',
@@ -94,10 +94,11 @@ export function fakeTable(options: { combatants?: number; rules?: InitiativeRule
     ],
     rollSaved: vi.fn(),
   };
-  const window = { open: true, frozen: false, trueScale: false, curtained: false, handout: false, hoveringImage: false };
+  const window = { open: true, online: false, frozen: false, trueScale: false, curtained: false, handout: false, hoveringImage: false };
   const player = {
     isOpen: () => window.open,
-    isFrozen: () => window.frozen,
+    isOnline: () => window.online,
+    isPaused: () => window.frozen,
     isTrueScale: () => window.trueScale,
     isCurtained: () => window.curtained,
     handoutShown: () => window.handout,

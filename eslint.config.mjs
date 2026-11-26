@@ -114,6 +114,18 @@ export default defineConfig([
       }],
     },
   },
+  // The remote's commands and state serve every transport, so they import none.
+  {
+    files: ["src/app/soundRemote/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": ["error", {
+        patterns: [
+          { regex: `^\\./http(/|$)|^node:|^(?:${nodeNames.join("|")})(/|$)`, message: "The remote's commands and state know no transport: only soundRemote/http/ speaks HTTP." },
+          { group: ["@dnd-kit/*"], message: "Only statblocks/editor/dnd/ imports dnd-kit." },
+        ],
+      }],
+    },
+  },
   {
     files: SCRIPT_FILES,
     languageOptions: {
