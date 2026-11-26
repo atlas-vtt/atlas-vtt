@@ -200,6 +200,8 @@ async function fill(fonts: readonly DiceFont[], doc: Document, request: PreviewR
     }
     for (let next = pending()[0]; next; next = pending()[0]) {
       await turn(next.font);
+      // The context can be lost between two dice; the panel asks again when it opens.
+      if (!canShowDice(doc)) return;
       const url = paint(renderer, canvas, anim, next);
       await decoded(url);
       images.set(keyOf(next), url);

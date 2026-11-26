@@ -18,6 +18,7 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 
+import { refreshDieArtwork } from './dieMesh';
 import { prepareShadowMap } from './stageShadow';
 
 /**
@@ -27,12 +28,21 @@ import { prepareShadowMap } from './stageShadow';
  */
 const ENVIRONMENT_SIZE = 64;
 
+/**
+ * The mirror world, baked. The room it comes from has nothing left to do and
+ * gives its meshes back right away.
+ */
+function bakeEnvironment(pmrem: THREE.PMREMGenerator): THREE.WebGLRenderTarget {
+  const room = new RoomEnvironment();
+  const baked = pmrem.fromScene(room, 0.04, 0.1, 100, { size: ENVIRONMENT_SIZE });
+  room.dispose();
+  return baked;
+}
+
 export class DiceGpu {
   readonly renderer: THREE.WebGLRenderer;
-  /** The baked reflection every stage's scene takes as its environment. */
-  readonly environment: THREE.Texture;
   private readonly pmrem: THREE.PMREMGenerator;
-  private readonly envRT: THREE.WebGLRenderTarget;
+  private envRT: THREE.WebGLRenderTarget;
   /**
    * The drawing buffer in device pixels. It only grows: making drawing buffers
    * takes milliseconds, and a stage asks for its size at the moments that have
@@ -49,12 +59,28 @@ export class DiceGpu {
     prepareShadowMap(this.renderer);
 
     this.pmrem = new THREE.PMREMGenerator(this.renderer);
-    // The mirror world is baked **once**; the room it comes from has nothing
-    // left to do and gives its meshes back right away.
-    const room = new RoomEnvironment();
-    this.envRT = this.pmrem.fromScene(room, 0.04, 0.1, 100, { size: ENVIRONMENT_SIZE });
-    room.dispose();
-    this.environment = this.envRT.texture;
+    // Baked **once**, unless the context is lost with it.
+    this.envRT = bakeEnvironment(this.pmrem);
+    // After three's own handler, which came with the renderer.
+    canvas.addEventListener('webglcontextrestored', () => this.restored());
+  }
+
+  /** The baked reflection every stage's scene takes as its environment. */
+  get environment(): THREE.Texture {
+    return this.envRT.texture;
+  }
+
+  /** The context is back after the GPU process died, without anything that lived in it. */
+  private restored(): void {
+    // Chromium hands a 2D canvas nothing of a restored context's drawing buffer
+    // until that buffer is made anew: the next draw sizes it again.
+    this.size = { width: 0, height: 0 };
+    this.envRT.dispose();
+    this.envRT = bakeEnvironment(this.pmrem);
+    // three uploads the faces again from their atlases, canvases whose pixels the GPU process held
+    // and handed back blank. Drawn anew, once: kept in main memory instead, a die's first roll in a
+    // new colour started some 90 ms later.
+    refreshDieArtwork();
   }
 
   /**
@@ -66,6 +92,8 @@ export class DiceGpu {
     if (width <= 0 || height <= 0) return;
     this.reserve(width, height);
     this.renderer.setViewport(0, 0, width, height);
+    // A stage made before the context was lost holds the bake that went with it.
+    scene.environment = this.environment;
     this.renderer.render(scene, camera);
     const out = target.canvas;
     target.clearRect(0, 0, out.width, out.height);

@@ -166,7 +166,7 @@ it('draws every tessera in view again by itself after the graphics process died'
   await showMap();
   expect(drawnColours()).toEqual(paintedColours());
 
-  await gpu.die(manager.app.renderer as WebGLRenderer);
+  await gpu.die((manager.app.renderer as WebGLRenderer).gl);
   ticker.update((time += 16));
 
   expect(drawnColours()).toEqual(paintedColours());
@@ -176,7 +176,7 @@ it('gives the lighting an albedo of the map again by itself after the graphics p
   await showMap();
   expect(meanRgba(await albedo())).toEqual([...ALBEDO, 255]);
 
-  await gpu.die(manager.app.renderer as WebGLRenderer);
+  await gpu.die((manager.app.renderer as WebGLRenderer).gl);
 
   expect(meanRgba(await albedo())).toEqual([...ALBEDO, 255]);
 });

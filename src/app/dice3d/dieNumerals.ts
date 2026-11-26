@@ -1,4 +1,5 @@
 import { getDomHost } from '../host/dom';
+import { textureCanvas } from '../pixi/utils/textureCanvas';
 /**
  * The numerals on the faces. Each font is a sheet of 22 cells, 6 across: the
  * numbers 1 to 20, then 6 and 9 with their underline. The medieval sheet is a
@@ -88,11 +89,11 @@ export function loadNumerals(font: DiceFont): Promise<void> {
 /** Sets the numbers in Oxanium, each as tall as the pencil numerals fill their cells. */
 async function setScifiSheet(): Promise<HTMLCanvasElement> {
   await getDomHost().activeDocument().fonts.load(scifiFont(SCIFI_PROBE_PX));
-  const canvas = getDomHost().createCanvas();
-  canvas.width = SHEET_COLS * SHEET_CELL;
-  canvas.height = SHEET_ROWS * SHEET_CELL;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return canvas;
+  const [width, height] = [SHEET_COLS * SHEET_CELL, SHEET_ROWS * SHEET_CELL];
+  // Every face drawn later, after a GPU process death too, is lettered from it.
+  const sheet = textureCanvas(width, height);
+  if (!sheet) return getDomHost().createCanvas(undefined, { width, height });
+  const { canvas, context: ctx } = sheet;
   ctx.font = scifiFont(SCIFI_PROBE_PX);
   const probe = ctx.measureText('8');
   const size = (SCIFI_PROBE_PX * SHEET_FILL * SHEET_CELL) / (probe.actualBoundingBoxAscent + probe.actualBoundingBoxDescent);

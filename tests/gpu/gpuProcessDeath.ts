@@ -1,5 +1,4 @@
-import type { WebGLRenderer } from 'pixi.js';
-import { resetContext } from '../../src/app/pixi/lighting/__tests__/rendererHarness';
+import { nextFrame } from '../../src/app/pixi/lighting/__tests__/rendererHarness';
 
 type Context2D = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 
@@ -42,9 +41,48 @@ function silence(context: Context2D): () => void {
   };
 }
 
+/** Loses `gl` and restores it, calling `whileLost` in between; resolves once the restore was handled. */
+async function loseAndRestore(gl: WebGLRenderingContext | WebGL2RenderingContext, whileLost: () => void): Promise<void> {
+  const canvas = gl.canvas;
+  const ext = gl.getExtension('WEBGL_lose_context')!;
+  const lost = new Promise<void>((resolve) => canvas.addEventListener('webglcontextlost', () => resolve(), { once: true }));
+  ext.loseContext();
+  await lost;
+  whileLost();
+  await nextFrame();
+  const restored = new Promise<void>((resolve) => canvas.addEventListener('webglcontextrestored', () => resolve(), { once: true }));
+  ext.restoreContext();
+  await restored;
+}
+
+/** Makes setting the size of a canvas call `sized` with it; returns the function that stops it. */
+function watchSizes(sized: (canvas: HTMLCanvasElement) => void): () => void {
+  const stops = ['width', 'height'].map((side) => {
+    const original = Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, side)!;
+    Object.defineProperty(HTMLCanvasElement.prototype, side, {
+      ...original,
+      set(this: HTMLCanvasElement, value: number) {
+        sized(this);
+        original.set!.call(this, value);
+      },
+    });
+    return () => Object.defineProperty(HTMLCanvasElement.prototype, side, original);
+  });
+  return () => { for (const stop of stops) stop(); };
+}
+
+/** Makes a 2D context draw nothing of a source `skipped` names; returns the function that stops it. */
+function skipDrawsOf(skipped: (source: unknown) => boolean): () => void {
+  const original = CanvasRenderingContext2D.prototype.drawImage;
+  Reflect.set(CanvasRenderingContext2D.prototype, 'drawImage', function drawImage(this: CanvasRenderingContext2D, ...args: unknown[]): void {
+    if (!skipped(args[0])) Reflect.apply(original, this, args);
+  });
+  return () => Reflect.set(CanvasRenderingContext2D.prototype, 'drawImage', original);
+}
+
 export interface GpuProcess {
-  /** Kills the GPU process as Chromium tells the page of it, and resolves once PIXI handled the restored context. */
-  die(renderer: WebGLRenderer): Promise<void>;
+  /** Kills the GPU process as Chromium tells the page of it, and resolves once the owner of `gl` handled the restored context. */
+  die(gl: WebGLRenderingContext | WebGL2RenderingContext): Promise<void>;
   stop(): void;
 }
 
@@ -57,7 +95,9 @@ export interface GpuProcess {
  * second after that the WebGL context is restored. Canvases made with `willReadFrequently` live in
  * main memory and keep their pixels and state. A bitmap taken whole from a canvas the GPU process
  * held (`transferToImageBitmap`) keeps its pixels there too and reads blank afterwards: WebGL
- * uploads nothing of it. Watches the canvases made from the call on.
+ * uploads nothing of it. A restored WebGL canvas draws, but a 2D canvas that draws it gets nothing
+ * until its size is set again, which makes its drawing buffer anew. Watches the canvases made from
+ * the call on.
  */
 export function watchGpuProcess(): GpuProcess {
   /** Each 2D context seen, with whether the GPU process holds its pixels: the first call on a canvas sets its attributes. */
@@ -78,19 +118,25 @@ export function watchGpuProcess(): GpuProcess {
     if (!(source instanceof ImageBitmap) || !lostBitmaps.has(source)) return args;
     return [...args.slice(0, -1), new ImageData(source.width, source.height)];
   };
+  /** Restored WebGL canvases whose drawing buffer was not made anew since. */
+  const unshared = new WeakSet<object>();
   const stops = [
     watchCalls(HTMLCanvasElement.prototype, 'getContext', record),
     watchCalls(OffscreenCanvas.prototype, 'getContext', record),
     watchCalls(OffscreenCanvas.prototype, 'transferToImageBitmap', recordBitmap),
     replaceArguments(WebGL2RenderingContext.prototype, 'texImage2D', blankWhenLost),
     replaceArguments(WebGL2RenderingContext.prototype, 'texSubImage2D', blankWhenLost),
+    watchSizes((canvas) => unshared.delete(canvas)),
+    skipDrawsOf((source) => typeof source === 'object' && source !== null && unshared.has(source)),
   ];
   return {
-    async die(renderer) {
+    async die(gl) {
       const lost = [...contexts].filter(([, inGpu]) => inGpu).map(([context]) => context);
       for (const bitmap of heldBitmaps) lostBitmaps.add(bitmap);
       heldBitmaps.clear();
-      await resetContext(renderer, () => {
+      // Before the owner's own handler, which may make the drawing buffer anew.
+      gl.canvas.addEventListener('webglcontextrestored', () => unshared.add(gl.canvas), { capture: true, once: true });
+      await loseAndRestore(gl, () => {
         const restores = lost.map((context) => {
           context.canvas.dispatchEvent(new Event('contextlost'));
           context.reset();
