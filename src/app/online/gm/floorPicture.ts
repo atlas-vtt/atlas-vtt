@@ -1,8 +1,9 @@
-import type { DrawMine, PlayerResync, SharedScene } from '../protocol/index.ts';
+import type { DrawMine } from '../protocol/index.ts';
 import type { SightPolicy } from '../../vision/tokenSightPolicy';
 import type { SceneStore } from './atlasView.ts';
 import type { RulerPaths } from './dragRulers.ts';
 import { ExploredShare, type SavedMemory } from './ExploredShare.ts';
+import { FeedGroup, keptWhileRead, ownScene, type FeedMember } from './feed/FeedGroup.ts';
 import type { FloorSharePorts } from './floorPorts.ts';
 import { InputShare } from './InputShare.ts';
 import { LiveShare } from './LiveShare.ts';
@@ -39,129 +40,94 @@ export interface FloorPicturePorts extends FloorSharePorts {
 }
 
 /**
- * What the players who see a floor through one set of eyes are sent of it beside its scene: the tokens
- * they see, the inputs their fog and lighting are drawn from, what they remember, the map's layers, the
- * live places of dragged tokens and which tokens are theirs. Its ports reach those players alone and read that picture.
+ * What a picture is made of changed: what players see (`SceneChange`), who owns which token, the memory its players
+ * remember, the map's layers beside its tokens, or the assets the store keeps.
  */
-export class FloorPicture {
+export type PictureChange = SceneChange | 'owners' | 'memory' | 'layers' | 'assets';
+
+/**
+ * What the players who see a floor through one set of eyes are sent of it beside its scene: the tokens they see, the
+ * live places of dragged tokens, the inputs their fog and lighting are drawn from, what they remember, the map's
+ * layers and which tokens are theirs, each a feed. Its ports reach those players alone and read that picture.
+ */
+export interface Picture {
+  /** Its feeds, in the order they take a scene and are sent again; they reach the players `reaches` names. */
+  readonly feeds: FeedGroup;
   readonly tokens: TokenShare;
   /** What players see of the map beside its tokens, the readable pins among it. */
   readonly layers: MapLayerShare;
-  private readonly inputs: InputShare;
-  private readonly explored: ExploredShare;
-  private readonly live: LiveShare | null;
-  private readonly mine: MineShare | null;
+  /** Each feed that reads what changed works its messages out again. */
+  follow(change: PictureChange): void;
+}
+
+export function openPicture(store: SceneStore, ports: FloorPicturePorts, floor: PictureFloor, reaches: (player: string) => boolean): Picture {
+  const seats = ports.seats;
+  const ownerOf = ownerIn(seats, store);
   /** Each character's own dice by what they are read by (`diceKey`), until Atlas changes. */
-  private readonly dice = new Map<string, ReturnType<typeof tokenRollDice>>();
-
-  constructor(store: SceneStore, ports: FloorPicturePorts, floor: PictureFloor) {
-    const seats = ports.seats;
-    const ownerOf = ownerIn(seats, store);
-    // Reading a set looks the library and the template up: done once a token's statblock or art is another, not at every move.
-    const diceOf = (tokenId: string): ReturnType<typeof tokenRollDice> => {
-      const token = store.getState().objects.tokens[tokenId];
-      if (token === undefined) return undefined;
-      const key = diceKey(token);
-      if (!this.dice.has(key)) this.dice.set(key, tokenRollDice(ports.dice?.() ?? null, token));
-      return this.dice.get(key);
-    };
-    const mine = seats === undefined ? null : new MineShare({ onlinePlayers: () => ports.members(), ownerOf, diceOf }, (body, to) => ports.send(body, to));
-    this.mine = mine;
-    // The initiative list shows the players' look-alike numbers too: it follows them as they change
-    this.tokens = new TokenShare(store, { ...ports, numbersChanged: () => this.layers.update(), liveCarriedUntil: (alias) => this.live?.carriedUntil(alias) }, (listed) => mine?.setList(listed));
-    this.live = ports.sendLive === undefined ? null : new LiveShare(store, {
-      ...ports, sendLive: (body, key) => ports.sendLive?.(body, key), rulers: () => floor.rulers(), holder: (tokenId) => floor.holder(tokenId),
-    }, () => ({ scene: this.tokens.listedScene, alias: (tokenId) => this.tokens.listedAlias(tokenId) }));
-    this.inputs = new InputShare(store, { ...ports, shownTokens: () => this.tokens.shownIds(), tokenAlias: (id) => this.tokens.alias(id), fogEdge: () => ports.atlas().settings.fogEdge });
-    this.explored = new ExploredShare(ports);
-    this.layers = new MapLayerShare(store, {
-      ...ports, mapLayers: () => ports.mapLayers?.() ?? null, badgeOf: (tokenId) => this.tokens.badgeOf(tokenId), tokenAlias: (tokenId) => this.tokens.listedAlias(tokenId),
-      // Each player of the picture is told what is theirs after each change, so a page knows which message its own are counted in.
-      drawnBy: (above) => new Map(ports.members().flatMap((player) => {
-        const own = floor.drawnBy(player, above);
-        return own === null ? [] : [[player, own] as const];
-      })),
-      map: () => floor.map(),
-    });
-  }
-
-  /** The floor's scene from now on, or none; null also forgets what was sent of the scene before. */
-  setScene(scene: SharedScene | null): void {
-    this.tokens.setScene(scene?.id ?? null);
-    this.live?.setScene(scene);
-    this.inputs.setScene(scene);
-    this.explored.setScene(scene);
-    this.layers.setScene(scene);
-  }
-
-  /** The scene is being read again: nothing goes out until it is set. */
-  clear(): void {
-    this.tokens.setScene(null);
-    this.inputs.setScene(null);
-    this.explored.setScene(null);
-    this.layers.setScene(null);
-  }
-
-  /**
-   * Something the picture is made of changed: its scene, the GM's sight, or Atlas. The GM's sight changes which
-   * tokens players see, the map's layers and the sight inputs alone; which tokens are a player's and their dice
-   * follow the scene and Atlas.
-   */
-  changed(change: SceneChange): void {
-    if (change === 'sight') {
-      this.tokens.sightChanged();
-      this.live?.update();
-      this.layers.update();
-      this.inputs.update();
-      return;
+  const dice = new Map<string, ReturnType<typeof tokenRollDice>>();
+  // Reading a set looks the library and the template up: done once a token's statblock or art is another, not at every move.
+  const diceOf = (tokenId: string): ReturnType<typeof tokenRollDice> => {
+    const token = store.getState().objects.tokens[tokenId];
+    if (token === undefined) return undefined;
+    const key = diceKey(token);
+    if (!dice.has(key)) dice.set(key, tokenRollDice(ports.dice?.() ?? null, token));
+    return dice.get(key);
+  };
+  const mine = seats === undefined ? null : new MineShare({ onlinePlayers: () => ports.members(), ownerOf, diceOf }, ports);
+  // The initiative list shows the players' look-alike numbers too: it follows them as they change
+  const tokens: TokenShare = new TokenShare(store, { ...ports, numbersChanged: () => layers.update(), liveCarriedUntil: (alias) => live?.carriedUntil(alias) }, (listed) => mine?.setList(listed));
+  const live: LiveShare | null = ports.sendLive === undefined ? null : new LiveShare(store, {
+    ...ports, sendLive: (body, key) => ports.sendLive?.(body, key), rulers: () => floor.rulers(), holder: (tokenId) => floor.holder(tokenId),
+  }, () => ({ scene: tokens.listedScene, alias: (tokenId) => tokens.listedAlias(tokenId) }));
+  const inputs = new InputShare(store, { ...ports, shownTokens: () => tokens.shownIds(), tokenAlias: (id) => tokens.alias(id), fogEdge: () => ports.atlas().settings.fogEdge });
+  const explored = new ExploredShare(ports);
+  const layers = new MapLayerShare(store, {
+    ...ports, mapLayers: () => ports.mapLayers?.() ?? null, badgeOf: (tokenId) => tokens.badgeOf(tokenId), tokenAlias: (tokenId) => tokens.listedAlias(tokenId),
+    // Each player of the picture is told what is theirs after each change, so a page knows which message its own are counted in.
+    drawnBy: (above) => new Map(ports.members().flatMap((player) => {
+      const own = floor.drawnBy(player, above);
+      return own === null ? [] : [[player, own] as const];
+    })),
+    map: () => floor.map(),
+  });
+  // A drag under way outlasts a read of the scene, and which tokens are a player's follows the token list.
+  const members: FeedMember[] = [tokens.feed, ...(live === null ? [] : [keptWhileRead(live.feed)]), inputs.feed, explored.feed, layers.feed, ...(mine === null ? [] : [ownScene(mine.feed)])];
+  const follow = (change: PictureChange): void => {
+    switch (change) {
+      // The GM's sight changes which tokens players see, the map's layers and the sight inputs alone.
+      case 'sight':
+        tokens.sightChanged();
+        live?.update();
+        layers.update();
+        inputs.feed.update();
+        return;
+      case 'owners':
+        tokens.update();
+        mine?.update();
+        return;
+      case 'memory':
+        explored.update();
+        layers.update();
+        return;
+      case 'layers':
+        layers.update();
+        return;
+      case 'assets':
+        tokens.refreshArt();
+        layers.refreshArt();
+        explored.refreshAssets();
+        return;
+      default:
+        // Which tokens are a player's and their dice follow the scene and Atlas.
+        if (change === 'atlas') dice.clear();
+        tokens.update();
+        live?.update();
+        layers.update();
+        inputs.feed.update();
+        explored.update();
+        if (change === 'atlas') mine?.update();
+        else mine?.feed.update();
     }
-    if (change === 'atlas') this.dice.clear();
-    this.tokens.update();
-    this.live?.update();
-    this.layers.update();
-    this.inputs.update();
-    this.explored.update();
-    if (change === 'atlas') this.mine?.update();
-    else this.mine?.diceChanged();
-  }
-
-  /** The tokens, inputs, layers and owned tokens again, whole, to one player or to all of the picture's. */
-  resend(to?: string): void {
-    this.tokens.resend(to);
-    this.inputs.resend(to);
-    this.explored.resend(to);
-    this.layers.resend(to);
-    this.mine?.resend(to);
-  }
-
-  resync(from: string, message: PlayerResync): void {
-    if (message.of === 'tokens') this.tokens.resync(from, message.scene);
-    else this.inputs.resync(from, message.scene, message.of);
-  }
-
-  refreshAssets(): void {
-    this.tokens.refreshArt();
-    this.layers.refreshArt();
-    this.explored.refreshAssets();
-  }
-
-  /** Who owns which token changed: which tokens are each player's is told again. */
-  ownersChanged(): void {
-    this.tokens.update();
-    this.mine?.update();
-  }
-
-  /** The memory the picture's players remember changed: it goes out, and what they know by it is told again. */
-  memoryChanged(): void {
-    this.explored.update();
-    this.layers.update();
-  }
-
-  stop(): void {
-    this.tokens.stop();
-    this.live?.stop();
-    this.inputs.stop();
-    this.explored.stop();
-    this.layers.stop();
-  }
+  };
+  return { feeds: new FeedGroup(() => members, { reaches }), tokens, layers, follow };
 }

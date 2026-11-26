@@ -5,17 +5,16 @@ import { GmMeasures, type KeptBy, type TokenAlias } from './gmMeasures.ts';
 
 type MeasureEntry = MarksMessage['measures'][number];
 
-/** Players told the GM's measurements alike: whom (every player where unset), and which tokens their picture shows. */
+/** Players told the GM's measurements alike: the picture they see, and which tokens it shows. Who they are the picture's routes say (`FloorRoutes`). */
 export interface MarkAudience {
-  /** What tells this audience from the others from one look to the next: a picture's key. */
+  /** The picture's key, which tells this audience from the others from one look to the next. */
   readonly key: string;
-  readonly players?: readonly string[];
   readonly seen: TokenSeen;
 }
 
-/** The GM's measurements as one audience is told them. */
+/** The GM's measurements as the audience of one picture is told them. */
 export interface ToldMeasures {
-  readonly players?: readonly string[];
+  readonly key: string;
   readonly entries: MeasureEntry[];
 }
 
@@ -61,7 +60,7 @@ export class GmMeasureAudiences {
       const measures = this.of(audience, now);
       const state: MeasureState = { color, ...measures.shown(audience.seen, alias, keptBy) };
       const span = measures.takeSpan();
-      return { ...(audience.players !== undefined && { players: audience.players }), entries: hasNone(state) ? [] : [measureEntry(GM_MARKS, state, span ?? null)] };
+      return { key: audience.key, entries: hasNone(state) ? [] : [measureEntry(GM_MARKS, state, span ?? null)] };
     });
   }
 

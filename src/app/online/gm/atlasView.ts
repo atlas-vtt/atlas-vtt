@@ -103,12 +103,11 @@ export function tokenLabel(token: TokenEntity): string {
 }
 
 /**
- * The resource and condition definitions the tab's token renderer draws by (its collection sync, one
- * private hop: `getTokenRenderer().collectionSync`), or null while they cannot be read (another Atlas
- * version, no renderer, a failing read): then players get no bars and no condition badges.
+ * The resource and condition definitions a tab's token renderer (`getTokenRenderer()`) draws by (its collection
+ * sync, one private hop: `collectionSync`), or null while they cannot be read (another Atlas version, no
+ * renderer, a failing read): then players get no bars and no condition badges.
  */
-export function tokenRulesOf(renderer: unknown): TokenRules | null {
-  const tokens = call(renderer, 'getTokenRenderer');
+export function tokenRulesOf(tokens: unknown): TokenRules | null {
   const sync: unknown = typeof tokens === 'object' && tokens !== null && 'collectionSync' in tokens ? tokens.collectionSync : undefined;
   try {
     const resources = call(sync, 'resources');
@@ -121,14 +120,14 @@ export function tokenRulesOf(renderer: unknown): TokenRules | null {
 }
 
 /**
- * Where the tab's token renderer draws each of these tokens now (`getTokenRenderer().getTokenSprites()`):
+ * Where a tab's token renderer (`getTokenRenderer()`) draws each of these tokens now (`getTokenSprites()`):
  * during the GM's own drag Atlas moves the sprites with every pointer move but writes the store only
  * every 50 ms. Tokens without a sprite, or with a place that is no number, are left out; empty while
  * the renderer cannot be read.
  */
-export function drawnTokenPlaces(renderer: unknown, tokenIds: readonly string[]): ReadonlyMap<string, { readonly x: number; readonly y: number }> {
+export function drawnTokenPlaces(tokens: unknown, tokenIds: readonly string[]): ReadonlyMap<string, { readonly x: number; readonly y: number }> {
   const places = new Map<string, { readonly x: number; readonly y: number }>();
-  const sprites = call(call(renderer, 'getTokenRenderer'), 'getTokenSprites');
+  const sprites = call(tokens, 'getTokenSprites');
   if (typeof sprites !== 'object' || sprites === null) return places;
   for (const id of tokenIds) {
     const sprite: unknown = Object.hasOwn(sprites, id) ? (sprites as Record<string, unknown>)[id] : undefined;

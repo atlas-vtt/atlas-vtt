@@ -72,7 +72,7 @@ describe('removing the combatant with the turn', () => {
       </AtlasUIContext.Provider>,
     );
 
-    act(() => { store.getState().removeMapObjects(['a']); });
+    act(() => { store.getState().removeObjects(['a']); });
 
     expect(turnHolder(store)).toBe('c');
   });

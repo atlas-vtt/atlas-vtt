@@ -1,8 +1,9 @@
 /** Kept measurements (`KeptMeasure`) in the view store: scene objects, each change one undo step. */
 
 import { firstLevelId, hasLevels, onLevel, placedOnViewedLevel, viewedLevelId } from '../levels/sceneLevels';
-import { aurasOf, dropAurasOf, type AuraHolder } from '../measure/auraUpkeep';
-import { MAX_MEASURES, type KeptMeasure, type MeasureChanges, type MeasureInput } from '../measure/measureTypes';
+import { aurasOf } from '../measure/auraUpkeep';
+import { removeObjectsIn } from './sceneObjectWrites';
+import { MAX_MEASURES, type KeptMeasure, type MeasureInput } from '../measure/measureTypes';
 import type { ViewState } from '../types/viewState';
 import type { Point } from '../types/visionTypes';
 import { isRecord } from '../utils/guards';
@@ -21,9 +22,6 @@ export interface MeasuresSlice {
    * level shown. Null, and nothing kept, where that level holds `MAX_MEASURES`.
    */
   addMeasure: (data: MeasureInput) => string | null;
-  /** Changes a kept measurement; a field given as undefined is removed. */
-  updateMeasure: (id: string, changes: MeasureChanges) => void;
-  deleteMeasure: (id: string) => void;
   /** Removes every kept measurement of the level shown, in one undo step; other levels keep theirs. */
   clearMeasures: () => void;
   /**
@@ -35,12 +33,6 @@ export interface MeasuresSlice {
 }
 
 type MeasuresDraft = Pick<ViewState, 'levels' | 'viewedLevel' | 'objects' | 'measurePopover'>;
-
-/** Removes the auras of tokens that are gone, in the write that removes the tokens (a store draft); a popover on one closes. */
-export function dropTokenAuras(draft: { objects: AuraHolder; measurePopover: string | null }, tokenIds: Iterable<string>): void {
-  const gone = dropAurasOf(draft.objects, tokenIds);
-  if (draft.measurePopover !== null && gone.includes(draft.measurePopover)) draft.measurePopover = null;
-}
 
 type ImmerSet = (fn: (draft: MeasuresDraft) => void) => void;
 
@@ -90,26 +82,8 @@ export function createMeasuresActions(set: ImmerSet): MeasuresSlice {
       return id;
     },
 
-    updateMeasure: (id, changes) => set((draft) => {
-      const measure = draft.objects.measures?.[id];
-      if (!measure) return;
-      Object.assign(measure, changes);
-      for (const field of Object.keys(changes) as (keyof MeasureChanges)[]) {
-        if (changes[field] === undefined) delete measure[field];
-      }
-    }),
-
-    deleteMeasure: (id) => set((draft) => {
-      delete draft.objects.measures?.[id];
-      if (draft.measurePopover === id) draft.measurePopover = null;
-    }),
-
     clearMeasures: () => set((draft) => {
-      const record = draft.objects.measures;
-      const gone = idsOnViewedLevel(draft);
-      if (!record || gone.length === 0) return;
-      for (const id of gone) delete record[id];
-      if (draft.measurePopover !== null && gone.includes(draft.measurePopover)) draft.measurePopover = null;
+      removeObjectsIn(draft, idsOnViewedLevel(draft), 'go');
     }),
 
     setTokenAuras: (auras, look = {}) => {
@@ -121,8 +95,7 @@ export function createMeasuresActions(set: ImmerSet): MeasuresSlice {
           const first = aurasOf(draft.objects.measures, new Set([tokenId]))[0];
           const known = first === undefined ? undefined : draft.objects.measures?.[first];
           if (!(aura > 0)) {
-            if (first !== undefined) delete draft.objects.measures?.[first];
-            if (first !== undefined && draft.measurePopover === first) draft.measurePopover = null;
+            if (first !== undefined) removeObjectsIn(draft, [first], 'go');
           } else if (known) {
             Object.assign(known, { aura, points });
           } else {

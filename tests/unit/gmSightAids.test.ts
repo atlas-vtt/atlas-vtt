@@ -61,7 +61,7 @@ function setup(measure: () => MeasurementSettings = measurement, frames: () => W
     restoreGraphics();
   };
   const add = (x: number, vision?: TokenEntity['vision']): string =>
-    store.getState().addToken({ kind: 'character', name: 'Mirabel', imagePath: 't.png', x, y: 500, size: 1, ...(vision && { vision }) } as TokenInput);
+    store.getState().addTokens([{ kind: 'character', name: 'Mirabel', imagePath: 't.png', x, y: 500, size: 1, ...(vision && { vision }) } as TokenInput])[0]!;
   return { aids, store, viewport, perceived, asked: () => perception.mock.calls.length, add };
 }
 
@@ -297,7 +297,7 @@ describe('the marks on tokens the players do not see', () => {
     expect(mark.alpha).toBe(1);
     perceived[id] = 'seen';
     aids.update();
-    store.getState().deleteToken(id);
+    store.getState().removeObjects([id]);
     aids.update();
     expect(mark.destroyed).toBe(true);
   });

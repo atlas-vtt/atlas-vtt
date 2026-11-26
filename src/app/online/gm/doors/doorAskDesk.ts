@@ -60,9 +60,8 @@ export function showDoorAsk(tab: DoorAskTab, shown: DoorAskShown): () => void {
   };
 }
 
-/** Shows a player's token bump on the tab's map, where its token renderer can (`TokenRenderer.bumpToken`). */
-export function bumpOnTab(renderer: object, tokenId: string, dx: number, dy: number): void {
-  const tokens = call(renderer, 'getTokenRenderer');
+/** Shows a player's token bump on the tab's map, where its token renderer (`getTokenRenderer()`) can (`TokenRenderer.bumpToken`). */
+export function bumpOnTab(tokens: unknown, tokenId: string, dx: number, dy: number): void {
   const bump = field(tokens, 'bumpToken');
   if (typeof bump === 'function') (bump as (id: string, x: number, y: number) => void).call(tokens, tokenId, dx, dy);
 }

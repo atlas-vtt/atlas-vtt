@@ -1,17 +1,19 @@
-import { parsePlayerMessage, type SharedFloor } from '../protocol/index.ts';
+import { parsePlayerMessage, type GmMessage, type SharedFloor } from '../protocol/index.ts';
 import type { ShownRollToken } from '../../services/playerRollSource';
+import type { TokenEntity } from '../../types';
 import { isLit, LIGHTING_REFUSAL } from './atlasLighting.ts';
 import type { SceneState, SceneStore } from './atlasView.ts';
 import { imageMimeType } from './assetServe.ts';
-import { FloorAudience } from './floorAudience.ts';
 import { floorMaps } from './floorMaps.ts';
 import { floorPorts, noticeOnce } from './floorPorts.ts';
 import { FloorShare } from './FloorShare.ts';
+import { clearPlayerMarks } from './floorSource.ts';
 import { FloorStore } from './floorStore.ts';
-import { floorKey as keyOf, FloorTokens } from './floorTokens.ts';
+import { FloorTokens } from './floorTokens.ts';
 import type { ListedPin } from './pins/ReadablePins.ts';
-import { playerFloors, sharedFloor, type Floor } from './playerFloors.ts';
+import { floorKey as keyOf, sharedFloor, type Floor } from './playerFloors.ts';
 import { SceneDice } from './SceneDice.ts';
+import { SceneRoutes, type FloorPlacement } from './sceneRoutes.ts';
 import type { SceneSharePorts } from './sceneSharePorts.ts';
 import type { SceneChange, SceneSignal } from './sceneSignal.ts';
 import { hasLevels, resolveLevel, viewedLevelId } from '../../levels/sceneLevels';
@@ -28,9 +30,10 @@ const CATCH_UP_MS = 1000;
  * shared floor by floor (`FloorShare`): each player sees the floor their own token stands on (the one
  * they last moved or acted with where they have several), players without one the floor Atlas
  * presents (the eye), and a floor is shared only while a player stands on it, besides the presented
- * one. A floor's messages reach its players alone (`FloorAudience`); a scene of one floor goes to all
- * as it always did. The floor the GM's view shows reads the players' picture from the GM's renderer,
- * any other works it out on the CPU (`FloorSight`). A token that takes stairs takes its player along.
+ * one. Who hears which message is decided in one place (`SceneRoutes`): a floor's messages reach its
+ * players alone, and a scene of one floor goes to all as it always did. Each floor is read from the source
+ * the GM's tab names for it (`GmTab.sourceOf`): the GM's renderer for the floor its view shows, the CPU for
+ * any other, nothing while the scene is held. A token that takes stairs takes its player along.
  * Every change of what players see reaches it as one signal (`SceneSignal`), which it hands to each floor.
  */
 export class SceneShare {
@@ -38,7 +41,7 @@ export class SceneShare {
   private readonly signal: SceneSignal;
   private readonly ports: SceneSharePorts;
   private readonly floors = new Map<string, FloorShare>();
-  private readonly audience = new FloorAudience();
+  private readonly routes: SceneRoutes;
   /** The token each player last moved or acted with, by GM id. */
   private readonly acting = new Map<string, string>();
   /** When each player was last sent the scene again for acting in one no longer shared (`catchUp`). */
@@ -48,9 +51,6 @@ export class SceneShare {
   /** The random id the floors of the scene's map share, by map path. */
   private group: { readonly map: string | null; readonly id: string } | null = null;
   private viewed: Floor | undefined = undefined;
-  /** What the floors were last worked out from: they are worked out again only when one of these changed. */
-  private assigned: readonly unknown[] = [];
-  private assigning = false;
   private unsubscribe: (() => void) | null = null;
   /** Tells the GM a notice once, however many floors tell it. */
   private readonly notice: (text: string) => void;
@@ -64,12 +64,20 @@ export class SceneShare {
     this.signal = signal;
     this.ports = ports;
     this.notice = noticeOnce(ports);
+    this.routes = new SceneRoutes({
+      send: (body, to) => ports.send(body, to),
+      ...(ports.sendLive !== undefined && { sendLive: (body: GmMessage, key: string, to?: string) => ports.sendLive?.(body, key, to) }),
+      split: () => this.split(),
+      onlinePlayers: () => ports.seats?.onlinePlayers() ?? [],
+      sharedVision: () => ports.atlas().sharedVision,
+      covers: ports.covers,
+    });
     this.tokens = new FloorTokens({ store, ports, floors: this.floors, shareOf: (player) => this.shareOf(player) });
     this.dice = new SceneDice(store, ports, this.tokens.diceParts());
     this.layers = {
       readablePin: (player, sceneId, alias) => this.tokens.shareOfScene(sceneId)?.readablePin(player, sceneId, alias) ?? null,
       update: () => {
-        for (const share of this.floors.values()) share.layersChanged();
+        for (const share of this.floors.values()) share.follow('layers');
       },
     };
   }
@@ -85,7 +93,7 @@ export class SceneShare {
     this.unsubscribe = null;
     for (const share of this.floors.values()) share.stop();
     this.floors.clear();
-    this.audience.clear();
+    this.routes.clear();
     this.dice.stop();
   }
 
@@ -95,6 +103,7 @@ export class SceneShare {
       for (const share of this.floors.values()) share.resend();
       return;
     }
+    this.seat(to);
     const share = this.shareOf(to);
     // A floor still reading its map sends its scene to its players once it has it
     if (share !== undefined && (share.sceneId !== null || !this.split())) share.resend(to);
@@ -102,21 +111,21 @@ export class SceneShare {
 
   /** A player's map shows again: they are sent the marks of their floor as they are now. */
   catchUpMarks(to: string): void {
+    this.seat(to);
     this.shareOf(to)?.catchUpMarks(to);
   }
 
   /** Who owns which token, which tokens are player tokens, or who is connected changed: each player's floor is worked out again. */
   ownersChanged(): void {
     // Owners are no part of what the floors are compared by: they are worked out again whatever else stayed
-    this.assigned = [];
-    this.assign();
-    for (const share of this.floors.values()) share.ownersChanged();
+    this.assign([], true);
+    for (const share of this.floors.values()) share.follow('owners');
   }
 
   /** A player left the table: their drags end where their tokens are. */
   playerLeft(player: string): void {
     this.shareOf(player)?.playerLeft(player);
-    this.audience.delete(player);
+    this.routes.playerLeft(player);
     this.acting.delete(player);
     this.caughtUp.delete(player);
   }
@@ -143,6 +152,7 @@ export class SceneShare {
   receive(from: string, body: unknown): void {
     const message = parsePlayerMessage(body);
     if (message === null) return;
+    this.seat(from);
     if (message.t === 'roll' || message.t === 'move' || message.t === 'drag') this.catchUp(from, message.scene);
     if (message.t === 'roll') return this.dice.receive(from, message);
     this.shareOf(from)?.receive(from, message);
@@ -208,45 +218,32 @@ export class SceneShare {
     this.assign();
   }
 
-  /** The share of the floor a player stands on, worked out now for a player not yet placed. */
+  /** The share of the floor a player stands on; the presented floor's for a player not placed. */
   private shareOf(player: string): FloorShare | undefined {
-    return this.floors.get(keyOf(this.floorOf(player)));
+    return this.floors.get(keyOf(this.routes.floorOf(player)));
   }
 
-  /** The floor a player stands on, worked out now for a player not yet placed. */
-  private floorOf(player: string): Floor {
-    if (!this.audience.has(player) && !this.assigning) this.assign([player]);
-    return this.audience.floorOf(player);
+  /** Places a player not placed yet, about to be sent their floor or heard from, as a player who joins. */
+  private seat(player: string): void {
+    if (!this.routes.isPlaced(player)) this.assign([player]);
   }
 
   /**
-   * Works out on which floor each connected player stands (and `extra`, a player about to be sent their
+   * Works out on which floor each connected player stands (and `joining`, a player about to be sent their
    * floor), opens the share of every floor a player stands on and of the presented floor, closes the
    * others, and sends a player whose floor changed the floor they reached.
    */
-  private assign(extra: readonly string[] = []): void {
-    if (this.assigning) return;
+  private assign(joining: readonly string[] = [], force = false): void {
     const state = this.store.getState();
     const levels = hasLevels(state.levels);
     const presented = levels ? resolveLevel(state.levels, this.ports.presentedLevel?.()) : null;
-    const players = [...new Set([...(this.ports.seats?.onlinePlayers() ?? []), ...extra])];
-    const inputs = [state.objects.tokens, state.levels, state.background, presented, players.join('\n'), [...this.acting].join('\n')];
-    if (this.floors.size === 0 || extra.length > 0 || inputs.some((input, i) => input !== this.assigned[i])) {
-      this.assigned = inputs;
-      this.assigning = true;
-      try {
-        this.place(state, players, presented);
-      } finally {
-        this.assigning = false;
-      }
-    }
+    const ownerOf = (id: string, token: TokenEntity): string | undefined => this.ports.seats?.ownerOf(id, token);
+    const placed = this.routes.placeFloors({ state, ownerOf, acting: this.acting, presented }, joining, force || this.floors.size === 0);
+    if (placed !== null) this.place(state, placed, presented);
     this.followView(levels ? viewedLevelId(state) : null);
   }
 
-  private place(state: SceneState, players: readonly string[], presented: Floor): void {
-    const seats = this.ports.seats;
-    const { floors, together } = playerFloors({ state, ownerOf: (id, token) => seats?.ownerOf(id, token), acting: this.acting, presented }, players);
-    const before = this.audience.set(floors, together, presented);
+  private place(state: SceneState, { floors, before }: FloorPlacement, presented: Floor): void {
     // Ranked before the floors' shares hand their maps, so a map is never queued behind one nobody looks at
     this.ports.stored?.floorMaps?.(floorMaps(state, floors, presented));
     const wanted = new Set([keyOf(presented), ...[...floors.values()].map(keyOf)]);
@@ -271,29 +268,19 @@ export class SceneShare {
     const first = this.viewed === undefined;
     this.viewed = viewed;
     if (first) return;
-    this.ports.showPlayerMarks?.({ lasers: [], measures: [] });
-    this.ports.showPlayerDrags?.([]);
-    this.ports.showPlayerCursors?.([]);
-    this.ports.showPlayerStrokes?.([]);
+    clearPlayerMarks(this.ports.tab());
     for (const share of this.floors.values()) share.viewChanged();
   }
 
   private open(floor: Floor): void {
     const store = new FloorStore(this.store, floor);
     let share: FloorShare | null = null;
-    const route = (to: string | undefined, send: (to?: string) => void): void => {
-      if (!this.split()) return send(to);
-      this.audience.route(floor, to, (player) => this.floorOf(player), send);
-    };
     share = new FloorShare(store, floorPorts(this.ports, {
-      // The GM's renderer is this floor's picture while the GM looks at it and it has drawn it
-      viewed: () => !this.split() || (viewedLevelId(this.store.getState()) === floor && this.ports.rendererCurrent?.() !== false),
+      floor,
       state: () => store.getState(), map: () => share?.mapBounds ?? null,
-      cell: () => this.ports.tokenSource()?.getGridOptions()?.size ?? this.store.getState().grid?.size ?? DEFAULT_CELL,
+      cell: () => this.ports.tab().tokenSource()?.getGridOptions()?.size ?? this.store.getState().grid?.size ?? DEFAULT_CELL,
       aliases: this.tokens.aliases,
-      send: (body, to) => route(to, (player) => this.ports.send(body, player)),
-      sendLive: (body, key, to) => route(to, (player) => this.ports.sendLive?.(body, key, player)),
-      playersOn: () => (this.split() ? this.audience.playersOn(floor) : null),
+      routes: this.routes.open(floor, () => store.getState()),
       notice: this.notice,
       describe: () => this.describe(floor),
     }));

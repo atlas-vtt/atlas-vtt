@@ -5,7 +5,6 @@ import { saveMapTokensAsEncounter } from '../encounters/saveMapTokensAsEncounter
 import type { GridSystem } from '../grid/GridSystem';
 import { resizedTokenCenter } from '../grid/gridPlacement';
 import { t } from '../i18n';
-import { defeatedOnMap } from '../initiative/defeatedOnMap';
 import { levelObjects } from '../levels/levelObjects';
 import type { TokenMovement } from '../pixi/token-renderer/tokenMovement';
 import { conditionsSubmenu } from '../react/components/context-menu/conditionsMenu';
@@ -88,14 +87,14 @@ function charactersOf(state: ViewAtlasState, ids: readonly string[]): Character[
 }
 
 /** Adds the tokens to the initiative, or takes them out, and opens the tracker. */
-function toggleInitiative({ app, store }: TokenActionHost, tokenIds: readonly string[], remove: boolean): void {
+function toggleInitiative({ store }: TokenActionHost, tokenIds: readonly string[], remove: boolean): void {
   if (!store.getState().initiativeTrackerOpen) store.getState().setInitiativeTrackerOpen(true);
   for (const tokenId of tokenIds) {
     const state = store.getState();
     const { initiative, addToInitiative, removeFromInitiative } = state;
     const entry = initiative.entries.find((e) => e.tokenId === tokenId);
     const token = mapTokens(levelObjects(state))[tokenId];
-    if (remove && entry) removeFromInitiative(entry.id, defeatedOnMap(app, state));
+    if (remove && entry) removeFromInitiative(entry.id);
     else if (!remove && !entry && token) addToInitiative(initiativeEntryForToken(token));
   }
 }

@@ -1,33 +1,28 @@
 import type { GmMessage, SharedFloor } from '../protocol/index.ts';
 import { PLAYER_SIGHT_POLICY, type SightPolicy } from '../../vision/tokenSightPolicy';
-import type { MapLayerSource } from './atlasMapLayers.ts';
-import type { PlayerTokenSource, SceneState } from './atlasView.ts';
-import { EyesSight, type EyesContext, type PartyLighting, type PictureBasis } from './eyesSight.ts';
+import type { SceneState } from './atlasView.ts';
+import { EyesSight, type EyesContext } from './eyesSight.ts';
+import type { FloorRoutes } from './floorRoutes.ts';
 import { FloorSight } from './floorSight.ts';
+import { cpuFloorSource, eyesPicture, floorReads, type FloorReads, type FloorSource, type GmTab, type PictureSources } from './floorSource.ts';
 import type { MapSize } from './moveCheck.ts';
+import type { Floor } from './playerFloors.ts';
 import type { SceneSharePorts } from './sceneSharePorts.ts';
 
-/** A picture's token source, map layers and sight, as one set of eyes reads them. */
-export interface PictureSources {
-  tokenSource(): PlayerTokenSource | null;
-  mapLayers(): MapLayerSource | null;
-  /** What the eyes see of the floor now, which their memory records; null while it cannot be worked out. */
-  seen(): PartyLighting | null;
-}
-
-export interface FloorSharePorts extends SceneSharePorts {
-  /** Whether the GM's renderer is this floor's picture now: its view shows the floor and has drawn it. */
-  viewed(): boolean;
+export interface FloorSharePorts extends SceneSharePorts, FloorReads {
+  /** Where the floor is read now, as the GM's tab names it (`GmTab.sourceOf`). */
+  source(): FloorSource;
   /** Which floor of its map this scene is, for players to tell; none for a map of one floor. */
   floor?(): SharedFloor | undefined;
   /** The picture of eyes that see by `policy` (one player's own, `ownPolicy`), cut from the party's picture of this floor. */
   eyes(policy: SightPolicy): PictureSources;
+  /** Whose eyes the floor's players see it through, and who hears each of its messages. */
+  readonly routes: FloorRoutes;
 }
 
 /** What makes a floor's ports out of the scene's. */
 export interface FloorPortsDeps {
-  /** Whether the GM's view shows this floor now: only then is the GM's renderer its picture. */
-  viewed(): boolean;
+  readonly floor: Floor;
   /** The floor's state: the shared scene with this floor shown. */
   state(): SceneState;
   /** The size of the floor's map, or null while it is not known. */
@@ -36,64 +31,38 @@ export interface FloorPortsDeps {
   cell(): number;
   /** The ids players know tokens by, the same on every floor. */
   readonly aliases: Map<string, string>;
-  send(body: GmMessage, to?: string): void;
-  sendLive(body: GmMessage, key: string, to?: string): void;
-  /** The connected players on the floor, or null where everyone is (a scene of one floor). */
-  playersOn(): readonly string[] | null;
+  /** Who hears the floor's messages. */
+  readonly routes: FloorRoutes;
   notice(text: string): void;
   /** Which floor of its map this is, for players to tell; none for a scene of one floor. */
   describe(): SharedFloor | undefined;
 }
 
 /**
- * The ports of one floor's share: the scene's, with messages going to the floor's players, the GM's
- * renderer as the party's picture only while the GM's view shows the floor (else the picture worked
- * out here, `FloorSight`), a player's own picture cut from whichever of the two, and the GM's marks,
- * rulers and the players' marks on the GM's canvas only for that floor.
+ * The ports of one floor's share: the scene's, with messages going to the floor's players (`FloorRoutes`), and
+ * the floor read from the source the GM's tab names for it at each read: the tab itself while its view shows the
+ * floor, the floor worked out here on the CPU otherwise (`FloorSight`), nothing while the scene is held. A
+ * player's own picture is cut from the same source's basis.
  */
 export function floorPorts(ports: SceneSharePorts, deps: FloorPortsDeps): FloorSharePorts {
-  const viewed = (): boolean => deps.viewed();
-  const sight = new FloorSight({ state: () => deps.state(), map: () => deps.map(), lightingSource: () => ports.lightingSource(), cell: () => deps.cell() });
-  const context: EyesContext = { state: () => deps.state(), rules: () => ports.lightingSource()?.rules() };
-  const sources = (eyes: EyesSight, basis: () => PictureBasis): PictureSources => ({
-    tokenSource: () => {
-      const grid = ports.tokenSource();
-      return grid === null ? null : eyes.tokens(basis(), grid);
-    },
-    mapLayers: () => {
-      const base = ports.mapLayers?.() ?? null;
-      return base === null ? null : eyes.layers(basis(), base);
-    },
-    seen: () => eyes.seen(basis()),
-  });
-  const party = sources(new EyesSight(PLAYER_SIGHT_POLICY, context), () => sight);
+  const tab = (): GmTab => ports.tab();
+  const sight = new FloorSight({ state: () => deps.state(), map: () => deps.map(), lightingSource: () => tab().lightingSource(), cell: () => deps.cell() });
+  const context: EyesContext = { state: () => deps.state(), rules: () => tab().lightingSource()?.rules() };
+  const cpu = cpuFloorSource(sight, eyesPicture(new EyesSight(PLAYER_SIGHT_POLICY, context), () => sight, tab));
+  const source = (): FloorSource => tab().sourceOf(deps.floor, cpu);
+  const { routes } = deps;
   const seats = ports.seats;
   return {
     ...ports,
-    viewed,
+    ...floorReads(source, tab),
+    source,
     aliases: deps.aliases,
-    send: (body, to) => deps.send(body, to),
-    ...(ports.sendLive !== undefined && { sendLive: (body: GmMessage, key: string, to?: string) => deps.sendLive(body, key, to) }),
-    tokenSource: () => (viewed() ? ports.tokenSource() : party.tokenSource()),
-    mapLayers: () => (viewed() ? ports.mapLayers?.() ?? null : party.mapLayers()),
-    eyes: (policy: SightPolicy) => sources(new EyesSight(policy, context), () => (viewed() ? ports.pictureBasis?.() ?? sight : sight)),
-    gmMarks: () => (viewed() ? ports.gmMarks?.() ?? null : null),
-    gmDragRuler: () => (viewed() ? ports.gmDragRuler?.() ?? null : null),
-    drawnPlaces: (tokenIds) => (viewed() ? ports.drawnPlaces?.(tokenIds) : undefined) ?? new Map(),
-    showPlayerMarks: (marks) => {
-      if (viewed()) ports.showPlayerMarks?.(marks);
-    },
-    showPlayerDrags: (drags) => {
-      if (viewed()) ports.showPlayerDrags?.(drags);
-    },
-    showPlayerCursors: (cursors) => {
-      if (viewed()) ports.showPlayerCursors?.(cursors);
-    },
-    showPlayerStrokes: (strokes) => {
-      if (viewed()) ports.showPlayerStrokes?.(strokes);
-    },
+    routes,
+    send: (body, to) => routes.send(body, to),
+    ...(ports.sendLive !== undefined && { sendLive: (body: GmMessage, key: string, to?: string) => routes.sendLive(body, key, to) }),
+    eyes: (policy: SightPolicy) => eyesPicture(new EyesSight(policy, context), () => source().basis() ?? sight, tab),
     seats: seats === undefined ? undefined : {
-      onlinePlayers: () => deps.playersOn() ?? seats.onlinePlayers(),
+      onlinePlayers: () => routes.playersOn(),
       ownerOf: (tokenId, token) => seats.ownerOf(tokenId, token),
       claimOf: (mapPath, tokenId, token) => seats.claimOf(mapPath, tokenId, token),
     },

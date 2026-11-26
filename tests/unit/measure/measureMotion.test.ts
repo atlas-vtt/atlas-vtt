@@ -125,7 +125,7 @@ describe('how measurements come and go', () => {
     /** Where the distance of the kept ruler stands. */
     const distance = (): number => keptLabels(s).children[0]!.position.x;
     const start = distance();
-    s.store.getState().updateMeasure(kept!.id, { points: kept!.points.map(({ x, y }) => ({ x: x + 2 * GRID, y })) });
+    s.store.getState().patchObject('measures', kept!.id, { points: kept!.points.map(({ x, y }) => ({ x: x + 2 * GRID, y })) });
     // Its own edit is drawn where it is at once.
     const moved = distance();
     expect(moved).toBeCloseTo(start + 2 * GRID);

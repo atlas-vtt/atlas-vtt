@@ -80,12 +80,7 @@ describe('the auras of tokens in the store', () => {
     expect(store.getState().measurePopover).toBeNull();
   });
 
-  it.each([
-    ['the selection is deleted', (store: ViewAtlasStore): void => store.getState().removeMapObjects(['hero'])],
-    ['it is deleted as a map object', (store: ViewAtlasStore): void => store.getState().deleteMapObject('token', 'hero')],
-    ['it is deleted by id', (store: ViewAtlasStore): void => store.getState().deleteToken('hero')],
-    ['tokens are deleted by ids', (store: ViewAtlasStore): void => store.getState().deleteTokens(['hero'])],
-  ])('go with their token when %s, in the same undo step, and come back with it', (_case, remove) => {
+  it('go with their token, in the same undo step, and come back with it', () => {
     const { store, steps, undo, redo, auras } = setup();
     store.getState().setTokenAuras([{ tokenId: 'hero', aura: 10, points: POINTS }, { tokenId: 'goblin', aura: 5, points: POINTS }]);
     const circle = store.getState().addMeasure({ shape: 'circle', points: POINTS })!;
@@ -94,7 +89,7 @@ describe('the auras of tokens in the store', () => {
     store.getState().openMeasurePopover(hero.id);
     const taken = steps();
 
-    remove(store);
+    store.getState().removeObjects(['hero']);
     expect(store.getState().objects.tokens.hero).toBeUndefined();
     expect(auras().map((aura) => aura.follows ?? aura.id)).toEqual(['goblin', circle]);
     expect(store.getState().measurePopover).toBeNull();
@@ -205,7 +200,7 @@ describe('a measurement that names a token and is no aura', () => {
   it('stays when its token is deleted', () => {
     const { store } = setup();
     store.setState({ objects: { ...store.getState().objects, measures: { ruler: ruler() } } });
-    store.getState().deleteToken('hero');
+    store.getState().removeObjects(['hero']);
     expect(store.getState().objects.tokens.hero).toBeUndefined();
     expect(store.getState().objects.measures).toEqual({ ruler: ruler() });
   });

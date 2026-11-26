@@ -63,8 +63,8 @@ export function collectionScene(): { store: ViewAtlasStore; history: History; ap
     getCollectionForMap: () => 'heist',
     updateCollectionSettings: async (): Promise<void> => undefined,
   } as never);
-  const a = store.getState().addToken({ x: 0, y: 0, imagePath: 'art/a.png', conditions: ['poisoned', 'gone'], vision: { enabled: true, senses: [{ id: darkvision }, { id: 'home-gone' }] } });
-  const b = store.getState().addToken({ x: 0, y: 0, imagePath: 'art/b.png' });
+  const a = store.getState().addTokens([{ x: 0, y: 0, imagePath: 'art/a.png', conditions: ['poisoned', 'gone'], vision: { enabled: true, senses: [{ id: darkvision }, { id: 'home-gone' }] } }])[0]!;
+  const b = store.getState().addTokens([{ x: 0, y: 0, imagePath: 'art/b.png' }])[0]!;
   return { store, history, app, a, b };
 }
 

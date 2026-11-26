@@ -12,6 +12,7 @@ import { levelObjects } from '../../levels/levelObjects';
 import { placedOnViewedLevel } from '../../levels/sceneLevels';
 import { styleWrites, type StyleWrite } from '../../packages/components/toolbar/drawStyle';
 import { changeDrawing, changeText, newAnnotationId, newDrawing } from '../../stores/annotationWrites';
+import { removeObjectsIn } from '../../stores/sceneObjectWrites';
 import type { DrawingStroke, TextElement } from '../../types';
 import type { SceneStore } from './atlasView.ts';
 import { seeThroughWeight } from './drawCost.ts';
@@ -19,7 +20,7 @@ import { allNearEdge, drawingPoints, drawRate, maxWrap, nearEdge, playerDrawing,
 import { JoinedSteps } from './joinedSteps.ts';
 import { MoveRate, type MapSize } from './moveCheck.ts';
 import {
-  applyStyle, changedAnnotations, DRAWING_PLACE_FIELDS, erasedUse, isOwn, namedOwn, ownAnchors, placeAllowed, removeFrom, shapesAllowed, TEXT_PLACE_FIELDS, useAfter, wordsPlace, WORDS_FIELDS,
+  applyStyle, changedAnnotations, DRAWING_PLACE_FIELDS, erasedUse, isOwn, namedOwn, ownAnchors, placeAllowed, shapesAllowed, TEXT_PLACE_FIELDS, useAfter, wordsPlace, WORDS_FIELDS,
 } from './playerDrawingRules.ts';
 import { PlayerAliases, PointsAhead } from './playerDrawingState.ts';
 import { PlayerErasing } from './playerErasing.ts';
@@ -270,8 +271,7 @@ export class PlayerDrawings {
   private remove(from: string, message: PlayerDrawRemove): Verdict {
     const own = namedOwn((alias) => this.aliases.idOf(from, alias), from, message.ids, this.store.getState());
     if (own === null) return 'gone';
-    const ids = new Set(own.map(({ id }) => id));
-    this.store.setState((draft) => removeFrom(draft, ids));
+    this.store.setState((draft) => removeObjectsIn(draft, own.map(({ id }) => id), 'go'));
     return null;
   }
 
@@ -292,7 +292,7 @@ export class PlayerDrawings {
     const added = change.added.map((piece) => newDrawing(state, piece, undefined));
     const gone = new Set([...change.removed, ...change.texts]);
     this.store.setState((draft) => {
-      removeFrom(draft, gone);
+      removeObjectsIn(draft, gone, 'go');
       for (const piece of added) draft.objects.drawings[piece.id] = piece;
     });
     return null;

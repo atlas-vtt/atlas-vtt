@@ -51,10 +51,10 @@ export class LightZoneEditor extends PolygonAreaEditor<LightZone> {
         // The scene's own level, and its tint: closing a zone changes nothing on the map, and records nothing, until the GM sets its light.
         create: (polygon) => {
           const state = store.getState();
-          state.openLightZonePopover(state.addLightZone({ polygon, ambient: Math.min(1, Math.max(0, state.lighting.ambient)) }));
+          state.openLightZonePopover(state.addObject('lightZones', { polygon, ambient: Math.min(1, Math.max(0, state.lighting.ambient)) }));
         },
-        reshape: (id, polygon) => store.getState().updateLightZone(id, { polygon }),
-        remove: (id) => store.getState().deleteLightZone(id),
+        reshape: (id, polygon) => store.getState().patchObject('lightZones', id, { polygon }),
+        remove: (id) => store.getState().removeObjects([id]),
         mayBegin: () => {
           if (zones().length < MAX_LIGHT_ZONES) return true;
           zoneDeps.onFull();

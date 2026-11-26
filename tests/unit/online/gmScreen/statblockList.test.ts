@@ -7,6 +7,7 @@ import { fightStatblockPaths, playerStatblockPaths, statblocksForScreen, type St
 import type { TokenEntity } from '../../../../src/app/types';
 import type { InitiativeEntry } from '../../../../src/app/types/initiativeTypes';
 import { createInMemoryApp } from '../../../mocks/inMemoryVault';
+import { HP } from '../../../mocks/resourceFixtures';
 
 const PATHS = ['Party/Ilsa.md', 'Bestiary/Goblin.md', 'Bestiary/Ogre.md', 'Bestiary/Wolf.md'];
 const token = (id: string, statblockPath: string): TokenEntity => ({ id, kind: 'character', x: 0, y: 0, name: id, statblockPath }) as unknown as TokenEntity;
@@ -35,7 +36,7 @@ describe('the statblocks a GM screen device lists', () => {
     const { app } = createInMemoryApp();
     for (const turn of [null, 0, 1, 2]) {
       const scene = sceneAt(turn);
-      const listed = listedStatblocks(app, SHOWN, scene);
+      const listed = listedStatblocks(app, SHOWN, scene, [HP]);
       // What the device does with the list: the DM screen's own choice, by the flags each entry carries.
       const byPath = new Map(listed.map((each) => [each.path, each]));
       const fight = listed.filter((each) => each.fight).map((each) => each.path);
@@ -52,10 +53,26 @@ describe('the statblocks a GM screen device lists', () => {
     }
   });
 
+  it('by sides mark the turn as the map\'s turn marker does: a defeated combatant holds none', () => {
+    const { app } = createInMemoryApp();
+    const fallen = {
+      ...TOKENS,
+      'pc-1': { ...TOKENS['pc-1']!, side: 'players' } as TokenEntity,
+      'ogre-1': { ...TOKENS['ogre-1']!, resources: { hp: { current: 0, max: 12 } } } as TokenEntity,
+    };
+    const sides = { ...sceneAt(null), objects: { tokens: fallen } };
+    const fight: FrontSceneState = { ...sides, initiative: { ...sides.initiative, entries: FIGHT, isActive: true, sides: { first: 'opponents', active: 'opponents' } } };
+    const turnOf = (definitions: typeof HP[]): string[] => listedStatblocks(app, SHOWN, fight, definitions).filter((each) => each.turn).map((each) => each.name);
+
+    expect(turnOf([HP])).toEqual(['Goblin']);
+    // Without a resource that defeats, the ogre acts with its side
+    expect(turnOf([])).toEqual(['Ogre', 'Goblin']);
+  });
+
   it('name each statblock, count its tokens and say which are a player character\'s', () => {
     setPlayerTokenSource({ isPlayers: (ref) => ref.id === 'pc-1', subscribe: () => () => undefined });
     const { app } = createInMemoryApp();
-    const listed = listedStatblocks(app, SHOWN, sceneAt(null));
+    const listed = listedStatblocks(app, SHOWN, sceneAt(null), [HP]);
 
     expect(listed.map(({ name, tokens, player, fight }) => ({ name, count: tokens.length, player, fight }))).toEqual([
       { name: 'Ilsa', count: 1, player: true, fight: false },

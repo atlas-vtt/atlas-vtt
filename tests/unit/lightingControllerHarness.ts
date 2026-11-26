@@ -99,8 +99,8 @@ export function setup(): Setup {
   const wired: Pick<Setup, 'light' | 'wallDown' | 'contextMenu' | 'wallMove'> = {
     light: lights, wallDown: walls.pointerDown, contextMenu: walls.openMenu, wallMove: walls.pointerMove,
   };
-  const torch = store.getState().addLight({ x: 400, y: 300, emission: { ...genericLight('torch'), kind: 'torch' } });
-  const lantern = store.getState().addLight({ x: 600, y: 300, emission: { ...genericLight('lantern'), kind: 'lantern' } });
+  const torch = store.getState().addObject('lights', { x: 400, y: 300, emission: { ...genericLight('torch'), kind: 'torch' } });
+  const lantern = store.getState().addObject('lights', { x: 600, y: 300, emission: { ...genericLight('lantern'), kind: 'lantern' } });
   getHistoryStore(store)!.getState().clear();
   cleanup = () => {
     controller.destroy();

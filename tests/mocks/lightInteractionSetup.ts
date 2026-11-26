@@ -50,7 +50,7 @@ export function setup(doc: Document = document): Setup {
   store.getState().setPersistenceEnabled(false);
   store.getState().setMapPath('maps/lights.atlasmap');
   store.getState().setSceneLighting({ enabled: true });
-  const torch = store.getState().addLight({ x: 400, y: 300, emission: { ...genericLight('torch'), kind: 'torch' } });
+  const torch = store.getState().addObject('lights', { x: 400, y: 300, emission: { ...genericLight('torch'), kind: 'torch' } });
   const markers = new LightMarkers(viewport, store);
   const rings = new LightRangeRings(viewport, store, () => FEET);
   /** `active`: the lighting tool; `moves`: the select or move tool. */

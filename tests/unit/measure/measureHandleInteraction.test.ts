@@ -190,7 +190,7 @@ describe('a kept measurement dragged by its handle', () => {
     expect(ruler()?.points).toEqual(START);
     expect(s.store.getState().measurePopover).toBeNull();
     // The drag's undo step is closed: the next change is a step of its own.
-    s.store.getState().updateMeasure(id, { color: '#e93147' });
+    s.store.getState().patchObject('measures', id, { color: '#e93147' });
     expect(steps()).toBe(1);
   });
 
@@ -270,7 +270,7 @@ describe('the popover of a kept measurement', () => {
     };
     const history = getHistoryStore(store)!;
     open();
-    store.getState().updateMeasure(id, { color: '#e93147' });
+    store.getState().patchObject('measures', id, { color: '#e93147' });
     expect(store.getState().measurePopover).toBe(id);
     open();
     store.getState().setGMView(false);
@@ -279,7 +279,7 @@ describe('the popover of a kept measurement', () => {
     store.getState().setMapLoading(true);
     expect(store.getState().measurePopover).toBeNull();
     open();
-    store.getState().deleteMeasure(id);
+    store.getState().removeObjects([id]);
     expect(store.getState().measurePopover).toBeNull();
     // Undo brings the measurement back, and redo takes it away again under the open popover.
     history.getState().undo();
@@ -304,8 +304,8 @@ describe('the popover of a kept measurement', () => {
   it('is the only one of the light, zone and measurement popovers that is open', () => {
     const { s, id } = scene();
     const { store } = s;
-    const light = store.getState().addLight({ x: 500, y: 300, emission: { ...genericLight('torch'), kind: 'torch' } });
-    const zone = store.getState().addLightZone({ polygon: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }], ambient: 0 });
+    const light = store.getState().addObject('lights', { x: 500, y: 300, emission: { ...genericLight('torch'), kind: 'torch' } });
+    const zone = store.getState().addObject('lightZones', { polygon: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }], ambient: 0 });
     store.getState().openMeasurePopover(id);
     store.getState().openLightPopover(light);
     expect(store.getState().measurePopover).toBeNull();
@@ -399,9 +399,9 @@ describe('the handles and the players', () => {
     s.viewport.scale.set(1);
     s.viewport.emit('zoomed', { viewport: s.viewport, type: 'wheel' });
     expect(s.measure.handles.pointer.cursorAt(245 + 20, 175)).toBeNull();
-    s.store.getState().deleteMeasure(id);
+    s.store.getState().removeObjects([id]);
     expect(layer.children.map(({ position }) => [position.x, position.y])).toEqual([[525, 525]]);
-    s.store.getState().deleteMeasure(other);
+    s.store.getState().removeObjects([other]);
     expect(layer.children).toHaveLength(0);
     expect(ends(s)).toHaveLength(0);
     expect(turns(s)).toHaveLength(0);
@@ -460,7 +460,7 @@ describe('the handle of a measurement that starts on a token', () => {
     expect(Math.hypot(rim().x - 105, rim().y - 105)).toBeCloseTo(GRID * 1.5, 9);
     s.store.getState().updateTokens([{ id: 'hero', changes: { x: 525, y: 525, size: 1 } }]);
     expect(places(s)).toEqual([[105, 105]]);
-    s.store.getState().deleteToken('hero');
+    s.store.getState().removeObjects(['hero']);
     expect(places(s)).toEqual([[105, 105]]);
   });
 

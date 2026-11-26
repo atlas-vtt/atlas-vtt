@@ -9,7 +9,7 @@ const drawing = (id: string, by?: string): DrawingAnnotation => {
   if (!read) throw new Error('no drawing');
   return read;
 };
-const store = (): AnnotationMenuStore => ({ updateAnnotations: vi.fn(), orderAnnotations: vi.fn(), groupAnnotations: vi.fn(), ungroupAnnotations: vi.fn(), duplicateMapObjects: vi.fn(), deleteAnnotations: vi.fn() });
+const store = (): AnnotationMenuStore => ({ updateAnnotations: vi.fn(), orderAnnotations: vi.fn(), groupAnnotations: vi.fn(), ungroupAnnotations: vi.fn(), duplicateMapObjects: vi.fn(), removeObjects: vi.fn() });
 const labels = (entries: ReturnType<typeof annotationMenu>): string[] => entries.flatMap((entry) => (entry.type === 'item' ? [entry.label] : []));
 
 describe('who made a drawing, in its menu', () => {

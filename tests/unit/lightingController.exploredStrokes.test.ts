@@ -102,7 +102,7 @@ describe('a stroke in the lighting tool\'s explored-memory mode', () => {
 
   it('takes every press of the tool: no wall is drawn and no light is opened or moved in the mode', () => {
     const { store, enterMode, down, move, up, light, cursor } = setup();
-    const torch = store.getState().addLight({ x: 100, y: 100, emission: genericLight('torch') });
+    const torch = store.getState().addObject('lights', { x: 100, y: 100, emission: genericLight('torch') });
     enterMode();
     expect(light.pointerDown(100, 100, KEYS)).toBe(false);
     expect(light.cursorAt(100, 100)).toBeNull();

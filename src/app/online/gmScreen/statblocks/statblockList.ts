@@ -1,7 +1,8 @@
 import { TFile, type App } from 'obsidian';
 import { bestiaryLookup, type BestiaryLookup } from '../../../creatures/linkedCreature';
-import { turnTokenIds } from '../../../initiative/turnHolders';
+import { turnHolders } from '../../../initiative/turnHolders';
 import { fightStatblockPaths, playerStatblockPaths, statblocksForScreen } from '../../../react/components/dm-screen/fightStatblocks';
+import type { ResourceDefinition } from '../../../resources/resourceTypes';
 import { noteBasename } from '../../../services/FantasyStatblocksService';
 import type { TokenEntity } from '../../../types';
 import { MAX_STATBLOCK_ENTRIES } from '../../protocol/index.ts';
@@ -40,14 +41,20 @@ function sharedArt(tokens: readonly TokenEntity[]): string | null {
 
 /**
  * The DM screen's statblocks of the map in front, in the order it shows them with every one listed (`all`: a
- * fight's combatants first, in turn order), each with whether it fights, is a player character's or has the turn.
+ * fight's combatants first, in turn order), each with whether it fights, is a player character's or has the turn
+ * (as the map's turn marker: by sides a combatant the map's resource `definitions` call defeated holds none).
  * The device chooses among them as the DM screen's switch does (`statblocksForScreen`).
  */
-export function listedStatblocks(app: App, shown: ReadonlyMap<string, TokenEntity[]>, state: FrontSceneState): ListedStatblock[] {
+export function listedStatblocks(
+  app: App,
+  shown: ReadonlyMap<string, TokenEntity[]>,
+  state: FrontSceneState,
+  definitions: readonly ResourceDefinition[],
+): ListedStatblock[] {
   const { tokens } = state.objects;
   const fightPaths = state.initiative.isActive ? fightStatblockPaths(state.initiative.entries, tokens).filter((path) => shown.has(path)) : [];
   const players = playerStatblockPaths(tokens);
-  const turn = new Set(turnTokenIds(state.initiative, tokens));
+  const turn = new Set(turnHolders(state.initiative, tokens, definitions));
   const fighting = new Set(fightPaths);
   const bestiary = bestiaryLookup(app);
   return statblocksForScreen(shown, fightPaths, 'all', players).slice(0, MAX_STATBLOCK_ENTRIES).map(([path, pathTokens]) => ({

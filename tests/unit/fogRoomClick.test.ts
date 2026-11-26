@@ -65,7 +65,7 @@ function roomScene(what: 'hide' | 'reveal' = 'hide', mapRect: MapRect | null = M
   store.getState().setPersistenceEnabled(false);
   store.setState({ activeTool: what === 'reveal' ? 'eraser' : 'fog', isMapLoading: false, isGMView: true });
   store.getState().setFogTool({ shape: 'room' });
-  for (const wall of WALLS) store.getState().addWall(wall);
+  for (const wall of WALLS) store.getState().addObject('walls', wall);
   store.temporal.getState().clear();
   const viewport = new Camera();
   const layer = new Container();

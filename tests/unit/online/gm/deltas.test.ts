@@ -1,6 +1,8 @@
 import { DeltaReader, parseGmMessage, type GmMessage, type SharedSight, type SharedToken, type SightToken } from '../../../../src/app/online/protocol/index.ts';
 import { describe, expect, it } from 'vitest';
-import { SequencedList } from '../../../../src/app/online/gm/sequencedList.ts';
+import { Feed } from '../../../../src/app/online/gm/feed/Feed.ts';
+import type { SequencedContent } from '../../../../src/app/online/gm/feed/feedOutbox.ts';
+import { feedClock } from './feedClock.ts';
 import type { PageMessage } from './playerPages.ts';
 import { sceneState, shareHarness, token, tokenLists } from './shareHarness.ts';
 
@@ -59,6 +61,20 @@ function step<T extends { readonly id: string; readonly x: number; readonly y: n
   return next;
 }
 
+/** A feed that sends one sequenced kind: each `publish` shares a scene (another forgets the one before) and sends the content for it. */
+function sequencedFeed<K extends 'tokens' | 'sight'>(of: K, send: (body: GmMessage, to?: string) => void): { publish(scene: string, content: SequencedContent<K>): void; resend(to: string): void } {
+  let next: SequencedContent<K> | null = null;
+  const feed = new Feed({ ...feedClock(), send }, { sequenced: [of], build: (_scene, out) => void (next !== null && out.sequenced(of, next)), opened: () => undefined });
+  return {
+    publish: (scene, content) => {
+      feed.setScene({ id: scene, lit: false });
+      next = content;
+      feed.update();
+    },
+    resend: (to) => feed.resend(to),
+  };
+}
+
 /** Every message a list sends, read by a player who gets them all: each must make exactly the list sent. */
 function follows<K extends 'tokens' | 'sight'>(sent: readonly GmMessage[], published: readonly unknown[], of: K): void {
   const reader = new DeltaReader();
@@ -77,7 +93,7 @@ describe('lists sent as deltas', () => {
       const random = seeded(trial);
       const pool = Array.from({ length: 2 + Math.floor(random() * 30) }, (_, index) => aliasOf(index + 1));
       const sent: GmMessage[] = [];
-      const list = new SequencedList('tokens', { send: (body) => sent.push(body), now: () => 0 });
+      const list = sequencedFeed('tokens', (body) => void sent.push(body));
       const published: { tokens: SharedToken[]; cell: number; snap: { type: 'square'; size: number; offsetX: number; offsetY: number } | null }[] = [];
       let tokens = pool.filter(() => random() < 0.6).map((id) => sharedToken(random, id));
       for (let index = 0; index < STEPS; index += 1) {
@@ -100,7 +116,7 @@ describe('lists sent as deltas', () => {
       const lightPool = Array.from({ length: 6 }, (_, index) => aliasOf(500 + index));
       const light = (id: string): SharedSight['lights'][number] => ({ id, x: Math.floor(random() * 3000), y: 200, emission: { bright: 10, dim: 20 }, ...(random() < 0.5 && { rotation: 90 }) });
       const sent: GmMessage[] = [];
-      const list = new SequencedList('sight', { send: (body) => sent.push(body), now: () => 0 });
+      const list = sequencedFeed('sight', (body) => void sent.push(body));
       const published: SharedSight[] = [];
       let tokens = pool.filter(() => random() < 0.6).map((id) => sightToken(random, id));
       let lights = lightPool.filter(() => random() < 0.5).map(light);
@@ -120,7 +136,7 @@ describe('lists sent as deltas', () => {
 
   it('go out whole for a new scene, for a resend, and where a delta would be larger', () => {
     const sent: GmMessage[] = [];
-    const list = new SequencedList('tokens', { send: (body) => sent.push(body), now: () => 0 });
+    const list = sequencedFeed('tokens', (body) => void sent.push(body));
     const random = seeded(7);
     const many = Array.from({ length: 20 }, (_, index) => sharedToken(random, aliasOf(index + 1)));
     list.publish('scene-a', { tokens: many, cell: 70, snap: null });
@@ -128,8 +144,7 @@ describe('lists sent as deltas', () => {
     // All gone and twenty others come: the delta would name every one twice.
     list.publish('scene-a', { tokens: many.map((_, index) => sharedToken(random, aliasOf(100 + index))), cell: 70, snap: null });
     list.publish('scene-b', { tokens: [], cell: 70, snap: null });
-    list.resend('scene-b', 'ana');
-    list.resend('scene-a', 'ana');
+    list.resend('ana');
     expect(sent.map((body) => [body.t, 'seq' in body ? body.seq : undefined])).toEqual([['tokens', 1], ['delta', 2], ['tokens', 3], ['tokens', 4], ['tokens', 4]]);
   });
 });

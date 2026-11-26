@@ -54,9 +54,9 @@ describe('LightPopover', () => {
   it('marks a light whose stored kind it does not know as the preset it equals, else as custom', () => {
     const { store, torch, light } = renderPopover();
     const unknown = 'brazier' as LightKind;
-    act(() => { store.getState().updateLight(torch, { emission: { ...light().emission, kind: unknown } }); });
+    act(() => { store.getState().patchObject('lights', torch, { emission: { ...light().emission, kind: unknown } }); });
     expect(screen.getByRole('button', { name: 'Torch' }).getAttribute('aria-pressed')).toBe('true');
-    act(() => { store.getState().updateLight(torch, { emission: { ...light().emission, bright: 12 } }); });
+    act(() => { store.getState().patchObject('lights', torch, { emission: { ...light().emission, bright: 12 } }); });
     expect(screen.getByRole('button', { name: 'Custom light' }).getAttribute('aria-pressed')).toBe('true');
   });
 
@@ -129,8 +129,8 @@ describe('LightPopover', () => {
     const slider = screen.getByRole('slider', { name: 'Intensity' }).closest('.slider-root')!;
     fireEvent.pointerDown(slider);
     act(() => {
-      store.getState().updateLight(torch, { emission: { ...light().emission, intensity: 1.2 } });
-      store.getState().updateLight(torch, { emission: { ...light().emission, intensity: 1.5 } });
+      store.getState().patchObject('lights', torch, { emission: { ...light().emission, intensity: 1.2 } });
+      store.getState().patchObject('lights', torch, { emission: { ...light().emission, intensity: 1.5 } });
     });
     fireEvent.pointerUp(window);
     expect(steps()).toBe(1);
@@ -141,7 +141,7 @@ describe('LightPopover', () => {
 
   it('raises a bright range of nothing again, which has no ring handle on the map', () => {
     const { store, torch, light } = renderPopover();
-    act(() => { store.getState().updateLight(torch, { emission: { ...light().emission, bright: 0 } }); });
+    act(() => { store.getState().patchObject('lights', torch, { emission: { ...light().emission, bright: 0 } }); });
     const bright = screen.getByLabelText('Bright') as HTMLInputElement;
     expect(bright.value).toBe('0');
     fireEvent.change(bright, { target: { value: '10' } });
@@ -163,7 +163,7 @@ describe('LightPopover', () => {
 
   it('follows the light when the map changes it, as a ring drag does', () => {
     const { store, torch, light } = renderPopover();
-    act(() => { store.getState().updateLight(torch, { emission: { ...light().emission, bright: 12.5 } }); });
+    act(() => { store.getState().patchObject('lights', torch, { emission: { ...light().emission, bright: 12.5 } }); });
     expect((screen.getByLabelText('Bright') as HTMLInputElement).value).toBe('12.5');
   });
 

@@ -125,7 +125,7 @@ async function rendererRig(): Promise<Rig> {
   renderer.setPlayerSightProvider(() => undefined, () => false);
   renderer.setHeldPlayout({ interval: 33, lag: () => null });
   cleanups.push(() => renderer.destroy());
-  store.getState().addToken(hero());
+  store.getState().addTokens([hero()]);
   await vi.waitFor(() => expect(renderer.getTokenSprites().hero).toBeInstanceOf(Container));
   clock.start();
   const group = (): Container => renderer.getTokenSprites().hero as Container;
@@ -162,7 +162,7 @@ async function rendererRig(): Promise<Rig> {
 async function placesRig(): Promise<Rig> {
   const { app, store, viewport, grid, ticker, clock } = scene();
   clock.start();
-  store.getState().addToken(hero());
+  store.getState().addTokens([hero()]);
   const group: TokenGroupContainer = Object.assign(new Container(), { tokenId: 'hero', tokenData: hero(), tokenSize: GRID, artPath: ART, strokeWidth: 0 });
   group.position.set(START.x, START.y);
   const sprite = (id: string): TokenGroupContainer | null => (id === 'hero' ? group : null);

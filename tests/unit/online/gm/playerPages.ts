@@ -34,6 +34,8 @@ export class PartJoiner {
 export class PlayerPage {
   /** Every message that reached this page, in order, as it was sent. */
   readonly inbox: PageMessage[] = [];
+  /** Whether each message of `inbox` came in one message to every page, rather than to this page alone. */
+  readonly toAll: boolean[] = [];
   /** What this page made of each message, in order: a delta as the whole message it makes. */
   readonly read: PageMessage[] = [];
   /** The deltas that did not follow on from what this page held. */
@@ -44,11 +46,12 @@ export class PlayerPage {
 
   constructor(readonly player: string) {}
 
-  receive(sent: PageMessage): void {
+  receive(sent: PageMessage, toAll = false): void {
     // As it came over the wire: what the GM changes in the object it sent afterwards never reaches the page.
     const body = sent.t === 'part' ? this.parts.join(sent.id, sent) : (JSON.parse(JSON.stringify(sent)) as PageMessage);
     if (body === null) return;
     this.inbox.push(body);
+    this.toAll.push(toAll);
     if (body.t !== 'delta' && !isDeltaOf(body.t)) return void this.read.push(body);
     // As the player's browser reads it: parsed, then a delta applied to what the page holds.
     const read = this.reader.read(parseGmMessage(body) ?? (body as GmMessage));
@@ -99,7 +102,7 @@ export class PlayerPages {
   /** The GM sends a message: to one player, or to all (unset, or the relay's `ALL_PLAYERS`). */
   deliver(body: PageMessage, to?: string): void {
     const player = to === ALL_PLAYERS ? undefined : to;
-    for (const page of this.pages.values()) if (page.connected && (player === undefined || page.player === player)) page.receive(body);
+    for (const page of this.pages.values()) if (page.connected && (player === undefined || page.player === player)) page.receive(body, player === undefined);
   }
 
   /** These players' pages connect: a page that was here before comes back holding what it held. */

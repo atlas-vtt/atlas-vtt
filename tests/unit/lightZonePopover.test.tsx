@@ -28,7 +28,7 @@ function renderPopover(): { store: ViewAtlasStore; cave: string; zone: () => Lig
   store.getState().setPersistenceEnabled(false);
   store.getState().setMapPath('maps/zones.atlasmap');
   store.getState().setSceneLighting({ enabled: true, ambient: 1 });
-  const cave = store.getState().addLightZone({ polygon: SQUARE, ambient: 0 });
+  const cave = store.getState().addObject('lightZones', { polygon: SQUARE, ambient: 0 });
   const history = getHistoryStore(store)!;
   history.getState().clear();
   const ui: AtlasUIContextValue = { app, view: null, pixiApp: null, renderer: null };
@@ -75,8 +75,8 @@ describe('LightZonePopover', () => {
     const before = steps();
     fireEvent.pointerDown(slider.closest('.slider-root')!);
     act(() => {
-      store.getState().updateLightZone(cave, { ambient: 0.3 });
-      store.getState().updateLightZone(cave, { ambient: 0.4 });
+      store.getState().patchObject('lightZones', cave, { ambient: 0.3 });
+      store.getState().patchObject('lightZones', cave, { ambient: 0.4 });
     });
     fireEvent.pointerUp(window);
     expect(steps()).toBe(before + 1);

@@ -213,7 +213,7 @@ export class DrawToolHost {
       const ids = state.replaceDrawings(change.removed, change.added);
       cleanFillsWritten(change.added, ids, levelObjects(this.deps.store.getState()).drawings);
     }
-    if (change.texts.length > 0) state.deleteAnnotations(change.texts);
+    if (change.texts.length > 0) state.removeObjects(change.texts);
   }
 
   /** Tells the GM what the sweep under way could not do, once for the sweep. */

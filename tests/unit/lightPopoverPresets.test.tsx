@@ -35,7 +35,7 @@ function renderPopover(presetName: string, emission: LightEmission, settings: Pa
   store.getState().setPersistenceEnabled(false);
   store.getState().setMapPath('maps/crypt.atlasmap');
   store.getState().setSceneLighting({ enabled: true });
-  const id = store.getState().addLight({ x: 400, y: 300, emission });
+  const id = store.getState().addObject('lights', { x: 400, y: 300, emission });
   const ui: AtlasUIContextValue = { app, view: null, pixiApp: null, renderer: null };
   render(
     <AtlasUIContext.Provider value={ui}>

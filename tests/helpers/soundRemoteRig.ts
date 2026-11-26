@@ -84,7 +84,6 @@ export function fakeTable(options: { combatants?: number; rules?: InitiativeRule
   const map = {
     state: () => state,
     rules: (): InitiativeRules => options.rules ?? { ...DEFAULT_INITIATIVE_RULES },
-    defeated: vi.fn((): ReadonlySet<string> => new Set(['e1'])),
     roll: vi.fn(),
     presented: vi.fn(() => false),
     present: vi.fn(),

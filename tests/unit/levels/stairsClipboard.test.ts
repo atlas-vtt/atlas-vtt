@@ -99,7 +99,7 @@ describe('stairs in copy, paste, duplicate and cut', () => {
 
   it('copy nothing in the stairs tool while no stairs are open, though tokens are selected', async () => {
     const store = stairsStore();
-    const token = store.getState().addToken({ kind: 'token', x: 25, y: 25, imagePath: 'a.png' } as never);
+    const token = store.getState().addTokens([{ kind: 'token', x: 25, y: 25, imagePath: 'a.png' } as never])[0]!;
     store.getState().setSelection([token]);
     expect(await copySelection(store)).toBe(false);
   });

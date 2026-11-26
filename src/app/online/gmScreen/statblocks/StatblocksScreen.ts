@@ -132,7 +132,7 @@ export class StatblocksScreen implements GmScreen {
     try {
       const statblocks = await screenStatblocks(this.ports.app, state.objects.tokens);
       if (run !== this.runs) return;
-      const listed = listedStatblocks(this.ports.app, statblocks, state);
+      const listed = listedStatblocks(this.ports.app, statblocks, state, scene.definitions());
       const portraits = await Promise.all(listed.map((entry) => this.portraitOf(entry.art)));
       if (run === this.runs) this.publish(scene, listed, portraits);
     } catch (error) {

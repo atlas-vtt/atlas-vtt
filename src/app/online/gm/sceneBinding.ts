@@ -5,17 +5,15 @@ import { resolveMeasurementSettings } from '../../grid/measurementFormat';
 import { levelObjects } from '../../levels/levelObjects';
 import { difficultCells } from '../../mapFeatures/featureIndex';
 import { mapFeatureList } from '../../mapFeatures/mapFeatures';
-import { diceSourceOf } from './atlasDice.ts';
 import { accentColour, lightingSourceOf, measurementOf, tabAreaMap } from './atlasLighting.ts';
-import { mapLayerSourceOf, pictureBasisOf, rulesLookupOf, showsViewedLevel } from './atlasMapLayers.ts';
-import { asTokenSource, call, drawnTokenPlaces, tokenRulesOf, type PlayerTokenSource, type SceneStore } from './atlasView.ts';
+import { call, type PlayerTokenSource, type SceneStore } from './atlasView.ts';
 import { bookSceneOf, type BookScene } from './book/bookScene.ts';
 import { ResourceWrites } from './book/resourceWrites.ts';
 import { companionTimers } from './companionTimers.ts';
-import { dragRulerOf } from './dragRulers.ts';
-import { tokenMovesOf } from './moveShare.ts';
 import { decodeMaskAlpha } from './exploredMaskAlpha.ts';
+import { clearPlayerMarks, HELD_TAB, type GmTab } from './floorSource.ts';
 import { GmMarks } from './gmMarks.ts';
+import { gmTabOf } from './gmTab.ts';
 import type { GmMessage, RollRequestAnswer } from '../protocol/index.ts';
 import type { LoggedRoll, RollRequest } from './log/TableLog.ts';
 import { ownerIn, type SeatSource } from './seatSource.ts';
@@ -30,7 +28,8 @@ import type { AssetStoring } from './assets/assetUses.ts';
 import type { MemoryPorts } from './memory/memoryPorts.ts';
 import { pixiRendererOf, TextureRasters } from './memory/TextureRasters.ts';
 import { showNotice } from '../../ui/notice';
-import { bumpOnTab, showDoorAsk } from './doors/doorAskDesk.ts';
+import { showDoorAsk } from './doors/doorAskDesk.ts';
+import type { PageCovers } from './coveredPages.ts';
 import type { NotePin } from '../../types';
 
 /** A shared view's scene and the GM's marks on it. */
@@ -50,6 +49,8 @@ export interface SceneBindingPorts {
   send(body: GmMessage, to?: string): void;
   /** Sends a live message to all ahead of other frames; a newer one of the same key replaces it while it waits. */
   sendLive(body: GmMessage, key: string, to?: string): void;
+  /** The pages live marks leave out (their book covers the map). */
+  readonly covers?: PageCovers | undefined;
   readImage(path: string): Promise<VaultImage | null>;
   /** How players are handed assets the store keeps for them; without it they are handed none. */
   readonly stored?: AssetStoring | undefined;
@@ -94,7 +95,6 @@ export function bindScene(ports: SceneBindingPorts, tab: AtlasTab, presented: Pr
   const timers = companionTimers();
   const live = (): boolean => ports.isLive(binding);
   const shown = (): boolean => live() && !store.held;
-  const shownRenderer = (): unknown => (shown() ? renderer : null);
   const measurement = lastWhileShown(shown, () => measurementOf(renderer) ?? lightingSourceOf(renderer)?.measurement() ?? null);
   const liveRenderer = (): unknown => (live() ? renderer : null);
   const rasters = new TextureRasters(() => pixiRendererOf(liveRenderer()));
@@ -106,40 +106,31 @@ export function bindScene(ports: SceneBindingPorts, tab: AtlasTab, presented: Pr
     // The areas players measure stop at the walls the GM's own do.
     return { grid, measurement: measurement() ?? resolveMeasurementSettings(undefined, state.grid), difficult, areas: tabAreaMap(liveRenderer()) } satisfies MeasureRules;
   }, (tokenId): string | undefined => share.draggerOf(tokenId));
+  const gm = gmTabOf(tab, marks);
   // Players' marks leave the GM's canvas as the hold begins: it is about to show another scene.
-  const store = new PresentedStore(tab.store, presented, () => {
-    if (!live()) return;
-    marks.showPlayers({ lasers: [], measures: [] });
-    marks.showPlayerDrags([]);
-    marks.showPlayerCursors([]);
-    marks.showPlayerStrokes([]);
-  });
+  const store = new PresentedStore(tab.store, presented, () => live() && clearPlayerMarks(gm));
+  // The one place that decides whether the view may be read: every floor reads as nothing while the scene is held.
+  const shownTab = (): GmTab => (shown() ? gm : HELD_TAB);
+  // A stale binding's timers run nothing.
+  const clock = {
+    now: () => timers.now(),
+    setTimer: (run: () => void, ms: number) => timers.setTimer(() => live() && run(), ms),
+    clearTimer: (timer: number) => timers.clearTimer(timer),
+  };
   // The theme is read once at each change of it, not with every message that carries the accent.
   const signal = new SceneSignal(sceneSources(ports.app, store, renderer, lastWhileShown(shown, () => accentColour(leaf.view.containerEl.ownerDocument))));
   const share: SceneShare = new SceneShare(store, signal, {
-    tokenSource: () => asTokenSource(shownRenderer()),
-    lightingSource: () => lightingSourceOf(shownRenderer()),
+    tab: shownTab,
     measurement,
-    gmMarks: () => (shown() ? marks.source() : null),
-    showPlayerMarks: (marksShown) => shown() && marks.showPlayers(marksShown),
-    showPlayerDrags: (drags) => shown() && marks.showPlayerDrags(drags),
-    gmDragRuler: () => dragRulerOf(shownRenderer()),
-    showPlayerCursors: (cursors) => shown() && marks.showPlayerCursors(cursors),
-    showPlayerStrokes: (strokes) => shown() && marks.showPlayerStrokes(strokes),
     nameOf: (player) => ports.nameOf(player),
     atlas: () => signal.inputs.atlas,
-    dice: () => (shown() ? diceSourceOf(leaf) : null),
-    mapLayers: () => (shown() ? mapLayerSourceOf(renderer, leaf.view) : null),
-    pictureBasis: () => (shown() ? pictureBasisOf(renderer) : null),
-    tokenRules: () => tokenRulesOf(shownRenderer()),
-    tokenMoves: () => tokenMovesOf(shownRenderer()),
     readImage: (path) => ports.readImage(path),
     decodeMask: decodeMaskAlpha,
     playerMemory: ports.memory === undefined ? undefined : { ...ports.memory, rasters },
     stored: ports.stored,
     send: (body, to) => live() && ports.send(body, to),
     sendLive: (body, key, to) => live() && ports.sendLive(body, key, to),
-    drawnPlaces: (tokenIds) => drawnTokenPlaces(shownRenderer(), tokenIds),
+    covers: ports.covers,
     notice: (text) => live() && showNotice(text),
     seats: ports.seats,
     randomId: () => ports.randomId(),
@@ -147,26 +138,20 @@ export function bindScene(ports: SceneBindingPorts, tab: AtlasTab, presented: Pr
     foundPin: (mapPath, pinId) => ports.foundPin(mapPath, pinId),
     pinsChanged: (mapPath, pins) => live() && ports.pinsChanged(mapPath, pins),
     presentedLevel: () => store.presentedLevel,
-    rendererCurrent: () => shown() && showsViewedLevel(renderer, tab.store.getState()),
     rollRequest: (from, answer) => (shown() ? ports.rollRequest(from, answer) : null),
     askDoor: (asked) => (live() ? showDoorAsk({ app: ports.app, leaf, view: tab.view, renderer, store: tab.store, presented: store }, asked) : () => undefined),
-    bumpToken: (tokenId, dx, dy) => shown() && bumpOnTab(renderer, tokenId, dx, dy),
-    now: () => timers.now(),
-    setTimer: (run, ms) => timers.setTimer(() => live() && run(), ms),
-    clearTimer: (timer) => timers.clearTimer(timer),
+    ...clock,
   });
   const resources = new ResourceWrites(store, {
-    definitions: () => tokenRulesOf(shownRenderer())?.resources ?? [],
+    definitions: () => shownTab().tokenRules()?.resources ?? [],
     ownerOf: ownerIn(ports.seats, store),
-    now: () => timers.now(),
-    setTimer: (run, ms) => timers.setTimer(() => live() && run(), ms),
-    clearTimer: (timer) => timers.clearTimer(timer),
+    ...clock,
   });
   const binding: SceneBinding = {
     share,
     store,
     resources,
-    book: () => (shown() ? bookSceneOf(store.getState(), floorsSeen(share, asTokenSource(renderer)), tokenRulesOf(renderer), rulesLookupOf(leaf.view), (scene, alias) => share.listedToken(scene, alias)) : null),
+    book: () => (shown() ? bookSceneOf(store.getState(), floorsSeen(share, gm.tokenSource()), gm.tokenRules(), gm.mapLayers()?.rules() ?? null, (scene, alias) => share.listedToken(scene, alias)) : null),
     get showing() {
       return !store.held;
     },

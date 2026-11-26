@@ -22,8 +22,8 @@ function withWalls(): Setup & { wall: string; door: string; steps: () => number;
   const { store } = made;
   store.getState().setActiveTool('wall');
   store.getState().setLightingTool({ mode: 'draw' });
-  const wall = store.getState().addWall({ type: 'solid', p1: { x: 100, y: 100 }, p2: { x: 300, y: 100 } });
-  const door = store.getState().addWall({ type: 'door', closed: true, p1: { x: 100, y: 500 }, p2: { x: 300, y: 500 } });
+  const wall = store.getState().addObject('walls', { type: 'solid', p1: { x: 100, y: 100 }, p2: { x: 300, y: 100 } });
+  const door = store.getState().addObject('walls', { type: 'door', closed: true, p1: { x: 100, y: 500 }, p2: { x: 300, y: 500 } });
   const history = getHistoryStore(store)!;
   history.getState().clear();
   return {
@@ -48,7 +48,7 @@ describe('the wall menu\'s Blocks', () => {
     expect(first.find((entry) => entry.label === 'Blocks')!.type).toBe('submenu');
     expect(blocksOf(first).map((entry) => entry.label)).toEqual(['Sight and light', 'Sight only', 'Light only']);
     expect(checked(first)).toEqual(['Sight and light']);
-    store.getState().updateWall(wall, { blocks: 'light' });
+    store.getState().patchObject('walls', wall, { blocks: 'light' });
     expect(checked(menu(200, 100))).toEqual(['Light only']);
   });
 
@@ -68,7 +68,7 @@ describe('the wall menu\'s Blocks', () => {
 
   it('changes every selected wall alike in one undo step, and ticks nothing while they differ', () => {
     const { wall, door, menu, kind, steps, store, wallDown } = withWalls();
-    store.getState().updateWall(door, { blocks: 'light' });
+    store.getState().patchObject('walls', door, { blocks: 'light' });
     const before = steps();
     // Both selected: a click on the wall, a Ctrl-click on the door.
     wallDown(200, 100, event(200, 100));
@@ -110,7 +110,7 @@ describe('the wall menu\'s Limited', () => {
 
   it('is off while the selected walls differ, and then makes them all limited in one undo step', () => {
     const { wall, door, menu, steps, store, wallDown } = withWalls();
-    store.getState().updateWall(door, { limited: true });
+    store.getState().patchObject('walls', door, { limited: true });
     const before = steps();
     wallDown(200, 100, event(200, 100));
     wallDown(200, 500, { ...event(200, 500), ctrlKey: true } as never);
@@ -135,7 +135,7 @@ describe('the wall menu\'s Limited', () => {
 
   it('stays with the wall when a door is placed in it: the door and both remainders are limited and block what the wall did', () => {
     const { wall, menu, store, wallDown } = withWalls();
-    store.getState().updateWall(wall, { limited: true, blocks: 'light' });
+    store.getState().patchObject('walls', wall, { limited: true, blocks: 'light' });
     menu(200, 100).find((entry) => entry.label === 'Place door')!.onClick!();
     wallDown(200, 100, event(200, 100));
     const walls = Object.values(store.getState().objects.walls).filter((w) => w.p1.y === 100);

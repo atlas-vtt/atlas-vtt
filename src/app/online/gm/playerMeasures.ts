@@ -3,6 +3,7 @@ import { levelObjects } from '../../levels/levelObjects';
 import { measureList } from '../../measure/keptMeasures';
 import type { KeptMeasure } from '../../measure/measureTypes';
 import { keepNewMeasure } from '../../stores/measuresSlice';
+import { removeObjectsIn } from '../../stores/sceneObjectWrites';
 import { measureFromFull, plainMeasure } from '../marks/index.ts';
 import type { SceneStore } from './atlasView.ts';
 import { fullNearMap } from './markCheck.ts';
@@ -69,9 +70,7 @@ export class PlayerMeasures {
     const own = new Set(this.own(from).map((measure) => measure.id));
     const gone = ids.flatMap((alias) => this.aliases.idOf(from, alias) ?? []).filter((id) => own.has(id));
     if (gone.length === 0) return;
-    this.store.setState((draft) => {
-      for (const id of gone) delete draft.objects.measures?.[id];
-    });
+    this.store.setState((draft) => removeObjectsIn(draft, gone, 'go'));
     this.aliases.keep(from, (id) => !gone.includes(id));
   }
 }

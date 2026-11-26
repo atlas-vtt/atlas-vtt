@@ -14,14 +14,14 @@ describe('Token ring colour', () => {
   });
 
   it('assigns ringColor to token via setTokenRing', () => {
-    const id = store.getState().addToken({ x: 0, y: 0, imagePath: 'dummy.png' });
+    const id = store.getState().addTokens([{ x: 0, y: 0, imagePath: 'dummy.png' }])[0]!;
     store.getState().setTokenRing(id, '#ff0000');
     const token = store.getState().objects.tokens[id];
     expect(token.ringColor).toBe('#ff0000');
   });
 
   it('clears ringColor when null provided', () => {
-    const id = store.getState().addToken({ x: 0, y: 0, imagePath: 'dummy.png', ringColor: '#00ff00' });
+    const id = store.getState().addTokens([{ x: 0, y: 0, imagePath: 'dummy.png', ringColor: '#00ff00' }])[0]!;
     store.getState().setTokenRing(id, null);
     const token = store.getState().objects.tokens[id];
     expect(token.ringColor).toBeUndefined();

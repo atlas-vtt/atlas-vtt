@@ -216,13 +216,14 @@ describe('live messages that wait', () => {
     let now = 0;
     const sent: { key: string; message: LiveMessage }[] = [];
     const live = new LiveShare({ getState: () => state, setState: () => undefined, subscribe: () => () => undefined }, {
+      send: () => undefined,
       sendLive: (body, key) => void (body.t === 'live' && sent.push({ key, message: body })),
       tokenSource: () => fakeTokenSource(() => state, () => undefined, () => 70),
       now: () => now,
       setTimer: () => 0,
       clearTimer: () => undefined,
     }, () => ({ scene: 's', alias: (id) => id.repeat(24) }));
-    live.setScene({ id: 's', lit: false });
+    live.feed.setScene({ id: 's', lit: false });
     for (const step of steps) {
       state = step;
       now += 40;
@@ -268,6 +269,7 @@ describe('the live lane of the GM\'s own drag', () => {
     const state = { ...scene([token('a', { x: 100, ...changes })], ['a']), isDragging: true, lighting };
     const sent: LiveMessage[] = [];
     const live = new LiveShare({ getState: () => state, setState: () => undefined, subscribe: () => () => undefined }, {
+      send: () => undefined,
       sendLive: (body) => void (body.t === 'live' && sent.push(body)),
       tokenSource: () => fakeTokenSource(() => state, () => undefined, () => 70),
       drawnPlaces: (ids) => new Map(ids.map((id) => [id, { x: 130, y: 100 }])),
@@ -275,7 +277,7 @@ describe('the live lane of the GM\'s own drag', () => {
       setTimer: () => 0,
       clearTimer: () => undefined,
     }, () => ({ scene: 's', alias: () => 'a'.repeat(24) }));
-    live.setScene({ id: 's', lit });
+    live.feed.setScene({ id: 's', lit });
     live.update();
     return sent;
   }

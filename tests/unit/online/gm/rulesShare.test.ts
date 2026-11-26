@@ -2,6 +2,7 @@ import { parseGmMessage, type GmMessage } from '../../../../src/app/online/proto
 import { describe, expect, it } from 'vitest';
 import type { MeasurementSettings } from '../../../../src/app/grid/measurementFormat';
 import { RulesShare, sharedRules } from '../../../../src/app/online/gm/RulesShare.ts';
+import { feedClock } from './feedClock.ts';
 import type { SceneState, SceneStore } from '../../../../src/app/online/gm/atlasView.ts';
 import { sceneState as state, shareHarness } from './shareHarness.ts';
 
@@ -74,21 +75,21 @@ describe('the rules players measure by', () => {
     const { store, set } = fakeStore(state({ grid: GRID }));
     const sent: { body: GmMessage; to: string | undefined }[] = [];
     let measurement: MeasurementSettings | null = DAGGERHEART;
-    const share = new RulesShare(store, { send: (body, to) => void sent.push({ body, to }), measurement: () => measurement, accent: () => '#112233' });
-    share.update();
+    const { feed } = new RulesShare(store, { ...feedClock(), send: (body, to) => void sent.push({ body, to }), measurement: () => measurement, accent: () => '#112233' });
+    feed.update();
     expect(sent).toEqual([]);
-    share.setScene('s1');
-    share.update();
+    feed.setScene({ id: 's1', lit: false });
+    feed.update();
     expect(sent).toHaveLength(1);
     measurement = { ...DAGGERHEART, coneAngle: 90 };
-    share.update();
+    feed.update();
     set(state({ grid: { ...GRID, snapToGrid: false } }));
-    share.update();
+    feed.update();
     expect(sent.map(({ body }) => (body.t === 'rules' ? [body.measurement.coneAngle, body.snap] : null))).toEqual([[60, true], [90, true], [90, false]]);
-    share.resend('ana');
+    feed.resend('ana');
     expect(sent.at(-1)).toEqual({ body: sent[2]?.body, to: 'ana' });
-    share.setScene(null);
-    share.update();
+    feed.setScene(null);
+    feed.update();
     expect(sent).toHaveLength(4);
   });
 

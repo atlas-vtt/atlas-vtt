@@ -154,7 +154,7 @@ export function playerViewScenes(): { scene: (options?: PlayerViewSceneOptions) 
       app, renderer, viewport, grid, tokens, audience, mapPointer, fog, measure, store, settings, events, lighting, pointer,
       setFog(operations): void { store.setState((state) => ({ objects: { ...state.objects, fog: operations } })); },
       async add(...added): Promise<void> {
-        for (const token of added) store.getState().addToken({ kind: 'token', imagePath: '', size: 1, ...token } as TokenEntity);
+        for (const token of added) store.getState().addTokens([{ kind: 'token', imagePath: '', size: 1, ...token } as TokenEntity]);
         await expect.poll(() => added.every(({ id }) => tokens.getTokenSprites()[id] instanceof Container)).toBe(true);
         await this.settle();
       },
