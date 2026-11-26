@@ -8,12 +8,11 @@
 
 import type { StoreApi } from 'zustand';
 import { runUntracked } from '../stores/history';
-import type { SceneObjectsSlice } from '../stores/sceneObjectsSlice';
 import { mapTokens } from '../tokens/offMap';
 import type { ViewState } from '../types/viewState';
 import type { Point } from '../types/visionTypes';
 import { isFollower, readMeasure } from './keptMeasures';
-import type { MeasureAnchor } from './measureTypes';
+import type { MeasureAnchor, MeasureChanges } from './measureTypes';
 import { spaceRadius, tokenStandingAt, type PlacedToken, type TokenGrid } from './tokenDistance';
 
 /** What a grouped measurement reads of its token. */
@@ -88,7 +87,9 @@ export function followerMoves(measures: Readonly<Record<string, unknown>> | unde
   return moves;
 }
 
-type FollowerStoreState = Pick<ViewState, 'objects' | 'isMapLoading'> & Pick<SceneObjectsSlice, 'patchObject'>;
+type FollowerStoreState = Pick<ViewState, 'objects' | 'isMapLoading'> & {
+  patchObject: (kind: 'measures', id: string, changes: MeasureChanges) => void;
+};
 
 /**
  * Keeps a view store's grouped measurements with their tokens: whenever tokens change, each one
