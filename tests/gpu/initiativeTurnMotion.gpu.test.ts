@@ -167,7 +167,7 @@ describe('the turn passing on and back', () => {
     const card = (id: string): HTMLElement => tracker.querySelector<HTMLElement>(`[data-turn-key="${id}"]`)!;
     const rest = { mira: box(card('e1')), rat: box(card('e2')) };
 
-    await act(async () => store.getState().nextTurn(new Set()));
+    await act(async () => store.getState().nextTurn());
     expect(card('e2').classList.contains('atlas-initiative-card--turn-flash')).toBe(true);
     holdAt(0);
     expect(box(card('e2')).top).toBeCloseTo(rest.rat.top, 0);
@@ -178,7 +178,7 @@ describe('the turn passing on and back', () => {
     expect(box(card('e2')).top).toBeCloseTo(rest.mira.top, 0);
     finishAll();
 
-    await act(async () => store.getState().previousTurn(new Set()));
+    await act(async () => store.getState().previousTurn());
     holdAt(0);
     expect(box(card('e2')).top).toBeCloseTo(rest.mira.top, 0);
     holdAt(TURN_MOVE_MS + 200);

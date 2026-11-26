@@ -18,8 +18,8 @@ interface Scene {
 /** A loaded scene at `MAP` whose combatants are `names`, numbered from 20 down in that order; `players` see. */
 function scene(names: readonly string[], players: readonly string[] = []): Scene {
   const world = createInMemoryApp();
-  world.app.vault.getFileByPath = world.app.vault.getAbstractFileByPath;
-  world.app.vault.getFolderByPath = world.app.vault.getAbstractFileByPath;
+  world.app.vault.getFileByPath = world.app.vault.getAbstractFileByPath as typeof world.app.vault.getFileByPath;
+  world.app.vault.getFolderByPath = world.app.vault.getAbstractFileByPath as typeof world.app.vault.getFolderByPath;
   const store = createViewAtlasStore(world.app, `saved-fight-${names.join('-')}`);
   store.setState({ mapPath: MAP, mapLoaded: true });
   const tokens: Record<string, TokenEntity> = {};

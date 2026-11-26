@@ -4,6 +4,7 @@ import { createInitiativeTurnActions, type TurnStoreState } from '../../src/app/
 import type { TokenEntity } from '../../src/app/types';
 import type { InitiativeEntry } from '../../src/app/types/initiativeTypes';
 import type { ConditionDefinition } from '../../src/app/types/collectionSettingsTypes';
+import { NO_RULES } from '../mocks/rulesLookup';
 
 const POISONED: ConditionDefinition = { id: 'poisoned', name: 'Poisoned', color: '#00ff00' };
 const entry = (id: string, order: number, extra: Partial<InitiativeEntry> = {}): InitiativeEntry =>
@@ -31,7 +32,7 @@ describe('conditions given from the tracker', () => {
     let state = fight();
     setCombatantCondition(state, 'a', 'poisoned', true);
     const set = (fn: (draft: TurnStoreState) => void): void => { const next = structuredClone(state); fn(next); state = next; };
-    const actions = createInitiativeTurnActions(set, () => state, () => 0.5);
+    const actions = createInitiativeTurnActions(set, () => state, { rules: NO_RULES, random: () => 0.5 });
     for (let turn = 0; turn < 5; turn++) actions.nextTurn();
     actions.previousTurn();
     expect(state.objects.tokens.g?.conditions).toEqual(['poisoned']);

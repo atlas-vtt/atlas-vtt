@@ -10,11 +10,11 @@ import { createDefaultInitiativeState } from '../types/initiativeTypes';
 import { DEFAULT_INITIATIVE_RULES } from '../gameSystems/initiativeRules';
 import { combatantModifier, ownModifier } from '../initiative/initiativeModifier';
 import { rollInitiativeDice } from '../initiative/initiativeDice';
-import { removeCombatant, renumber } from '../initiative/turnOrder';
+import { renumber } from '../initiative/turnOrder';
 import { sortCombatants } from '../initiative/sortCombatants';
 import { clearSittingOut } from '../initiative/rounds';
 import { createInitiativeTurnActions, type InitiativeTurnActions } from './initiativeTurnActions';
-import { fightDraws, roundChangesOf } from './initiativeFightStart';
+import type { FightBinding } from './initiativeFightStart';
 import { setInitiative } from '../initiative/awaitingInitiative';
 import { newId } from '../utils/ids';
 
@@ -30,8 +30,6 @@ export interface InitiativeSlice extends InitiativeTurnActions {
   // Actions
   setInitiativeTrackerOpen: (open: boolean) => void;
   addToInitiative: (entry: Omit<InitiativeEntry, 'id' | 'order' | 'isActive'>) => string;
-  /** Removes a combatant; had it the turn in a fight in turn order, the turn passes on, past the `defeated`. */
-  removeFromInitiative: (id: string, defeated?: ReadonlySet<string>) => void;
   updateInitiativeEntry: (id: string, updates: Partial<InitiativeEntry>) => void;
   /**
    * Rolls `roll` (the collection's initiative dice; a d20 when left out) for every combatant, adding
@@ -59,6 +57,7 @@ interface InitiativeStoreState {
   objects: {
     tokens: Record<string, TokenEntity>;
   };
+  mapPath?: string | null | undefined;
 }
 
 /**
@@ -97,10 +96,11 @@ const DEFAULT_ROLL = DEFAULT_INITIATIVE_RULES.roll;
 export function createInitiativeActions(
   set: ImmerSet,
   get: () => InitiativeStoreState,
-  random: () => number,
+  binding: FightBinding,
 ): Omit<InitiativeSlice, 'initiative' | 'initiativeTrackerOpen'> {
+  const { random } = binding;
   return {
-    ...createInitiativeTurnActions(set, get, random),
+    ...createInitiativeTurnActions(set, get, binding),
 
     setInitiativeTrackerOpen: (open) => set((draft) => {
       draft.initiativeTrackerOpen = open;
@@ -119,13 +119,6 @@ export function createInitiativeActions(
         draft.initiative.entries.push(newEntry);
       });
       return id;
-    },
-
-    removeFromInitiative: (id, defeated = new Set()) => {
-      const { deck } = fightDraws(get().initiative, random);
-      set((draft) => {
-        removeCombatant(draft.initiative, id, defeated, roundChangesOf(draft, deck));
-      });
     },
 
     updateInitiativeEntry: (id, updates) => set((draft) => {

@@ -1,6 +1,7 @@
 import { produce } from 'immer';
 import { describe, expect, it, vi } from 'vitest';
 import { createInitiativeActions } from '../../src/app/stores/initiativeSlice';
+import { NO_RULES } from '../mocks/rulesLookup';
 import { listedSides } from '../../src/app/initiative/sides';
 import { roundTurns } from '../../src/app/initiative/sideOrder';
 import { sceneFromFile, sceneToFile } from '../../src/app/resources/resourceFileFormat';
@@ -17,12 +18,13 @@ function d6(faces: number[]): () => number {
   return () => ((faces.shift() ?? 1) - 1) / 6;
 }
 
-/** A tracker with a combatant on each of `sides` (by id). */
-function setup(sides: string[], random: () => number, restored?: InitiativeState) {
-  const tokens = Object.fromEntries(sides.map((side) => [side, { id: side, kind: 'token', x: 0, y: 0, imagePath: '', side } as TokenEntity]));
+/** A tracker with a combatant on each of `sides` (by id); those of `defeated` have no hit points left. */
+function setup(sides: string[], random: () => number, restored?: InitiativeState, defeated: readonly string[] = []) {
+  const hitPoints = (side: string): Partial<TokenEntity> => (defeated.includes(side) ? { resources: { hp: { current: 0, max: 7 } } } : {});
+  const tokens = Object.fromEntries(sides.map((side) => [side, { id: side, kind: 'token', x: 0, y: 0, imagePath: '', side, ...hitPoints(side) } as TokenEntity]));
   const entries = sides.map((side, order): InitiativeEntry => ({ id: side, tokenId: side, name: side, initiative: 0, initiativeModifier: 0, imagePath: '', isNPC: true, order, isActive: false }));
   let state = { initiative: restored ?? { ...createDefaultInitiativeState(), entries }, initiativeTrackerOpen: true, objects: { tokens } };
-  const actions = createInitiativeActions((recipe) => { state = produce(state, recipe); }, () => state, random);
+  const actions = createInitiativeActions((recipe) => { state = produce(state, recipe); }, () => state, { rules: NO_RULES, random });
   return { actions, get: () => state };
 }
 
@@ -135,9 +137,9 @@ describe('more than two sides', () => {
   });
 
   it('pass by a side whose combatants are all defeated', () => {
-    const { actions, get } = setup(['players', 'side-allies', 'opponents'], d6([]));
+    const { actions, get } = setup(['players', 'side-allies', 'opponents'], d6([]), undefined, ['side-allies']);
     actions.startCombat(THREE);
-    actions.nextTurn(new Set(['side-allies']));
+    actions.nextTurn();
     expect(turn(get(), THREE)).toEqual([1, ['opponents']]);
   });
 

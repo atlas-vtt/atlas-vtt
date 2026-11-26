@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { produce } from 'immer';
 import { describe, expect, it, vi } from 'vitest';
 import { collectionEnemyImage, isTokenlessEnemy, nextTokenlessEnemy } from '../../src/app/initiative/tokenlessEnemies';
 import { mapEnemyImage } from '../../src/app/initiative/mapParty';
@@ -6,14 +7,15 @@ import { AssetService } from '../../src/app/services/AssetService';
 import type { App } from 'obsidian';
 import { turnColor } from '../../src/app/initiative/turnColor';
 import { renderTurnBanner } from '../../src/app/initiative/banner/turnBannerElement';
-import { turnEntries } from '../../src/app/initiative/turnHolders';
+import { createInitiativeActions } from '../../src/app/stores/initiativeSlice';
 import type { PlayerInitiativeEntry } from '../../src/app/services/playerInitiativeList';
 import { initiativeScaleOf, MAX_INITIATIVE_SCALE, renderPlayerInitiative } from '../../src/app/services/playerInitiativeView';
 import { initiativeCardMenu } from '../../src/app/react/components/initiativeCardMenu';
 import type { TokenEntity } from '../../src/app/types';
-import type { InitiativeEntry } from '../../src/app/types/initiativeTypes';
+import { createDefaultInitiativeState, type InitiativeEntry } from '../../src/app/types/initiativeTypes';
 import type { InitiativeRules } from '../../src/app/types/initiativeRulesTypes';
 import { playersListOf } from '../helpers/playersInitiative';
+import { NO_RULES } from '../mocks/rulesLookup';
 
 vi.mock('../../src/app/utils/scrollWithin', () => ({ scrollWithin: () => undefined }));
 
@@ -63,8 +65,17 @@ describe('enemies without tokens', () => {
     // An entry whose token is gone is still left out
     const listed = playersListOf({ isActive: false, round: 0, entries: [enemy, entry({ name: 'Gone', tokenId: 'gone', order: 1 })] }).combatants;
     expect(listed.map(({ entry: shown, token }) => [shown.name, token.side])).toEqual([['Enemy 1', 'opponents']]);
-    const held = turnEntries({ kind: 'sides', sides: ['opponents'], round: 1 } as never, { entries: [enemy] }, {});
-    expect(held).toEqual([enemy]);
+    // Its side is passed by while it, the side's only combatant, sits the round out
+    let state = {
+      initiative: { ...createDefaultInitiativeState(), entries: [entry({ name: 'Hero', tokenId: 'hero' }), { ...enemy, order: 1 }] },
+      initiativeTrackerOpen: true,
+      objects: { tokens: { hero: { id: 'hero', kind: 'token', x: 0, y: 0, imagePath: '', side: 'players' } as TokenEntity } },
+    };
+    const actions = createInitiativeActions((recipe) => { state = produce(state, recipe); }, () => state, { rules: NO_RULES, random: () => 0 });
+    actions.startCombat({ ...TURN_ORDER, mode: 'sides' });
+    actions.setInitiativeSitsOut('Enemy 1', true);
+    actions.nextTurn();
+    expect([state.initiative.round, state.initiative.sides?.active]).toEqual([2, 'players']);
   });
 
   it('are rolled, never moved, can be hidden from the players, and take no colour', () => {

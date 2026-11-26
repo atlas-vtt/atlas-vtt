@@ -1,5 +1,6 @@
 import { Container, type Ticker } from 'pixi.js';
-import { turnKey, currentTurn, turnTokenIds } from '../../../initiative/turnHolders';
+import { turnKey, currentTurn, turnHolders } from '../../../initiative/turnHolders';
+import type { ResourceDefinition } from '../../../resources/resourceTypes';
 import type { TokenEntity } from '../../../types';
 import type { GridState } from '../../../types/gridTypes';
 import type { InitiativeState } from '../../../types/initiativeTypes';
@@ -36,14 +37,14 @@ export interface TurnMarkerDeps {
   /** The ticker the flashes run and follow their tokens by. */
   ticker(): Ticker | null;
   reducedMotion(): boolean;
-  /** The entry ids of the defeated combatants, which hold no turn of their side; none without. */
-  defeated?(state: TurnMarkerState): ReadonlySet<string>;
+  /** The map's resources: a combatant they call defeated holds no turn of its side; nobody is defeated without. */
+  resources?(): readonly ResourceDefinition[];
   /** The time in milliseconds; `performance.now` without. */
   now?(): number;
 }
 
 /**
- * The flash on each token whose turn begins in a running fight (`turnTokenIds`): drawn above the
+ * The flash on each token whose turn begins in a running fight (`turnHolders`): drawn above the
  * lighting and below the tokens' bars and the selection, it swells in, holds a moment and fades
  * away (a plain fade with reduced motion), following its token meanwhile; then it is gone, and the
  * ticker does nothing more. A turn begins when the turn's holder or round changes (`turnKey`): not
@@ -130,7 +131,7 @@ export class TurnMarkers {
     const turn = currentTurn(state.initiative);
     const key = turn ? turnKey(turn) : null;
     // Sides are read off every combatant's token; only those on the map, on the level shown, flash
-    const ids = new Set(turnTokenIds(state.initiative, scene, this.deps.defeated?.(state)).filter((tokenId) => onMap[tokenId] !== undefined));
+    const ids = new Set(turnHolders(state.initiative, scene, this.deps.resources?.() ?? []).filter((tokenId) => onMap[tokenId] !== undefined));
     const began = key !== null && key !== this.shownKey && animate && !state.isMapLoading;
     this.shownKey = key;
     for (const [tokenId, marker] of this.markers) {

@@ -9,10 +9,10 @@ vi.mock('@/app/ui/notice', () => ({ showNotice: vi.fn() }));
 beforeEach(() => vi.mocked(showNotice).mockClear());
 
 describe('the remote\'s combat keys', () => {
-  it('starts a fight as the tracker does, with the defeated combatants of the map, and ends it', () => {
+  it('starts a fight as the tracker does, by the rules of the map, and ends it', () => {
     const { table, state, map } = fakeTable();
     expect(runTableCommand(table, { type: 'combat' })).toBeNull();
-    expect(state.startCombat).toHaveBeenCalledWith(map.rules(), new Set(['e1']));
+    expect(state.startCombat).toHaveBeenCalledWith(map.rules());
     expect(remoteCombat(table)).toEqual({ active: true, round: 1, combatants: 2, rolls: true });
     expect(runTableCommand(table, { type: 'combat' })).toBeNull();
     expect(state.endCombat).toHaveBeenCalledOnce();

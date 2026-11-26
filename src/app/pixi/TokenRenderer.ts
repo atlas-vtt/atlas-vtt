@@ -79,7 +79,6 @@ import { isModHeld } from '../keyboard/modKey';
 import type { AreaToolPointer } from './areas/PolygonAreaEditor';
 import { everyLevelObjects, levelObjects } from '../levels/levelObjects';
 import { mapTokens, sceneTokens } from '../tokens/offMap';
-import { defeatedCombatants } from '../initiative/defeated';
 
 /** What the lighting controller answers about a right-click on a door's badge. */
 export interface DoorMenuHandlers {
@@ -332,7 +331,7 @@ export class TokenRenderer {
       spriteOf: (tokenId) => this.tokenSprites[tokenId] ?? null,
       ticker: () => this.pixiApp?.ticker ?? null,
       reducedMotion: () => prefersReducedMotion(this.viewport.options?.events?.domElement ?? activeDocument.body),
-      defeated: (state) => defeatedCombatants(state.initiative.entries, sceneTokens(everyLevelObjects(state)), this.resourceDefsProvider()),
+      resources: () => this.resourceDefsProvider(),
     });
     this.collectionSync = new TokenCollectionSync(obsApp, store.getState, {
       refreshRules: () => this.refreshCollectionRules(),

@@ -23,7 +23,10 @@ function fight(names: string[], players: string[] = []): Store {
 }
 
 const idOf = (store: Store, name: string): string => store.getState().initiative.entries.find((entry) => entry.name === name)!.id;
-const ids = (store: Store, ...names: string[]): Set<string> => new Set(names.map((name) => idOf(store, name)));
+/** The combatants `names` lose every hit point: their cards show the skull. */
+const defeat = (store: Store, ...names: string[]): void => {
+  for (const name of names) store.getState().updateToken(name, { resources: { hp: { current: 0, max: 7 } } });
+};
 /** The round and the combatant with the turn. */
 const turn = (store: Store): [number, string | undefined] =>
   [store.getState().initiative.round, store.getState().initiative.entries.find((entry) => entry.isActive)?.name];
@@ -33,38 +36,39 @@ const sittingOut = (store: Store): string[] => store.getState().initiative.entri
 describe('defeated combatants in turn order', () => {
   it('are passed by, and a round still begins after the last one that acts', () => {
     const store = fight(['a', 'b', 'c', 'd']);
-    const defeated = ids(store, 'b', 'd');
-    store.getState().startCombat(undefined, defeated);
+    defeat(store, 'b', 'd');
+    store.getState().startCombat();
     const seen = [turn(store)];
-    for (let step = 0; step < 3; step++) { store.getState().nextTurn(defeated); seen.push(turn(store)); }
+    for (let step = 0; step < 3; step++) { store.getState().nextTurn(); seen.push(turn(store)); }
     expect(seen).toEqual([[1, 'a'], [1, 'c'], [2, 'a'], [2, 'c']]);
   });
 
   it('are passed by stepping back, into the round before', () => {
     const store = fight(['a', 'b', 'c']);
-    const defeated = ids(store, 'c');
+    defeat(store, 'c');
     store.getState().startCombat();
-    store.getState().nextTurn(defeated);
-    store.getState().nextTurn(defeated);
+    store.getState().nextTurn();
+    store.getState().nextTurn();
     expect(turn(store)).toEqual([2, 'a']);
-    store.getState().previousTurn(defeated);
+    store.getState().previousTurn();
     expect(turn(store)).toEqual([1, 'b']);
-    store.getState().previousTurn(defeated);
+    store.getState().previousTurn();
     expect(turn(store)).toEqual([1, 'a']);
   });
 
   it('never take the turn when the fight starts', () => {
     const store = fight(['a', 'b']);
-    store.getState().startCombat(undefined, ids(store, 'a'));
+    defeat(store, 'a');
+    store.getState().startCombat();
     expect(turn(store)).toEqual([1, 'b']);
   });
 
   it('leave the turn where it is when nobody can act', () => {
     const store = fight(['a', 'b']);
     store.getState().startCombat();
-    const everyone = ids(store, 'a', 'b');
-    store.getState().nextTurn(everyone);
-    store.getState().previousTurn(everyone);
+    defeat(store, 'a', 'b');
+    store.getState().nextTurn();
+    store.getState().previousTurn();
     expect(turn(store)).toEqual([1, 'a']);
   });
 });
@@ -101,12 +105,12 @@ describe('a fight by sides', () => {
   it('passes by a side whose combatants are all defeated or sit out, and gives an empty side its turn', () => {
     const store = fight(['hero', 'goblin', 'rat'], ['hero']);
     store.getState().startCombat(SIDES);
-    const defeated = ids(store, 'goblin');
+    defeat(store, 'goblin');
     store.getState().setInitiativeSitsOut(idOf(store, 'rat'), true);
-    store.getState().nextTurn(defeated);
+    store.getState().nextTurn();
     // The opponents' turn passed by: a new round, which clears the rat's mark
     expect(sideTurn(store)).toEqual([2, 'players']);
-    store.getState().nextTurn(defeated);
+    store.getState().nextTurn();
     expect(sideTurn(store)).toEqual([2, 'opponents']);
 
     const alone = fight(['goblin']);
@@ -141,7 +145,8 @@ describe('a fight by sides', () => {
     store.getState().nextTurn();
     store.getState().nextTurn();
     expect(sideTurn(store)).toEqual([2, 'players']);
-    store.getState().previousTurn(ids(store, 'goblin'));
+    defeat(store, 'goblin');
+    store.getState().previousTurn();
     expect(sideTurn(store)).toEqual([1, 'players']);
   });
 });
@@ -203,7 +208,8 @@ describe('removing the combatant with the turn', () => {
     store.getState().startCombat();
     store.getState().nextTurn();
     store.getState().nextTurn();
-    store.getState().removeFromInitiative(idOf(store, 'c'), ids(store, 'a'));
+    defeat(store, 'a');
+    store.getState().removeFromInitiative(idOf(store, 'c'));
     expect(turn(store)).toEqual([2, 'b']);
   });
 
@@ -265,7 +271,8 @@ describe('stepping back by sides when nobody can act', () => {
     store.getState().nextTurn();
     store.getState().nextTurn();
     expect(sideTurn(store)).toEqual([2, 'opponents']);
-    store.getState().previousTurn(ids(store, 'hero', 'goblin'));
+    defeat(store, 'hero', 'goblin');
+    store.getState().previousTurn();
     expect(sideTurn(store)).toEqual([2, 'opponents']);
   });
 });

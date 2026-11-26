@@ -1,6 +1,7 @@
 import { produce } from 'immer';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createInitiativeActions } from '../../src/app/stores/initiativeSlice';
+import { NO_RULES } from '../mocks/rulesLookup';
 import { createDefaultInitiativeState, type InitiativeEntry } from '../../src/app/types/initiativeTypes';
 import type { TokenEntity } from '../../src/app/types';
 
@@ -21,7 +22,7 @@ function setup(entries = [entry('a', 2), entry('b', -1)], values = [0, 0.99, 0.5
     try { state = produce(state, recipe); } finally { insideRecipe = false; }
   });
   const get = (): typeof state => state;
-  const actions = createInitiativeActions(set, get, random);
+  const actions = createInitiativeActions(set, get, { rules: NO_RULES, random });
   const ambient = vi.spyOn(Math, 'random');
   return { actions, random, set, get, ambient };
 }

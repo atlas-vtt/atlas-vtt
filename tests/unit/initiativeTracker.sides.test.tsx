@@ -66,7 +66,6 @@ vi.mock('../../src/app/react/components/StatblockHoverPreview', () => ({
 }));
 
 import { InitiativeTracker } from '../../src/app/react/components/InitiativeTracker';
-import { HP_RESOURCE } from '../../src/app/resources/resourceDefinitions';
 
 const token = (id: string, extra: Partial<TokenEntity> = {}): TokenEntity => ({ id, kind: 'token', x: 0, y: 0, imagePath: '', ...extra });
 const entryOf = (tokenId: string, order: number, extra: Partial<InitiativeEntry> = {}): InitiativeEntry => ({
@@ -139,7 +138,7 @@ describe('the initiative tracker of a collection that fights by sides', () => {
   it('starts the fight with the collection\'s rules and marks the side whose turn it is', () => {
     const { container, unmount } = render(<InitiativeTracker />);
     fireEvent.click(screen.getByRole('button', { name: 'Start combat' }));
-    expect(state.startCombat).toHaveBeenCalledWith(collection.rules, new Set());
+    expect(state.startCombat).toHaveBeenCalledWith(collection.rules);
     unmount();
 
     scene({ isActive: true, round: 1, sides: { first: 'players', active: 'opponents' } });
@@ -260,7 +259,7 @@ describe('a fight in turn order', () => {
     expect(menuOf(container, 0)).toEqual(expect.arrayContaining(['Sit Out This Round', 'Delay Turn']));
     clickItem('Delay Turn');
     clickItem('Sit Out This Round');
-    expect(state.delayInitiativeTurn).toHaveBeenCalledWith('entry-goblin', new Set());
+    expect(state.delayInitiativeTurn).toHaveBeenCalledWith('entry-goblin');
     expect(state.setInitiativeSitsOut).toHaveBeenCalledWith('entry-goblin', true);
   });
 
@@ -273,18 +272,6 @@ describe('a fight in turn order', () => {
     expect(menuOf(container, 3)).toContain('Act Now');
     clickItem('Act Now');
     expect(state.actNowInInitiative).toHaveBeenCalledWith('entry-hero');
-  });
-
-  it('passes the defeated combatants to the turn buttons', () => {
-    resources.definitions = [{ ...HP_RESOURCE }];
-    state.objects.tokens.rat = token('rat', { resources: { hp: { current: 0, max: 7 } } });
-    state.initiative = { ...state.initiative, isActive: true, round: 1 };
-    const { container } = render(<InitiativeTracker />);
-    const [previous, next] = container.querySelectorAll('.atlas-initiative-tracker__float--bottom button');
-    fireEvent.click(next!);
-    fireEvent.click(previous!);
-    expect(state.nextTurn).toHaveBeenCalledWith(new Set(['entry-rat']));
-    expect(state.previousTurn).toHaveBeenCalledWith(new Set(['entry-rat']));
   });
 });
 
@@ -327,7 +314,7 @@ describe('the initiative tracker of a collection that deals cards', () => {
     collection.rules = { ...collection.rules, deck: 4 };
     render(<InitiativeTracker />);
     fireEvent.click(screen.getAllByRole('button', { name: 'Start combat' }).at(-1)!);
-    expect(state.startCombat).toHaveBeenCalledWith(collection.rules, new Set());
+    expect(state.startCombat).toHaveBeenCalledWith(collection.rules);
   });
 });
 

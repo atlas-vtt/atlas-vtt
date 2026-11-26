@@ -8,6 +8,13 @@ import { actsInTurn, backToRoundBefore, beginRound, canStillAct, type RoundChang
 import { tieBreakModifier } from './tieBreak';
 import { setInitiative } from './awaitingInitiative';
 
+/** How turns in order read a fight: who is defeated, and what a round's boundary does. */
+export interface OrderTurns {
+  /** The entry ids of the defeated combatants (`defeatedCombatants`). */
+  readonly defeated: ReadonlySet<string>;
+  readonly rounds: RoundChanges;
+}
+
 /** Updates every entry's `order` to its place in the list. */
 export function renumber(entries: InitiativeEntry[]): void {
   entries.forEach((entry, index) => { entry.order = index; });
@@ -34,7 +41,7 @@ export function firstTurn(initiative: InitiativeState, defeated: ReadonlySet<str
  * The turn of the next combatant that acts; past the last one a new round begins (and `rounds`
  * hears of it). Nothing moves while nobody can act in any round.
  */
-export function nextOrderTurn(initiative: InitiativeState, defeated: ReadonlySet<string>, rounds?: RoundChanges): void {
+export function nextOrderTurn(initiative: InitiativeState, { defeated, rounds }: OrderTurns): void {
   const { entries } = initiative;
   if (!entries.some((entry) => canStillAct(entry, defeated))) return;
   let index = turnIndex(initiative);
@@ -44,7 +51,7 @@ export function nextOrderTurn(initiative: InitiativeState, defeated: ReadonlySet
     if (index >= entries.length) {
       index = 0;
       beginRound(initiative);
-      rounds?.began(initiative);
+      rounds.began(initiative);
     }
     if (actsInTurn(entries[index]!, defeated)) return giveTurn(initiative, index);
   }
@@ -54,7 +61,7 @@ export function nextOrderTurn(initiative: InitiativeState, defeated: ReadonlySet
  * The turn of the combatant before that acts; back past the first one into the round before,
  * whose marks come back. In round 1 the turn goes round to the last combatant.
  */
-export function previousOrderTurn(initiative: InitiativeState, defeated: ReadonlySet<string>, rounds?: RoundChanges): void {
+export function previousOrderTurn(initiative: InitiativeState, { defeated, rounds }: OrderTurns): void {
   const { entries } = initiative;
   if (!entries.some((entry) => canStillAct(entry, defeated))) return;
   let index = turnIndex(initiative);
@@ -64,7 +71,7 @@ export function previousOrderTurn(initiative: InitiativeState, defeated: Readonl
       index = entries.length - 1;
       if (initiative.round > 1) {
         backToRoundBefore(initiative);
-        rounds?.steppedBack(initiative);
+        rounds.steppedBack(initiative);
       }
     }
     if (actsInTurn(entries[index]!, defeated)) return giveTurn(initiative, index);
@@ -75,7 +82,7 @@ export function previousOrderTurn(initiative: InitiativeState, defeated: Readonl
  * A combatant leaves the fight. Had it the turn in a running fight in turn order, the turn passes
  * on as if it had ended (`nextOrderTurn`); otherwise the combatant now at its place takes the mark.
  */
-export function removeCombatant(initiative: InitiativeState, id: string, defeated: ReadonlySet<string>, rounds?: RoundChanges): void {
+export function removeCombatant(initiative: InitiativeState, id: string, turns: OrderTurns): void {
   const { entries } = initiative;
   const index = entries.findIndex((entry) => entry.id === id);
   if (index === -1) return;
@@ -85,7 +92,7 @@ export function removeCombatant(initiative: InitiativeState, id: string, defeate
   if (!hadTurn || entries.length === 0) return;
   if (initiative.isActive && !initiative.sides) {
     initiative.currentIndex = index - 1;
-    nextOrderTurn(initiative, defeated, rounds);
+    nextOrderTurn(initiative, turns);
     return;
   }
   giveTurn(initiative, Math.min(index, entries.length - 1));
@@ -93,9 +100,9 @@ export function removeCombatant(initiative: InitiativeState, id: string, defeate
 
 /**
  * A combatant delays: it leaves the order and waits. Was it its turn, the turn passes on to the
- * next combatant that acts.
+ * next combatant that acts, as Next turn would: past the last one a new round begins.
  */
-export function delayTurn(initiative: InitiativeState, id: string, defeated: ReadonlySet<string>): void {
+export function delayTurn(initiative: InitiativeState, id: string, turns: OrderTurns): void {
   const index = initiative.entries.findIndex((entry) => entry.id === id);
   const entry = initiative.entries[index];
   if (!entry || entry.delayed) return;
@@ -103,7 +110,7 @@ export function delayTurn(initiative: InitiativeState, id: string, defeated: Rea
   if (!entry.isActive) return;
   entry.isActive = false;
   initiative.currentIndex = index;
-  nextOrderTurn(initiative, defeated);
+  nextOrderTurn(initiative, turns);
 }
 
 /**
