@@ -51,7 +51,7 @@ export async function layoutRig(data: PluginData = memoryPluginData(), world: So
   const rig = sessionRig();
   const settings = new SettingsService(new App(), undefined, data);
   await settings.initialize();
-  rig.session.plug(new LayoutScreen({ store: settingsLayouts(settings), library: () => worldLibrary(world), outlet: rig.session }));
+  rig.session.plug(new LayoutScreen({ store: settingsLayouts(settings), library: () => worldLibrary(world), outlet: rig.session, timers: rig.timers }));
   await rig.session.start();
   rig.socket().welcome();
   await rig.settle();

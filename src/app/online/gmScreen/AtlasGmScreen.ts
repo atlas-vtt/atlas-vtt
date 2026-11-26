@@ -45,7 +45,7 @@ export class AtlasGmScreen {
     }, saved);
     this.stops = [
       plugKeysScreen(app, this.session, companionTimers()),
-      plugLayoutScreen(app, this.session),
+      plugLayoutScreen(app, this.session, companionTimers()),
       plugAtlasStatblocks(app, this.session),
       noticeKnocks(this.session, gmScreenControlShown, showNotice),
     ];

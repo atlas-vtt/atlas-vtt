@@ -93,8 +93,11 @@ export interface Rig {
   socket(room?: string): RelaySocket;
   /** A device's page under the link Atlas keeps now (the record's key unless given), connected as `id`. */
   device(id: string, key?: string): Promise<Device>;
-  /** Hands on everything Atlas and the devices sent, until neither has anything more to say. */
-  settle(): Promise<void>;
+  /**
+   * Hands on everything Atlas and the devices sent, a send window (`BATCH_MS`) of the clock at a time, until
+   * neither has said anything for `quietRounds` windows.
+   */
+  settle(quietRounds?: number): Promise<void>;
 }
 
 /** A session as Atlas runs it, with the relay played by the rig; `saved` is the record it starts from. */
@@ -165,8 +168,8 @@ export function sessionRig(saved: GmScreenRecord | null = null, create?: CreateR
       devices.set(id, { device, outbox });
       return device;
     },
-    settle: async () => {
-      for (let quiet = 0; quiet < 6;) {
+    settle: async (quietRounds = 6) => {
+      for (let quiet = 0; quiet < quietRounds;) {
         timers.advance(BATCH_MS);
         quiet = deliver() ? 0 : quiet + 1;
         await macrotask();

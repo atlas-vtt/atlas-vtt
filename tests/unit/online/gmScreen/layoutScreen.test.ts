@@ -208,7 +208,7 @@ describe('a page that knows no grid', () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
     const rig = await keysRig();
     const store = settingsLayouts({ getGmScreenKeys: () => ({}), setGmScreenKeys: () => undefined, onChange: () => () => undefined });
-    rig.session.plug(new LayoutScreen({ store, library: () => worldLibrary(rig.world), outlet: rig.session }));
+    rig.session.plug(new LayoutScreen({ store, library: () => worldLibrary(rig.world), outlet: rig.session, timers: rig.timers }));
     const older = await allowedDevice(rig, PHONE);
     const newer = await allowedDevice(rig, TABLET);
     expect(await newer.say({ t: 'layout-ask', device: 'tablet' })).toBe(true);

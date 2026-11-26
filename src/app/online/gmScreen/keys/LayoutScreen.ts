@@ -1,6 +1,13 @@
+import type { Timers } from '../../gm/companionTimers.ts';
 import { parseLayoutEdit, type DeviceMessage, type GmScreenDevice, type GmScreenLayout } from '../../protocol/index.ts';
 import type { GmScreen, GmScreenOutlet } from '../screens.ts';
 import { applyLayoutEdit, type EditResult, type KeyLibrary } from './layoutEdits.ts';
+
+/**
+ * Changes to the grid that come faster than this go to devices as one grid. A grid is up to hundreds of times
+ * the keys' state (`KEYS_GAP_MS`), and every frame into the relay is billed, once per device.
+ */
+export const LAYOUT_GAP_MS = 500;
 
 /** Where the GM's grids are kept: one per kind of device, the default until the GM changes it. */
 export interface LayoutStore {
@@ -15,6 +22,7 @@ export interface LayoutScreenDeps {
   /** What a key may name now, read for every change. */
   library(): KeyLibrary;
   readonly outlet: GmScreenOutlet;
+  readonly timers: Timers;
 }
 
 /**
@@ -29,6 +37,8 @@ export class LayoutScreen implements GmScreen {
   /** The grid each device was last sent, as JSON: a device is sent only a grid that differs. */
   private readonly shown = new Map<string, string>();
   private stopWatching: (() => void) | null = null;
+  private timer: number | null = null;
+  private sentAt = Number.NEGATIVE_INFINITY;
 
   constructor(private readonly deps: LayoutScreenDeps) {}
 
@@ -40,7 +50,7 @@ export class LayoutScreen implements GmScreen {
   message(device: string, message: DeviceMessage): void {
     if (message.t === 'layout-ask') {
       this.kinds.set(device, message.device);
-      this.stopWatching ??= this.deps.store.onChange(() => this.refresh());
+      this.stopWatching ??= this.deps.store.onChange(() => this.schedule());
       this.send(device);
       return;
     }
@@ -50,13 +60,19 @@ export class LayoutScreen implements GmScreen {
     this.deps.outlet.send({ t: 'layout-answer', id: message.id, refused: 'refused' in result ? result.refused : null }, device);
     if (kind === undefined || 'refused' in result) return;
     this.deps.store.save(kind, result.layout);
-    this.refresh();
+    this.schedule();
   }
 
   closed(device: string): void {
     this.kinds.delete(device);
     this.shown.delete(device);
-    if (this.kinds.size > 0) return;
+    if (this.kinds.size === 0) this.dispose();
+  }
+
+  /** Stops watching the store and drops a grid waiting to go: no device is left to show it. */
+  dispose(): void {
+    if (this.timer !== null) this.deps.timers.clearTimer(this.timer);
+    this.timer = null;
     this.stopWatching?.();
     this.stopWatching = null;
   }
@@ -67,17 +83,31 @@ export class LayoutScreen implements GmScreen {
     return applyLayoutEdit(this.deps.store.layout(kind), edit, kind, this.deps.library());
   }
 
-  private refresh(): void {
-    for (const device of this.deps.outlet.devices) this.send(device);
+  /** Never at once: a burst of changes goes as one grid, at most every `LAYOUT_GAP_MS`. */
+  private schedule(): void {
+    if (this.timer !== null) return;
+    const wait = Math.max(0, this.sentAt + LAYOUT_GAP_MS - this.deps.timers.now());
+    this.timer = this.deps.timers.setTimer(() => {
+      this.timer = null;
+      this.refresh();
+    }, wait);
   }
 
-  private send(device: string): void {
+  private refresh(): void {
+    let sent = false;
+    for (const device of this.deps.outlet.devices) sent = this.send(device) || sent;
+    if (sent) this.sentAt = this.deps.timers.now();
+  }
+
+  /** Sends a device its kind's grid where it holds another; true where it did. */
+  private send(device: string): boolean {
     const kind = this.kinds.get(device);
-    if (kind === undefined) return;
+    if (kind === undefined) return false;
     const layout = this.deps.store.layout(kind);
     const json = JSON.stringify(layout);
-    if (this.shown.get(device) === json) return;
+    if (this.shown.get(device) === json) return false;
     this.shown.set(device, json);
     this.deps.outlet.send({ t: 'layout', device: kind, layout }, device);
+    return true;
   }
 }

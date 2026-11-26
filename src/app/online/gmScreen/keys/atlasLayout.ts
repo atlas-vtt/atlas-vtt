@@ -4,6 +4,7 @@ import { SettingsService } from '../../../services/SettingsService';
 import { MoodStore } from '../../../soundLibrary/MoodStore';
 import { HoveredElement } from '../../../soundRemote/hoveredElement';
 import { diceKeyRolls, savedRollsOnMap } from '../../../soundRemote/remoteTable';
+import type { Timers } from '../../gm/companionTimers.ts';
 import type { GmScreenSession } from '../GmScreenSession.ts';
 import { LayoutScreen } from './LayoutScreen.ts';
 import { settingsLayouts } from './settingsLayouts.ts';
@@ -13,11 +14,11 @@ import { settingsLayouts } from './settingsLayouts.ts';
  * moods and the saved rolls of the map in front, which the Keys screen's state lists too. Without the
  * settings nothing is plugged, and devices show the long list. Returns what unplugs it.
  */
-export function plugLayoutScreen(app: App, session: GmScreenSession): () => void {
+export function plugLayoutScreen(app: App, session: GmScreenSession, timers: Timers): () => void {
   const settings = SettingsService.forApp(app);
   if (settings === undefined) return () => undefined;
   const table = remoteTableOf(app, new HoveredElement(app.workspace));
-  return session.plug(new LayoutScreen({
+  const screen = new LayoutScreen({
     store: settingsLayouts(settings),
     library: () => ({
       moodName: (id) => MoodStore.forApp(app).mood(id)?.name ?? null,
@@ -25,5 +26,11 @@ export function plugLayoutScreen(app: App, session: GmScreenSession): () => void
       rollable: (formula) => diceKeyRolls(table, formula),
     }),
     outlet: session,
-  }));
+    timers,
+  });
+  const unplug = session.plug(screen);
+  return () => {
+    unplug();
+    screen.dispose();
+  };
 }
