@@ -464,8 +464,8 @@ export class LightingRenderer implements SceneLightingView {
 
   /**
    * The GPU reset: every render texture came back blank, with lighting on or off. The saved
-   * memory is reloaded and the scene rebuilt, as a new attempt: one the reset cut short was
-   * never finished, which `LightingAttempt.begin` then reports.
+   * memory is reloaded and the scene rebuilt; an attempt the reset cut short begins again, which
+   * `LightingAttempt.begin` allows once.
    */
   private afterContextRestored(): void {
     this.attempt.restart();
