@@ -31,6 +31,7 @@ import type { MemoryPorts } from './memory/memoryPorts.ts';
 import { pixiRendererOf, TextureRasters } from './memory/TextureRasters.ts';
 import { showNotice } from '../../ui/notice';
 import { bumpOnTab, showDoorAsk } from './doors/doorAskDesk.ts';
+import type { PageCovers } from './coveredPages.ts';
 import type { NotePin } from '../../types';
 
 /** A shared view's scene and the GM's marks on it. */
@@ -50,6 +51,8 @@ export interface SceneBindingPorts {
   send(body: GmMessage, to?: string): void;
   /** Sends a live message to all ahead of other frames; a newer one of the same key replaces it while it waits. */
   sendLive(body: GmMessage, key: string, to?: string): void;
+  /** The pages live marks leave out (their book covers the map). */
+  readonly covers?: PageCovers | undefined;
   readImage(path: string): Promise<VaultImage | null>;
   /** How players are handed assets the store keeps for them; without it they are handed none. */
   readonly stored?: AssetStoring | undefined;
@@ -139,6 +142,7 @@ export function bindScene(ports: SceneBindingPorts, tab: AtlasTab, presented: Pr
     stored: ports.stored,
     send: (body, to) => live() && ports.send(body, to),
     sendLive: (body, key, to) => live() && ports.sendLive(body, key, to),
+    covers: ports.covers,
     drawnPlaces: (tokenIds) => drawnTokenPlaces(shownRenderer(), tokenIds),
     notice: (text) => live() && showNotice(text),
     seats: ports.seats,

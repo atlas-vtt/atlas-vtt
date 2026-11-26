@@ -2,13 +2,10 @@ import type { ShownRollToken } from '../../services/playerRollSource';
 import { hasLevels, resolveLevel } from '../../levels/sceneLevels';
 import type { SceneStore } from './atlasView.ts';
 import type { FloorShare } from './FloorShare.ts';
-import type { Floor } from './playerFloors.ts';
+import { floorKey } from './playerFloors.ts';
 import type { NamedToken } from './RollShare.ts';
 import type { SceneDiceParts } from './SceneDice.ts';
 import type { SceneSharePorts } from './sceneSharePorts.ts';
-
-/** The key of a floor's share: its level id, '' for a scene of one floor. */
-export const floorKey = (floor: Floor): string => floor ?? '';
 
 export interface FloorTokensDeps {
   readonly store: SceneStore;

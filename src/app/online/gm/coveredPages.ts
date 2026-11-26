@@ -1,9 +1,15 @@
-import { isRecord, parseBookCover, type GmMessage } from '../protocol/index.ts';
+import { isRecord, parseBookCover } from '../protocol/index.ts';
 import type { Timers } from './companionTimers.ts';
 
+/** The pages live marks leave out, which `SceneRoutes` reads: a message to all then reaches each page connected but those. */
+export interface PageCovers {
+  /** The pages whose book covers their map now. */
+  covered(): ReadonlySet<string>;
+  /** The players connected now. */
+  connected(): Iterable<string>;
+}
+
 export interface CoveredPagesPorts extends Timers {
-  /** Sends through the live lane: to all, or to one player. */
-  sendLive(body: GmMessage, key: string, to?: string): void;
   /** Whether the relay takes `sends` frames: only then do messages to some players cost no more frames than one to all. */
   batches(): boolean;
   /** The players connected now. */
@@ -11,6 +17,8 @@ export interface CoveredPagesPorts extends Timers {
   /** A page's book no longer covers its map: it is sent the marks as they are now. */
   uncovered(player: string): void;
 }
+
+const NONE: ReadonlySet<string> = new Set();
 
 /** The least time between two catch-ups of one page: a page flicking between screens asks for no more. */
 export const CATCH_UP_MS = 1_000;
@@ -24,8 +32,8 @@ export const CATCH_UP_MS = 1_000;
  * cheaper than one to each page left. What a GM is told of covers ends with its connection: a page
  * says it again with the whole book that follows a welcome.
  */
-export class CoveredPages {
-  private readonly covered = new Set<string>();
+export class CoveredPages implements PageCovers {
+  private readonly pages = new Set<string>();
   /** When each page last caught up, and a catch-up waiting for its turn. */
   private readonly caughtUp = new Map<string, number>();
   private readonly waiting = new Map<string, number>();
@@ -38,30 +46,32 @@ export class CoveredPages {
     // Without batches every page gets every marks message: there is nothing to leave out or catch up.
     if (!this.ports.batches()) return true;
     const message = parseBookCover(body);
-    if (message?.covered === true) this.covered.add(from);
-    else if (message !== null && this.covered.delete(from)) this.catchUp(from);
+    if (message?.covered === true) this.pages.add(from);
+    else if (message !== null && this.pages.delete(from)) this.catchUp(from);
     return true;
   }
 
   /** A player left the table: they say again whether they are covered when they are back. */
   playerLeft(player: string): void {
-    this.covered.delete(player);
+    this.pages.delete(player);
     this.forget(player);
   }
 
   /** The GM reached the relay anew: no page is taken as covered until it says so again. */
   reset(): void {
-    this.covered.clear();
+    this.pages.clear();
     for (const timer of this.waiting.values()) this.ports.clearTimer(timer);
     this.waiting.clear();
     this.caughtUp.clear();
   }
 
-  /** Sends a live message: marks only to the pages the map shows on (to all, or to one), anything else to whom it is for. */
-  sendLive(body: GmMessage, key: string, to?: string): void {
-    if (this.covered.size === 0 || body.t !== 'marks' || !this.ports.batches()) return this.ports.sendLive(body, key, to);
-    if (to !== undefined) return void (this.covered.has(to) || this.ports.sendLive(body, key, to));
-    for (const player of this.ports.connected()) if (!this.covered.has(player)) this.ports.sendLive(body, key, player);
+  /** The pages whose book covers their map; none where the relay takes no batches, where one message to all is cheaper. */
+  covered(): ReadonlySet<string> {
+    return this.ports.batches() ? this.pages : NONE;
+  }
+
+  connected(): Iterable<string> {
+    return this.ports.connected();
   }
 
   private catchUp(player: string): void {
@@ -71,7 +81,7 @@ export class CoveredPages {
     this.waiting.set(player, this.ports.setTimer(() => {
       this.waiting.delete(player);
       // Covered again meanwhile: the next uncovering catches up.
-      if (!this.covered.has(player)) this.caughtUpNow(player);
+      if (!this.pages.has(player)) this.caughtUpNow(player);
     }, wait));
   }
 
