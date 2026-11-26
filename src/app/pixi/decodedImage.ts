@@ -1,6 +1,7 @@
 import { CanvasSource, ImageSource, type TextureSourceOptions } from 'pixi.js';
 import { withDecodedImage } from '../imageProcessing/imageElement';
 import { fitWithin } from '../imageProcessing/imageLayout';
+import { textureCanvas } from './utils/textureCanvas';
 
 /** An image ready for a texture: a bitmap, or the canvas an `<img>` was drawn on. */
 export type DecodedImage = ImageBitmap | HTMLCanvasElement;
@@ -48,11 +49,10 @@ export async function decodeImage(buffer: ArrayBuffer, mimeType: string, maxSize
   }
   return withDecodedImage(blob, (img) => {
     const target = fitWithin({ width: img.naturalWidth || 512, height: img.naturalHeight || 512 }, maxSize, maxSize);
-    const canvas = createEl('canvas');
-    canvas.width = target.width;
-    canvas.height = target.height;
-    canvas.getContext('2d')!.drawImage(img, 0, 0, target.width, target.height);
-    return canvas;
+    const drawn = textureCanvas(target.width, target.height);
+    if (!drawn) throw new Error('Could not create a drawing surface for the image.');
+    drawn.context.drawImage(img, 0, 0, target.width, target.height);
+    return drawn.canvas;
   });
 }
 

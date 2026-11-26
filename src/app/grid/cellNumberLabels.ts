@@ -48,6 +48,12 @@ function rasterSizeFor(devicePixels: number): RasterSize {
  * A white digit atlas at one raster size, shared by every cell number. Labels
  * take the grid colour as a tint. Built like `BitmapFontManager.install`, but
  * without mipmaps: a mip level is picked for any downscale and blurs the digits.
+ *
+ * Destroyed once its pages come back blank: Chromium keeps an accelerated canvas's pixels in the
+ * GPU process and hands every such canvas back cleared when that process dies, and PIXI draws a
+ * glyph atlas once, on canvases of its pool, and uploads it again from them on the restored context.
+ * It draws its `Text` anew (https://github.com/pixijs/pixijs/pull/12170), but no bitmap font. The
+ * process takes all pages at once, so the first one tells. Labels drawn in it draw again in one made anew.
  */
 function ensureCellNumberFont(size: RasterSize): DynamicBitmapFont {
   const cacheKey = `${fontName(size)}-bitmap`;
@@ -63,7 +69,13 @@ function ensureCellNumberFont(size: RasterSize): DynamicBitmapFont {
   });
   font.ensureCharacters('0123456789');
   Cache.set(cacheKey, font);
-  font.once('destroy', () => Cache.remove(cacheKey));
+  const firstPage = font.pages[0]?.canvasAndContext?.canvas;
+  const lost = (): void => font.destroy();
+  firstPage?.addEventListener?.('contextrestored', lost);
+  font.once('destroy', () => {
+    Cache.remove(cacheKey);
+    firstPage?.removeEventListener?.('contextrestored', lost);
+  });
   return font;
 }
 
@@ -118,6 +130,8 @@ export class CellNumberLabels {
   /** What the shown labels were made for: the view with its margin (unclipped) and the zoom; null to lay out at the next view. */
   private reach: { bounds: GridBounds; zoom: number } | null = null;
   private lastView: CellNumberView | null = null;
+  /** The font the labels were drawn in, whose destruction draws them again (`ensureCellNumberFont`). */
+  private font: DynamicBitmapFont | null = null;
 
   constructor(source: CellNumberSource, localOrigin: Point, style: CellNumberLabelStyle, view: CellNumberView) {
     const { lattice, map, format } = source;
@@ -149,6 +163,7 @@ export class CellNumberLabels {
 
   /** Frees the labels' geometry; the container itself goes with the grid's tree. */
   destroy(): void {
+    this.font?.off('destroy', this.redraw);
     this.mesh.destroy();
   }
 
@@ -203,8 +218,19 @@ export class CellNumberLabels {
   }
 
   private draw(): void {
-    this.mesh.set(this.shown, ensureCellNumberFont(this.rasterSize), this.fontSize);
+    const font = ensureCellNumberFont(this.rasterSize);
+    if (font !== this.font) {
+      this.font?.off('destroy', this.redraw);
+      font.once('destroy', this.redraw);
+      this.font = font;
+    }
+    this.mesh.set(this.shown, font, this.fontSize);
   }
+
+  private readonly redraw = (): void => {
+    this.font = null;
+    this.draw();
+  };
 
   /** About how many cells lie in `bounds` on the map, at most. */
   private cellsIn(bounds: GridBounds): number {

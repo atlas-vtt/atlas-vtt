@@ -1,6 +1,6 @@
-import { getDomHost } from '../../host/dom';
 import { CanvasSource, Texture } from 'pixi.js';
 import { PIN_ICON_PATHS, type PinIconId } from '../../types/pinIcons';
+import { textureCanvas } from './textureCanvas';
 
 /** Edge length of a rasterised pin glyph, sharp on a badge at full zoom on high-density screens. */
 export const PIN_ICON_TEXTURE_SIZE = 128;
@@ -19,12 +19,10 @@ export function createPinIconTexture(id: PinIconId): Texture | null {
 
 /** A canvas of `size` pixels drawn on by `draw`, as a texture with mipmaps. Null where no 2D canvas is available. */
 function rasterise(size: number, draw: (ctx: CanvasRenderingContext2D) => void): Texture | null {
-  const canvas = getDomHost().createCanvas();
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return null;
-  draw(ctx);
+  const drawn = textureCanvas(size, size);
+  if (!drawn) return null;
+  const { canvas, context } = drawn;
+  draw(context);
   // Mipmaps keep the glyph clean when the map is zoomed out and markers grow small on screen
   return new Texture({
     source: new CanvasSource({ resource: canvas, autoGenerateMipmaps: true, scaleMode: 'linear' }),
