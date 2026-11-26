@@ -73,6 +73,8 @@ export interface ShareHarness {
   basis: PictureBasis | null;
   /** Whether the GM's renderer has drawn the level its view shows (on by default); until it has, a scene of several floors works that floor out on the CPU. */
   drawn: boolean;
+  /** The GM's tab the share reads instead of the one made of the fields above (`gmTabOf` over a fake renderer); none by default. */
+  gmTab: GmTab | null;
   /** The map's resource and condition definitions, or null while they cannot be read (the default). */
   rules: TokenRules | null;
   /** What the GM's own drag ruler measures; none by default. */
@@ -183,6 +185,7 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
     layers: null,
     basis: null,
     drawn: true,
+    gmTab: null,
     rules: null,
     gmRuler: null,
     marks: null,
@@ -207,7 +210,7 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
       rollRequest: (from, answer) => harness.requests(from, answer),
       foundPin: (mapPath, pinId) => harness.foundPin(mapPath, pinId),
       pinsChanged: (mapPath, pins) => harness.pinsChanged(mapPath, pins),
-      tab: () => tab,
+      tab: () => harness.gmTab ?? tab,
       atlas: () => signal.inputs.atlas,
       readImage: (path) => {
         const bytes = images.get(path);

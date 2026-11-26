@@ -5,16 +5,19 @@ import type { NotePin, TokenEntity } from '../../../../src/app/types';
 import type { SceneLevel } from '../../../../src/app/types/sceneLevelTypes';
 import type { WallSegment } from '../../../../src/app/types/wallTypes';
 import { describe, expect, it } from 'vitest';
+import type { WorkspaceLeaf } from 'obsidian';
 import { pictureBasisOf } from '../../../../src/app/online/gm/atlasMapLayers.ts';
+import { gmTabOf } from '../../../../src/app/online/gm/gmTab.ts';
 import { fakeAtlasTab, fakeLayers } from './fakeAtlasTab.ts';
 import { GENERIC_SOURCE, gmPerception, PLAYER_SETTINGS } from './gmLighting.ts';
-import { sceneState, shareHarness, token, type ShareHarness } from './shareHarness.ts';
+import { GRID_SIZE, sceneState, shareHarness, token, type ShareHarness } from './shareHarness.ts';
 
 /*
  * The floor the GM's view shows is read from the GM's renderer once the renderer has drawn it, and worked out on
  * the CPU until then, as every floor the GM does not look at is. Players must not tell the two apart: one
  * scripted session is played on a floor read each way, and every page receives the same messages, step by step.
- * The renderer answers by Atlas's own lighting over the store (`fakeAtlasTab`).
+ * The renderer answers by Atlas's own lighting over the store (`fakeAtlasTab`), handed to the share either as the
+ * harness's parts or read through the GM's tab itself (`gmTabOf`), which then also decides which way the floor is read.
  */
 
 const ANA = 'a'.repeat(20);
@@ -73,6 +76,10 @@ function scene({ tokens = {}, door = 'none' }: Step = {}): SceneState {
 }
 
 type Adapter = 'renderer' | 'cpu';
+/** How the share reaches the renderer: through the harness's parts, or through the GM's tab (`gmTabOf`). */
+type Through = 'harness' | 'gmTab';
+
+const NO_MARKS = { source: () => null, showPlayers: () => undefined, showPlayerDrags: () => undefined, showPlayerCursors: () => undefined, showPlayerStrokes: () => undefined };
 
 /** A page's ids, numbered as they first reach it: the two runs draw random ids in their own order. */
 function numbered(): (text: string) => string {
@@ -114,7 +121,7 @@ class Recording {
  * Plays the session with the ground floor read from `adapter`: the GM's renderer, which has drawn it, or the CPU,
  * while the renderer has not. Returns what each page heard and how often the renderer's players' frame was read.
  */
-async function session(adapter: Adapter): Promise<{ readonly steps: Record<string, string[]>[]; readonly rendererReads: number }> {
+async function session(adapter: Adapter, through: Through = 'harness'): Promise<{ readonly steps: Record<string, string[]>[]; readonly rendererReads: number }> {
   const online = [ANA, BEN, CARA];
   const seats: SeatSource = { onlinePlayers: () => online, ownerOf: (id) => OWNERS[id], claimOf: (_map, id) => (OWNERS[id] === undefined ? null : 'taken') };
   const start = scene();
@@ -134,6 +141,12 @@ async function session(adapter: Adapter): Promise<{ readonly steps: Record<strin
   perceive(start);
   harness.layers = fakeLayers(tab);
   harness.basis = pictureBasisOf(fakeAtlasTab(tab).renderer);
+  if (through === 'gmTab') {
+    const fake = fakeAtlasTab({ ...tab, grid: () => ({ size: GRID_SIZE }), drawn: () => adapter === 'renderer' });
+    const renderer = { ...fake.renderer, playerRollTokens: (mapPath: string, tokenIds?: readonly string[]) => (rendererReads += 1, fake.renderer.playerRollTokens(mapPath, tokenIds)) };
+    const store = { getState: () => harness.state(), setState: () => undefined, subscribe: () => () => undefined };
+    harness.gmTab = gmTabOf({ leaf: { view: fake.view } as unknown as WorkspaceLeaf, view: fake.view, store, renderer }, NO_MARKS);
+  }
   harness.presented = 'ground';
   harness.share.start();
   await harness.set(start);
@@ -188,9 +201,9 @@ async function session(adapter: Adapter): Promise<{ readonly steps: Record<strin
 }
 
 describe('the floor the GM looks at', () => {
-  it('shows every page the same, read from the GM\'s renderer or worked out on the CPU', async () => {
-    const renderer = await session('renderer');
-    const cpu = await session('cpu');
+  it.each<Through>(['harness', 'gmTab'])('shows every page the same, read from the GM\'s renderer or worked out on the CPU (renderer reached through the %s)', async (through) => {
+    const renderer = await session('renderer', through);
+    const cpu = await session('cpu', through);
     expect(renderer.rendererReads).toBeGreaterThan(0);
     expect(cpu.rendererReads).toBe(0);
     expect(cpu.steps).toEqual(renderer.steps);

@@ -8,6 +8,8 @@ import type { MapBounds } from '../../../../src/app/vision/visibility';
 import type { LightingSource } from '../../../../src/app/online/gm/atlasLighting.ts';
 import { mapLayerSourceOf, type MapLayerSource } from '../../../../src/app/online/gm/atlasMapLayers.ts';
 import type { SceneState } from '../../../../src/app/online/gm/atlasView.ts';
+import { shownRollTokens } from '../../../../src/app/pixi/playerRollTokens';
+import type { ShownRollToken } from '../../../../src/app/services/playerRollSource';
 import { gmModel, gmPerception } from './gmLighting.ts';
 
 /**
@@ -34,6 +36,16 @@ export interface FakeTabOptions {
   /** The app the view belongs to, where the user's game system presets are found. */
   readonly app?: object;
   readonly tokenSize?: number;
+  /** Whether the renderer has drawn the level its view shows (its lighting's `sightIsCurrent`); unset, it has. */
+  readonly drawn?: () => boolean;
+}
+
+/** The renderer of `fakeAtlasTab`: the parts of `PixiRendererOrchestrator` the companion reads. */
+export interface FakeRenderer {
+  readonly lighting: object;
+  getTokenRenderer(): object;
+  getGridOptions(): Record<string, unknown> | null;
+  playerRollTokens(mapPath: string, tokenIds?: readonly string[]): ReadonlyMap<string, ShownRollToken>;
 }
 
 /**
@@ -41,19 +53,21 @@ export interface FakeTabOptions {
  * renderer's `lighting` controller and token renderer), answering with Atlas's own rules: the
  * players' sight, ambient light and light reaches of the scene model, the token perception with
  * committed fog of `gmPerception` (the players' frame of another perception: committed fog over it),
- * and token sprites where the tokens stand.
+ * token sprites where the tokens stand, and the tokens the players' frame shows (`playerRollTokens`,
+ * as `PixiRendererOrchestrator` composes it).
  */
-export function fakeAtlasTab(options: FakeTabOptions): { readonly renderer: object; readonly view: object } {
+export function fakeAtlasTab(options: FakeTabOptions): { readonly renderer: FakeRenderer; readonly view: object } {
   const model = (): ReturnType<typeof gmModel>['model'] => gmModel(options.state(), options.source, options.bounds).model;
   const view = {
     isEnabled: () => options.state().lighting.enabled,
-    sightIsCurrent: () => true,
+    sightIsCurrent: () => options.drawn?.() ?? true,
     currentSight: () => model().sight,
     ambientLight: () => model().ambient,
     lightReaches: () => model().reaches,
   };
   const controller = {
     renderer: view,
+    sightAids: { deps: { rules: () => options.source.rules(), measurement: () => options.source.measurement() } },
     playerSight: () => {
       const state = options.state();
       if (!state.lighting.enabled) return undefined;
@@ -74,10 +88,11 @@ export function fakeAtlasTab(options: FakeTabOptions): { readonly renderer: obje
     },
     getTokenSprites: () => Object.fromEntries(Object.values(options.state().objects.tokens).map((token) => [token.id, { x: token.x, y: token.y, tokenSize: options.tokenSize ?? 70 }])),
   };
-  const renderer = {
+  const renderer: FakeRenderer = {
     lighting: controller,
     getTokenRenderer: () => tokenRenderer,
     getGridOptions: () => options.grid?.() ?? null,
+    playerRollTokens: (mapPath, tokenIds) => shownRollTokens(options.state(), mapPath, tokenRenderer.getTokenSprites(), () => tokenRenderer.playerFramePerception(controller.playerSight()), tokenIds),
   };
   const serviceManager = {
     getRendererService: () => ({ getRenderer: () => renderer }),
