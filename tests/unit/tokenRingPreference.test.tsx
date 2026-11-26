@@ -3,9 +3,9 @@ import { useTokenPreviews } from '../../src/app/packages/components/asset-manage
 import React from 'react';
 import { act, cleanup, render, renderHook } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
-import { Container, Graphics, Sprite, Texture, TextureSource } from 'pixi.js';
+import { Container, Mesh, Sprite, Texture, TextureSource } from 'pixi.js';
 import { TokenPortrait } from '../../src/app/packages/components/shared/TokenPortrait';
-import { syncTokenArtwork } from '../../src/app/pixi/token-renderer/tokenArtwork';
+import { syncTokenArtwork, TOKEN_ART_DISC_LABEL } from '../../src/app/pixi/token-renderer/tokenArtwork';
 import { saveTokenPreviews } from '../../src/app/packages/components/asset-manager/token-creator/saveTokenPreviews';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { AssetService } from '../../src/app/services/AssetService';
@@ -35,22 +35,31 @@ it('keeps unframed art proportional and unmasked when resized or reframed', () =
   const container = Object.assign(new Container(), { tokenData: { showRing: false }, strokeWidth: 4 }) as TokenGroupContainer;
   const sprite = new Sprite(new Texture({ source: new TextureSource({ width: 200, height: 100 }) }));
   sprite.label = 'tokenSprite';
-  const mask = new Graphics(); mask.label = 'tokenArtMask';
   const glass = new Sprite(Texture.EMPTY); glass.label = 'glassOverlay';
-  container.addChild(sprite, mask, glass);
+  container.addChild(sprite, glass);
   syncTokenArtwork(container, 100);
   // Out to where a ring's outer edge would be
   expect(sprite.width).toBe(108);
   expect(sprite.height).toBe(54);
-  expect(sprite.mask).toBeFalsy();
+  expect(sprite.visible).toBe(true);
+  expect(container.getChildByLabel(TOKEN_ART_DISC_LABEL)).toBeNull();
   expect(glass.visible).toBe(false);
   syncTokenArtwork(container, 200);
   expect(sprite.height).toBe(104);
   container.tokenData.showRing = true;
   syncTokenArtwork(container, 100);
   expect([sprite.width, sprite.height]).toEqual([100, 100]);
-  expect(sprite.mask).toBe(mask);
+  // Framed art is drawn on the token's circle by its disc, which takes the sprite's texture
+  const disc = container.getChildByLabel(TOKEN_ART_DISC_LABEL) as Mesh;
+  expect(disc.visible).toBe(true);
+  expect(disc.texture).toBe(sprite.texture);
+  expect(sprite.visible).toBe(false);
+  expect(Math.max(...disc.geometry.positions)).toBeCloseTo(50);
+  expect(Math.max(...disc.geometry.uvs)).toBeCloseTo(1);
   expect(glass.visible).toBe(true);
+  container.tokenData.showRing = false;
+  syncTokenArtwork(container, 100);
+  expect([disc.visible, sprite.visible]).toEqual([false, true]);
 });
 
 it('saves an unframed upload without baking a circular crop and persists the choice', async () => {

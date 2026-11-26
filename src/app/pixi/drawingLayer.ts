@@ -4,6 +4,7 @@ import { drawingInk, type DrawingInk } from '../annotations/drawingInk';
 import type { FilledPart } from '../annotations/quantized';
 import type { Point } from '../types/visionTypes';
 import { stampGlyph } from './mapIcons';
+import { fillWithHoles } from './utils/fillWithHoles';
 import { createLucideIconTexture } from './utils/lucideIconTexture';
 import { createGlyphTexture } from './utils/pinIconTexture';
 
@@ -30,10 +31,7 @@ function fillParts(graphics: Graphics, parts: readonly FilledPart[], color: stri
   if (plain) graphics.fill({ color, alpha });
   for (const { outline, holes } of parts) {
     if (outline.length < 3 || holes.length === 0) continue;
-    graphics.poly(flat(outline), true).fill({ color, alpha });
-    for (const hole of holes) {
-      if (hole.length >= 3) graphics.poly(flat(hole), true).cut();
-    }
+    fillWithHoles(graphics, flat(outline), holes.map(flat), { color, alpha });
   }
 }
 

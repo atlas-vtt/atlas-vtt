@@ -3,7 +3,8 @@ import { App as ObsidianApp, TFile } from 'obsidian';
 import type { ITextureCache } from './types';
 import { isResourceUrl, normalizeImagePath } from '../../utils/pathUtils';
 import { loadAsset, unloadAsset } from '../utils/assetLifecycle';
-import { decodeImage, decodedSource, imageMimeType, type DecodedImage } from '../decodedImage';
+import { decodeImage, decodedSource, imageMimeType, scaledToFit, type DecodedImage } from '../decodedImage';
+import { deviceProfile } from '../../platform/deviceProfile';
 
 /**
  * Longest edge of a token texture. Tokens render at roughly one grid cell, so
@@ -12,6 +13,14 @@ import { decodeImage, decodedSource, imageMimeType, type DecodedImage } from '..
 const MAX_TOKEN_TEXTURE_SIZE = 1024;
 /** Cache key of the placeholder used for tokens without art. */
 const DEFAULT_TOKEN_TEXTURE_KEY = 'default-token';
+
+export interface TextureCacheOptions {
+  /**
+   * Whether art no token holds stays on the GPU until `evictUnused` destroys it. Without it, PIXI's
+   * garbage collection unloads such art a minute after it was last drawn. Default: the device's budget.
+   */
+  idleArtOnGpu?: boolean;
+}
 
 /** Image paths PIXI's `Assets` loads by URL instead of reading them from the vault, besides resource URLs (`isResourceUrl`). */
 const URL_PREFIXES = ['data:', 'blob:', 'http://', 'https://'];
@@ -22,6 +31,11 @@ const URL_PREFIXES = ['data:', 'blob:', 'http://', 'https://'];
  * Every user holds the art it shows: `acquire` takes a hold, `release` drops it. Only
  * `evictUnused` destroys art, and never art that is held, so neither a token on the
  * map nor one still loading can end up with a destroyed texture.
+ *
+ * The cache also decides how long art stays on the GPU: held art is never unloaded by PIXI's
+ * garbage collection, which drops a texture that was not drawn for a minute (a hidden token, a
+ * token the players' view leaves out, a scene switched away from), so that showing it again
+ * uploads it and builds its mipmaps anew in the frame that draws it.
  */
 export class TextureCache implements ITextureCache {
   private readonly textures = new Map<string, Texture>();
@@ -33,8 +47,11 @@ export class TextureCache implements ITextureCache {
   /** Latest reload started per art path; only it may replace the texture. */
   private readonly reloadGenerations = new Map<string, number>();
   private pixiApp: Application | null = null;
+  private readonly idleArtOnGpu: boolean;
 
-  constructor(private readonly obsApp: ObsidianApp) {}
+  constructor(private readonly obsApp: ObsidianApp, options: TextureCacheOptions = {}) {
+    this.idleArtOnGpu = options.idleArtOnGpu ?? deviceProfile().budgets.idleTokenArtOnGpu;
+  }
 
   setPixiApp(app: Application): void {
     this.pixiApp = app;
@@ -45,7 +62,10 @@ export class TextureCache implements ITextureCache {
     const key = normalizeImagePath(imagePath);
     // Held from the start, so art that finishes loading after an eviction pass is still held
     this.holds.set(key, (this.holds.get(key) ?? 0) + 1);
-    return this.load(key);
+    return this.load(key).then((texture) => {
+      this.followHolds(key);
+      return texture;
+    });
   }
 
   release(imagePath: string): void {
@@ -54,6 +74,13 @@ export class TextureCache implements ITextureCache {
     const holds = (this.holds.get(key) ?? 0) - 1;
     if (holds > 0) this.holds.set(key, holds);
     else this.holds.delete(key);
+    this.followHolds(key);
+  }
+
+  /** Lets PIXI's garbage collection unload art only where no token holds it and the device keeps no idle art on the GPU. */
+  private followHolds(key: string): void {
+    const source = this.textures.get(key)?.source;
+    if (source && !source.destroyed) source.autoGarbageCollect = !this.idleArtOnGpu && !this.holds.has(key);
   }
 
   evictUnused(keepImagePaths: Iterable<string>): void {
@@ -83,12 +110,28 @@ export class TextureCache implements ITextureCache {
   }
 
   private async loadUrl(url: string): Promise<Texture> {
-    const texture = await loadAsset<Texture>({
+    const asset = await loadAsset<Texture>({
       src: url,
       parser: 'texture',
       data: { autoGenerateMipmaps: true, scaleMode: 'linear' },
     });
-    this.assetUrlByKey.set(url, url);
+    const resource: unknown = asset.source.resource;
+    const capped = resource instanceof ImageBitmap || resource instanceof HTMLImageElement || resource instanceof HTMLCanvasElement
+      ? await scaledToFit(resource, MAX_TOKEN_TEXTURE_SIZE)
+      : null;
+    if (!capped) {
+      this.assetUrlByKey.set(url, url);
+      this.textures.set(url, asset);
+      return asset;
+    }
+    // Larger than any token shows: the vault's cap, on a texture of the cache's own
+    void unloadAsset(url);
+    const existing = this.textures.get(url);
+    if (existing) {
+      capped.close();
+      return existing;
+    }
+    const texture = new Texture({ source: this.createSource(url, capped), label: url });
     this.textures.set(url, texture);
     return texture;
   }
@@ -145,6 +188,7 @@ export class TextureCache implements ITextureCache {
     this.bitmapByKey.delete(key);
     const texture = new Texture({ source: this.createSource(key, decoded), label: key });
     this.textures.set(key, texture);
+    this.followHolds(key);
     show(texture);
     previous.destroy(true);
     previousBitmap?.close();

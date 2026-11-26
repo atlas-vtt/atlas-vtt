@@ -75,6 +75,7 @@ import { AppearanceShortcuts } from './command-palette/AppearanceShortcuts';
 import { hotkeyHelpCommand } from './command-palette/hotkeyHelpCommand';
 import { mapTourCommand } from './command-palette/mapTourCommand';
 import { SettingsService } from '../../services/SettingsService';
+import { useDicePreviewWarmUp } from '../hooks/useDicePreviews';
 import { docsCommand } from './command-palette/docsCommand';
 import { armariumCommand } from './command-palette/armariumCommand';
 import { isSettingsPanelId, type CommandOption, type SettingsPanelId } from './command-palette/types';
@@ -128,6 +129,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
   const setActiveTool = useAtlasStore(state => state.setActiveTool);
   const ui = useAtlasUI();
   const { app, view } = ui;
+  useDicePreviewWarmUp(app ?? undefined, isOpen);
   const isWindowFrozen = useStore(playerWindowStore, (s) => s.isFrozen);
   const isTablePaused = useStore(tableControlsStore, (s) => s.paused);
   const isPlayerWindowFrozen = isWindowFrozen || isTablePaused;
@@ -739,9 +741,10 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
 
   // Handle keyboard navigation
   useEffect(() => {
+    const doc = overlayRef.current?.doc ?? activeDocument;
     const handleKeyDown = (e: KeyboardEvent): void => {
       // The map picker a page opened over the palette (`pickMapImage`) takes every key, Escape first, while it stands.
-      if (!isOpen || document.querySelector('.atlas-onboarding-overlay, .atlas-map-picker-container')) return;
+      if (!isOpen || doc.querySelector('.atlas-onboarding-overlay, .atlas-map-picker-container')) return;
       // Keys pressed in a dialog or context menu opened from a page belong to it.
       if ((e.target as Element | null)?.closest?.('.atlas-text-dialog-backdrop, .atlas-ctx-menu')) return;
       if (!isShortcutScopeActive(containerRef.current, view?.viewId)) return;
@@ -832,9 +835,9 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       }
     };
 
-    document.addEventListener("keydown", handleKeyDown);
+    doc.addEventListener("keydown", handleKeyDown);
     return () => {
-      document.removeEventListener("keydown", handleKeyDown);
+      doc.removeEventListener("keydown", handleKeyDown);
     };
   }, [isOpen, onClose, filteredOptions, focusedOptionIndex, searchQuery, tabs]);
 
@@ -891,9 +894,10 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       timers.add(timer);
     };
 
-    document.addEventListener("pointerdown", handleMouseDown);
+    const doc = overlayRef.current?.doc ?? activeDocument;
+    doc.addEventListener("pointerdown", handleMouseDown);
     return () => {
-      document.removeEventListener("pointerdown", handleMouseDown);
+      doc.removeEventListener("pointerdown", handleMouseDown);
       timers.forEach(timer => window.clearTimeout(timer));
     };
   }, [isOpen, isTemporarilyHidden, onClose, toolbarRef, activeSubmenu]);

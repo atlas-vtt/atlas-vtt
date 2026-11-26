@@ -44,8 +44,9 @@ export function SettingsDialog({ title, subtitle, closeLabel, canSave, hasChange
       // Unless an open list or another control in the dialog took it.
       if (event.key === 'Escape' && !handledByAnotherControl(event)) onClose();
     };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    const doc = windowRef.current?.doc ?? activeDocument;
+    doc.addEventListener('keydown', handleKeyDown);
+    return () => doc.removeEventListener('keydown', handleKeyDown);
   }, [hasChanges, onClose]);
 
   return createPortal(

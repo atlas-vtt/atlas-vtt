@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import type { Translations } from '../src/app/i18n/index.ts';
-import { packLocales, unpackLocales, type PackedLocales } from '../src/app/i18n/packedLocale.ts';
+import { lazyLocales, packLocales, storeLocales, unpackLocales, type PackedLocales } from '../src/app/i18n/packedLocale.ts';
 
 /** The module that registers every language, from the project root, and the language whose keys the others share. */
 const REGISTRY = 'src/app/i18n/languages.ts';
@@ -17,14 +17,16 @@ export function isRegistry(root: string, id: string, paths: Pick<typeof path, 'r
   return paths.relative(root, id.split('?')[0] ?? '').replaceAll('\\', '/') === REGISTRY;
 }
 
-/** The registry as the bundle gets it: the source language as it is, the others unpacked from `packed` when the module loads. */
+/**
+ * The registry as the bundle gets it: the source language as it is, and each other language as the JSON text
+ * of its packed table, unpacked when that language is first read (`lazyLocales`).
+ */
 export function packedRegistry(packed: PackedLocales): string {
-  // As a string for JSON.parse, not as a literal: a literal would take a `__proto__` key for the prototype.
-  const text = JSON.stringify(JSON.stringify(packed));
+  // Each table as text for JSON.parse, not as a literal: a literal would take a `__proto__` key for the prototype.
   return [
     `import { ${SOURCE} } from './locales/${SOURCE}';`,
-    `import { unpackLocales } from './packedLocale';`,
-    `export const TRANSLATIONS = unpackLocales(${SOURCE}, JSON.parse(${text}));`,
+    `import { lazyLocales } from './packedLocale';`,
+    `export const TRANSLATIONS = lazyLocales(${SOURCE}, ${JSON.stringify(storeLocales(packed))});`,
     '',
   ].join('\n');
 }
@@ -49,6 +51,8 @@ function verifiedPack(translations: Translations): PackedLocales {
   assert.ok(source, `"${SOURCE}" is not among the languages`);
   const pack = JSON.parse(JSON.stringify(packLocales(translations, SOURCE))) as PackedLocales;
   assert.deepStrictEqual(unpackLocales(source, pack), translations, 'the packed languages do not unpack to the same texts');
+  const stored = JSON.parse(JSON.stringify(storeLocales(pack))) as ReturnType<typeof storeLocales>;
+  assert.deepStrictEqual(Object.fromEntries(Object.entries(lazyLocales(source, stored))), translations, 'the languages as the bundle holds them do not unpack to the same texts');
   return pack;
 }
 
@@ -56,7 +60,8 @@ function verifiedPack(translations: Translations): PackedLocales {
  * Writes every translation key into the bundle once. The languages hold the same keys as English, and
  * as object literals each of them would repeat all of them. A production build therefore gets the
  * registry with English as it is and every other language as its texts alone, in the order of
- * English's keys (`src/app/i18n/packedLocale.ts`); the tables at run time are the ones the source describes.
+ * English's keys (`src/app/i18n/packedLocale.ts`), unpacked when it is first read; the tables at run time are
+ * the ones the source describes.
  *
  * Watch builds, the tests and anything else that is no production build read the source as it is.
  * A build that cannot read the languages fails, and so does one that holds the registry unpacked.

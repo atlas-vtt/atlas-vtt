@@ -7,7 +7,7 @@ import { difficultCells } from '../../mapFeatures/featureIndex';
 import { mapFeatureList } from '../../mapFeatures/mapFeatures';
 import { diceSourceOf } from './atlasDice.ts';
 import { accentColour, atlasPlayerSettings, lightingSourceOf, measurementOf, tabAreaMap } from './atlasLighting.ts';
-import { mapLayerSourceOf, rulesLookupOf, showsViewedLevel } from './atlasMapLayers.ts';
+import { mapLayerSourceOf, pictureBasisOf, rulesLookupOf, showsViewedLevel } from './atlasMapLayers.ts';
 import { asTokenSource, call, drawnTokenPlaces, tokenRulesOf, type PlayerTokenSource, type SceneStore } from './atlasView.ts';
 import { bookSceneOf, type BookScene } from './book/bookScene.ts';
 import { ResourceWrites } from './book/resourceWrites.ts';
@@ -25,6 +25,8 @@ import { SceneShare } from './SceneShare.ts';
 import type { AtlasTab, TabBinding } from './sharedTab.ts';
 import type { VaultImage } from './TokenShare.ts';
 import type { AssetStoring } from './assets/assetUses.ts';
+import type { MemoryPorts } from './memory/memoryPorts.ts';
+import { pixiRendererOf, TextureRasters } from './memory/TextureRasters.ts';
 import { showNotice } from '../../ui/notice';
 import { bumpOnTab, showDoorAsk } from './doors/doorAskDesk.ts';
 import type { NotePin } from '../../types';
@@ -49,6 +51,8 @@ export interface SceneBindingPorts {
   readImage(path: string): Promise<VaultImage | null>;
   /** How players are handed assets the store keeps for them; without it they are handed none. */
   readonly stored?: AssetStoring | undefined;
+  /** Where players' own explored memories are kept; the tab's renderer stamps them. Without it a player remembers only what their page saw. */
+  readonly memory?: Omit<MemoryPorts, 'rasters'> | undefined;
   /** Whether the binding is still the table's and its tab the same objects. */
   isLive(binding: SceneBinding): boolean;
   randomId(): string;
@@ -91,6 +95,7 @@ export function bindScene(ports: SceneBindingPorts, tab: AtlasTab, presented: Pr
   const shownRenderer = (): unknown => (shown() ? renderer : null);
   const measurement = lastWhileShown(shown, () => measurementOf(renderer) ?? lightingSourceOf(renderer)?.measurement() ?? null);
   const liveRenderer = (): unknown => (live() ? renderer : null);
+  const rasters = new TextureRasters(() => pixiRendererOf(liveRenderer()));
   const marks: GmMarks = new GmMarks(ports.app, liveRenderer, tab.store, () => {
     const grid = call(liveRenderer(), 'getGridOptions') as GridGeometry | null | undefined;
     if (grid === null || grid === undefined) return null;
@@ -122,11 +127,13 @@ export function bindScene(ports: SceneBindingPorts, tab: AtlasTab, presented: Pr
     atlasSettings: () => atlasPlayerSettings(ports.app),
     dice: () => (shown() ? diceSourceOf(leaf) : null),
     mapLayers: () => (shown() ? mapLayerSourceOf(renderer, leaf.view) : null),
+    pictureBasis: () => (shown() ? pictureBasisOf(renderer) : null),
     showNames: () => atlasPlayerSettings(ports.app).showNames,
     tokenRules: () => tokenRulesOf(shownRenderer()),
     tokenMoves: () => tokenMovesOf(shownRenderer()),
     readImage: (path) => ports.readImage(path),
     decodeMask: decodeMaskAlpha,
+    playerMemory: ports.memory === undefined ? undefined : { ...ports.memory, rasters },
     stored: ports.stored,
     send: (body, to) => live() && ports.send(body, to),
     sendLive: (body, key, to) => live() && ports.sendLive(body, key, to),
@@ -171,6 +178,7 @@ export function bindScene(ports: SceneBindingPorts, tab: AtlasTab, presented: Pr
       share.stop();
       store.dispose();
       marks.dispose();
+      rasters.dispose();
     },
   };
   return binding;

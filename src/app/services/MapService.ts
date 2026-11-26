@@ -14,6 +14,7 @@ import { settledWithin } from '../utils/settledWithin';
 import { LatestRequestQueue } from './latestRequestQueue';
 import { fillStoreFromMapFile } from './mapFileFallback';
 import { takePlacedCombatants } from '../initiative/offMapCombatants';
+import { requestSightStatblocks } from '../creatures/sightStatblocks';
 import { t } from '../i18n';
 import type { ViewCamera } from '../pixi/viewCamera';
 import { showNotice } from '../ui/notice';
@@ -139,6 +140,7 @@ export class MapService {
       );
       if (!displayed) return null;
       this.currentMapData = displayed.mapData;
+      requestSightStatblocks(this.app, displayed.mapData.objects?.tokens);
       // The level the file names, else the first; the store's levels arrive with the rehydration below
       storeState.setViewedLevel(displayed.level);
       // The tesserae in view load meanwhile; the loading screen stays until they are drawn, or for a while.
@@ -179,6 +181,8 @@ export class MapService {
         // Combatants an older version moved from beside the map onto it are on the map
         const worldRect = mapImage?.worldRect;
         if (worldRect) takePlacedCombatants(this.store, worldRect);
+        // The store holds the scene: what can be worked out of it ahead starts while the rest loads.
+        this.eventBus.emit('scene-hydrated');
       } else {
         // Failed to load map data, re-enable persistence anyway
         storeState.setPersistenceEnabled(true);

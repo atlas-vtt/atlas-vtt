@@ -1,34 +1,39 @@
-import { GM_SIGHT_POLICY, PLAYER_SIGHT_POLICY, sceneHasVision, type SightPolicy } from './tokenSightPolicy';
+import { GM_SIGHT_POLICY, PLAYER_SIGHT_POLICY, sceneHasVision } from './tokenSightPolicy';
 import { selectSight } from './selectSight';
 import type { MeasurementSettings } from '../grid/measurementFormat';
 import { sleeps } from '../lighting/lightActivity';
 import { lightZoneList, withZones } from '../lighting/lightZones';
 import { REFLECTION, wallRadius, worldTexel } from '../lighting/lightingConstants';
-import { AREA_SAMPLE_SPACING } from './areaReach';
-import { unitScaleOf } from '../lighting/lightingUnits';
+import { AREA_SAMPLE_SPACING, type AreaSampling } from './areaReach';
+import type { ReflectionSampling } from './reflectedLight';
+import type { PrebuildRequest } from './prebuild/scenePrebuild';
+import { prebuildWork, type PrebuiltScene } from './prebuild/prebuildParts';
+import { packWalls } from './prebuild/wallCodec';
+import { exploredMemoryOn, tokenVisionOn } from '../lighting/sceneLightingOptions';
+import { unitScaleOf, type UnitScale } from '../lighting/lightingUnits';
 import { sealedWalls } from '../lighting/sealWalls';
-import { SightTokens, heldForSight } from '../lighting/sightOnDrop';
-import type { HeldTokens } from '../types/viewUIState';
+import { SightTokens } from '../lighting/sightOnDrop';
 import type { ViewState } from '../types/viewState';
 import type { TokenEntity } from '../types';
 import type { SceneLighting } from '../types/lightingTypes';
 import type { WallSegment } from '../types/wallTypes';
 import { exploredShapes, type ExploredShapes } from './exploredShapes';
 import { quenched, sourcesInDarkness } from './magicalDarkness';
-import { perceptionOptions, seenSpots, type SeenSpot } from './perception';
 import type { SightRules } from './sightRules';
 import { ambientAt } from './lightLevels';
 import { SightCache, sceneSight, sightOptionsChanged, sightSources, type AmbientLight, type LightReach, type Sight } from './sight';
 import type { MapBounds } from './visibility';
 import { wallList } from './wallList';
+import { withWallsHeld } from './wallGrid';
 import type { EngineLight, EngineZone } from '../pixi/lighting/engine/types';
 import { LightReaches } from './lightReaches';
 import { LightMotion, NO_MOVING_LIGHTS } from './lightMotion';
 import { activeLights, engineLight } from './lightSources';
 import { everyLevelObjects, levelObjects } from '../levels/levelObjects';
-import { mapTokens } from '../tokens/offMap';
 import { measureList } from '../measure/keptMeasures';
 import { measureLights, sameMeasureLights, type KeptLights, type MeasureLight } from '../measure/measureLights';
+
+export { SceneSpots } from './sceneSpots';
 
 /** What a scene's lighting works out on the CPU, in world pixels: the engine draws it and the rules read it. */
 export interface SceneModel {
@@ -100,9 +105,10 @@ export class SceneModelBuilder {
    * `reflectedLight: false` builds lights without their reflection (`REFLECTION`), as before it
    * existed. With a `clock` (ms), a light that moves is built as moving (`LightMotion`): marked
    * `moving`, so the engine traces its tile cheaply; once it rests, the next update builds it
-   * whole (`restsAt`). Its reflection is there all along.
+   * whole (`restsAt`). Its reflection is there all along. `prebuildMinWork` is the work below which
+   * `prepare` leaves a scene to its build (`PREBUILD_MIN_WORK`).
    */
-  constructor(private readonly options: { reflectedLight?: boolean; clock?: () => number } = {}) {
+  constructor(private readonly options: { reflectedLight?: boolean; clock?: () => number; prebuildMinWork?: number } = {}) {
     this.motion = options.clock ? new LightMotion() : null;
   }
 
@@ -138,7 +144,8 @@ export class SceneModelBuilder {
     }
     const settings = measurement();
     const kept = keptLights(state, settings);
-    const model = this.build(state, tokens, bounds, reach, settings, rules, hasVision, kept);
+    // Nothing writes a wall while the scene is built: each wall array is checked against its sweep grid once.
+    const model = withWallsHeld(() => this.build(state, tokens, bounds, reach, settings, rules, hasVision, kept));
     this.built = { walls, lights, zones, measures, kept: measureLights(kept, tokens), tokens, grid, lighting, rules, hasVision, reach, model };
     return { model, rebuilt: true };
   }
@@ -149,16 +156,49 @@ export class SceneModelBuilder {
     this.motion?.clear();
   }
 
-  private build(state: SceneState, tokens: Record<string, TokenEntity>, bounds: MapBounds, reach: MapBounds, measurement: MeasurementSettings, rules: SightRules | undefined, hasVision: boolean, kept: KeptLights): SceneModel {
+  /**
+   * Has the light reaches and sight polygons of `state` traced by `compute` (a worker, while the
+   * scene loads) and hands them to the caches the next build reads, which take them only where
+   * they still answer what that build asks: the same walls, each light where it was, each token
+   * where it stood. Whatever the build asks besides is traced as ever.
+   */
+  async prepare(state: SceneState, bounds: MapBounds, measurement: () => MeasurementSettings, sightRules: (() => SightRules) | undefined, reach: MapBounds, compute: (request: PrebuildRequest) => Promise<PrebuiltScene | null>): Promise<void> {
+    const tokens = this.sightTokens.read(state);
+    const settings = measurement();
+    const { scale, drawn, texel, shining, sampling, reflection } = this.lighting(state, tokens, bounds, settings, keptLights(state, settings));
+    // Sealed here, where the build looks for them: the walls are the very array its caches are keyed by.
+    const walls = sealedWalls(drawn, texel);
+    // A scene switched back to finds what it traced kept with its walls: the build traces only what changed since.
+    if (this.lightReaches.knows(walls) && this.sightCache.knows(walls)) return;
+    const packed = packWalls(walls);
+    if (!packed) return;
+    const sources = tokenVisionOn(state.lighting) ? sightSources(tokens, scale, reach, sightRules?.(), GM_SIGHT_POLICY) : [];
+    // A scene this light is traced by its build in a few milliseconds: the workers would cost more than they save.
+    if (prebuildWork(walls.length, shining, sources, reflection) < (this.options.prebuildMinWork ?? PREBUILD_MIN_WORK)) return;
+    const explored = sources.length > 0 && exploredMemoryOn(state.lighting);
+    const traced = await compute({ walls: packed, lights: shining, sampling, reflection, sources, explored });
+    if (!traced) return;
+    if (traced.reaches) this.lightReaches.prime(walls, sampling, reflection, shining, traced.reaches);
+    this.sightCache.prime(walls, traced.sight);
+  }
+
+  /** What the lights of `state` are traced from: the walls as drawn and their texel, the ambient light, the lights that shine and how they are sampled. */
+  private lighting(state: SceneState, tokens: Record<string, TokenEntity>, bounds: MapBounds, measurement: MeasurementSettings, kept: KeptLights): SceneLightingInputs {
     const scale = unitScaleOf(measurement, state.grid);
-    const walls = sealedWalls(wallList(levelObjects(state).walls), worldTexel(bounds));
+    const texel = worldTexel(bounds);
     const zoneList = lightZoneList(levelObjects(state).lightZones);
     const ambient = withZones(state.lighting, zoneList);
     const shining = activeLights(levelObjects(state).lights, tokens, ambient, kept).map((light) => engineLight(light, scale));
     // An area light's outline, and the edges of every light's shadows its reflection comes from,
     // are traced a quarter cell apart, clear of the capsules the picture puts around walls.
-    const sampling = { spacing: scale.cellSize * AREA_SAMPLE_SPACING, clearance: wallRadius(worldTexel(bounds)) };
+    const sampling = { spacing: scale.cellSize * AREA_SAMPLE_SPACING, clearance: wallRadius(texel) };
     const reflection = this.options.reflectedLight === false ? null : { ...sampling, reach: REFLECTION.cells * scale.cellSize };
+    return { scale, drawn: wallList(levelObjects(state).walls), texel, zoneList, ambient, shining, sampling, reflection };
+  }
+
+  private build(state: SceneState, tokens: Record<string, TokenEntity>, bounds: MapBounds, reach: MapBounds, measurement: MeasurementSettings, rules: SightRules | undefined, hasVision: boolean, kept: KeptLights): SceneModel {
+    const { scale, drawn, texel, zoneList, ambient, shining, sampling, reflection } = this.lighting(state, tokens, bounds, measurement, kept);
+    const walls = sealedWalls(drawn, texel);
     const moving = this.motion?.note(shining, this.options.clock!()) ?? NO_MOVING_LIGHTS;
     const everyReach = this.lightReaches.sync(shining, walls, sampling, reflection);
     // A light whose flame stands in magical darkness it does not outshine gives nothing: the picture and the rule both leave it out.
@@ -167,6 +207,7 @@ export class SceneModelBuilder {
     const lights = shining.flatMap((light, i) => (out[i] ? [] : [withRule(moving.has(light.key) ? { ...light, moving: true } : light, everyReach[i]!)]));
     const reaches = everyReach.filter((_, i) => !out[i]);
     const sources = sourcesInDarkness(sightSources(tokens, scale, reach, rules, GM_SIGHT_POLICY), ambient, reaches);
+    this.sightCache.useWalls(walls);
     this.sightCache.retain(new Set(sources.map(source => source.tokenId)));
     const gmSight = sceneSight(state.lighting, sources, walls, this.sightCache, { sceneHasVision: hasVision });
     const sight = selectSight(gmSight, tokens, PLAYER_SIGHT_POLICY);
@@ -177,6 +218,25 @@ export class SceneModelBuilder {
 }
 
 const NO_ZONES: readonly EngineZone[] = [];
+
+/**
+ * The work (`prebuildWork`) below which a scene is not traced ahead (`prepare`): Lockwood Manor
+ * (some 300 walls, five vision tokens: about 3,000) traces in about 20 ms on the main thread; the
+ * level of the 18,649-wall cave shown (2,741 walls, area lights that reflect: about 240,000) took
+ * 190 ms, the stress scene more.
+ */
+const PREBUILD_MIN_WORK = 50_000;
+
+interface SceneLightingInputs {
+  scale: UnitScale;
+  drawn: readonly WallSegment[];
+  texel: number;
+  zoneList: ReturnType<typeof lightZoneList>;
+  ambient: AmbientLight;
+  shining: EngineLight[];
+  sampling: AreaSampling;
+  reflection: ReflectionSampling | null;
+}
 
 /** The kept areas of the level shown with what places their lights (`measureLights`). */
 function keptLights(state: SceneState, measurement: MeasurementSettings): KeptLights {
@@ -201,44 +261,4 @@ function awakeLightsChanged(lights: ViewState['objects']['lights'], before: Ambi
     if (sleeps(light, ambientAt(light, before)) !== sleeps(light, ambientAt(light, after))) return true;
   }
   return false;
-}
-
-interface SpotInputs {
-  sight: Sight;
-  model: SceneModel;
-  tokens: Record<string, TokenEntity>;
-  held: HeldTokens;
-  lighting: SceneLighting;
-  grid: ViewState['grid'];
-  rules: SightRules | undefined;
-}
-
-/**
- * The tokens shown within their footprint where the picture of `policy` (unset, the players') is
- * dark (`seenSpots`). They are read where the store has them, not where a drag began: a party token
- * dragged through the dark is shown along the way, as far as the sight that stayed behind reaches.
- * Worked out only when the model, the tokens, the held tokens, the lighting or the rules change, and
- * the same list is returned while its spots stay the same, so a view that compares lists draws nothing anew.
- */
-export class SceneSpots {
-  private inputs: SpotInputs | null = null;
-  private spots: SeenSpot[] = [];
-
-  constructor(private readonly policy: SightPolicy = PLAYER_SIGHT_POLICY) {}
-
-  update(model: SceneModel, state: SceneState, measurement: () => MeasurementSettings, sightRules?: () => SightRules, sight: Sight = model.sight): SeenSpot[] {
-    const inputs: SpotInputs = { sight, model, tokens: mapTokens(levelObjects(state)), held: heldForSight(state), lighting: state.lighting, grid: state.grid, rules: sightRules?.() };
-    const last = this.inputs;
-    this.inputs = inputs;
-    if (last && (Object.keys(inputs) as (keyof SpotInputs)[]).every((key) => last[key] === inputs[key])) return this.spots;
-    const { cellSize } = unitScaleOf(measurement(), state.grid);
-    const spots = seenSpots(sight, withZones(state.lighting, model.ambient.zones ?? []), model.reaches, inputs.tokens, cellSize, model.walls, perceptionOptions(inputs.rules, inputs.held, this.policy));
-    // The footprints are cut by the walls: with other walls they are other footprints at the same places.
-    if (last?.model.walls !== model.walls || !sameSpots(spots, this.spots)) this.spots = spots;
-    return this.spots;
-  }
-}
-
-function sameSpots(a: readonly SeenSpot[], b: readonly SeenSpot[]): boolean {
-  return a.length === b.length && a.every((spot, i) => spot.x === b[i]!.x && spot.y === b[i]!.y && spot.radius === b[i]!.radius);
 }

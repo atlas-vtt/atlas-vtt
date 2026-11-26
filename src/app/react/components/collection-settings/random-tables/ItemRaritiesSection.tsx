@@ -2,9 +2,18 @@ import React, { useState } from 'react';
 import { GripVertical, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { Button } from '../../../../packages/components/primitives/button';
 import { LabelTooltip } from '../../../../packages/components/primitives/tooltip';
-import { RARITY_LABELS, RARITY_TONES, type RarityTone } from '../../../../loot/lootRarity';
+import { RARITY_TONES, type RarityTone } from '../../../../loot/lootRarity';
 import type { RarityOption } from '../../../../types/randomTableTypes';
 import { t } from '../../../../i18n';
+
+// Here, not in `lootRarity`, which the vision worker imports and which so stays free of texts.
+const RARITY_LABELS: Record<RarityTone, string> = {
+  common: t('loot.rarity.common'),
+  uncommon: t('loot.rarity.uncommon'),
+  rare: t('loot.rarity.rare'),
+  epic: t('loot.rarity.epic'),
+  legendary: t('loot.rarity.legendary'),
+};
 
 interface ItemRaritiesSectionProps {
   /** The words the collection reads: its own, else its system's. */

@@ -26,7 +26,7 @@ export const toolbar: Translation = {
   'toolbar.notePin': 'Ferramenta de alfinete de nota',
   'toolbar.pinOptions': 'Opções do alfinete',
   'toolbar.stairs': 'Escadas',
-  'toolbar.stairsNeedLevels': 'Escadas ligam os andares de uma cena. Primeiro adicione um andar na página Andares da cena da paleta de comandos.',
+  'toolbar.stairsNeedLevels': 'Escadas precisam de um segundo andar. Adicione-o em Andares da cena',
   'toolbar.rollDice': 'Bandeja de dados',
   'toolbar.optionsOf': 'Opções de {label}',
   'toolbar.moveSelect': 'Mover/Selecionar',

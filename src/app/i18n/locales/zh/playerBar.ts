@@ -9,7 +9,7 @@ export const playerBar: Translation = {
   'playerBar.curtainDown': '隐藏地图',
   'playerBar.curtainUp': '显露地图',
   'playerBar.toggleCurtain': '在玩家窗口上隐藏或显露地图',
-  'playerBar.playersSee': '玩家看到的画面',
+  'playerBar.playersSee': '游戏桌设置',
   'playerBar.close': '关闭玩家窗口',
   'playerBar.freeze': '暂停玩家视图',
   'playerBar.unfreeze': '继续：玩家视图重新跟随你',

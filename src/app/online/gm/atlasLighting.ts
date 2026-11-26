@@ -43,6 +43,8 @@ export interface AtlasPlayerSettings {
   readonly playersDraw?: boolean;
   /** Whether players may ask to open doors (the player view's setting); off when it cannot be read. */
   readonly playersOpenDoors?: boolean;
+  /** Whether every player sees through every player character's vision (the player view's setting); off, each through their own characters' alone, and off when it cannot be read. */
+  readonly sharedVision?: boolean;
   /** How the fog's edge looks (the Maps setting), for players as for the GM; unset when it cannot be read, which players see as a hard edge. */
   readonly fogEdge?: FogEdge;
 }
@@ -90,6 +92,7 @@ export function atlasPlayerSettings(app: App): AtlasPlayerSettings {
     movesOnTurn: field(turn, 'movesOnTurn') === true,
     playersDraw: field(view, 'playersDraw') === true,
     playersOpenDoors: field(view, 'playersOpenDoors') === true,
+    sharedVision: field(view, 'sharedVision') === true,
     ...(fogEdge !== undefined && { fogEdge }),
   };
 }
@@ -131,8 +134,7 @@ export function tabAreaMap(renderer: unknown): AreaMap | null {
 
 /** The theme's accent colour as `#rrggbb`, resolved by the document itself; null when it gives none. */
 export function accentColour(doc: Document): string | null {
-  const probe = doc.body.createSpan();
-  probe.setCssProps({ color: 'var(--interactive-accent)' });
+  const probe = doc.body.createSpan({ cls: 'atlas-color-probe atlas-color-probe--accent' });
   const resolved = doc.defaultView?.getComputedStyle(probe).color ?? '';
   probe.remove();
   const channels = /^rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(resolved)?.slice(1, 4);

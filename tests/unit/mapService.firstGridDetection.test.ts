@@ -11,7 +11,7 @@ vi.mock('../../src/app/pixi/spectralEngine/spectralEngineService', () => ({
   detectGridOfMap: async () => ({ result: await detect(), hits: null }),
 }));
 vi.mock('../../src/app/pixi/mosaicCanvas/mapProcessing', () => ({
-  MapProcessing: { forApp: () => ({ whenDone: () => Promise.resolve() }) },
+  MapProcessing: { forApp: () => ({ whenReadable: () => Promise.resolve() }) },
 }));
 
 import { MapLoader, type LoadedMap } from '../../src/app/MapLoader';

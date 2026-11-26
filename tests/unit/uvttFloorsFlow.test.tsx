@@ -71,7 +71,7 @@ beforeEach(async () => {
   await assets.createCollection(COLLECTION);
   container = document.body.createDiv({ cls: 'atlas-asset-manager-container' });
   answer = (request) => ({ kind: 'levels', sceneName: request.sceneName, floors: request.floors });
-  renderHook(() => useUvttImport({ app: vault.app, assetService: assets, isOpen: true, isMapCreatorOpen: false, isBusy: false, collectionId: COLLECTION, onSceneOpened, chooseFloors }));
+  renderHook(() => useUvttImport({ app: vault.app, assetService: assets, windowRef: { current: null }, isOpen: true, isMapCreatorOpen: false, isBusy: false, collectionId: COLLECTION, onSceneOpened, chooseFloors }));
 });
 afterEach(() => { cleanup(); container.remove(); vi.unstubAllGlobals(); vi.restoreAllMocks(); AssetService.resetInstance(); });
 

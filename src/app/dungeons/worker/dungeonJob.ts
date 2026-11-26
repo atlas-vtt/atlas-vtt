@@ -8,7 +8,8 @@ import type { Vec } from '../render/geometry';
 import { visibleDungeon } from '../render/visibleDungeon';
 import { treeLine } from '../scene/forestWalls';
 import type { DungeonStyle, DungeonView } from '../style';
-import { drawingCanvas, learnCanvasLimit, nextCanvasStep } from '../../imageProcessing/canvasLimit';
+import { drawingCanvas, learnCanvasLimit, nextCanvasStep, releaseCanvas } from '../../imageProcessing/canvasLimit';
+import { drawInBands } from './mapBands';
 
 /**
  * What the dungeon worker does: generate a dungeon (or take one as it is) and draw its floor plan
@@ -84,23 +85,32 @@ function thumbnailOf(model: DungeonModel, job: DungeonJob, output: Extract<Dunge
 }
 
 /**
- * The canvas a map is drawn on, and the cell size that fits it: the size asked for where this realm
- * draws on a canvas that large, else the largest it draws on (`canvasLimit.ts`: WebKit on a tablet
- * leaves a canvas above its own size blank). Every floor of a dungeon gets the same answer.
+ * The cell size a map is drawn at: the size asked for where this realm draws a canvas of the whole
+ * map, else the largest it draws on (`canvasLimit.ts`: WebKit on a tablet leaves a canvas above
+ * its own size blank). Every floor of a dungeon gets the same answer.
  */
-async function mapCanvas(model: DungeonModel, view: DungeonView, output: Extract<DungeonOutput, { kind: 'map' }>): Promise<{ pxPerCell: number; canvas: OffscreenCanvas; ctx: OffscreenCanvasRenderingContext2D }> {
+async function mapPxPerCell(model: DungeonModel, view: DungeonView, output: Extract<DungeonOutput, { kind: 'map' }>): Promise<number> {
   await learnCanvasLimit();
   for (let maxSide = output.maxSide; ;) {
     const pxPerCell = suggestedPxPerCell(model, output.pxPerCell, view, output.maxPixels, maxSide);
-    // The canvas must have the size of the layout renderMap draws
     const size = mapPixelSize(model, pxPerCell, view);
     const canvas = drawingCanvas({ width: Math.max(1, size.width), height: Math.max(1, size.height) });
-    const ctx = canvas?.getContext('2d');
-    if (canvas && ctx) return { pxPerCell, canvas, ctx };
+    if (canvas) {
+      releaseCanvas(canvas);
+      return pxPerCell;
+    }
     const step = nextCanvasStep(Math.max(size.width, size.height));
     if (step === undefined) throw new Error('Could not draw the dungeon: no 2D canvas.');
     maxSide = step;
   }
+}
+
+async function pngOf(bitmap: ImageBitmap): Promise<Blob> {
+  const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+  const renderer = canvas.getContext('bitmaprenderer');
+  if (!renderer) throw new Error('Could not draw the dungeon: no canvas to encode it.');
+  renderer.transferFromImageBitmap(bitmap);
+  return canvas.convertToBlob({ type: 'image/png' });
 }
 
 export async function runDungeonJob(job: DungeonJob): Promise<DungeonRendered> {
@@ -117,11 +127,12 @@ export async function runDungeonJob(job: DungeonJob): Promise<DungeonRendered> {
     const { svg, layout } = renderMapSvg(model, style, view, { pxPerCell, ...look });
     return { model, map: layout, image: { type: 'svg', svg } };
   }
-  const { pxPerCell, canvas, ctx } = await mapCanvas(model, view, output);
-  const map = renderMap(ctx, model, style, view, { pxPerCell, ...look });
-  const image: RenderedImage = output.bitmap
-    ? { type: 'bitmap', bitmap: canvas.transferToImageBitmap() }
-    : { type: 'png', blob: await canvas.convertToBlob({ type: 'image/png' }) };
+  const pxPerCell = await mapPxPerCell(model, view, output);
+  const map = mapLayout(model, pxPerCell, view);
+  // In bands, read back as drawn: the bitmap lives in the worker's memory, not on the graphics card
+  const pixels = await drawInBands(map.widthPx, map.heightPx, (ctx) => renderMap(ctx, model, style, view, { pxPerCell, ...look }));
+  const bitmap = await createImageBitmap(pixels, { premultiplyAlpha: 'none' });
+  const image: RenderedImage = output.bitmap ? { type: 'bitmap', bitmap } : { type: 'png', blob: await pngOf(bitmap) };
   const floor = output.floor ?? 0;
   const trees = output.treeLine && model.floors[floor]?.forest ? treeLine(visibleDungeon(model, view, floor), style, viewBounds(map, 0)) : undefined;
   return { model, map, image, ...(trees && { treeLine: trees }) };

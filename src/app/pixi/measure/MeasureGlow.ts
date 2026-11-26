@@ -1,3 +1,4 @@
+import { getDomHost } from '../../host/dom';
 import { BlurFilter, Graphics, type Container } from 'pixi.js';
 import type { Point } from '../../types/visionTypes';
 import { prefersReducedMotion } from '../../utils/motion';
@@ -52,7 +53,7 @@ export class MeasureGlow {
     g.stroke({ width: GLOW.width / onScreen, color, cap: 'round', join: 'round' });
     g.pivot.set(about.x, about.y);
     g.position.set(about.x, about.y);
-    const swell = prefersReducedMotion(document.body) ? 0 : GLOW.swell;
+    const swell = prefersReducedMotion(getDomHost().activeDocument().body) ? 0 : GLOW.swell;
     g.visible = true;
     this.run = new ValueTransition(0, GLOW.ms, (progress) => {
       // Up within the first part of its time, then a long breath out.

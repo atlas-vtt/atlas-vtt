@@ -55,7 +55,7 @@ export function TokenGrid({ items, media, selection }: TokenGridProps): React.JS
   useEffect(() => {
     if (!scroller) return undefined;
     const onContextMenu = (event: MouseEvent): void => {
-      const card = event.target instanceof Element ? event.target.closest<HTMLElement>(CARD) : null;
+      const card = event.targetNode?.instanceOf(Element) ? event.targetNode.closest<HTMLElement>(CARD) : null;
       const target = card ? targetOf(card) : null;
       if (!target) return;
       event.preventDefault();

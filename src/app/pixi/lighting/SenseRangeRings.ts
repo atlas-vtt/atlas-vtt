@@ -233,7 +233,7 @@ function dashCount(ring: SenseRing, zoom: number): number {
 
 function drawLabel(text: string): Container {
   const colors = canvasBadgeColors();
-  const font = getComputedStyle(document.body).getPropertyValue('--font-interface').trim() || FALLBACK_FONT;
+  const font = getComputedStyle(activeDocument.body).getPropertyValue('--font-interface').trim() || FALLBACK_FONT;
   const label = new Text({
     text,
     style: new TextStyle({ fontFamily: font, fontSize: LABEL_FONT_SIZE, fontWeight: '500', fill: colors.stroke }),

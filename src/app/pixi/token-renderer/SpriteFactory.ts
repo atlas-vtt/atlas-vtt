@@ -1,4 +1,4 @@
-import { syncTokenArtwork } from './tokenArtwork';
+import { syncTokenArtwork, TOKEN_ART_DISC_LABEL } from './tokenArtwork';
 /**
  * Token Sprite Factory
  * 
@@ -57,17 +57,8 @@ export class SpriteFactory implements ITokenSpriteFactory {
     sprite.eventMode = 'none';
     sprite.interactive = false;
 
-    // Create circular mask
-    const circleMask = new Graphics();
-    circleMask.label = 'tokenArtMask';
-    const maskRadius = tokenSize / 2;
-    circleMask.circle(0, 0, maskRadius);
-    circleMask.fill(0xffffff);
-    circleMask.eventMode = 'none';
-    circleMask.interactive = false;
-    sprite.mask = circleMask;
-
     // Create invisible background for z-ordering (no longer interactive)
+    const maskRadius = tokenSize / 2;
     const tokenBackground = new Graphics();
     tokenBackground.circle(0, 0, maskRadius);
     tokenBackground.fill({ color: 0x000000, alpha: 0 });
@@ -83,7 +74,6 @@ export class SpriteFactory implements ITokenSpriteFactory {
 
     // Add children to container
     tokenGroup.addChild(tokenBackground);
-    tokenGroup.addChild(circleMask);
     tokenGroup.addChild(sprite);
 
     // Add glass dome overlay for polished look
@@ -107,15 +97,7 @@ export class SpriteFactory implements ITokenSpriteFactory {
       sprite.height = tokenSize;
     }
 
-    // Update mask
     const maskRadius = tokenSize / 2;
-    const circleMask = sprite?.mask as Graphics;
-    if (circleMask) {
-      circleMask.clear();
-      circleMask.circle(0, 0, maskRadius);
-      circleMask.fill(0xffffff);
-      circleMask.hitArea = new Circle(0, 0, maskRadius);
-    }
 
     // Update hit area
     if (sprite) {
@@ -151,7 +133,7 @@ export class SpriteFactory implements ITokenSpriteFactory {
   /** Turns the token's art, its ring and the overlays other plugins draw on it, never the container: its UI and glass stay upright. */
   updateTokenRotation(container: Container, rotation: number): void {
     const radians = (rotation * Math.PI) / 180;
-    for (const label of ['tokenSprite', 'tokenRing', OVERLAYS_LABEL]) {
+    for (const label of ['tokenSprite', TOKEN_ART_DISC_LABEL, 'tokenRing', OVERLAYS_LABEL]) {
       const part = container.getChildByLabel(label);
       if (part) part.rotation = radians;
     }

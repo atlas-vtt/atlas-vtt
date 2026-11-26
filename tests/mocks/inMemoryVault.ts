@@ -246,6 +246,8 @@ export function createInMemoryApp(seed: InMemoryVaultSeed = {}): InMemoryApp {
     layoutReady: true,
     onLayoutReady: vi.fn((callback: () => void) => callback()),
     getLeavesOfType: vi.fn(() => []),
+    // The main window's workspace element; read late, as a node test has no DOM.
+    get containerEl(): HTMLElement { return document.body; },
     iterateAllLeaves: vi.fn(),
     on: vi.fn(() => ({})),
     offref: vi.fn(),

@@ -193,6 +193,31 @@ describe('the dungeon worker client', () => {
     vi.useRealTimers();
   });
 
+  it('draws renders asked for aside on whichever worker is least busy, helpers first', async () => {
+    const workers: FakeWorker[] = [];
+    const client = new DungeonWorkerClient({
+      createWorker: () => {
+        const worker = new FakeWorker();
+        workers.push(worker);
+        return worker as unknown as Worker;
+      },
+      helpers: 2,
+    });
+
+    const first = client.render(job(1));
+    const aside = [2, 3, 4].map(seed => client.renderAside(job(seed)));
+    // The main worker draws the first, the idle helpers the next two; the last waits for the first helper, as busy as any
+    expect(workers.map(worker => worker.sent.map(m => m.job.request.seed))).toEqual([[1], [2], [3]]);
+
+    workers[1]!.answer({ id: workers[1]!.lastJob(), ok: true, result: rendered() });
+    await flush();
+    expect(workers[1]!.sent.map(m => m.job.request.seed)).toEqual([2, 4]);
+    for (const worker of workers) worker.answer({ id: worker.lastJob(), ok: true, result: rendered() });
+    await expect(first).resolves.not.toBeNull();
+    await expect(Promise.all(aside)).resolves.toHaveLength(3);
+    client.dispose();
+  });
+
   it('fails the job of a worker that crashed and starts a new one for the next', async () => {
     const workers: FakeWorker[] = [];
     const client = clientWith(workers);

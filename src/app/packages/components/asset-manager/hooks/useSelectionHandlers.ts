@@ -65,7 +65,9 @@ export function useSelectionHandlers(
   visibleIds: React.RefObject<VisibleIds>,
   folders: Folder[],
   activeTab: Tab,
-  isOpen: boolean
+  isOpen: boolean,
+  /** An element of the asset manager: Mod+A is listened for in its document. */
+  windowRef: React.RefObject<HTMLElement | null>,
 ): SelectionState {
   const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([]);
   const [selectedFolderIds, setSelectedFolderIds] = useState<string[]>([]);
@@ -218,8 +220,9 @@ export function useSelectionHandlers(
         handleSelectAll();
       }
     };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
+    const doc = windowRef.current?.doc ?? activeDocument;
+    doc.addEventListener('keydown', handler);
+    return () => doc.removeEventListener('keydown', handler);
   }, [isOpen, handleSelectAll]);
 
   const sortBy = resolveSortOption(chosenSortBy, activeTab);

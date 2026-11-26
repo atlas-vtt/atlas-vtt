@@ -72,7 +72,7 @@ export const NoteContent: React.FC<NoteContentProps> = ({ notePath, app, onFocus
 
               if (containerRef.current) {
                 containerRef.current.empty();
-                (document.activeElement as HTMLElement)?.blur();
+                (containerRef.current.doc.activeElement as HTMLElement | null)?.blur();
                 ws.openPopover(leafRef.current, containerRef.current, { focus: false });
               }
 
@@ -131,7 +131,7 @@ export const NoteContent: React.FC<NoteContentProps> = ({ notePath, app, onFocus
             const viewContainer = leafRef.current.view.containerEl;
             if (viewContainer) {
               // Remove focus from any active element to prevent CodeMirror errors
-              (document.activeElement as HTMLElement)?.blur();
+              (containerRef.current.doc.activeElement as HTMLElement | null)?.blur();
 
               containerRef.current.appendChild(viewContainer);
 

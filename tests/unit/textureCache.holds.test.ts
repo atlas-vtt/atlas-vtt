@@ -1,14 +1,14 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { TextureCache } from '../../src/app/pixi/token-renderer/TextureCache';
+import { TextureCache, type TextureCacheOptions } from '../../src/app/pixi/token-renderer/TextureCache';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { stubJsdomGraphics } from '../mocks/jsdomGraphics';
 
 const GOBLIN = 'tokens/goblin.png';
 const ORC = 'tokens/orc.png';
 
-function createCache(): TextureCache {
-  return new TextureCache(createInMemoryApp({ files: { [GOBLIN]: 'goblin-bytes', [ORC]: 'orc-bytes' } }).app);
+function createCache(options?: TextureCacheOptions): TextureCache {
+  return new TextureCache(createInMemoryApp({ files: { [GOBLIN]: 'goblin-bytes', [ORC]: 'orc-bytes' } }).app, options);
 }
 
 describe('TextureCache holds', () => {
@@ -128,5 +128,46 @@ describe('TextureCache holds', () => {
     expect(await cache.reload(GOBLIN, () => undefined)).toBe(false);
     expect(await cache.acquire(GOBLIN)).toBe(before);
     expect(before.destroyed).toBe(false);
+  });
+});
+
+describe('TextureCache GPU lifetime', () => {
+  let restoreGraphics: () => void;
+  beforeEach(() => {
+    restoreGraphics = stubJsdomGraphics();
+  });
+  afterEach(() => restoreGraphics());
+
+  it('keeps held art out of PIXI\'s garbage collection and lets it go once no token holds it', async () => {
+    const cache = createCache({ idleArtOnGpu: false });
+    const goblin = await cache.acquire(GOBLIN);
+    await cache.acquire(GOBLIN);
+    expect(goblin.source.autoGarbageCollect).toBe(false);
+
+    cache.release(GOBLIN);
+    expect(goblin.source.autoGarbageCollect).toBe(false);
+    cache.release(GOBLIN);
+    expect(goblin.source.autoGarbageCollect).toBe(true);
+
+    await cache.acquire(GOBLIN);
+    expect(goblin.source.autoGarbageCollect).toBe(false);
+  });
+
+  it('keeps art no token holds on the GPU until it is evicted where the device keeps idle art', async () => {
+    const cache = createCache({ idleArtOnGpu: true });
+    const goblin = await cache.acquire(GOBLIN);
+    cache.release(GOBLIN);
+    expect(goblin.source.autoGarbageCollect).toBe(false);
+
+    cache.evictUnused([]);
+    expect(goblin.destroyed).toBe(true);
+  });
+
+  it('gives reloaded art the lifetime of the art it replaces', async () => {
+    const cache = createCache({ idleArtOnGpu: false });
+    await cache.acquire(GOBLIN);
+    let shown: { source: { autoGarbageCollect: boolean } } | null = null;
+    await cache.reload(GOBLIN, (texture) => { shown = texture; });
+    expect(shown!.source.autoGarbageCollect).toBe(false);
   });
 });

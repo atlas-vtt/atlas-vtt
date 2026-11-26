@@ -31,8 +31,9 @@ import { LEGACY_INDEX_FILE, LIBRARY_FILE, recordFilePath } from './library/libra
 import { isKnownAssetType, isPayloadUnread, serializeRecord } from './library/recordFile';
 import { assetKey, emptyLibraryState, libraryClock, parseLibraryState } from './library/libraryState';
 import { indexText, snapshotIndex } from './library/indexSnapshot';
-import { trashSceneSnapshots } from '../snapshots/sceneSnapshotFolders';
+import { trashSceneBelongings } from './sceneBelongings';
 import { showNotice } from '../ui/notice';
+import { workSlices } from '../utils/workSlices';
 
 export interface BaseAsset {
   id: string;
@@ -873,11 +874,15 @@ export class AssetService {
         return nothing;
       }
       const check: { result?: VaultReconciliation } = {};
+      // Its reads mostly find cached data and would run on as one long task: the browser gets turns between them.
+      const pace = workSlices();
       await this.automatically(async () => {
         await this.matchFolderNames();
         // Library files first: they are the library, the index only this device's cache of them.
         const library = await this.readLibraryFiles();
+        await pace();
         const readings = await readVault(this.app, this.metadata!);
+        await pace();
         // From the listing on, nothing awaits until the index is changed, so no other edit interleaves.
         const listing = listVault(this.app, readings, deleted, this.recordedAssets());
         const result = reconcileIndex(this.metadata!, listing);
@@ -1169,16 +1174,7 @@ export class AssetService {
           // Delete the map file
           const mapFile = this.app.vault.getAbstractFileByPath(mapPath);
           if (mapFile instanceof TFile) {
-            // Close any leaves showing this file
-            const leaves = this.app.workspace.getLeavesOfType('atlas-view');
-            for (const leaf of leaves) {
-              const state = leaf.view?.getState?.();
-              if (state?.file === mapPath) {
-                leaf.detach();
-              }
-            }
-            
-            // Also check markdown leaves in case the .atlasmap file is open there
+            // Atlas closes the scene's tab when the vault reports the deletion (`vaultSync`); a markdown leaf showing the file goes here.
             const markdownLeaves = this.app.workspace.getLeavesOfType('markdown');
             for (const leaf of markdownLeaves) {
               const state = leaf.view?.getState?.();
@@ -1194,7 +1190,7 @@ export class AssetService {
         }
       }
       try {
-        await trashSceneSnapshots(this.app, asset);
+        await trashSceneBelongings(this.app, asset, mapPath);
       } catch (error) {
         console.error('[AssetService] Error deleting scene snapshots:', error);
       }

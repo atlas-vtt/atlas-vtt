@@ -20,6 +20,7 @@ import { TokenResizeUI } from '../TokenResizeUI';
 import type { ConditionDefinition } from '../../types/collectionSettingsTypes';
 import type { MeasurementSettings } from '../../grid/measurementFormat';
 import { destroyTree } from '../utils/destroyTree';
+import { viewportDocument } from '../utils/viewportDocument';
 import { restingTokenUIScale } from './tokenSizing';
 import { levelObjects } from '../../levels/levelObjects';
 import { mapTokens } from '../../tokens/offMap';
@@ -35,6 +36,8 @@ export class UIManager implements ITokenUIManager {
   private playerUIContainer: Container | null = null;
   private playerTokenUIs: Record<string, TokenUIRenderer> = {};
   private tokenUIs: Record<string, TokenUIRenderer> = {};
+  /** Each token's place in the pile (`TokenRenderer`), which its UIs, the GM's and the players', follow. */
+  private readonly pilePlaces = new Map<string, number>();
   /** The canvas shows the players' view (session view, the peek): token UIs draw what players see. */
   private playersView = false;
   private tokenControlsUI?: TokenControlsUI;
@@ -78,8 +81,8 @@ export class UIManager implements ITokenUIManager {
     this.viewId = viewId;
     this.isPlayerView = isPlayerView;
     
-    // Create UI container for non-rotating elements
-    this.uiContainer = new Container();
+    // Create UI container for non-rotating elements: a render group, as the tokens' (`TokenRenderer`)
+    this.uiContainer = new Container({ isRenderGroup: true });
     this.uiContainer.sortableChildren = true;
     this.uiContainer.eventMode = 'passive'; // UI should not block token interactions
     this.uiContainer.interactiveChildren = true;
@@ -144,7 +147,7 @@ export class UIManager implements ITokenUIManager {
       return null;
     }
     
-    const ui = new TokenUIRenderer(this.store, this.viewport.options?.ticker);
+    const ui = new TokenUIRenderer(this.store, this.viewport.options?.ticker, viewportDocument(this.viewport));
     ui.conditionDefsProvider = this.conditionDefsProvider;
     ui.resourceDefsProvider = () => this.resourceDefsProvider();
     ui.measurementProvider = this.measurementProvider;
@@ -153,6 +156,7 @@ export class UIManager implements ITokenUIManager {
     ui.onScaleChange = (scale) => this.tokenControlsUI?.setScaleFor(tokenId, scale);
     ui.setPlayersView(this.playersView);
     this.tokenUIs[tokenId] = ui;
+    ui.setPilePlace(this.pilePlaces.get(tokenId) ?? 0);
     
     const uiElement = ui.getContainer();
     this.uiContainer.addChild(uiElement);
@@ -286,7 +290,14 @@ export class UIManager implements ITokenUIManager {
     this.tokenResizeUI?.hide();
   }
 
+  setPilePlace(tokenId: string, place: number): void {
+    this.pilePlaces.set(tokenId, place);
+    this.tokenUIs[tokenId]?.setPilePlace(place);
+    this.playerTokenUIs[tokenId]?.setPilePlace(place);
+  }
+
   destroyTokenUI(tokenId: string): void {
+    this.pilePlaces.delete(tokenId);
     const playerUI = this.playerTokenUIs[tokenId];
     if (playerUI) {
       playerUI.getContainer().removeFromParent();
@@ -550,6 +561,7 @@ export class UIManager implements ITokenUIManager {
     if (!this.playerUIContainer) {
       this.playerUIContainer = new Container();
       this.playerUIContainer.zIndex = this.uiContainer.zIndex;
+      this.playerUIContainer.sortableChildren = true;
       this.playerUIContainer.eventMode = 'none';
       this.playerUIContainer.visible = false;
       this.viewport.addChild(this.playerUIContainer);
@@ -561,8 +573,9 @@ export class UIManager implements ITokenUIManager {
       if (!token || token.kind !== 'character' || !sprite) continue;
       let ui = this.playerTokenUIs[tokenId];
       if (!ui) {
-        ui = new TokenUIRenderer(this.store, this.viewport.options?.ticker);
+        ui = new TokenUIRenderer(this.store, this.viewport.options?.ticker, viewportDocument(this.viewport));
         this.playerTokenUIs[tokenId] = ui;
+        ui.setPilePlace(this.pilePlaces.get(tokenId) ?? 0);
         this.playerUIContainer.addChild(ui.getContainer());
       }
       ui.conditionDefsProvider = this.conditionDefsProvider;

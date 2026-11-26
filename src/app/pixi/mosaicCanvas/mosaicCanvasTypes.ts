@@ -44,6 +44,8 @@ export interface MosaicCanvasDeps {
   requestRender: () => void;
   /** Read when a tessera appears: true draws it at once instead of fading it in. */
   drawAtOnce?: () => boolean;
+  /** Whether nothing of the canvas is rendered now (a load holds its renders): the tesserae that arrived upload all at once instead of a few a frame. */
+  uploadAtOnce?: () => boolean;
   /** The size of the pictures of the whole map taken (thumbnails), whose tesserae stay loaded. */
   picture?: { width: number; height: number };
   /** Plays animated maps; without it a video map shows its first frame. */

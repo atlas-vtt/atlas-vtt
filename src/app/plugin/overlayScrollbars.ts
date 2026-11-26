@@ -1,4 +1,5 @@
 import type { Plugin } from 'obsidian';
+import { inEveryDocument } from '../platform/atlasDocuments';
 import { OverlayScrollbars } from '../ui/overlayScrollbars/OverlayScrollbars';
 import { canDrawOverlayScrollbars } from '../ui/overlayScrollbars/scrollAreas';
 
@@ -8,19 +9,9 @@ import { canDrawOverlayScrollbars } from '../ui/overlayScrollbars/scrollAreas';
  * view that cannot draw them gets none and keeps its own.
  */
 export function registerOverlayScrollbars(plugin: Plugin): void {
-  const documents = new Map<Document, OverlayScrollbars>();
-  const start = (doc: Document): void => {
-    if (!documents.has(doc) && canDrawOverlayScrollbars(doc.defaultView)) documents.set(doc, new OverlayScrollbars(doc));
-  };
-  const stop = (doc: Document): void => {
-    documents.get(doc)?.destroy();
-    documents.delete(doc);
-  };
-  start(document);
-  plugin.app.workspace.iterateAllLeaves((leaf) => start(leaf.view.containerEl.doc));
-  plugin.registerEvent(plugin.app.workspace.on('window-open', (_workspaceWindow, win) => start(win.document)));
-  plugin.registerEvent(plugin.app.workspace.on('window-close', (_workspaceWindow, win) => stop(win.document)));
-  plugin.register(() => {
-    for (const doc of Array.from(documents.keys())) stop(doc);
+  inEveryDocument(plugin, (doc) => {
+    if (!canDrawOverlayScrollbars(doc.defaultView)) return () => undefined;
+    const scrollbars = new OverlayScrollbars(doc);
+    return () => scrollbars.destroy();
   });
 }

@@ -8,7 +8,7 @@ afterEach(() => document.body.classList.remove(SQUARE_CORNERS_CLASS));
 
 it('rounds the map\'s UI until corners turn square, and tells the canvas when they do', async () => {
   const changed = vi.fn();
-  const stop = watchSquareCorners(changed);
+  const stop = watchSquareCorners(document.body, changed);
   expect(uiCorner(6)).toBe(6);
   document.body.classList.add(SQUARE_CORNERS_CLASS);
   await Promise.resolve();

@@ -5,6 +5,7 @@
  * tool or filter shown again.
  */
 import { describe, it } from 'vitest';
+import { DICE_COLOUR_OPTIONS } from '../../../src/app/dice3d/diceLook';
 import { CATALOG_CREATURE_FILTERS } from '../../../src/app/creatures/creatureFieldCatalog';
 import { EXPERIMENTAL_FEATURES } from '../../../src/app/experimental/experimentalFeatures';
 import { MAP_HOTKEYS } from '../../../src/app/keyboard/mapHotkeys';
@@ -14,6 +15,7 @@ import { expectStoredIds } from './storedIdList';
 const EXPERIMENTAL_FEATURE_IDS = [
   'onlinePlay',
   'statblockEditor',
+  'roomBucket',
 ];
 
 const CATALOG_CREATURE_FILTER_IDS = [
@@ -43,6 +45,20 @@ const TOOLBAR_UNIT_IDS = [
   'pin',
   'undo',
   'wall',
+];
+
+const DICE_COLOUR_IDS = [
+  'light',
+  'dark',
+  'accent',
+  'crimson',
+  'ember',
+  'gold',
+  'moss',
+  'teal',
+  'azure',
+  'violet',
+  'rose',
 ];
 
 const HOTKEY_IDS = [
@@ -123,6 +139,14 @@ describe('ids that settings store choices under: a list only grows, and no id on
       { what: 'Toolbar control and side bar ids', namedBy: "Atlas' settings (`toolbar.order` and `toolbar.hidden` in `data.json`)" },
       [...TOOLBAR_CONTROLS.map((control) => control.id), ...SIDE_BAR_IDS],
       TOOLBAR_UNIT_IDS,
+    );
+  });
+
+  it('keeps every dice colour id, under which the GM picked the colour of the dice', () => {
+    expectStoredIds(
+      { what: 'Dice colour ids', namedBy: "Atlas' settings (`diceColour` in `data.json`)" },
+      DICE_COLOUR_OPTIONS.map((option) => option.value),
+      DICE_COLOUR_IDS,
     );
   });
 

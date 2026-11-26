@@ -5,7 +5,6 @@ import { MotionGlobalConfig } from 'framer-motion';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll, expect, it, vi } from 'vitest';
 import { SettingsService } from '../../src/app/services/SettingsService';
-import { DashboardTour } from '../../src/app/onboarding/DashboardTour';
 import { MapTours } from '../../src/app/onboarding/MapTours';
 import { WelcomeWizard } from '../../src/app/onboarding/WelcomeWizard';
 import { AtlasUIContext } from '../../src/app/react/root/AtlasUIContext';
@@ -32,9 +31,7 @@ function appWith(plugins: string[]): { app: App; settings: SettingsService } {
   return { app, settings: new SettingsService(app) };
 }
 
-const tour = (app: App): React.JSX.Element => <DashboardTour app={app} root={document.body} hasScene onCreateScene={() => {}} />;
-
-it('welcomes a GM whose first sight of Atlas is a map, and the map tour follows', () => {
+it('holds the map tour back until the GM is welcomed, then the map tour follows', () => {
   const { app, settings } = appWith([]);
   const store = createViewAtlasStore(createInMemoryApp().app, 'welcome-view');
   store.getState().setPersistenceEnabled(false);
@@ -44,15 +41,15 @@ it('welcomes a GM whose first sight of Atlas is a map, and the map tour follows'
       <ViewStoreProvider store={store}><MapTours root={document.body} settings={settings} /></ViewStoreProvider>
     </AtlasUIContext.Provider>,
   );
-  expect(screen.getByText('Welcome to Atlas')).toBeTruthy();
-  act(() => { fireEvent.click(screen.getByRole('button', { name: 'Skip' })); });
+  expect(screen.queryByText('Your first scene')).toBeNull();
+  act(() => { settings.completeTutorial('welcome'); });
   expect(screen.getByText('Your first scene')).toBeTruthy();
   expect(settings.shouldShowTutorial('dashboard')).toBe(true);
 });
 
 it('offers the look, and the choice is this device\'s', () => {
-  const { app, settings } = appWith(['atlas-sidebar']);
-  render(tour(app));
+  const { app, settings } = appWith([]);
+  render(<WelcomeWizard app={app} settings={settings} onOpenAtlas={() => {}} />);
   for (let page = 0; page < 2; page += 1) fireEvent.click(screen.getByRole('button', { name: 'Next' }));
   expect(screen.getByRole('heading', { name: 'Make it yours' })).toBeTruthy();
   expect(screen.getByRole('radiogroup', { name: 'Accent colour' })).toBeTruthy();
@@ -60,13 +57,4 @@ it('offers the look, and the choice is this device\'s', () => {
   act(() => { fireEvent.click(screen.getByRole('radio', { name: 'Sci-fi' })); });
   expect(LookService.forApp(app, settings).get()).toBe('scifi');
   expect(screen.getByRole('radio', { name: 'Sci-fi' }).getAttribute('aria-checked')).toBe('true');
-});
-
-it('shows one welcome for an app however many views mount it, and another view takes over when the first goes', () => {
-  const { app, settings } = appWith([]);
-  const first = render(<WelcomeWizard app={app} settings={settings} />);
-  render(<WelcomeWizard app={app} settings={settings} />);
-  expect(screen.getAllByRole('dialog')).toHaveLength(1);
-  act(() => { first.unmount(); });
-  expect(screen.getAllByRole('dialog')).toHaveLength(1);
 });

@@ -90,12 +90,12 @@ export function GridAlignmentOverlay({ onClose }: GridAlignmentOverlayProps): Re
   // -----------------------------------------------------------------------
 
   useEffect(() => {
-    const viewport = view?.renderer?.getViewportInstance();
-    if (!viewport) return;
+    const renderer = view?.renderer;
+    if (!renderer?.getViewportInstance()) return;
 
     // Dismiss any blocking overlays left over from how the user got here
     // (e.g. the command palette backdrop that sits full-screen above the canvas).
-    const backdrop = document.querySelector<HTMLElement>('.atlas-command-palette-backdrop');
+    const backdrop = renderer.getCanvasElement().doc.querySelector<HTMLElement>('.atlas-command-palette-backdrop');
     if (backdrop) backdrop.click();
   }, [view]);
 

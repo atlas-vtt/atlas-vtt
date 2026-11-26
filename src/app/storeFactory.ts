@@ -24,6 +24,7 @@ import { createInitiativeActions } from './stores/initiativeSlice';
 import type { InitiativeTurnActions } from './stores/initiativeTurnActions';
 import { createInitialUIState, createUIActions, type UISlice } from './stores/uiSlice';
 import { loadDrawTool, saveDrawTool } from './services/deviceSettings';
+import { loadStabilizer, saveStabilizer } from './services/roomToolMemory';
 import { createPinnedNotePreviewActions, type PinnedNotePreviewSlice } from './stores/pinnedNotePreviewSlice';
 import { createInitialLootRollerState, createLootRollerActions, readLootRollerState, type LootRollerSlice } from './stores/lootRollerSlice';
 import { isRecord } from './utils/guards';
@@ -53,7 +54,7 @@ import { firstLevelId, placedOnViewedLevel, placedOnViewedLevels, viewedLevelId 
 import { createSceneLevelsActions, writeExploredMask, type SceneLevelsSlice } from './stores/sceneLevelsSlice';
 import { createLevelSurfacesActions, type LevelSurfacesSlice } from './stores/levelSurfacesSlice';
 import { createMapFeaturesActions, type MapFeaturesSlice } from './stores/mapFeaturesSlice';
-import { createRoomsSlice, DEFAULT_ROOM_TOOL, type RoomsSlice } from './stores/roomsSlice';
+import { createRoomsSlice, DEFAULT_ROOM_TOOL, readRoomSizes, type RoomsSlice } from './stores/roomsSlice';
 import { createTableModeActions, type TableModeSlice } from './stores/tableModeSlice';
 import { createLiquidsActions, type LiquidsSlice } from './stores/liquidsSlice';
 import { createMeasuresActions, dropTokenAuras, type MeasuresSlice } from './stores/measuresSlice';
@@ -258,6 +259,8 @@ export interface ViewAtlasState extends ViewState {
 
   // The rooms mode's choices (from roomsSlice.ts)
   roomTool: RoomsSlice['roomTool'];
+  /** The rooms brush's and bucket's sizes of this scene; saved with the map once the GM sets them. */
+  roomSizes?: RoomsSlice['roomSizes'];
   setRoomTool: RoomsSlice['setRoomTool'];
   // The view as the players' picture on a tablet on the table (from tableModeSlice.ts)
   tableMode: TableModeSlice['tableMode'];
@@ -1325,6 +1328,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             draft.lighting = { ...DEFAULT_SCENE_LIGHTING };
             draft.playerFrames = [];
             draft.sound = null;
+            draft.roomSizes = undefined;
             draft.exploredMask = null;
             draft.exploredMasks = undefined;
             draft.exploredEdits = 0;
@@ -1447,8 +1451,8 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           ...createSceneLevelsActions(set, get),
           ...createLevelSurfacesActions(set),
           ...createMapFeaturesActions(set),
-          roomTool: DEFAULT_ROOM_TOOL,
-          ...createRoomsSlice(set),
+          roomTool: { ...DEFAULT_ROOM_TOOL, stabilize: loadStabilizer(app) },
+          ...createRoomsSlice(set, (stabilize) => saveStabilizer(app, stabilize)),
           tableMode: null,
           ...createTableModeActions(set),
           ...createLiquidsActions(set),
@@ -1513,6 +1517,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               // Left out until the GM saves one, so files of scenes without stay as they were
               ...(state.playerFrames.length > 0 && { playerFrames: state.playerFrames }),
               ...(state.sound && { sound: state.sound }),
+              ...(state.roomSizes && { roomSizes: state.roomSizes }),
             };
           },
           
@@ -1533,6 +1538,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               lighting: readSceneLighting(saved.lighting),
               playerFrames: readPlayerFrames(saved.playerFrames),
               sound: readSceneSound(saved.sound),
+              roomSizes: readRoomSizes(saved.roomSizes),
               exploredMask: readExploredMask(saved.exploredMask),
               // Counted per session: a file never brings one.
               exploredEdits: current.exploredEdits,

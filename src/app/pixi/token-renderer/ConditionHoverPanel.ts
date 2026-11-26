@@ -126,7 +126,7 @@ interface CardTheme {
 }
 
 function readTheme(): CardTheme {
-  const font = getComputedStyle(document.body).getPropertyValue('--font-interface').trim();
+  const font = getComputedStyle(activeDocument.body).getPropertyValue('--font-interface').trim();
   return {
     background: cssColorToHexNumber(resolveCssColor('var(--background-primary)')),
     text: cssColorToHexNumber(resolveCssColor('var(--text-normal)')),

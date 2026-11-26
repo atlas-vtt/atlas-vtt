@@ -195,6 +195,11 @@ export class SettingsService {
     return this.settings.onboarding.enabled && !this.settings.onboarding.completed[id];
   }
 
+  /** Whether this GM has been through the welcome wizard, which every GM sees once, with tutorials switched on or off. */
+  hasBeenWelcomed(): boolean {
+    return this.settings.onboarding.completed.welcome === true;
+  }
+
   completeTutorial(id: TutorialId): void {
     this.settings.onboarding = { ...this.settings.onboarding, completed: { ...this.settings.onboarding.completed, [id]: true } };
     this.commit();

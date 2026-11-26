@@ -77,7 +77,7 @@ export function HeaderMenu({
 
   useEffect(() => {
     if (!isOpen) return;
-    const doc = rootRef.current?.ownerDocument ?? document;
+    const doc = rootRef.current?.ownerDocument ?? activeDocument;
     const onPointerDown = (event: PointerEvent): void => {
       if (!rootRef.current?.contains(event.target as Node)) setIsOpen(false);
     };

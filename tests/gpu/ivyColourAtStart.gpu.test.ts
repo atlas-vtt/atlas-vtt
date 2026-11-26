@@ -18,7 +18,7 @@ function reloadedApp(): App {
   const storage = new Map<string, unknown>([['atlas-vtt:look', 'mediaeval'], ['atlas-vtt:ivy-colour', '#d46a8a']]);
   return {
     vault: { adapter: { exists: async () => true, write: async () => {} }, getConfig: () => null, setConfig: () => {}, on: () => ({}), offref: () => {} },
-    workspace: { on: () => ({}), offref: () => {}, trigger: () => {}, iterateAllLeaves: () => {} },
+    workspace: { on: () => ({}), offref: () => {}, trigger: () => {}, containerEl: document.body, iterateAllLeaves: () => {} },
     loadLocalStorage: (key: string) => storage.get(key) ?? null,
     saveLocalStorage: (key: string, value: unknown) => { storage.set(key, value); },
     customCss: { theme: '', themes: {}, setTheme: () => {} },

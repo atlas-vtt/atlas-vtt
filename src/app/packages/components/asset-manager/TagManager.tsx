@@ -103,8 +103,9 @@ const TagManager: React.FC<TagManagerProps> = ({
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    const doc = modalRef.current?.doc ?? activeDocument;
+    doc.addEventListener('keydown', handleKeyDown);
+    return () => doc.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, editingId, onClose]);
 
   const handleCreate = (): void => {

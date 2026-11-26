@@ -11,11 +11,6 @@ export class FloorAudience {
   private together = true;
   private shown: Floor = null;
 
-  /** Whether every player of the scene stands on the presented floor. */
-  get allTogether(): boolean {
-    return this.together;
-  }
-
   /** Each connected player's floor now, whether all players of the scene stand on the presented floor, and that floor; the floors before. */
   set(floors: ReadonlyMap<string, Floor>, together: boolean, presented: Floor): ReadonlyMap<string, Floor> {
     const before = this.members;

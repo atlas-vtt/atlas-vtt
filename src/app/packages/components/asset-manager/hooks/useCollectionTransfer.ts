@@ -276,7 +276,7 @@ export function useCollectionTransfer({ app, assetService, selectedCollection, o
 
   const handleImportCollection = (): void => {
     if (transfer) return;
-    const input = document.body.createEl('input', {
+    const input = activeDocument.body.createEl('input', {
       type: 'file',
       cls: 'atlas-hidden-file-input',
       attr: fileInputAttrs('.zip'),

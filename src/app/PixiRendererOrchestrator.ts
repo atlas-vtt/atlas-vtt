@@ -21,6 +21,7 @@ import type { ViewAtlasState, ViewAtlasStore } from './storeFactory';
 import { EventEmitter } from './utils/typedEmitter';
 import { PixiAppManager } from "./pixi/PixiAppManager"; // Import the new manager
 import { TokenRenderer } from "./pixi/token-renderer"; // Import TokenRenderer
+import { TextureCache } from "./pixi/token-renderer/TextureCache";
 // Import color utils
 import { PinRenderer } from "./pixi/PinRenderer"; // Import PinRenderer
 import { HexLinkRenderer } from "./pixi/hexLinks/HexLinkRenderer";
@@ -70,7 +71,7 @@ import { SpatialAudioEngine } from './audio/SpatialAudioEngine';
 import { mapMeasurementSettings } from './services/mapMeasurementSettings';
 import { onMapRulesChange, rulesLookup } from './services/mapRules';
 import { findAtlasLeafByViewId } from './utils/atlasLeafLookup';
-import { requestRender } from './pixi/RenderScheduler';
+import { addBeforeRender, BEFORE_RENDER_ORDER, requestRender } from './pixi/RenderScheduler';
 import { MAP_LAYER_Z } from './pixi/mapLayerOrder';
 import { shownRollTokens } from './pixi/playerRollTokens';
 import type { PlayerBadgeNumbers } from './pixi/token-renderer/PlayerBadgeNumbers';
@@ -101,10 +102,14 @@ import { installFoggedPartyRings } from './pixi/token-renderer/FoggedPartyRings'
 import { TokenPlacer } from './pixi/tokenPlacement/TokenPlacer';
 import { PlacementHand } from './pixi/tokenPlacement/placementHand';
 
+/** How long a reveal waits at most for the lighting a load traces ahead (`scene-hydrated`), in ms. */
+const SCENE_PREPARE_WAIT_MS = 1000;
+
 export class PixiRendererOrchestrator { // Renamed class
   private _isDestroyed: boolean = false;
   private pixiAppManager: PixiAppManager;
   private tokenRenderer?: TokenRenderer; // Add TokenRenderer instance
+  private readonly tokenArt: TextureCache;
   private pinRenderer?: PinRenderer; // Add PinRenderer instance
   private hexLinkRenderer?: HexLinkRenderer;
   private tokenPlacer?: TokenPlacer;
@@ -135,6 +140,8 @@ export class PixiRendererOrchestrator { // Renamed class
   private stopFogFollowingPlayers: (() => void) | undefined;
   /** The GM view's walls, lights and sight; the player view has none. */
   private lighting?: LightingController;
+  /** The lighting's work ahead for the scene being loaded (`scene-hydrated`), until its reveal waits for it. */
+  private scenePrepared: Promise<void> | null = null;
   /** The roof of the level shown, above the lighting. */
   private roofs?: ViewRoofs;
   /** Where gliding tokens are drawn: the token renderer notes them, the lighting reads its tokens there. */
@@ -208,6 +215,7 @@ export class PixiRendererOrchestrator { // Renamed class
     this.eventBus = eventBus; 
     this.store = store;
     this.viewId = viewId;
+    this.tokenArt = new TextureCache(obsApp);
     this.setupEventBusListeners(); // Call this to set up other listeners if any
   }
 
@@ -404,18 +412,7 @@ export class PixiRendererOrchestrator { // Renamed class
     // Initialize TokenRenderer first if GridSystem is ready
     // This also means tokenContainer will be added to viewport earlier
     if (this.gridSystem) {
-        this.tokenRenderer = new TokenRenderer(
-            this.obsApp,
-            viewport,
-            this.gridSystem,
-            () => this.selectionManager?.updateSelectionOverlay(),
-            this.store,
-            this.eventBus,
-            this.viewId,
-            this.shownPlaces,
-        );
-        // Set PIXI app reference for renderer access
-        this.tokenRenderer.setPixiApp(this.pixiAppManager.app);
+        this.tokenRenderer = this.makeTokenRenderer(viewport, this.gridSystem);
     } else {
         // GridSystem not ready yet - TokenRenderer will be initialized later in initGrid()
     }
@@ -463,6 +460,8 @@ export class PixiRendererOrchestrator { // Renamed class
         this.eventBus
     );
     this.selectionManager.barsProvider = (tokenId) => this.tokenRenderer?.bars(tokenId) ?? NO_BARS;
+    const selection = this.selectionManager;
+    this.eventBusUnsubscribers.push(addBeforeRender(this.pixiAppManager.app, () => selection.drawAskedOverlay(), BEFORE_RENDER_ORDER.selection));
 
     // Initialize FogOfWarRenderer after pins so it can be on top when active
     this.fogRenderer = new FogOfWarRenderer(viewport, this.app, this.eventBus, this.store, () => this.getSceneMapRect());
@@ -505,6 +504,7 @@ export class PixiRendererOrchestrator { // Renamed class
         viewId: this.viewId,
         bounds: () => this.getSceneMapRect(),
         albedo: () => this.mapImage?.albedoTexture() ?? null,
+        mapImage: () => this.mapImage,
         grid: () => this.gridSystem ?? null,
         fogCoverage: () => this.fogRenderer!.getCommittedCoverage(),
         shown: this.shownPlaces,
@@ -521,6 +521,7 @@ export class PixiRendererOrchestrator { // Renamed class
           },
           placeEraser: (eraser) => this.placeAboveGrid(eraser),
           previewing: () => this.isPreviewingStretch(),
+          art: this.tokenArt,
         }),
         ...(quality && { quality }),
       });
@@ -620,18 +621,7 @@ export class PixiRendererOrchestrator { // Renamed class
     
     // Ensure TokenRenderer is initialized or updated if gridSystem was just created/updated
     if (!this.tokenRenderer && this.gridSystem && currentViewport) {
-        this.tokenRenderer = new TokenRenderer(
-            this.obsApp,
-            currentViewport,
-            this.gridSystem,
-            () => this.selectionManager?.updateSelectionOverlay(), // Pass callback to SelectionManager
-            this.store,
-            this.eventBus,
-            this.viewId,
-            this.shownPlaces,
-        );
-        // Set PIXI app reference for renderer access
-        this.tokenRenderer.setPixiApp(this.pixiAppManager.app);
+        this.tokenRenderer = this.makeTokenRenderer(currentViewport, this.gridSystem);
         // Wire viewport-level dispatch providers (pins, selection hit-testing)
         this.wireViewportDispatchProviders();
         // Re-order SelectionManager listeners so they fire after TokenRenderer's viewport handlers
@@ -1296,8 +1286,10 @@ export class PixiRendererOrchestrator { // Renamed class
       }
     };
     
-    document.addEventListener('keydown', handleKeyDown);
-    this.unbindKeyboard = (): void => document.removeEventListener('keydown', handleKeyDown);
+    // The map's own window, which may be a popout.
+    const doc = this.pixiAppManager.getCanvasElement().doc;
+    doc.addEventListener('keydown', handleKeyDown);
+    this.unbindKeyboard = (): void => doc.removeEventListener('keydown', handleKeyDown);
   }
   
 
@@ -1316,6 +1308,12 @@ export class PixiRendererOrchestrator { // Renamed class
       pixiEvent: e,
       sourceLeaf: this.getSourceLeaf(),
     });
+  }
+
+  private makeTokenRenderer(viewport: Viewport, grid: GridSystem): TokenRenderer {
+    const tokens = new TokenRenderer(this.obsApp, viewport, grid, () => { this.selectionManager?.requestSelectionOverlay(); requestRender(this.pixiAppManager.app); }, this.store, this.eventBus, this.viewId, this.shownPlaces, this.tokenArt);
+    tokens.setPixiApp(this.pixiAppManager.app);
+    return tokens;
   }
 
   /** Wires viewport-level event dispatch providers between TokenRenderer and other renderers.
@@ -1552,6 +1550,7 @@ export class PixiRendererOrchestrator { // Renamed class
     this.stopFogFollowingPlayers?.();
     this.annotations?.destroy();
     this.lighting?.destroy();
+    this.tokenArt.destroyAll();
     this.roofs?.destroy();
     this.playerFrames?.destroy();
     delete this.playerFrames;
@@ -1579,18 +1578,26 @@ export class PixiRendererOrchestrator { // Renamed class
       this.eventBusUnsubscribers.push(() => this.eventBus.off(event, handler));
     };
 
+    on('scene-hydrated', () => {
+      const prepared = this.lighting?.prepareScene();
+      // Waited for a while at most: past that the reveal traces what is left on the main thread.
+      this.scenePrepared = prepared ? Promise.race([prepared, new Promise<void>((resolve) => window.setTimeout(resolve, SCENE_PREPARE_WAIT_MS))]) : null;
+    });
+
     on('wait-for-tokens-loaded', (callback: () => void) => {
+      // What the lighting traces ahead is waited for too: the reveal would otherwise trace it on the main thread.
+      const prepared = this.scenePrepared;
+      this.scenePrepared = null;
+      const done = (): void => {
+        if (prepared) void prepared.then(callback);
+        else callback();
+      };
       if (this.tokenRenderer) {
         // Force sync tokens before checking if they're loaded
         this.tokenRenderer.forceSyncTokens();
-
-
-        this.tokenRenderer.onWhenAllTokensLoaded(() => {
-          callback();
-        });
+        this.tokenRenderer.onWhenAllTokensLoaded(done);
       } else {
-        // No token renderer, just call the callback
-        callback();
+        done();
       }
     });
   }

@@ -12,7 +12,7 @@ import { shownItems } from '../../initiative/listSegments';
 import { trackerSegments } from '../../initiative/trackerSegments';
 import { useInitiativeLayout } from '../../initiative/useInitiativeLayout';
 import { useMapResources } from '../../resources/useMapResources';
-import { useInitiativeTokenSync } from '../../initiative/useInitiativeTokenSync';
+import { InitiativeTokenSync } from '../../initiative/useInitiativeTokenSync';
 import { missingPartyEntries } from '../../initiative/party';
 import { mapEnemyImage } from '../../initiative/mapParty';
 import { useMapParty, usePartyEntrySync } from '../../initiative/useMapParty';
@@ -38,6 +38,7 @@ import { useStatblockHoverPreview } from './StatblockHoverPreview';
 import { InitiativeStatblockPreview, type PreviewedEntry } from './InitiativeStatblockPreview';
 import { captureRollContext } from '../../tools/diceRollOrigins';
 import { useRowDrag, type RowDrag } from '../hooks/useRowDrag';
+import { useTokensIgnoringPlaces } from '../hooks/useTokensIgnoringPlaces';
 import { useSidePile } from './useSidePile';
 import { TURN_KEY_ATTRIBUTE } from '../../initiative/motion/turnMotion';
 import type { InitiativeEntry } from '../../types/initiativeTypes';
@@ -76,7 +77,9 @@ export const InitiativeTracker: React.FC = () => {
   // Switching the compact view on or off glides the tracker to its new size as its cards fade in anew
   useLookMorph(root, compact);
   const initiative = useAtlasStore((s) => s.initiative);
-  const tokens = useAtlasStore((s) => s.objects?.tokens) || {};
+  // Only while drawn, and blind to where tokens stand: a token dragged on the map would render the tracker at every step
+  // (`InitiativeTokenSync` keeps the entries in step while it is closed).
+  const tokens = useTokensIgnoringPlaces(drawn);
   const mapPath = useAtlasStore((s) => s.mapPath);
   const mapLoaded = useAtlasStore((s) => s.mapLoaded);
   const isMapLoading = useAtlasStore((s) => s.isMapLoading);
@@ -115,7 +118,6 @@ export const InitiativeTracker: React.FC = () => {
   // Use shared statblock hover preview hook
   const [previewState, previewActions] = useStatblockHoverPreview<PreviewedEntry>({ app });
 
-  useInitiativeTokenSync(tokens, initiative.entries);
   usePartyEntrySync(party, initiative.entries);
   // The players at the table who are not in the fight yet
   const missingParty = missingPartyEntries(party, initiative.entries);
@@ -242,7 +244,7 @@ export const InitiativeTracker: React.FC = () => {
   );
 
   // Not drawn once closed and gone
-  if (!drawn) return null;
+  if (!drawn) return <><InitiativeTokenSync />{null}</>;
 
   const card = (entry: InitiativeEntry, group: string, inTurn = false): React.ReactElement => (
     <InitiativeCard
@@ -275,6 +277,8 @@ export const InitiativeTracker: React.FC = () => {
   ].filter(Boolean).join(' ');
 
   return (
+    <>
+    <InitiativeTokenSync />
     <div ref={setRoot} className={trackerClasses}>
       {/* Its surface is a layer of its own, so the theme's ivy can lie behind it; near it, its bars show */}
       <div className="atlas-initiative-panel__surface" aria-hidden="true" />
@@ -334,5 +338,6 @@ export const InitiativeTracker: React.FC = () => {
 
       {editPopup}
     </div>
+    </>
   );
 };

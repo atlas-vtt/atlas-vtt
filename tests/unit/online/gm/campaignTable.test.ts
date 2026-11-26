@@ -3,9 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CampaignFiles } from '../../../../src/app/campaigns/CampaignFiles';
 import { CampaignPlay } from '../../../../src/app/campaigns/campaignPlay';
 import { CAMPAIGNS_FOLDER } from '../../../../src/app/campaigns/campaignPaths';
+import { floorMemoryFolder } from '../../../../src/app/campaigns/exploredFolders';
 import { CampaignPlayers } from '../../../../src/app/campaigns/players/CampaignPlayers';
 import { CLOSE, GM_LEVEL, MAX_CAMPAIGN_PLAYERS } from '../../../../src/app/online/protocol/index.ts';
 import { OnlineControl } from '../../../../src/app/online/gm/OnlineControl.ts';
+import { VaultMemoryStore } from '../../../../src/app/online/gm/memory/VaultMemoryStore.ts';
 import { Ownership } from '../../../../src/app/online/gm/ownership.ts';
 import type { SavedTable } from '../../../../src/app/online/gm/savedTable.ts';
 import { appCampaigns, playSavedTable } from '../../../../src/app/online/gm/tableCampaigns.ts';
@@ -50,6 +52,8 @@ vi.mock('../../../../src/app/online/gm/gmMarks.ts', () => ({
 }));
 
 const FOLDER = `${CAMPAIGNS_FOLDER}/Witherwild`;
+/** Where the campaign keeps what `player` explored of a floor. */
+const memoryOf = (mapPath: string, level: string | null, player: string): string => `${floorMemoryFolder(FOLDER, mapPath, level)}/${player}.png`;
 const PLAYERS = `${FOLDER}/players.json`;
 const campaignText = `${JSON.stringify({ format: 1, id: 'c1', name: 'Witherwild', createdAt: 1 })}\n`;
 const LINK = 'k'.repeat(26);
@@ -264,6 +268,31 @@ describe('the GM\'s players', () => {
     expect(files.of('c1').players).toEqual([]);
     expect(online.players()).toEqual([]);
     online.stop();
+  });
+
+  it('are removed from the campaign with what they explored there, of every map, and nobody else\'s', async () => {
+    const { online, vault } = await hosting(undefined, [{ id: ANA, name: 'Ana' }]);
+    const cave = memoryOf('Scenes/Cave.atlasmap', null, ANA);
+    const tower = memoryOf('Scenes/Tower.atlasmap', 'top', ANA);
+    const noor = memoryOf('Scenes/Cave.atlasmap', null, NOOR);
+    for (const path of [cave, tower, noor]) await vault.app.vault.createBinary(path, new ArrayBuffer(8));
+    online.removeFromCampaign(ANA);
+    await advance(100);
+    expect([cave, tower, noor].filter((path) => vault.app.vault.getAbstractFileByPath(path) !== null)).toEqual([noor]);
+    online.stop();
+  });
+
+  it('keep what they explored only while they are players of the campaign: a memory written after they left is not kept', async () => {
+    const { app, vault } = await gm();
+    const players = new Set([ANA]);
+    const store = new VaultMemoryStore(app, 'c1', (player) => players.has(player));
+    const floor = { mapPath: 'Scenes/Cave.atlasmap', level: null };
+    await store.write(floor, ANA, new Uint8Array([1]));
+    players.delete(ANA);
+    await store.forget(ANA);
+    await store.write(floor, ANA, new Uint8Array([2]));
+    expect(vault.app.vault.getAbstractFileByPath(memoryOf(floor.mapPath, null, ANA))).toBeNull();
+    expect(await store.read(floor, ANA)).toBeNull();
   });
 
   it('are added and renamed by the GM, and the relay is told', async () => {

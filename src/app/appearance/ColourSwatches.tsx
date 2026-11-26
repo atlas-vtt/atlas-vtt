@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { ACCENT_PRESETS, presetOfAccent } from './accentColour';
+import { presetOfAccent } from './accentColour';
+import { COLOUR_PRESETS } from './colourPresets';
 import { IvyLeaf } from './IvyLeaf';
 import { LabelTooltip } from '../packages/components/primitives/tooltip';
 import { t } from '../i18n';
@@ -9,7 +10,7 @@ import './accent-colour.scss';
 const BASE = 'base';
 const CUSTOM = 'custom';
 /** Every swatch in order: the colour that applies while none is picked, the presets by id, then the GM's own colour. */
-const CHOICES: readonly string[] = [BASE, ...ACCENT_PRESETS.map((preset) => preset.id), CUSTOM];
+const CHOICES: readonly string[] = [BASE, ...COLOUR_PRESETS.map((preset) => preset.id), CUSTOM];
 
 /** The first swatch: what applies while no colour is picked (the look's own accent, the ivy's own greens). */
 export interface BaseSwatch {
@@ -42,7 +43,7 @@ export function ColourSwatches({ label, value, base, disabled = false, shape = '
 
   const pick = (choice: string): void => {
     if (choice === BASE) onChange('');
-    else if (choice !== CUSTOM) onChange(ACCENT_PRESETS.find((preset) => preset.id === choice)?.hex ?? '');
+    else if (choice !== CUSTOM) onChange(COLOUR_PRESETS.find((preset) => preset.id === choice)?.hex ?? '');
   };
 
   const openCustom = (): void => {
@@ -89,7 +90,7 @@ export function ColourSwatches({ label, value, base, disabled = false, shape = '
         swatchRef={swatchRef(BASE)}
         onPick={() => pick(BASE)}
       />
-      {ACCENT_PRESETS.map((preset) => (
+      {COLOUR_PRESETS.map((preset) => (
         <Swatch
           key={preset.id}
           label={t(preset.labelKey)}

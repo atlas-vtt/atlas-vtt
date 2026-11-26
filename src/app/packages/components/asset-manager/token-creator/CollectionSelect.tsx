@@ -24,8 +24,9 @@ export function CollectionSelect({ value, options, onChange }: CollectionSelectP
     const handlePointerDown = (event: MouseEvent): void => {
       if (!rootRef.current?.contains(event.target as Node)) close();
     };
-    document.addEventListener('pointerdown', handlePointerDown);
-    return () => document.removeEventListener('pointerdown', handlePointerDown);
+    const doc = rootRef.current?.doc ?? activeDocument;
+    doc.addEventListener('pointerdown', handlePointerDown);
+    return () => doc.removeEventListener('pointerdown', handlePointerDown);
   }, [isOpen]);
 
   const close = (): void => {

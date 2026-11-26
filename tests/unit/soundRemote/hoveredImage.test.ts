@@ -6,7 +6,7 @@ import { HoveredElement } from '@/app/soundRemote/hoveredElement';
 
 vi.mock('@/app/react/root/ContextMenuContext', () => ({ openContextMenuGlobal: vi.fn() }));
 
-const workspace = { iterateAllLeaves: () => undefined, on: () => ({}), offref: vi.fn() } as unknown as Workspace;
+const workspace = { containerEl: document.body, iterateAllLeaves: () => undefined, on: () => ({}), offref: vi.fn() } as unknown as Workspace;
 
 afterEach(() => { document.body.innerHTML = ''; });
 

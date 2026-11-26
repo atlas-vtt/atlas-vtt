@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { GM_SIGHT_POLICY, PLAYER_SIGHT_POLICY } from '../../src/app/vision/tokenSightPolicy';
+import type { TokenEntity } from '../../src/app/types';
+import { GM_SIGHT_POLICY, ownPolicy, PLAYER_SIGHT_POLICY, sightPolicyFor } from '../../src/app/vision/tokenSightPolicy';
 import {
   footprintCouplingProblems,
   footprintDecisionProblems,
@@ -48,5 +49,17 @@ describe('sight policies', () => {
 
   it('select the player view from a record that files a token under another key as before', () => {
     expect(misfiledSelectionProblems()).toEqual([]);
+  });
+
+  it('a player\'s own picture always shows their own tokens, defeated or blind, and sees only by their own that see', () => {
+    const tok = (id: string, changes: Partial<TokenEntity> = {}): TokenEntity => ({ id, kind: 'token', imagePath: '', x: 0, y: 0, size: 1, ...changes } as TokenEntity);
+    const seer = tok('seer', { vision: { enabled: true } });
+    const blind = tok('blind');
+    const hidden = tok('hidden', { isHidden: true });
+    const other = tok('other', { vision: { enabled: true } });
+    const own = new Set(['seer', 'blind', 'hidden']);
+    const policy = sightPolicyFor(ownPolicy((token) => token.id === 'seer', (token) => own.has(token.id)), { defeated: (token) => token.id === 'seer' });
+    expect([seer, blind, hidden, other].map(policy.alwaysSeen)).toEqual([true, true, false, false]);
+    expect([seer, blind, hidden, other].map(policy.givesSight)).toEqual([false, false, false, false]);
   });
 });

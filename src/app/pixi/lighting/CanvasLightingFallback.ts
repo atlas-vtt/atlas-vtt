@@ -151,6 +151,7 @@ export class CanvasLightingFallback implements SceneLightingView {
     // The same list while there is no darkness, so whoever compares it finds it unchanged.
     this.reaches = dark.length > 0 ? this.darknessReaches.sync(dark, walls) : NO_REACHES;
     const sources = sourcesInDarkness(sightSources(tokens, scale, bounds, rules, GM_SIGHT_POLICY), FULL_DAYLIGHT, this.reaches);
+    this.cache.useWalls(walls);
     this.cache.retain(new Set(sources.map(source => source.tokenId)));
     const sight = selectSight(sceneSight(state.lighting, sources, walls, this.cache, { sceneHasVision: hasVision }), tokens, PLAYER_SIGHT_POLICY);
     // The same regions are the same sight: what was worked out from it (who is seen) stays good.
