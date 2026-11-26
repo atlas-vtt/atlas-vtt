@@ -6,6 +6,8 @@
  */
 
 import type { WallInput } from '../types/wallTypes';
+import { dropCombatantsWithoutToken, fightWithoutTokens, type TrackerState } from './combatantTokens';
+import type { FightBinding } from './initiativeFightStart';
 import type { AddedKind, ObjectChanges, ObjectInputs, PatchedKind } from './sceneObjectKinds';
 import { addObjectIn, patchObjectIn, removeObjectsIn, type ObjectsDraft } from './sceneObjectWrites';
 
@@ -19,16 +21,19 @@ export interface SceneObjectsSlice {
   patchObject: <K extends PatchedKind>(kind: K, id: string, changes: ObjectChanges[K]) => void;
   /**
    * Removes objects of every kind by id in one undo step, with all that follows (`removeObjectsIn`):
-   * a locked drawing or text stays, and stays selected.
+   * a locked drawing or text stays, and stays selected. A token's combatant leaves the tracker in
+   * the same write.
    */
   removeObjects: (ids: readonly string[]) => void;
   /** Takes walls away and adds others in one write, so whatever follows the walls works them out once; returns the ids of the added ones. */
   editWalls: (remove: readonly string[], add: readonly WallInput[]) => string[];
 }
 
-type ImmerSet = (fn: (draft: ObjectsDraft) => void) => void;
+type SceneObjectsState = ObjectsDraft & TrackerState;
 
-export function createSceneObjectsActions(set: ImmerSet): SceneObjectsSlice {
+type ImmerSet = (fn: (draft: SceneObjectsState) => void) => void;
+
+export function createSceneObjectsActions(set: ImmerSet, get: () => SceneObjectsState, fight: FightBinding): SceneObjectsSlice {
   return {
     addObject: (kind, data) => {
       let id = '';
@@ -40,7 +45,14 @@ export function createSceneObjectsActions(set: ImmerSet): SceneObjectsSlice {
 
     patchObject: (kind, id, changes) => set((draft) => patchObjectIn(draft, kind, id, changes)),
 
-    removeObjects: (ids) => set((draft) => removeObjectsIn(draft, ids, 'stay')),
+    removeObjects: (ids) => {
+      // Read before the write, which stays free of chance: a combatant leaving may begin a round.
+      const fightAfter = fightWithoutTokens(get(), ids, fight);
+      set((draft) => {
+        removeObjectsIn(draft, ids, 'stay');
+        if (fightAfter) dropCombatantsWithoutToken(draft, fightAfter);
+      });
+    },
 
     editWalls: (remove, add) => {
       const ids: string[] = [];

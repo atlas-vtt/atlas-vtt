@@ -19,6 +19,8 @@ import type { CameraState, GridState } from './types/gridTypes';
 import type { AtlasPersistStorage } from './services/MapPersistence';
 import { normalizeImagePath } from './utils/pathUtils';
 import { createInitiativeActions } from './stores/initiativeSlice';
+import type { FightBinding } from './stores/initiativeFightStart';
+import { followTokensInTracker } from './stores/combatantTokens';
 import { createSceneObjectsActions, type SceneObjectsSlice } from './stores/sceneObjectsSlice';
 import type { InitiativeTurnActions } from './stores/initiativeTurnActions';
 import { createInitialUIState, createUIActions, type UISlice } from './stores/uiSlice';
@@ -510,6 +512,8 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
     return storage;
   };
   
+  const fight: FightBinding = { rules: rulesLookup(app), random: diceRandom };
+
   // Undo/redo tracks objects, grid, background, widgetValues and the count of explored-memory
   // edits only; selection, camera, tool and loading state never enter the history.
   const store = create<ViewAtlasState>()(
@@ -929,7 +933,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           },
 
           // --- Scene objects of every kind (from sceneObjectsSlice.ts) ---
-          ...createSceneObjectsActions(set),
+          ...createSceneObjectsActions(set, get, fight),
 
           toggleDoor: (id) => set((draft) => {
             const wall = draft.objects.walls[id];
@@ -1091,7 +1095,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           // --- Initiative Tracker State & Actions (from initiativeSlice.ts) ---
           initiative: createDefaultInitiativeState(),
           initiativeTrackerOpen: false,
-          ...createInitiativeActions(set, get, { rules: rulesLookup(app), random: diceRandom }),
+          ...createInitiativeActions(set, get, fight),
 
           // --- Dice Roll Log (persisted per map) ---
           diceLog: [],
@@ -1232,6 +1236,8 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
   isolateListeners(store, (error) => {
     console.error(`[ViewStore-${viewId}] A store subscriber failed:`, error);
   });
+
+  followTokensInTracker(store, fight);
 
   // Immer types `setState` with draft updaters, and WritableDraft<ViewAtlasState> is not
   // assignable back to ViewAtlasState because the state holds the Obsidian `plugin`.
