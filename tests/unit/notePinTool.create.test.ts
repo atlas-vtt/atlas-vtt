@@ -13,7 +13,7 @@ const MAP_PATH = 'maps/town.atlasmap';
 function vaultWithNotesFolder(files: Record<string, string>): { app: App; getNewFileParent: ReturnType<typeof vi.fn> } {
   const { app } = createInMemoryApp({ files });
   const getNewFileParent = vi.fn(() => app.vault.getFolderByPath('Notes') as TFolder);
-  Object.assign(app.fileManager, { getNewFileParent, generateMarkdownLink: vi.fn((file: { path: string }, _source: string, subpath?: string, alias?: string) => `[[${file.path}${subpath ?? ''}|${alias ?? ''}]]`);
+  Object.assign(app.fileManager, { getNewFileParent, generateMarkdownLink: vi.fn((file: { path: string }, _source: string, subpath?: string, alias?: string) => `[[${file.path}${subpath ?? ''}|${alias ?? ''}]]`) });
   // The dropdown lists the vault's notes and maps
   Object.assign(app.vault, { getAllLoadedFiles: () => [] });
   return { app, getNewFileParent };
