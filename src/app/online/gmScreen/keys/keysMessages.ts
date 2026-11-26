@@ -24,7 +24,8 @@ function keysRoll(roll: RemoteRoll): KeysState['rolls'][number] {
 
 /**
  * The sound remote's state as a device reads it: the same fields, each text and list within what the device's
- * parser takes, and whether an online table runs (`online`), which the Stream Deck's state does not say.
+ * parser takes, whether an online table runs (`online`), which the Stream Deck's state does not say, and
+ * that this Atlas sends a device the Keys screen's grid (`grid`, `LayoutScreen`).
  */
 export function keysStateOf(state: RemoteState, online: boolean): KeysState {
   const { music, levels } = state;
@@ -36,6 +37,7 @@ export function keysStateOf(state: RemoteState, online: boolean): KeysState {
     nowPlaying: cutOrNull(state.nowPlaying),
     levels: { masterDb: db(levels.masterDb), musicDb: dbOrNull(levels.musicDb), ambienceDb: dbOrNull(levels.ambienceDb) },
     rolls: state.rolls.filter((roll) => pressable(roll.id)).slice(0, MAX_GM_SCREEN_ROLLS).map(keysRoll),
+    grid: true,
   };
 }
 

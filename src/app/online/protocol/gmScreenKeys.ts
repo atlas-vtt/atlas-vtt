@@ -72,6 +72,8 @@ export interface KeysState {
   readonly player: KeysPlayer;
   readonly rolls: readonly KeysRoll[];
   readonly rollsShown: boolean;
+  /** Atlas sends the Keys screen's grid to a device that says its kind (`layout-ask`); absent from an Atlas that does not, whose device shows every key in a list. */
+  readonly grid?: boolean;
 }
 
 /** A mood as a key draws it: its crest by id, never the crest's artwork. */
@@ -153,11 +155,12 @@ export function parseKeysState(value: unknown): KeysState | null {
   const rolls = value.rolls.map(parseRoll);
   if (music === undefined || combat === undefined || player === null || channel === null || strip === null) return null;
   if (!rolls.every((roll): roll is KeysRoll => roll !== null)) return null;
-  return {
+  const state: KeysState = {
     soundOn: soundOn === true, mood, playing: playing === true, stopped: stopped === true, music, nowPlaying,
     levels: { masterDb: levels.masterDb, musicDb: levels.musicDb, ambienceDb: levels.ambienceDb },
     ranges: { channel, strip }, combat, player, rolls, rollsShown: rollsShown === true,
   };
+  return isBoolean(value.grid) ? { ...state, grid: value.grid } : state;
 }
 
 function parseMood(value: unknown): GmScreenMood | null {

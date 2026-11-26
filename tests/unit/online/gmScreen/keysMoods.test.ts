@@ -111,4 +111,12 @@ describe('the state a device\'s keys show', () => {
     expect(state.music?.track?.length).toBe(200);
     expect(parseKeysMessage(JSON.parse(JSON.stringify({ t: 'keys', state })))).toEqual({ t: 'keys', state });
   });
+
+  it('tells a device that Atlas sends the grid of keys, where a state without the word reads as before', () => {
+    const state = keysStateOf(remoteState(fakeRemoteDirector(withMusic()), () => null, fakeTable().table), false);
+    expect(parseKeysMessage(JSON.parse(JSON.stringify({ t: 'keys', state })))).toMatchObject({ state: { grid: true } });
+    const { grid: _grid, ...older } = state;
+    const parsed = parseKeysMessage(JSON.parse(JSON.stringify({ t: 'keys', state: older })));
+    expect(parsed?.t === 'keys' && 'grid' in parsed.state).toBe(false);
+  });
 });
