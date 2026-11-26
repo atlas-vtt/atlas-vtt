@@ -93,6 +93,7 @@ export function fakeTable(options: { combatants?: number; rules?: InitiativeRule
     ],
     rollSaved: vi.fn(),
     rollFormula: vi.fn(),
+    checkRoll: vi.fn(() => null),
   };
   const window = { open: true, online: false, frozen: false, trueScale: false, curtained: false, handout: false, hoveringImage: false };
   const player = {

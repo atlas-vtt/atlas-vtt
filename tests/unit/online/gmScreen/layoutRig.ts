@@ -6,7 +6,7 @@ import type { KeyLibrary } from '../../../../src/app/online/gmScreen/keys/layout
 import { settingsLayouts } from '../../../../src/app/online/gmScreen/keys/settingsLayouts.ts';
 import type { GmScreenDevice, GmScreenLayout, GmScreenMessage } from '../../../../src/app/online/protocol/index.ts';
 import { SettingsService } from '../../../../src/app/services/SettingsService';
-import { rollableFormula } from '../../../../src/app/tools/rollableFormula';
+import { diceKeyRolls } from '../../../../src/app/soundRemote/remoteTable';
 import { memoryPluginData } from '../../../mocks/pluginData';
 import { settleUntil, soundWorld, type SoundWorld } from './keysRig.ts';
 import { sessionRig, type Device, type Rig } from './sessionRig.ts';
@@ -19,7 +19,7 @@ export function worldLibrary(world: SoundWorld): KeyLibrary {
   return {
     moodName: (id) => world.moodSource.mood(id)?.name ?? null,
     rollName: (id) => world.table.map.savedRolls().find((roll) => roll.id === id)?.name ?? null,
-    rollable: rollableFormula,
+    rollable: (formula) => diceKeyRolls(world.table.table, formula),
   };
 }
 

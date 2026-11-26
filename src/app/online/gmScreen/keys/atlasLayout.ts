@@ -3,8 +3,7 @@ import { remoteTableOf } from '../../../plugin/soundRemoteTable';
 import { SettingsService } from '../../../services/SettingsService';
 import { MoodStore } from '../../../soundLibrary/MoodStore';
 import { HoveredElement } from '../../../soundRemote/hoveredElement';
-import { savedRollsOnMap } from '../../../soundRemote/remoteTable';
-import { rollableFormula } from '../../../tools/rollableFormula';
+import { diceKeyRolls, savedRollsOnMap } from '../../../soundRemote/remoteTable';
 import type { GmScreenSession } from '../GmScreenSession.ts';
 import { LayoutScreen } from './LayoutScreen.ts';
 import { settingsLayouts } from './settingsLayouts.ts';
@@ -23,7 +22,7 @@ export function plugLayoutScreen(app: App, session: GmScreenSession): () => void
     library: () => ({
       moodName: (id) => MoodStore.forApp(app).mood(id)?.name ?? null,
       rollName: (id) => savedRollsOnMap(table).find((roll) => roll.id === id)?.name ?? null,
-      rollable: rollableFormula,
+      rollable: (formula) => diceKeyRolls(table, formula),
     }),
     outlet: session,
   }));

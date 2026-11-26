@@ -43,6 +43,7 @@ function tableMap(app: App, view: AtlasView): TableMap {
     rollFormula: (formula) => {
       view.serviceManager.getToolController().getDiceTool().rollDice(formula);
     },
+    checkRoll: (formula) => view.serviceManager.getToolController().getDiceTool().checkRoll(formula),
   };
 }
 
