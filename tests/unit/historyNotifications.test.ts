@@ -24,7 +24,7 @@ function openStore(): { store: ViewAtlasStore; history: () => HistoryState } {
 const x = (store: ViewAtlasStore, id: string): number | undefined => store.getState().objects.tokens[id]?.x;
 const stacks = (history: () => HistoryState): string => `${history().pastStates.length}/${history().futureStates.length}`;
 const wallCount = (store: ViewAtlasStore): number => Object.keys(store.getState().objects.walls).length;
-const addWall = (store: ViewAtlasStore, at: number): string => store.getState().addWall({ type: 'solid', p1: { x: at, y: 0 }, p2: { x: at, y: 70 } });
+const addWall = (store: ViewAtlasStore, at: number): string => store.getState().addObject('walls', { type: 'solid', p1: { x: at, y: 0 }, p2: { x: at, y: 70 } });
 
 /** Runs `effect` inside the next notification of the store, once. */
 function onNextWrite(store: ViewAtlasStore, effect: () => void): void {
@@ -101,7 +101,7 @@ describe('what the history does around store notifications', () => {
     beginHistoryTransaction(store);
     placed.push(addWall(store, 10), addWall(store, 20));
     onNextWrite(store, () => {
-      store.getState().deleteWalls(placed);
+      store.getState().removeObjects(placed);
       discardHistoryTransaction(store);
     });
     store.getState().setActiveTool('select');

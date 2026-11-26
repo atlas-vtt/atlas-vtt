@@ -65,7 +65,7 @@ describe('the player window behind the line-of-sight fallback, in GM view', () =
     obsApp.saveLocalStorage(LIGHTING_ATTEMPTS_KEY, ['maps/frames.atlasmap']);
     // Party tokens and one the party sees, no doors, nothing selected, no token renderer: nothing but the lighting has a reason to draw.
     store.setState((state) => ({ objects: { ...state.objects, tokens: { ada: token('ada', 60, 70, 5), bo: token('bo', 180, 110, 5), cat: { ...token('cat', 70, 90, 5), vision: { enabled: false } } } } }));
-    store.getState().addWall({ type: 'solid', p1: { x: 110, y: 20 }, p2: { x: 110, y: 160 } });
+    store.getState().addObject('walls', { type: 'solid', p1: { x: 110, y: 20 }, p2: { x: 110, y: 160 } });
     store.getState().setSceneLighting({ enabled: true, ...lighting });
     const controller = new LightingController({ viewport, app, store, eventBus: new EventEmitter(), obsApp, viewId: 'frames', bounds: () => MAP, albedo: () => null });
     const ignore = (): void => undefined;

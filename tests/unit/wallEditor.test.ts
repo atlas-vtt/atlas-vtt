@@ -40,7 +40,7 @@ function setup(): { editor: WallEditor; store: ViewAtlasStore; wall: string; bus
   const store = createViewAtlasStore(app, `wall-editor-${Math.random()}`);
   store.getState().setPersistenceEnabled(false);
   store.getState().setActiveTool('wall');
-  const wall = store.getState().addWall({ type: 'solid', p1: { x: 100, y: 100 }, p2: { x: 300, y: 100 }, closed: true });
+  const wall = store.getState().addObject('walls', { type: 'solid', p1: { x: 100, y: 100 }, p2: { x: 300, y: 100 }, closed: true });
   const bus = new EventEmitter();
   const editor = new WallEditor(viewport, store, bus, () => undefined, () => lights.current);
   editor.layer.visible = true;
@@ -322,7 +322,7 @@ describe('WallEditor joining walls', () => {
 
   it('continues the chain of the wall it starts on', () => {
     const { editor, store, wall } = setup();
-    const chained = store.getState().addWall({ type: 'solid', p1: { x: 500, y: 100 }, p2: { x: 600, y: 100 }, chainId: 'room', closed: true });
+    const chained = store.getState().addObject('walls', { type: 'solid', p1: { x: 500, y: 100 }, p2: { x: 600, y: 100 }, chainId: 'room', closed: true });
     click(editor, { x: 600, y: 100 });
     click(editor, { x: 600, y: 200 });
     // Where two walls meet, the new one belongs to neither chain.
@@ -334,7 +334,7 @@ describe('WallEditor joining walls', () => {
 
   it('lands a dragged wall end on another, and the joint then moves as one', () => {
     const { editor, store, wall } = setup();
-    const other = store.getState().addWall({ type: 'solid', p1: { x: 500, y: 300 }, p2: { x: 600, y: 300 }, closed: true });
+    const other = store.getState().addObject('walls', { type: 'solid', p1: { x: 500, y: 300 }, p2: { x: 600, y: 300 }, closed: true });
     drag(editor, { x: 300, y: 100 }, { x: 494, y: 305 });
     expect(store.getState().objects.walls[wall]?.p2).toEqual({ x: 500, y: 300 });
     drag(editor, { x: 500, y: 300 }, { x: 520, y: 330 });
@@ -353,7 +353,7 @@ describe('the wall menu', () => {
       { type: 'solid', p1: { x: 280, y: 0 }, p2: { x: 280, y: 280 }, chainId: 'c' },
       { type: 'solid', p1: { x: 280, y: 280 }, p2: { x: 0, y: 280 }, chainId: 'c' },
     ];
-    return sides.map((side) => store.getState().addWall(side));
+    return sides.map((side) => store.getState().addObject('walls', side));
   }
 
   function menu(editor: WallEditor, store: ViewAtlasStore, at: { x: number; y: number }): ContextMenuEntry[] {
@@ -369,7 +369,7 @@ describe('the wall menu', () => {
 
   it('places a door in the wall of a chain that was right-clicked, one cell wide where it was clicked', () => {
     const { editor, store, wall } = setup();
-    store.getState().deleteWall(wall);
+    store.getState().removeObjects([wall]);
     const [top] = chain(store);
     choose(menu(editor, store, { x: 140, y: 3 }), 'Place door');
     editor.pointerDown({ x: 140, y: 3 }, false, false);
@@ -381,7 +381,7 @@ describe('the wall menu', () => {
 
   it('removes a door again, and a point between two walls', () => {
     const { editor, store, wall } = setup();
-    store.getState().deleteWall(wall);
+    store.getState().removeObjects([wall]);
     chain(store);
     choose(menu(editor, store, { x: 140, y: 3 }), 'Place door');
     editor.pointerDown({ x: 140, y: 3 }, false, false);
@@ -413,7 +413,7 @@ describe('the wall menu', () => {
     const { editor, store } = setup();
     const labels = (at: { x: number; y: number }): string[] => menu(editor, store, at).flatMap((entry) => (entry.type === 'item' ? [entry.label] : []));
     expect(labels({ x: 300, y: 100 })).not.toContain('Add point');
-    store.getState().addWall({ type: 'door', p1: { x: 100, y: 400 }, p2: { x: 170, y: 400 }, closed: true });
+    store.getState().addObject('walls', { type: 'door', p1: { x: 100, y: 400 }, p2: { x: 170, y: 400 }, closed: true });
     expect(labels({ x: 135, y: 401 })).not.toContain('Add point');
   });
 });

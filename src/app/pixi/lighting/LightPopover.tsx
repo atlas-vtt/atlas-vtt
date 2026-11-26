@@ -65,7 +65,7 @@ function LightPopover({ lightId }: { lightId: string }): React.ReactElement | nu
   if (!light) return null;
   const emission = light.emission;
   const update = (next: LightEmission): void => {
-    if (next !== emission) store.getState().updateLight(light.id, { emission: next });
+    if (next !== emission) store.getState().patchObject('lights', light.id, { emission: next });
   };
   const close = (): void => store.getState().closeLightPopover();
 
@@ -99,19 +99,19 @@ function LightPopover({ lightId }: { lightId: string }): React.ReactElement | nu
         unitDistance={unitDistance}
         maxRange={maxRange}
         surface={!!light.area}
-        more={<ShinesRow light={light} onChange={(activeBelowAmbient) => store.getState().updateLight(light.id, { activeBelowAmbient })} />}
+        more={<ShinesRow light={light} onChange={(activeBelowAmbient) => store.getState().patchObject('lights', light.id, { activeBelowAmbient })} />}
         onBeamCommit={makeWay}
-        direction={{ degrees: light.rotation ?? 0, onChange: (rotation) => store.getState().updateLight(light.id, { rotation }) }}
+        direction={{ degrees: light.rotation ?? 0, onChange: (rotation) => store.getState().patchObject('lights', light.id, { rotation }) }}
         onSliderPointerDown={onSliderPointerDown}
         onPickStart={beginPick}
         onPickEnd={endPick}
       />
       <div className="atlas-light-popover__section atlas-light-popover__actions">
-        <Button variant="ghost" size="sm" onClick={() => store.getState().updateLight(light.id, { hidden: !light.hidden })}>
+        <Button variant="ghost" size="sm" onClick={() => store.getState().patchObject('lights', light.id, { hidden: !light.hidden })}>
           {light.hidden ? <Lightbulb /> : <LightbulbOff />}
           <span>{light.hidden ? t('light.turnOn') : t('light.turnOff')}</span>
         </Button>
-        <Button variant="ghost" size="sm" className="atlas-light-popover__delete" onClick={() => store.getState().deleteLight(light.id)}>
+        <Button variant="ghost" size="sm" className="atlas-light-popover__delete" onClick={() => store.getState().removeObjects([light.id])}>
           <Trash2 />
           <span>{t('common.delete')}</span>
         </Button>

@@ -297,7 +297,7 @@ describe('the marks on tokens the players do not see', () => {
     expect(mark.alpha).toBe(1);
     perceived[id] = 'seen';
     aids.update();
-    store.getState().deleteTokens([id]);
+    store.getState().removeObjects([id]);
     aids.update();
     expect(mark.destroyed).toBe(true);
   });

@@ -92,7 +92,7 @@ export class WallInteraction {
     const point = { x: worldX, y: worldY };
     // Never onto the far end of a wall that moves with it, which would shrink that wall to a point.
     const to = free ? point : snapToWallEnd(point, levelObjects(state).walls, zoom, { skip: new Set(drag.ends.map((end) => end.wallId)), avoid: drag.farEnds });
-    for (const end of drag.ends) state.updateWall(end.wallId, { [end.end]: to });
+    for (const end of drag.ends) state.patchObject('walls', end.wallId, { [end.end]: to });
   }
 
   /** Ends a drag. Returns the joint when it was clicked, pressed and released in place without adding to the selection. */
@@ -108,7 +108,7 @@ export class WallInteraction {
     this.drag = null;
     if (!drag?.moved) return;
     const state = this.store.getState();
-    for (const end of drag.ends) state.updateWall(end.wallId, { [end.end]: drag.joint });
+    for (const end of drag.ends) state.patchObject('walls', end.wallId, { [end.end]: drag.joint });
     abandonHistoryTransaction(this.store);
   }
 
@@ -127,15 +127,12 @@ export class WallInteraction {
 
   private deleteSelection(): void {
     this.keepShownSelection();
+    this.store.getState().removeObjects([...this.selectedWallIds, ...this.selectedLightIds]);
     if (this.selectedWallIds.size > 0) {
-      this.store.getState().deleteWalls(Array.from(this.selectedWallIds));
       this.selectedWallIds.clear();
       this.wallRenderer.setSelectedWalls([]);
     }
     if (this.selectedLightIds.size > 0) {
-      for (const id of this.selectedLightIds) {
-        this.store.getState().deleteLight(id);
-      }
       this.selectedLightIds.clear();
       this.onLightSelection([]);
     }
@@ -159,7 +156,7 @@ export class WallInteraction {
           updates.closed = true;
         }
       }
-      state.updateWall(id, updates);
+      state.patchObject('walls', id, updates);
     }));
     this.wallRenderer.forceRedraw();
   }
@@ -168,7 +165,7 @@ export class WallInteraction {
   updateSelected(changes: Partial<Pick<WallSegment, 'direction' | 'blocks' | 'limited'>>): void {
     this.keepShownSelection();
     const state = this.store.getState();
-    runHistoryTransaction(this.store, () => this.selectedWallIds.forEach((id) => state.updateWall(id, changes)));
+    runHistoryTransaction(this.store, () => this.selectedWallIds.forEach((id) => state.patchObject('walls', id, changes)));
     this.wallRenderer.forceRedraw();
   }
 

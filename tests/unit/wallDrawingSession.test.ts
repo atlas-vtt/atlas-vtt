@@ -55,7 +55,7 @@ describe('WallDrawingSession', () => {
     const { store, session, steps } = setup();
     const before = steps();
     session.start();
-    store.getState().addWall(segment(50));
+    store.getState().addObject('walls', segment(50));
     expect(steps()).toBe(before + 1);
     session.cancel();
     expect(steps()).toBe(before + 1);
@@ -63,7 +63,7 @@ describe('WallDrawingSession', () => {
 
   it('keeps unrelated edits made while a chain is cancelled', () => {
     const { store, session } = setup();
-    const doorId = store.getState().addWall({ ...segment(100), type: 'door', closed: true });
+    const doorId = store.getState().addObject('walls', { ...segment(100), type: 'door', closed: true });
     session.start();
     session.add(segment(0));
     store.getState().toggleDoor(doorId);

@@ -93,7 +93,7 @@ describe('liquid surfaces in the store', () => {
     const ids = store.getState().addLiquids([input(), input({ liquid: 'water' })]);
     expect(ids).toHaveLength(2);
     expect(store.getState().objects.liquids![ids[0]!]).toEqual({ id: ids[0], kind: 'liquid', ...input() });
-    store.getState().deleteLiquid(ids[0]!);
+    store.getState().removeObjects([ids[0]!]);
     expect(Object.keys(store.getState().objects.liquids!)).toEqual([ids[1]]);
     const history = getHistoryStore(store)!.getState();
     expect(history.pastStates).toHaveLength(2);

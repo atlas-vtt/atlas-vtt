@@ -94,7 +94,7 @@ export class HexLinkInteraction implements HexLinkPointerHandlers {
         label: t('hex.unlink'),
         icon: 'unlink',
         destructive: true,
-        onClick: () => this.options.store.getState().deleteMapObject('pin', pin.id),
+        onClick: () => this.options.store.getState().removeObjects([pin.id]),
       },
     ];
     openPinMenu(this.options.store, pin, entries, position, this.options.pinnedSceneLevels);

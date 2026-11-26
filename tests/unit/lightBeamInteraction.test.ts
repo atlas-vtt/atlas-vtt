@@ -11,7 +11,7 @@ describe('the rings of a light that shines one way', () => {
   /** The torch as a beam 90° wide facing right: bright 280 px, dim 560 px. */
   function beam(rotation = 90): Setup {
     const made = setup();
-    made.store.getState().updateLight(made.torch, { rotation, emission: { ...genericLight('torch'), kind: 'torch', angle: 90 } });
+    made.store.getState().patchObject('lights', made.torch, { rotation, emission: { ...genericLight('torch'), kind: 'torch', angle: 90 } });
     getHistoryStore(made.store)!.getState().clear();
     made.store.getState().openLightPopover(made.torch);
     return made;
@@ -57,9 +57,9 @@ describe('the rings of a light that shines one way', () => {
     expect(rings.geometry()?.cone?.angle).toBeCloseTo(Math.PI / 2);
     expect(rings.handleAt(982, 300)).toBe('rotation');
     expect(lights.cursorAt({ x: 982, y: 300 })).toBe('grab');
-    store.getState().updateLight(torch, { emission: { ...genericLight('torch'), angle: 90, darkness: true } });
+    store.getState().patchObject('lights', torch, { emission: { ...genericLight('torch'), angle: 90, darkness: true } });
     expect(rings.geometry()?.cone).toBeUndefined();
-    store.getState().updateLight(torch, { emission: genericLight('torch') });
+    store.getState().patchObject('lights', torch, { emission: genericLight('torch') });
     expect(rings.geometry()?.cone).toBeUndefined();
     expect(rings.handleAt(982, 300)).toBeNull();
   });

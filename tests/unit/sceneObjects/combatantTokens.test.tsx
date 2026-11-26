@@ -36,10 +36,10 @@ const listed = (state: ViewAtlasState): (string | undefined)[] => state.initiati
 const turnHolder = (state: ViewAtlasState): string | undefined => state.initiative.entries.find((entry) => entry.isActive)?.tokenId;
 
 describe('a combatant whose token is gone', () => {
-  it.each(['removeMapObjects', 'deleteTokens'] as const)('leaves the tracker when %s removes the token, the turn passing by the defeated', (path) => {
+  it('leaves the tracker when its token is removed, the turn passing by the defeated', () => {
     const store = fight();
 
-    act(() => { store.getState()[path](['a']); });
+    act(() => { store.getState().removeObjects(['a']); });
 
     expect(listed(store.getState())).toEqual(['b', 'c', 'hero']);
     expect(turnHolder(store.getState())).toBe('c');
@@ -47,7 +47,7 @@ describe('a combatant whose token is gone', () => {
 
   it('stays out of the tracker when one undo brings the token back', () => {
     const store = fight();
-    act(() => { store.getState().removeMapObjects(['a']); });
+    act(() => { store.getState().removeObjects(['a']); });
 
     act(() => { store.temporal.getState().undo(); });
 

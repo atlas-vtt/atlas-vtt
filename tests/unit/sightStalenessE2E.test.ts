@@ -149,7 +149,7 @@ describe('what the view holds is what the scene works out from nothing', () => {
     const s = (): ReturnType<ViewAtlasStore['getState']> => store.getState();
 
     s().setSceneLighting({ enabled: true, ambient: 0 });
-    s().addWall({ type: 'solid', p1: { x: 450, y: 0 }, p2: { x: 450, y: 450 }, closed: true });
+    s().addObject('walls', { type: 'solid', p1: { x: 450, y: 0 }, p2: { x: 450, y: 450 }, closed: true });
     const v = s().addTokens([{ id: 'v', x: 300, y: 300, imagePath: 'v.png', vision: { enabled: true, senses: [{ id: 'dnd5e-darkvision', range: 60 }] } } as never])[0]!;
     const m = s().addTokens([{ id: 'm', x: 600, y: 300, imagePath: 'm.png' } as never])[0]!;
     s().addTokens([{ id: 'n', x: 300, y: 700, imagePath: 'n.png' } as never]);
@@ -210,7 +210,7 @@ describe('what the view holds is what the scene works out from nothing', () => {
     s().setSceneLighting({ sightOnDrop: false });
     await check('sight on drop off');
 
-    const door = s().addWall({ type: 'door', p1: { x: 450, y: 450 }, p2: { x: 450, y: 2000 }, closed: true });
+    const door = s().addObject('walls', { type: 'door', p1: { x: 450, y: 450 }, p2: { x: 450, y: 2000 }, closed: true });
     await check('door added');
     s().toggleDoor(door);
     await check('door opened');
@@ -238,7 +238,7 @@ describe('what the view holds is what the scene works out from nothing', () => {
     await check('statblock edited');
     s().updateToken(g, { vision: { enabled: true, range: 100 } });
     await check('statblock token gets its own range');
-    s().deleteTokens([g]);
+    s().removeObjects([g]);
     await check('statblock token deleted');
 
     // Another scene of the same collection.

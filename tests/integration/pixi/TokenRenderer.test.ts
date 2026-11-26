@@ -277,7 +277,7 @@ describe('TokenRenderer Integration Tests', () => {
       await waitForTokens('token-1');
       const group = tokenGroup('token-1');
 
-      store.getState().deleteTokens(['token-1']);
+      store.getState().removeObjects(['token-1']);
 
       // Gone from the renderer at once, still on the canvas while it fades out
       await vi.waitFor(() => expect(tokenRenderer.getTokenSprites()['token-1']).toBeUndefined());
@@ -1494,7 +1494,7 @@ describe('TokenRenderer Integration Tests', () => {
       store.getState().updateToken('goblin', { isHidden: true });
       expect(listener).toHaveBeenCalled();
       listener.mockClear();
-      store.getState().deleteTokens(['goblin']);
+      store.getState().removeObjects(['goblin']);
       expect(listener).toHaveBeenCalled();
       stop();
       listener.mockClear();
@@ -1619,7 +1619,7 @@ describe('TokenRenderer Integration Tests', () => {
       keepRuler(315);
       store.getState().setGMView(false);
       expect(onCanvas()).toEqual([true, false, true, true, true, true]);
-      store.getState().deleteTokens(['goblin']);
+      store.getState().removeObjects(['goblin']);
       expect(onCanvas()).toEqual([true, false, false, false, true, true]);
       store.setState((state) => ({ mapPath: 'maps/other.atlasmap', objects: { ...state.objects, tokens: {} } }));
       eventBus.emit('map-loaded');

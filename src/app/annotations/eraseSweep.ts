@@ -11,7 +11,7 @@ import type { DrawingInput, TextAnnotation } from './annotationTypes';
 import { cutBySweep, type EraseSweep } from './eraseCut';
 import { linesDistanceSq } from './lineMath';
 
-/** What a sweep changes: one `replaceDrawings` and one `deleteAnnotations`. */
+/** What a sweep changes: one `replaceDrawings` and one `removeObjects`. */
 export interface SweepChange {
   /** The drawings the sweep reached, which go. */
   readonly removed: string[];

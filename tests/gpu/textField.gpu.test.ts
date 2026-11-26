@@ -242,7 +242,7 @@ describe('the field a map text is typed in', () => {
             expect(s.field()).toBeNull();
             s.store.getState().clearSelection();
           }
-          s.store.getState().deleteAnnotations([id]);
+          s.store.getState().removeObjects([id]);
         }
       });
     }
@@ -266,7 +266,7 @@ describe('the field a map text is typed in', () => {
       const drawn = await s.shot();
       expect([strayInk(drawn, typed).stray, strayInk(typed, drawn).stray], made).toEqual([0, 0]);
       expect(strayInk(drawn, typed).clear).toBeGreaterThan(200);
-      s.store.getState().deleteAnnotations(Object.keys(s.store.getState().objects.texts));
+      s.store.getState().removeObjects(Object.keys(s.store.getState().objects.texts));
     }
   });
 

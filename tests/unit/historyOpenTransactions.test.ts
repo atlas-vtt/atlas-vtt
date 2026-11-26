@@ -20,7 +20,7 @@ function audioScene(): { store: ViewAtlasStore; history: () => HistoryState; aud
   const { app } = createInMemoryApp();
   const store = createViewAtlasStore(app, `open-transactions-${Math.random()}`);
   store.setState({ persistenceEnabled: false });
-  const audio = store.getState().addAudio({ x: 0, y: 0, innerRadius: 70, outerRadius: 140, volume: 0.5, soundId: 'fire', loop: true });
+  const audio = store.getState().addObject('audios', { x: 0, y: 0, innerRadius: 70, outerRadius: 140, volume: 0.5, soundId: 'fire', loop: true });
   const piece = store.getState().addTokens([{ x: 0, y: 0, imagePath: 'art/x.png' }])[0]!;
   const history = getHistoryStore(store)!;
   history.getState().clear();
@@ -108,7 +108,7 @@ describe('undo and redo during a light\'s ring drag', () => {
     const { store, press, move } = setup();
     const history = getHistoryStore(store)!;
     store.subscribe(closeStalePopovers);
-    const lantern = store.getState().addLight({ x: 400, y: 300, emission: { ...genericLight('torch'), kind: 'torch' } });
+    const lantern = store.getState().addObject('lights', { x: 400, y: 300, emission: { ...genericLight('torch'), kind: 'torch' } });
     store.getState().openLightPopover(lantern);
     press(400, 20);
     move(400, 87);
@@ -132,7 +132,7 @@ describe('undo and redo between the writes of a slider gesture', () => {
     })();
     const history = getHistoryStore(store)!;
     const at = (): [number | undefined, number | undefined] => [tokenX(store, piece), store.getState().objects.lights[torch]?.emission.bright];
-    const setBright = (value: number): void => store.getState().updateLight(torch, { emission: { ...store.getState().objects.lights[torch]!.emission, bright: value } });
+    const setBright = (value: number): void => store.getState().patchObject('lights', torch, { emission: { ...store.getState().objects.lights[torch]!.emission, bright: value } });
     const { result } = renderHook(() => useGestureTransactions(store));
     result.current.onSliderPointerDown({ currentTarget: { ownerDocument: document } } as never);
     setBright(10);

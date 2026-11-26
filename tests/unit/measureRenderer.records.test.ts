@@ -114,7 +114,7 @@ describe('MeasureRenderer records', () => {
     const [id] = Object.keys(s.store.getState().objects.measures ?? {});
     expect(s.store.getState().objects.measures?.[id!]?.hidden).toBe(true);
     expect(s.measure.measurements.get().kept).toEqual([]);
-    s.store.getState().updateMeasure(id!, { hidden: undefined });
+    s.store.getState().patchObject('measures', id!, { hidden: undefined });
     expect(s.measure.measurements.get().kept.map((measure) => measure.id)).toEqual([id]);
   });
 

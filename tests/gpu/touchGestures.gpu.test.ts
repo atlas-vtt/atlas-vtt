@@ -228,7 +228,7 @@ describe('a door\'s badge, which opens its door as it is pressed', () => {
 
   async function withDoor(): Promise<{ m: TouchMap; closed: () => boolean }> {
     const m = await map();
-    const door = m.store.getState().addWall({ type: 'door', p1: { x: BADGE.x - 40, y: BADGE.y }, p2: { x: BADGE.x + 40, y: BADGE.y }, closed: true });
+    const door = m.store.getState().addObject('walls', { type: 'door', p1: { x: BADGE.x - 40, y: BADGE.y }, p2: { x: BADGE.x + 40, y: BADGE.y }, closed: true });
     const doors = new DoorIcons(m.store, m.canvas);
     m.viewport.addChild(doors.view);
     // As the lighting wires it: the press opens or closes, and the gestures are told where it would

@@ -85,7 +85,7 @@ function AudioConfigPanelInner({
 
   // Apply changes live
   useEffect(() => {
-    store.getState().updateAudio(audio.id, {
+    store.getState().patchObject('audios', audio.id, {
       soundId,
       volume: volume / 100,
       innerRadius: unitsToPixels(innerUnits, gridSize, unitDistance),
@@ -109,7 +109,7 @@ function AudioConfigPanelInner({
   }, [onClose]);
 
   const handleDelete = useCallback(() => {
-    store.getState().deleteAudio(audio.id);
+    store.getState().removeObjects([audio.id]);
     onClose();
   }, [audio.id, store, onClose]);
 

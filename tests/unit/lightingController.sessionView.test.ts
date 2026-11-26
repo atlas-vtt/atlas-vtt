@@ -155,7 +155,7 @@ function setup(extra: Partial<ConstructorParameters<typeof LightingController>[0
 }
 
 function addWall(store: ViewAtlasStore, x1: number, x2: number): string {
-  return store.getState().addWall({ type: 'solid', p1: { x: x1, y: 100 }, p2: { x: x2, y: 100 }, closed: true });
+  return store.getState().addObject('walls', { type: 'solid', p1: { x: x1, y: 100 }, p2: { x: x2, y: 100 }, closed: true });
 }
 
 function pressPeek(type: 'keydown' | 'keyup'): void {
@@ -189,7 +189,7 @@ describe('LightingController in session view', () => {
     let coverage: FogCoverage | null = fogCoverage({});
     const { store, wired, controller } = setup({ fogCoverage: () => coverage });
     store.getState().setSceneLighting({ enabled: true });
-    const door = store.getState().addWall({ type: 'door', p1: { x: 0, y: 100 }, p2: { x: 100, y: 100 }, closed: true });
+    const door = store.getState().addObject('walls', { type: 'door', p1: { x: 0, y: 100 }, p2: { x: 100, y: 100 }, closed: true });
     store.getState().setGMView(false);
     const paint = fogRectangle({ x: 40, y: 90, width: 20, height: 20 });
     coverage = fogCoverage({ paint });
@@ -256,8 +256,8 @@ describe('LightingController in session view', () => {
     const { controller, store } = setup();
     store.getState().setSceneLighting({ enabled: true });
     store.getState().setGMView(false);
-    store.getState().addLight({ x: 50, y: 50, emission: genericLight('torch') });
-    const door = store.getState().addWall({ type: 'door', p1: { x: 0, y: 0 }, p2: { x: 100, y: 0 }, closed: true });
+    store.getState().addObject('lights', { x: 50, y: 50, emission: genericLight('torch') });
+    const door = store.getState().addObject('walls', { type: 'door', p1: { x: 0, y: 0 }, p2: { x: 100, y: 0 }, closed: true });
     store.getState().toggleDoor(door);
     store.getState().setActiveTool('wall');
     store.getState().setLightingTool({ mode: 'draw' });
@@ -290,7 +290,7 @@ describe('LightingController in session view', () => {
   it('opens a door\'s menu from a right-click on its badge with any tool: to open it, or to lock it; none in the players\' view', () => {
     const { store } = setup();
     store.getState().setSceneLighting({ enabled: true });
-    const door = store.getState().addWall({ type: 'door', p1: { x: 0, y: 100 }, p2: { x: 100, y: 100 }, closed: true });
+    const door = store.getState().addObject('walls', { type: 'door', p1: { x: 0, y: 100 }, p2: { x: 100, y: 100 }, closed: true });
     const handlers = doorMenu.current!;
     expect(handlers.hitTest(50, 100)).toBe(door);
     expect(handlers.hitTest(300, 300)).toBeNull();
@@ -312,9 +312,9 @@ describe('LightingController in session view', () => {
     store.getState().setSceneLighting({ enabled: true });
     const blocking = [{ id: 'south', kind: 'wall' as const, type: 'solid' as const, p1: { x: -1000, y: 200 }, p2: { x: 1000, y: 200 } }];
     lighting.sight = computeSight([{ tokenId: 'hero', origin: { x: 50, y: 50 }, range: 1000, senses: [] }], blocking);
-    const seen = store.getState().addWall({ type: 'door', p1: { x: 0, y: 100 }, p2: { x: 100, y: 100 }, closed: true });
-    const unseen = store.getState().addWall({ type: 'door', p1: { x: 0, y: 300 }, p2: { x: 100, y: 300 }, closed: true });
-    const secret = store.getState().addWall({ type: 'secret-door', p1: { x: 200, y: 100 }, p2: { x: 300, y: 100 }, closed: true });
+    const seen = store.getState().addObject('walls', { type: 'door', p1: { x: 0, y: 100 }, p2: { x: 100, y: 100 }, closed: true });
+    const unseen = store.getState().addObject('walls', { type: 'door', p1: { x: 0, y: 300 }, p2: { x: 100, y: 300 }, closed: true });
+    const secret = store.getState().addObject('walls', { type: 'secret-door', p1: { x: 200, y: 100 }, p2: { x: 300, y: 100 }, closed: true });
     return { ...made, seen, unseen, secret };
   }
 
@@ -414,7 +414,7 @@ describe('the lighting tool while its editor is hidden', () => {
   it('drags no handle it does not show', () => {
     const { store, wired, click } = setup();
     const wall = addWall(store, 100, 300);
-    const light = store.getState().addLight({ x: 500, y: 500, emission: genericLight('torch') });
+    const light = store.getState().addObject('lights', { x: 500, y: 500, emission: genericLight('torch') });
     store.getState().setActiveTool('wall');
     store.getState().setLightingTool({ mode: 'draw' });
     store.getState().setGMView(false);
@@ -460,7 +460,7 @@ describe('the lighting tool while its editor is hidden', () => {
   it('offers no handle cursor, context menu, light settings or keyboard edits', () => {
     const { controller, store, wired } = setup();
     const wall = addWall(store, 100, 300);
-    const light = store.getState().addLight({ x: 500, y: 500, emission: genericLight('torch') });
+    const light = store.getState().addObject('lights', { x: 500, y: 500, emission: genericLight('torch') });
     store.getState().setActiveTool('wall');
     store.getState().setLightingTool({ mode: 'draw' });
     expect(wired.cursor(100, 100)).toBe('grab');

@@ -436,7 +436,7 @@ export class NotePinTool {
     // Re-picking what the pin already shows is not an edit, and must not add an undo step
     if (result.notePath === pin.notePath && result.icon === pin.icon) return;
 
-    this.store.getState().updateNotePin(pin.id, {
+    this.store.getState().patchObject('pins', pin.id, {
       notePath: result.notePath,
       ...(result.icon !== undefined && { icon: result.icon }),
     });

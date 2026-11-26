@@ -18,8 +18,8 @@ function dungeon(): ViewAtlasStore {
   const fighters: string[] = [];
   for (const { id: level } of LEVELS) {
     state.setViewedLevel(level);
-    for (let i = 0; i < 400; i += 1) state.addWall({ type: i % 20 === 0 ? 'door' : 'solid', p1: { x: (i % 40) * 70, y: Math.floor(i / 40) * 70 }, p2: { x: (i % 40) * 70 + 60, y: Math.floor(i / 40) * 70 } });
-    for (let i = 0; i < 50; i += 1) state.addLight({ x: i * 50, y: 500, emission: { bright: 20, dim: 40, color: '#ffaa55', intensity: 1 } });
+    for (let i = 0; i < 400; i += 1) state.addObject('walls', { type: i % 20 === 0 ? 'door' : 'solid', p1: { x: (i % 40) * 70, y: Math.floor(i / 40) * 70 }, p2: { x: (i % 40) * 70 + 60, y: Math.floor(i / 40) * 70 } });
+    for (let i = 0; i < 50; i += 1) state.addObject('lights', { x: i * 50, y: 500, emission: { bright: 20, dim: 40, color: '#ffaa55', intensity: 1 } });
     const tokens = state.addTokens(Array.from({ length: 200 }, (_, i) => ({ x: (i % 20) * 70, y: Math.floor(i / 20) * 70, imagePath: `art/${i % 12}.png` })));
     state.setTokenAuras(tokens.filter((_, i) => i % 10 === 0).map((tokenId) => ({ tokenId, aura: 10, points: [{ x: 0, y: 0 }, { x: 70, y: 0 }] })));
     fighters.push(...tokens.slice(0, 14));
@@ -50,7 +50,7 @@ function selection(store: ViewAtlasStore): string[] {
   return [...Object.keys(tokens), ...Object.keys(drawings), ...Object.keys(texts)].filter((_, i) => i % 4 !== 0);
 }
 
-const remove = (store: ViewAtlasStore): void => store.getState().removeMapObjects(selection(store));
+const remove = (store: ViewAtlasStore): void => store.getState().removeObjects(selection(store));
 const undo = (store: ViewAtlasStore): void => store.temporal.getState().undo();
 const redo = (store: ViewAtlasStore): void => store.temporal.getState().redo();
 

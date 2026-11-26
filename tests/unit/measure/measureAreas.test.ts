@@ -171,18 +171,18 @@ describe('an area and the walls', () => {
 
   it('stops at them while it is made, counts no token behind them, and is cut again when a door opens', () => {
     const s = scene([token('hero', 2, 2), token('goblin', 4, 2)]);
-    const door = s.store.getState().addWall({ ...wall, type: 'door', closed: true });
+    const door = s.store.getState().addObject('walls', { ...wall, type: 'door', closed: true });
     s.store.getState().setMeasureTool({ mode: 'circle' });
     s.pointer('pointerdown', 245, 245);
     s.pointer('pointermove', 245, 455);
     expect(labels(s)).toEqual(['15ft · 1']);
-    s.store.getState().updateWall(door, { closed: false });
+    s.store.getState().patchObject('walls', door, { closed: false });
     expect(labels(s)).toEqual(['15ft · 2']);
   });
 
   it('counts the tokens anew for the players when a door closes on the last one: in session view the label loses its number at once', () => {
     const s = scene([token('goblin', 4, 2), token('ghost', 4, 3)]);
-    const door = s.store.getState().addWall({ ...wall, type: 'door', closed: false });
+    const door = s.store.getState().addObject('walls', { ...wall, type: 'door', closed: false });
     // The canvas shows what the players see: the goblin, and not the ghost.
     s.measure.playersView = { footprints: () => [], seenAtStart: () => () => true, seenOnCanvas: () => (id) => id === 'goblin' };
     s.store.getState().setMeasureTool({ mode: 'circle' });
@@ -190,31 +190,31 @@ describe('an area and the walls', () => {
     s.pointer('pointermove', 245, 455);
     expect(labels(s)).toEqual(['15ft · 1']);
     expect(rings(s).filter((ring) => ring.visible)).toHaveLength(1);
-    s.store.getState().updateWall(door, { closed: true });
+    s.store.getState().patchObject('walls', door, { closed: true });
     expect(rings(s)).toHaveLength(0);
     expect(labels(s)).toEqual(['15ft']);
     // And back: the door opens, and the players' count is theirs again.
-    s.store.getState().updateWall(door, { closed: false });
+    s.store.getState().patchObject('walls', door, { closed: false });
     expect(labels(s)).toEqual(['15ft · 1']);
   });
 
   it('passes them once its switch is off, kept', () => {
     const s = scene([token('hero', 2, 2), token('goblin', 4, 2)]);
-    s.store.getState().addWall(wall);
+    s.store.getState().addObject('walls', wall);
     s.store.getState().setMeasureTool({ mode: 'circle', keep: true });
     measureFrom(s, 245, 245, 245, 455);
     const [id] = Object.keys(s.store.getState().objects.measures ?? {});
     expect(s.measure.tokensIn(id!)).toEqual(['hero']);
-    s.store.getState().updateMeasure(id!, { walls: false });
+    s.store.getState().patchObject('measures', id!, { walls: false });
     expect(s.measure.tokensIn(id!)).toEqual(['hero', 'goblin']);
   });
 
   it('tells whoever passes measurements on whether walls stand on the level', () => {
     const s = scene();
     expect(s.measure.measurements.get().walled).toBe(false);
-    const id = s.store.getState().addWall(wall);
+    const id = s.store.getState().addObject('walls', wall);
     expect(s.measure.measurements.get().walled).toBe(true);
-    s.store.getState().deleteWall(id);
+    s.store.getState().removeObjects([id]);
     expect(s.measure.measurements.get().walled).toBe(false);
   });
 });

@@ -53,7 +53,7 @@ describe('the lighting tool\'s Snap switch under a finger', () => {
     m.pointer.attach('doors', doors);
     m.taps.lighting = () => controller.tapPlacing();
     const end = worldAt(m, WALL_END);
-    m.store.getState().addWall({ type: 'solid', p1: end, p2: { x: end.x + 200, y: end.y } });
+    m.store.getState().addObject('walls', { type: 'solid', p1: end, p2: { x: end.x + 200, y: end.y } });
     m.store.getState().setActiveTool('wall');
     m.store.getState().setLightingTool({ mode: 'light-zone' });
     m.store.getState().setToolSwitch('lightingSnap', snap);

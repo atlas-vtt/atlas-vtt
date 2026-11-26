@@ -120,7 +120,7 @@ describe('a level that holds more drawings or texts than are shown', () => {
     // Nothing is removed, and no later change tells again.
     expect(scene.drawings()).toHaveLength(MAX_DRAWINGS + 5);
     scene.store.getState().setSelection(['d0']);
-    scene.store.getState().deleteAnnotations(['d1']);
+    scene.store.getState().removeObjects(['d1']);
     expect(scene.full).toHaveBeenCalledTimes(1);
     load(scene, 3, MAX_TEXTS + 1);
     expect(scene.full.mock.calls).toEqual([['drawingsLeftOut'], ['textsLeftOut']]);

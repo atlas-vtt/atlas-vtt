@@ -47,7 +47,7 @@ function LightZonePopover({ zoneId }: { zoneId: string }): React.ReactElement | 
   const { onSliderPointerDown, beginPick, endPick } = useGestureTransactions(store);
 
   if (!zone) return null;
-  const update = (changes: LightZoneChanges): void => store.getState().updateLightZone(zone.id, changes);
+  const update = (changes: LightZoneChanges): void => store.getState().patchObject('lightZones', zone.id, changes);
   const time = TIMES_OF_DAY.find((stop) => stop.ambient === zone.ambient)?.value ?? 'custom';
 
   return (
@@ -92,7 +92,7 @@ function LightZonePopover({ zoneId }: { zoneId: string }): React.ReactElement | 
       </div>
       <div className="atlas-light-popover__section atlas-light-popover__actions">
         <span />
-        <Button variant="ghost" size="sm" className="atlas-light-popover__delete" onClick={() => store.getState().deleteLightZone(zone.id)}>
+        <Button variant="ghost" size="sm" className="atlas-light-popover__delete" onClick={() => store.getState().removeObjects([zone.id])}>
           <Trash2 />
           <span>{t('common.delete')}</span>
         </Button>

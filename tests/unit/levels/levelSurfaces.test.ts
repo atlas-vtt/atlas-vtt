@@ -139,11 +139,11 @@ describe('a drop over transparent art', () => {
 describe('surfaces and the scene', () => {
   it('are added on the level shown and changed and deleted, each one undo step', () => {
     const store = sceneStore({}, {});
-    const id = store.getState().addLevelSurface({ polygon: square(0, 0, 100), open: true });
+    const id = store.getState().addObject('levelSurfaces', { polygon: square(0, 0, 100), open: true });
     expect(store.getState().objects.levelSurfaces![id]).toMatchObject({ kind: 'level-surface', level: 'upper', open: true });
-    store.getState().updateLevelSurface(id, { open: false });
+    store.getState().patchObject('levelSurfaces', id, { open: false });
     store.getState().openLevelSurfacePopover(id);
-    store.getState().deleteLevelSurface(id);
+    store.getState().removeObjects([id]);
     expect(store.getState().objects.levelSurfaces).toEqual({});
     expect(store.getState().levelSurfacePopover).toBeNull();
     expect(getHistoryStore(store)!.getState().pastStates).toHaveLength(3);

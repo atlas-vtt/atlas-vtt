@@ -50,8 +50,8 @@ describe('the body of a measured area under the lighting', () => {
     cleanup.push(() => { measure.destroy(); view.dispose(); });
     const state = store.getState();
     state.setSceneLighting({ enabled: lit, ambient: 0 });
-    state.addWall({ type: 'solid', p1: { x: 128, y: -64 }, p2: { x: 128, y: 320 } });
-    state.addLight({ x: 64, y: 128, emission: { bright: 10, dim: 20, color: '#ffffff', intensity: 1, animation: 'none' } });
+    state.addObject('walls', { type: 'solid', p1: { x: 128, y: -64 }, p2: { x: 128, y: 320 } });
+    state.addObject('lights', { x: 64, y: 128, emission: { bright: 10, dim: 20, color: '#ffffff', intensity: 1, animation: 'none' } });
     if (area) {
       state.addMeasure({ shape: 'circle', points: [{ x: 128, y: 128 }, { x: 128, y: 224 }], color: '#e93147', walls: false });
       await measureMotionDone();

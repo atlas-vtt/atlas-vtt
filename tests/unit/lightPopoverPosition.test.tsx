@@ -53,8 +53,8 @@ function setup(): Setup {
   store.getState().setPersistenceEnabled(false);
   store.getState().setSceneLighting({ enabled: true });
   // A candle (bright 5 ft: 70 px) so the popover's place beyond the ring is easy to follow.
-  const torch = store.getState().addLight({ x: 300, y: 400, emission: { ...genericLight('candle'), kind: 'candle' } });
-  const lantern = store.getState().addLight({ x: 900, y: 400, emission: { ...genericLight('candle'), kind: 'candle' } });
+  const torch = store.getState().addObject('lights', { x: 300, y: 400, emission: { ...genericLight('candle'), kind: 'candle' } });
+  const lantern = store.getState().addObject('lights', { x: 900, y: 400, emission: { ...genericLight('candle'), kind: 'candle' } });
   const camera = { x: 0, y: 0, zoom: 1 };
   const viewport = {
     scale: { get x() { return camera.zoom; } },
@@ -118,7 +118,7 @@ describe('the light popover on the map', () => {
   it('follows its light when the light is dragged', () => {
     const { store, torch, frame, position } = setup();
     act(() => { store.getState().openLightPopover(torch); });
-    act(() => { store.getState().updateLight(torch, { x: 340, y: 430 }); });
+    act(() => { store.getState().patchObject('lights', torch, { x: 340, y: 430 }); });
     frame();
     expect(position()).toEqual({ x: 422, y: 260 });
   });
@@ -127,7 +127,7 @@ describe('the light popover on the map', () => {
     const { store, torch, frame, position } = setup();
     act(() => { store.getState().openLightPopover(torch); });
     const before = position();
-    act(() => { store.getState().updateLight(torch, { emission: { ...genericLight('candle'), bright: 30, dim: 40 } }); });
+    act(() => { store.getState().patchObject('lights', torch, { emission: { ...genericLight('candle'), bright: 30, dim: 40 } }); });
     frame();
     expect(position()).toEqual(before);
   });
@@ -135,10 +135,10 @@ describe('the light popover on the map', () => {
   it('keeps clear of the handle that turns a beam when it opens, and stays there while the light is turned', () => {
     const { store, frame, position } = setup();
     // A candle shining to the right: its handle is 22 px beyond the 140 px dim arc, where the popover would sit.
-    const beam = store.getState().addLight({ x: 600, y: 400, rotation: 90, emission: { ...genericLight('candle'), angle: 90 } });
+    const beam = store.getState().addObject('lights', { x: 600, y: 400, rotation: 90, emission: { ...genericLight('candle'), angle: 90 } });
     act(() => { store.getState().openLightPopover(beam); });
     expect(position()).toEqual({ x: 600 - 70 - 12 - 272, y: 230 });
-    act(() => { store.getState().updateLight(beam, { rotation: 265 }); });
+    act(() => { store.getState().patchObject('lights', beam, { rotation: 265 }); });
     frame();
     expect(position()).toEqual({ x: 246, y: 230 });
     // The slider is let go (here: a key on its thumb): the beam now points at the popover, which makes way.

@@ -61,7 +61,7 @@ describe('a measurement grouped with a token', () => {
     expect(cone()?.points).toEqual([{ x: 140, y: 105 }, { x: 280, y: 105 }]);
     expect(history.getState().futureStates).toHaveLength(2);
 
-    store.getState().deleteTokens(['hero']);
+    store.getState().removeObjects(['hero']);
     expect(cone()).toBeUndefined();
     stop();
   });

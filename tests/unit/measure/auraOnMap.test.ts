@@ -204,7 +204,7 @@ describe('who is shown an aura', () => {
     s.measure.playersView = view;
     expect(shown(s, () => true)).toEqual({ bodies: 1, labels: ['10ft'] });
     expect(shown(s, (token) => token !== 'hero')).toEqual({ bodies: 0, labels: [] });
-    s.store.getState().updateMeasure(id, { hidden: true });
+    s.store.getState().patchObject('measures', id, { hidden: true });
     expect(shown(s, () => true)).toEqual({ bodies: 0, labels: [] });
     // The GM's canvas shows it all the while.
     expect(bodies(s)).toHaveLength(1);
@@ -214,7 +214,7 @@ describe('who is shown an aura', () => {
     const { s, id } = scene();
     s.store.getState().addMeasure({ shape: 'circle', points: [cell(1, 1), cell(3, 1)] });
     expect(s.measure.measurements.get().kept.map(({ follows, aura }) => [follows, aura])).toEqual([['hero', 10], [undefined, undefined]]);
-    s.store.getState().updateMeasure(id, { hidden: true });
+    s.store.getState().patchObject('measures', id, { hidden: true });
     expect(s.measure.measurements.get().kept.map(({ follows }) => follows)).toEqual([undefined]);
   });
 });

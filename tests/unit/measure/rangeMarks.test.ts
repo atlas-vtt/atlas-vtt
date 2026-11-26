@@ -115,7 +115,7 @@ describe('the range check', () => {
     s.hover(GOBLIN);
     s.store.getState().updateToken('hero', { ...cell(4, 1) });
     expect(check(s)).toBe('5ft');
-    s.store.getState().deleteTokens(['goblin']);
+    s.store.getState().removeObjects(['goblin']);
     expect(check(s)).toBe('');
   });
 
@@ -220,7 +220,7 @@ describe('the Ranges mode', () => {
     s.store.getState().updateToken('ogre', { ...cell(6, 6) });
     expect(middle(s)).toBeCloseTo(around + 2 * GRID, 6);
     expect(redraw).not.toHaveBeenCalled();
-    s.store.getState().deleteTokens(['goblin']);
+    s.store.getState().removeObjects(['goblin']);
     expect(rings(s)).toEqual([]);
   });
 

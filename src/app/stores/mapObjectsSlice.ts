@@ -1,6 +1,6 @@
 /**
  * Copy, paste and duplicate for map objects. Every action is a single store write,
- * so each paste, duplicate or cut is exactly one undo step and one map save.
+ * so each paste or duplicate is exactly one undo step and one map save.
  */
 
 import type { GridState } from '../types/gridTypes';
@@ -9,7 +9,6 @@ import { collectMapObjects, countMapObjects, type CopyableCollections, type MapO
 import { duplicateStep, placeMapObjects } from '../clipboard/mapObjectPlacement';
 import { computeNextInstanceNumber } from './tokenInstanceNumbers';
 import { aurasToTokenLevels } from '../measure/auraUpkeep';
-import { dropTokenAuras } from './measuresSlice';
 import { placeTokens, raiseTokens } from './tokenStacking';
 import { isOffMap } from '../tokens/offMap';
 import type { SceneLevel } from '../types/sceneLevelTypes';
@@ -21,7 +20,6 @@ import { isRecord } from '../utils/guards';
 import { newId } from '../utils/ids';
 import { placedAnnotationCopies } from '../annotations/annotationCopies';
 import { annotationRoom } from '../annotations/annotationList';
-import { unlockedIds } from '../annotations/annotationLock';
 import { orderOnTop } from '../annotations/annotationStack';
 
 export interface MapObjectsSlice {
@@ -35,8 +33,6 @@ export interface MapObjectsSlice {
   insertMapObjects: (content: MapObjectContent) => string[];
   /** Copies the objects one grid cell down and to the right, selects the copies and returns their ids. */
   duplicateMapObjects: (ids: string[]) => string[];
-  /** Removes tokens, drawings, texts, pins and stairs with the given ids; other ids stay selected. */
-  removeMapObjects: (ids: string[]) => void;
   /** Puts a token kept beside the map (`offMap`) on it at (x, y), on top of every other token, and selects it. */
   placeOffMapToken: (id: string, x: number, y: number) => void;
 }
@@ -146,28 +142,6 @@ export function createMapObjectsActions(set: ImmerSet, get: () => MapObjectsStor
       aurasToTokenLevels(draft.objects, [id]);
       placeTokens(draft, [{ id, x, y }]);
       draft.selectedIds = [id];
-    }),
-
-    removeMapObjects: (ids) => set((draft) => {
-      const { tokens, drawings, texts, pins, levelLinks } = draft.objects;
-      const links = isRecord(levelLinks) ? levelLinks : {};
-      // A locked drawing or text stays, and stays selected: Delete and cut are changes of it.
-      const removed = new Set(unlockedIds(ids, draft.objects).filter((id) => tokens[id] || drawings[id] || texts[id] || pins[id] || links[id]));
-      const removedToken = [...removed].some((id) => tokens[id]);
-      for (const id of removed) {
-        delete tokens[id];
-        delete drawings[id];
-        delete texts[id];
-        delete pins[id];
-        delete links[id];
-      }
-      // A token's auras go with it, in this write: undo brings back both.
-      dropTokenAuras(draft, removed);
-      if (draft.levelLinkPopover !== null && removed.has(draft.levelLinkPopover)) draft.levelLinkPopover = null;
-      draft.selectedIds = draft.selectedIds.filter((id) => !removed.has(id));
-      if (removedToken) {
-        draft._audioDirty = true;
-      }
     }),
   };
 }

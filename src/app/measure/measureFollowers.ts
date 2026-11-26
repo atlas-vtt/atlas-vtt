@@ -8,11 +8,12 @@
 
 import type { StoreApi } from 'zustand';
 import { runUntracked } from '../stores/history';
+import type { SceneObjectsSlice } from '../stores/sceneObjectsSlice';
 import { mapTokens } from '../tokens/offMap';
 import type { ViewState } from '../types/viewState';
 import type { Point } from '../types/visionTypes';
 import { isFollower, readMeasure } from './keptMeasures';
-import type { MeasureAnchor, MeasureChanges } from './measureTypes';
+import type { MeasureAnchor } from './measureTypes';
 import { spaceRadius, tokenStandingAt, type PlacedToken, type TokenGrid } from './tokenDistance';
 
 /** What a grouped measurement reads of its token. */
@@ -87,9 +88,7 @@ export function followerMoves(measures: Readonly<Record<string, unknown>> | unde
   return moves;
 }
 
-type FollowerStoreState = Pick<ViewState, 'objects' | 'isMapLoading'> & {
-  updateMeasure: (id: string, changes: MeasureChanges) => void;
-};
+type FollowerStoreState = Pick<ViewState, 'objects' | 'isMapLoading'> & Pick<SceneObjectsSlice, 'patchObject'>;
 
 /**
  * Keeps a view store's grouped measurements with their tokens: whenever tokens change, each one
@@ -106,7 +105,7 @@ export function followTokensWithMeasures(store: StoreApi<FollowerStoreState>): (
     writing = true;
     try {
       runUntracked(store, () => {
-        for (const { id, points, anchor } of moves) store.getState().updateMeasure(id, { points, anchor });
+        for (const { id, points, anchor } of moves) store.getState().patchObject('measures', id, { points, anchor });
       });
     } finally {
       writing = false;
