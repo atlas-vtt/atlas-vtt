@@ -83,8 +83,7 @@ describe('grids in a settings file this version did not write', () => {
     ['a grid', { gmScreenKeys: { phone: deeply(1, 200_000) } }],
     ['a newer key', { gmScreenKeys: { phone: { slots: [{ k: 'timer', deep: deeply(1, 200_000) }] } } }],
   ])('loads the settings with %s nested too deep to write, leaving it out', async (_name, stored) => {
-    const text = JSON.stringify(stored);
-    const settings = new SettingsService(new App(), undefined, { loadData: () => Promise.resolve(JSON.parse(text)), saveData: () => Promise.resolve() });
+    const settings = new SettingsService(new App(), undefined, { loadData: () => Promise.resolve(stored), saveData: () => Promise.resolve() });
     await settings.initialize();
     expect(settings.getGmScreenKeys().phone?.slots[0] ?? null).toBeNull();
   });
