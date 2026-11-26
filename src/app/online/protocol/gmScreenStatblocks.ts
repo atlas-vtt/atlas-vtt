@@ -24,11 +24,45 @@ const isElementName = (value: string): value is DrawnElementName => ELEMENTS.has
 export const MAX_DRAWN_NODES = 5000;
 export const MAX_DRAWN_DEPTH = 40;
 export const MAX_DRAWN_TEXT = 100_000;
-const MAX_CLASSES = 16;
-const CLASS_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]{0,63}$/;
+export const MAX_DRAWN_CLASSES = 16;
+export const DRAWN_CLASS_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]{0,63}$/;
 /** As long as a formula the dice tool reads. */
-const MAX_DICE = 64;
+export const MAX_DRAWN_DICE = 64;
 const MAX_SPAN = 64;
+
+const WORD = /^[a-z][a-z-]{0,31}$/;
+const NUMBER = /^\d{1,4}(\.\d{1,6})?$/;
+/**
+ * The data attributes a drawn element may carry (`data-<name>`), each with the values it may hold: the hooks
+ * Atlas's statblock stylesheet selects on. Any other, and a value that does not match, is left out.
+ */
+export const DRAWN_DATA: Readonly<Record<string, RegExp>> = {
+  block: WORD,
+  'block-id': /^[A-Za-z0-9_-]{1,64}$/,
+  type: WORD,
+  look: WORD,
+  level: /^[1-6]$/,
+  layout: /^[a-z0-9][a-z0-9-]{0,63}$/,
+  cls: /^[A-Za-z0-9_-]{1,64}( [A-Za-z0-9_-]{1,64}){0,7}$/,
+  align: WORD,
+  scrollable: /^(true|false)$/,
+  squeezed: /^true$/,
+};
+/**
+ * The inline style properties a drawn element may carry, each with the values it may hold: numbers, lengths,
+ * percentages, a keyword or a colour by its hex digits, never a URL or a function. Any other is left out.
+ */
+export const DRAWN_STYLES: Readonly<Record<string, RegExp>> = {
+  '--atlas-token-ring-color': /^#[0-9a-fA-F]{3,8}$/,
+  '--atlas-sb-column-width': /^\d{1,3}(\.\d{1,4})?em$/,
+  '--atlas-sb-max-columns': NUMBER,
+  '--atlas-sb-metric-numbers': NUMBER,
+  '--atlas-sb-score-columns': NUMBER,
+  '--atlas-sb-gauge-share': NUMBER,
+  'text-align': /^(left|right|center|start|end|justify)$/,
+  width: /^\d{1,3}(\.\d{1,6})?%$/,
+  'max-height': /^\d{1,5}(\.\d{1,4})?px$/,
+};
 
 /** The statblocks a list holds at most, and the longest name read. */
 export const MAX_STATBLOCK_ENTRIES = 500;
@@ -54,6 +88,10 @@ export interface DrawnElement {
   readonly src?: string;
   readonly colspan?: number;
   readonly rowspan?: number;
+  /** Its data attributes (`DRAWN_DATA`), by name without `data-`. */
+  readonly d?: Readonly<Record<string, string>>;
+  /** Its inline style (`DRAWN_STYLES`), by property. */
+  readonly s?: Readonly<Record<string, string>>;
 }
 
 /** A statblock of the map in front, as the list shows it. */
@@ -94,12 +132,23 @@ interface Budget {
   text: number;
 }
 
+/** The entries of `value` that `allowed` names, each where its value matches; null for none. */
+function listed(value: unknown, allowed: Readonly<Record<string, RegExp>>): Record<string, string> | null {
+  if (!isRecord(value)) return null;
+  const kept = Object.entries(value).flatMap(([name, text]): [string, string][] =>
+    (Object.hasOwn(allowed, name) && typeof text === 'string' && allowed[name]!.test(text) ? [[name, text]] : []));
+  return kept.length > 0 ? Object.fromEntries(kept) : null;
+}
+
 /** What a drawn element keeps of its attributes: only those its element may carry, each where it is well formed. */
 function attributes(name: string, value: Record<string, unknown>): Omit<DrawnElement, 'e' | 'c' | 'k'> | null {
-  if (name === 'img') return isHash(value.src) ? { src: value.src } : null;
-  const dice = typeof value.dice === 'string' && value.dice.length > 0 && value.dice.length <= MAX_DICE ? { dice: value.dice } : {};
-  if (name !== 'td' && name !== 'th') return dice;
-  return { ...dice, ...(isSpan(value.colspan) && { colspan: value.colspan }), ...(isSpan(value.rowspan) && { rowspan: value.rowspan }) };
+  const data = listed(value.d, DRAWN_DATA);
+  const style = listed(value.s, DRAWN_STYLES);
+  const hooks = { ...(data && { d: data }), ...(style && { s: style }) };
+  if (name === 'img') return isHash(value.src) ? { src: value.src, ...hooks } : null;
+  const dice = typeof value.dice === 'string' && value.dice.length > 0 && value.dice.length <= MAX_DRAWN_DICE ? { dice: value.dice } : {};
+  if (name !== 'td' && name !== 'th') return { ...dice, ...hooks };
+  return { ...dice, ...(isSpan(value.colspan) && { colspan: value.colspan }), ...(isSpan(value.rowspan) && { rowspan: value.rowspan }), ...hooks };
 }
 
 /** Children read into `out`; false where one is malformed or the statblock holds more than it may. */
@@ -127,7 +176,7 @@ function readNodes(value: unknown, depth: number, budget: Budget, out: DrawnNode
 function readElement(value: Record<string, unknown>, name: DrawnElementName, depth: number, budget: Budget): DrawnElement | null | undefined {
   const kept = attributes(name, value);
   if (kept === null) return null;
-  const classes = Array.isArray(value.c) ? value.c.filter((entry): entry is string => typeof entry === 'string' && CLASS_PATTERN.test(entry)).slice(0, MAX_CLASSES) : [];
+  const classes = Array.isArray(value.c) ? value.c.filter((entry): entry is string => typeof entry === 'string' && DRAWN_CLASS_PATTERN.test(entry)).slice(0, MAX_DRAWN_CLASSES) : [];
   const children: DrawnNode[] = [];
   if (!EMPTY_ELEMENTS.has(name) && value.k !== undefined && !readNodes(value.k, depth + 1, budget, children)) return undefined;
   return { e: name, ...(classes.length > 0 && { c: classes }), ...(children.length > 0 && { k: children }), ...kept };
