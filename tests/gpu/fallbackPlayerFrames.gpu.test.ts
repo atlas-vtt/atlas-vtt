@@ -13,6 +13,7 @@ import { RenderScheduler } from '../../src/app/pixi/RenderScheduler';
 import { playerFrameSource, playerWindow, viewOf } from '../helpers/playerFrameView';
 import type { TokenRenderer } from '../../src/app/pixi/TokenRenderer';
 import { pointInPolygon } from '../../src/app/vision/visibility';
+import { viewAudience } from '../helpers/viewAudience';
 
 vi.mock('events', async () => import('eventemitter3'));
 
@@ -67,10 +68,10 @@ describe('the player window behind the line-of-sight fallback, in GM view', () =
     store.setState((state) => ({ objects: { ...state.objects, tokens: { ada: token('ada', 60, 70, 5), bo: token('bo', 180, 110, 5), cat: { ...token('cat', 70, 90, 5), vision: { enabled: false } } } } }));
     store.getState().addWall({ type: 'solid', p1: { x: 110, y: 20 }, p2: { x: 110, y: 160 } });
     store.getState().setSceneLighting({ enabled: true, ...lighting });
-    const controller = new LightingController({ viewport, app, store, eventBus: new EventEmitter(), obsApp, viewId: 'frames', bounds: () => MAP, albedo: () => null });
+    const controller = new LightingController({ viewport, app, store, eventBus: new EventEmitter(), obsApp, viewId: 'frames', audience: viewAudience(store).audience, bounds: () => MAP, albedo: () => null });
     const ignore = (): void => undefined;
     controller.wire({
-      setPlayerSightProvider: ignore, setGlideWay: ignore, setArtFloors: ignore, refreshPlayerSight: ignore, getSensedOutlineLayer: () => ({ visible: false }),
+      setPlayerSightProvider: ignore, setGlideWay: ignore, setArtFloors: ignore, getSensedOutlineLayer: () => ({ visible: false }),
     } as unknown as TokenRenderer);
     // As the player window is shown a view that renders on change: a frame of the window's own size, right before the view's renders.
     const { source, frames: frameTexture } = playerFrameSource({

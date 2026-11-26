@@ -36,6 +36,7 @@ import { fogCoverage } from '../../../src/app/fog/fogCoverage';
 import { fogRectangle } from '../../helpers/fogOperations';
 import { stubJsdomGraphics } from '../../mocks/jsdomGraphics';
 import { wirePlayerMeasurements } from '../../helpers/playerMeasureWiring';
+import { viewAudience, type ViewAudience } from '../../helpers/viewAudience';
 import { captureWithLayerVisibility, type LayerVisibility } from '../../../src/app/pixi/playerSafeFrame';
 import type { TokenEntity } from '../../../src/app/types';
 
@@ -113,6 +114,8 @@ describe('TokenRenderer Integration Tests', () => {
   let viewport: Viewport;
   let store: ViewStore;
   let eventBus: EventEmitter;
+  /** Whom the canvas is drawn for, with the peek key in the test's hand. */
+  let view: ViewAudience;
   let ticker: FakeTicker;
   let gridSize: number;
   let selectionOverlayUpdater: ReturnType<typeof vi.fn>;
@@ -135,14 +138,15 @@ describe('TokenRenderer Integration Tests', () => {
     snapTokenCenter: snapToCellCenter,
   } as unknown as GridSystem;
 
-  const createRenderer = (viewStore: ViewStore = store): TokenRenderer => {
+  const createRenderer = (): TokenRenderer => {
     const renderer = new TokenRenderer(
       obsidianApp,
       viewport,
       gridSystem,
       selectionOverlayUpdater,
-      viewStore,
+      store,
       eventBus,
+      view.audience,
       'test-view-id',
     );
     pointer.attach('tokens', renderer.pointer);
@@ -174,12 +178,13 @@ describe('TokenRenderer Integration Tests', () => {
     store = createViewAtlasStore(obsidianApp, 'test-view-id');
     // The map's pointer listens before every renderer, as the orchestrator builds it
     canvas = document.createElement('canvas');
-    pointer = new MapPointer({ store, gmView: () => tokenRenderer.showsGmView(), placing: () => false });
+    eventBus = new EventEmitter();
+    view = viewAudience(store, eventBus);
+    pointer = new MapPointer({ store, gmView: () => !view.audience.showsPlayers(), placing: () => false });
     stopPointer = listenToViewport(pointer, viewport, canvas);
     viewportPointerDownListeners = viewport.listenerCount('pointerdown');
     store.getState().setPersistenceEnabled(false);
     store.getState().setMapPath('maps/test.atlasmap');
-    eventBus = new EventEmitter();
     ticker = new FakeTicker();
     gridSize = 70;
     selectionOverlayUpdater = vi.fn();
@@ -495,16 +500,14 @@ describe('TokenRenderer Integration Tests', () => {
       setFog();
       store.getState().addToken(token({ id: 'covered', x: 200 }));
       await waitForTokens('covered');
-      let peeking = true;
-      tokenRenderer.setPlayerSightProvider(() => undefined, () => peeking);
-      tokenRenderer.refreshPlayerSight();
+      tokenRenderer.setPlayerSightProvider(() => undefined);
+      view.peek(true);
       expect(tokenGroup('covered').visible).toBe(false);
-      peeking = false;
-      tokenRenderer.refreshPlayerSight();
+      view.peek(false);
       expect(tokenGroup('covered').visible).toBe(true);
       store.getState().setGMView(false);
       tokenRenderer.setPlayerSightProvider(() => undefined);
-      tokenRenderer.refreshPlayerSight();
+      view.audience.refresh();
       expect(tokenGroup('covered').visible).toBe(false);
     });
 
@@ -565,7 +568,7 @@ describe('TokenRenderer Integration Tests', () => {
       store.getState().addToken(token({ id: 'moving', x: 100 }));
       store.getState().addToken(token({ id: 'stationary', x: 350 }));
       await waitForTokens('moving', 'stationary');
-      tokenRenderer.refreshPlayerSight();
+      view.audience.refresh();
       store.getState().moveToken('moving', 120, 100);
       perceive.mockClear();
       ticker.advance(10);
@@ -613,7 +616,7 @@ describe('TokenRenderer Integration Tests', () => {
   describe('Glides on a lit scene', () => {
     const lit = (): void => {
       store.getState().setSceneLighting({ enabled: true });
-      tokenRenderer.setPlayerSightProvider(() => undefined, () => false);
+      tokenRenderer.setPlayerSightProvider(() => undefined);
     };
 
     it('puts a token the players may not have seen in its place at once, so its way there shows nothing', async () => {
@@ -879,7 +882,7 @@ describe('TokenRenderer Integration Tests', () => {
     };
 
     it.each(MARKERS)('draws no stroke and stamps no icon on %s', (_marker, x) => {
-      const drawing = new AnnotationsRenderer({ viewport, store, grid: () => null });
+      const drawing = new AnnotationsRenderer({ viewport, store, grid: () => null, audience: view.audience });
       try {
         store.getState().setActiveTool('draw');
         for (const mode of ['pen', 'stamp'] as const) {
@@ -911,7 +914,7 @@ describe('TokenRenderer Integration Tests', () => {
 
     it.each(MARKERS)('paints no fog on %s', (_marker, x) => {
       vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(new Proxy({}, { get: () => (): void => undefined }) as never);
-      const fog = new FogOfWarRenderer(viewport, { canvas: createEl('canvas') } as unknown as Application, eventBus as never, store, () => null);
+      const fog = new FogOfWarRenderer(viewport, { canvas: createEl('canvas') } as unknown as Application, eventBus as never, store, () => null, view.audience);
       try {
         store.getState().setActiveTool('fog');
         click(x);
@@ -928,7 +931,7 @@ describe('TokenRenderer Integration Tests', () => {
       // The field a text is typed in lies over the canvas, in what holds it.
       const host = document.body.appendChild(document.createElement('div'));
       host.append(viewport.options.events.domElement);
-      const drawing = new AnnotationsRenderer({ viewport, store, grid: () => null });
+      const drawing = new AnnotationsRenderer({ viewport, store, grid: () => null, audience: view.audience });
       try {
         store.getState().setDrawTool({ mode: 'text' });
         store.getState().setActiveTool('draw');
@@ -964,7 +967,7 @@ describe('TokenRenderer Integration Tests', () => {
 
     beforeEach(() => {
       vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(new Proxy({}, { get: () => (): void => undefined }) as never);
-      fog = new FogOfWarRenderer(viewport, { canvas: createEl('canvas') } as unknown as Application, eventBus as never, store, () => null);
+      fog = new FogOfWarRenderer(viewport, { canvas: createEl('canvas') } as unknown as Application, eventBus as never, store, () => null, view.audience);
       viewport.addChild(fog.getContainer());
       store.setState((state) => ({ objects: { ...state.objects, fog: { paint: fogRectangle({ x: 0, y: 0, width: 2000, height: 2000 }) } } }));
       openContextMenuGlobal.mockClear();
@@ -1075,7 +1078,7 @@ describe('TokenRenderer Integration Tests', () => {
       pointer.attach('annotations', { gripDown: () => false, pointerDown: () => false, menuAt: () => false, openMenu: () => false, dragAlong: () => undefined, cursorAt: () => (tool === 'draw' ? 'crosshair' : null), leave: () => undefined });
       // The fog tool's own brush, ring and guide listen to the same moves
       vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(new Proxy({}, { get: () => (): void => undefined }) as never);
-      const fog = new FogOfWarRenderer(viewport, { canvas: createEl('canvas') } as unknown as Application, eventBus as never, store, () => null);
+      const fog = new FogOfWarRenderer(viewport, { canvas: createEl('canvas') } as unknown as Application, eventBus as never, store, () => null, view.audience);
       onTestFinished(() => {
         fog.destroy();
         vi.restoreAllMocks();
@@ -1196,13 +1199,13 @@ describe('TokenRenderer Integration Tests', () => {
           expect(tokenGroup('token-1').visible).toBe(false);
 
           seen = true;
-          tokenRenderer.refreshPlayerSight();
+          view.audience.refresh();
           expect(tokenGroup('token-1').visible).toBe(true);
           expect(tokenGroup('token-1').alpha).toBe(1);
           expect(tokenUi('token-1').visible).toBe(true);
 
           seen = false;
-          tokenRenderer.refreshPlayerSight();
+          view.audience.refresh();
           expect(tokenGroup('token-1').visible).toBe(false);
           expect(tokenUi('token-1').visible).toBe(false);
         });
@@ -1229,7 +1232,7 @@ describe('TokenRenderer Integration Tests', () => {
           await new Promise((resolve) => setTimeout(resolve, 20));
 
           seen = true;
-          tokenRenderer.refreshPlayerSight();
+          view.audience.refresh();
           expect(tokenUi('token-1').visible).toBe(true);
         });
 
@@ -1243,7 +1246,7 @@ describe('TokenRenderer Integration Tests', () => {
 
           seen = false;
           tokenRenderer.setPlayerSightProvider(() => (id) => (id === 'token-2' ? 'seen' : 'unseen'));
-          tokenRenderer.refreshPlayerSight();
+          view.audience.refresh();
 
           expect(store.getState().selectedIds).toEqual(['token-2']);
         });
@@ -1266,7 +1269,7 @@ describe('TokenRenderer Integration Tests', () => {
           viewport.emit('pointerdown', pointerEvent(105, 105));
           viewport.emit('pointermove', pointerEvent(180, 105));
           seen = false;
-          tokenRenderer.refreshPlayerSight();
+          view.audience.refresh();
           expect(tokenGroup('token-1').visible).toBe(true);
 
           viewport.emit('pointerup', pointerEvent(180, 105));
@@ -1311,7 +1314,7 @@ describe('TokenRenderer Integration Tests', () => {
             store.getState().addToken(token({ id: 'token-2', x: 300 }));
             store.getState().addToken(token({ id: 'token-3', x: 500 }));
             await waitForTokens('token-1', 'token-2', 'token-3');
-            tokenRenderer.refreshPlayerSight();
+            view.audience.refresh();
           };
 
           it('should show as an outline of its footprint, without art, nameplate or bars, and take no pointer', async () => {
@@ -1336,16 +1339,16 @@ describe('TokenRenderer Integration Tests', () => {
             tokenRenderer.setPlayerSightProvider(() => () => perceived);
             store.getState().addToken(token({ id: 'token-1' }));
             await waitForTokens('token-1');
-            tokenRenderer.refreshPlayerSight();
+            view.audience.refresh();
             expect(outlines().children).toHaveLength(1);
 
             perceived = 'seen';
-            tokenRenderer.refreshPlayerSight();
+            view.audience.refresh();
             expect(tokenGroup('token-1').visible).toBe(true);
             expect(outlines().children).toHaveLength(0);
 
             perceived = 'unseen';
-            tokenRenderer.refreshPlayerSight();
+            view.audience.refresh();
             expect(tokenGroup('token-1').visible).toBe(false);
             expect(outlines().children).toHaveLength(0);
           });
@@ -1354,14 +1357,14 @@ describe('TokenRenderer Integration Tests', () => {
             tokenRenderer.setPlayerSightProvider(() => () => 'sensed');
             store.getState().addToken(token({ id: 'token-1', isHidden: true }));
             await waitForTokens('token-1');
-            tokenRenderer.refreshPlayerSight();
+            view.audience.refresh();
             expect(outlines().children).toHaveLength(0);
           });
 
           it('should draw no outline once the canvas shows the GM\'s view again', async () => {
             await sensedSetup();
             tokenRenderer.setPlayerSightProvider(() => undefined);
-            tokenRenderer.refreshPlayerSight();
+            view.audience.refresh();
             expect(outlines().children).toHaveLength(0);
             expect(tokenGroup('token-1').visible).toBe(true);
           });
@@ -1448,22 +1451,19 @@ describe('TokenRenderer Integration Tests', () => {
     });
 
     it('answers for the canvas only while it shows the players\' view: session view or the peek', async () => {
-      let peeking = false;
-      tokenRenderer.setPlayerSightProvider(() => (peeking ? () => 'unseen' : undefined), () => peeking);
+      tokenRenderer.setPlayerSightProvider(() => (view.peeking() ? () => 'unseen' : undefined));
       store.getState().addToken(token({ id: 'goblin' }));
       await waitForTokens('goblin');
-      expect(tokenRenderer.playersSeeOnCanvas()).toBeNull();
+      expect(view.audience.seenOnCanvas()).toBeNull();
       store.getState().setGMView(false);
-      expect(tokenRenderer.playersSeeOnCanvas()?.('goblin')).toBe(true);
+      expect(view.audience.seenOnCanvas()?.('goblin')).toBe(true);
       store.getState().setGMView(true);
-      peeking = true;
-      tokenRenderer.refreshPlayerSight();
-      expect(tokenRenderer.playersSeeOnCanvas()?.('goblin')).toBe(false);
+      view.peek(true);
+      expect(view.audience.seenOnCanvas()?.('goblin')).toBe(false);
     });
 
     it('draws the token UI as the players see it while the canvas shows their view: session view or the peek', async () => {
-      let peeking = false;
-      tokenRenderer.setPlayerSightProvider(() => undefined, () => peeking);
+      tokenRenderer.setPlayerSightProvider(() => undefined);
       store.getState().addToken(token({ id: 'goblin', kind: 'character' }));
       await waitForTokens('goblin');
       const drawsForPlayers = (): boolean =>
@@ -1473,8 +1473,7 @@ describe('TokenRenderer Integration Tests', () => {
       expect(drawsForPlayers()).toBe(true);
       store.getState().setGMView(true);
       expect(drawsForPlayers()).toBe(false);
-      peeking = true;
-      tokenRenderer.refreshPlayerSight();
+      view.peek(true);
       expect(drawsForPlayers()).toBe(true);
       // A token placed meanwhile is drawn the same way
       store.getState().addToken(token({ id: 'orc', kind: 'character', x: 300 }));
@@ -1484,7 +1483,7 @@ describe('TokenRenderer Integration Tests', () => {
 
     it('tells its listeners after every pass over the players\' sight and every change of the tokens', async () => {
       const listener = vi.fn();
-      const stop = tokenRenderer.onPlayersViewChange(listener);
+      const stop = view.audience.onChange(listener);
       store.getState().addToken(token({ id: 'goblin' }));
       await waitForTokens('goblin');
       listener.mockClear();
@@ -1509,7 +1508,7 @@ describe('TokenRenderer Integration Tests', () => {
       store.getState().addToken(token({ id: 'moving', x: 105, y: 105 }));
       await waitForTokens('moving');
       const listener = vi.fn();
-      tokenRenderer.onPlayersViewChange(listener);
+      view.audience.onChange(listener);
       viewport.emit('pointerdown', pointerEvent(105, 105));
       viewport.emit('pointermove', pointerEvent(120, 105));
       const calls: number[] = [];
@@ -1527,11 +1526,11 @@ describe('TokenRenderer Integration Tests', () => {
       const coverage = vi.fn(() => fogCoverage(store.getState().objects.fog));
       tokenRenderer.setFogCoverageProvider(coverage);
       setFog();
-      tokenRenderer.setPlayerSightProvider(() => undefined, () => false);
+      tokenRenderer.setPlayerSightProvider(() => undefined);
       store.getState().addToken(token({ id: 'moving', x: 105, y: 105 }));
       await waitForTokens('moving');
       const listener = vi.fn();
-      tokenRenderer.onPlayersViewChange(listener);
+      view.audience.onChange(listener);
       viewport.emit('pointerdown', pointerEvent(105, 105));
       coverage.mockClear();
       listener.mockClear();
@@ -1546,16 +1545,14 @@ describe('TokenRenderer Integration Tests', () => {
     let measure: MeasureRenderer;
     let unwire: () => void;
     let perception: ((id: string) => 'seen' | 'unseen') | undefined;
-    let peeking: boolean;
 
     beforeEach(() => {
       perception = undefined;
-      peeking = false;
-      const active = (): boolean => peeking || !store.getState().isGMView;
-      tokenRenderer.setPlayerSightProvider(() => (active() ? perception : undefined), active);
+      const active = (): boolean => view.peeking() || !store.getState().isGMView;
+      tokenRenderer.setPlayerSightProvider(() => (active() ? perception : undefined));
       tokenRenderer.setFogCoverageProvider(() => fogCoverage(store.getState().objects.fog));
       measure = new MeasureRenderer(viewport, store, gridSystem);
-      unwire = wirePlayerMeasurements({ measure, tokens: tokenRenderer, pointer, store, grid: gridSystem, lighting: () => perception });
+      unwire = wirePlayerMeasurements({ measure, tokens: tokenRenderer, audience: view.audience, pointer, store, grid: gridSystem, lighting: () => perception });
     });
 
     afterEach(() => {
@@ -1601,14 +1598,12 @@ describe('TokenRenderer Integration Tests', () => {
       keepRuler(105);
       perception = () => 'unseen';
       expect(onCanvas()).toEqual([true, false, true, true]);
-      peeking = true;
-      tokenRenderer.refreshPlayerSight();
+      view.peek(true);
       expect(onCanvas()).toEqual([true, false, false, false]);
       perception = () => 'seen';
-      tokenRenderer.refreshPlayerSight();
+      view.audience.refresh();
       expect(onCanvas()).toEqual([true, false, true, true]);
-      peeking = false;
-      tokenRenderer.refreshPlayerSight();
+      view.peek(false);
     });
 
     it('hides a kept ruler in session view once its token is deleted, or the map reloads without it', async () => {
@@ -1670,7 +1665,7 @@ describe('TokenRenderer Integration Tests', () => {
     beforeEach(() => {
       perception = undefined;
       const active = (): boolean => !store.getState().isGMView;
-      tokenRenderer.setPlayerSightProvider(() => (active() ? perception : undefined), active);
+      tokenRenderer.setPlayerSightProvider(() => (active() ? perception : undefined));
       tokenRenderer.setFogCoverageProvider(() => fogCoverage(store.getState().objects.fog));
     });
 
@@ -1741,10 +1736,10 @@ describe('TokenRenderer Integration Tests', () => {
       await goblins({ id: 'A' }, { id: 'B' });
       store.getState().setGMView(false);
       perception = (id) => (id === 'B' ? 'sensed' : 'seen');
-      tokenRenderer.refreshPlayerSight();
+      view.audience.refresh();
       await expectLooks(['A', 'B'], ['gm 1', 'none']);
       perception = undefined;
-      tokenRenderer.refreshPlayerSight();
+      view.audience.refresh();
       await expectLooks(['A', 'B'], ['gm 1', 'gm 2']);
       store.setState((state) => ({ objects: { ...state.objects, fog: { paint: fogRectangle({ x: 200, y: 50, width: 100, height: 100 }) } } }));
       await expectLooks(['A', 'B'], ['gm 1', 'none']);
@@ -1776,7 +1771,7 @@ describe('TokenRenderer Integration Tests', () => {
       await goblins({ id: 'A' }, { id: 'B' });
       let current = true;
       const active = (): boolean => !store.getState().isGMView;
-      tokenRenderer.setPlayerSightProvider(() => (active() ? perception : undefined), active, () => current);
+      tokenRenderer.setPlayerSightProvider(() => (active() ? perception : undefined), () => current);
       frameLooks('A', 'B');
       expect(listNumbers('A', 'B')).toEqual([1, 2]);
       current = false;

@@ -18,6 +18,7 @@ import { resetContext } from '../../src/app/pixi/lighting/__tests__/rendererHarn
 import { watchGl, type GlWatch } from '../../src/app/pixi/lighting/engine/__tests__/strictGl';
 import type { TokenRenderer } from '../../src/app/pixi/TokenRenderer';
 import type { SightRules } from '../../src/app/vision/sightRules';
+import { viewAudience } from '../helpers/viewAudience';
 
 vi.mock('events', async () => import('eventemitter3'));
 
@@ -240,12 +241,12 @@ describe('the scenes of the lighting crash reports, drawn under strict GL', () =
     const { store, watch } = canvas;
     const errors = vi.spyOn(console, 'error');
     const controller = new LightingController({
-      viewport: canvas.viewport, app: canvas.app, store, eventBus: new EventEmitter(), obsApp: canvas.obsApp, viewId: 'reported', bounds: () => MAP, albedo: () => null,
+      viewport: canvas.viewport, app: canvas.app, store, eventBus: new EventEmitter(), obsApp: canvas.obsApp, viewId: 'reported', audience: viewAudience(store).audience, bounds: () => MAP, albedo: () => null,
     });
     cleanup.push(canvas.dispose, () => controller.destroy());
     const ignore = (): void => undefined;
     controller.wire({
-      setPlayerSightProvider: ignore, setGlideWay: ignore, setArtFloors: ignore, refreshPlayerSight: ignore, getSensedOutlineLayer: () => ({ visible: false }),
+      setPlayerSightProvider: ignore, setGlideWay: ignore, setArtFloors: ignore, getSensedOutlineLayer: () => ({ visible: false }),
     } as unknown as TokenRenderer);
     // The GM's overlays are on the canvas: the view stays the GM's.
     const frames = (): void => canvas.frames({ modeLayer: { visible: false } });

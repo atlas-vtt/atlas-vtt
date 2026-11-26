@@ -18,6 +18,7 @@ import type { GridSystem } from '../../../src/app/grid/GridSystem';
 import type { Character } from '../../../src/app/types';
 import { createInMemoryApp } from '../../mocks/inMemoryVault';
 import { stubJsdomGraphics } from '../../mocks/jsdomGraphics';
+import { viewAudience } from '../../helpers/viewAudience';
 
 // jsdom has no 2D canvas, so SVG icons cannot be rasterised here.
 vi.mock('../../../src/app/pixi/utils/lucideIconTexture', () => ({
@@ -116,7 +117,8 @@ async function rendererRig(): Promise<Rig> {
   // Presses reach the tokens through the map's pointer, which listens before the renderer is built
   const pointer = new MapPointer({ store, gmView: () => true, placing: () => false });
   cleanups.push(listenToViewport(pointer, viewport, document.createElement('canvas')));
-  const renderer = new TokenRenderer(app, viewport, grid, () => {}, store, new EventEmitter(), 'token-places', shown);
+  const eventBus = new EventEmitter();
+  const renderer = new TokenRenderer(app, viewport, grid, () => {}, store, eventBus, viewAudience(store, eventBus).audience, 'token-places', shown);
   pointer.attach('tokens', renderer.pointer);
   renderer.setPixiApp({ ticker, canvas: document.createElement('canvas'), renderer: { generateTexture: () => new Texture() } } as unknown as Application);
   // A lighting is attached, so on a lit scene a token the players may not have seen moves at once.

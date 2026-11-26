@@ -11,7 +11,6 @@ import type { Point } from '../../types/visionTypes';
 import { canvasBadgeTheme } from '../utils/canvasBadgeColors';
 import { drawFogOutlines } from './fogOutlines';
 import { viewedFog } from './FogPicture';
-import { showsGmView } from './fogVisibilityPolicy';
 
 /** Above the fog's picture (999), below the outline, ring and guide of a stroke under way (1001 and up). */
 const FOG_MENU_TARGET_Z_INDEX = 1000;
@@ -21,8 +20,8 @@ type Outlines = ReadonlyArray<readonly Point[]>;
 export interface FogMenuTargetDeps {
   readonly viewport: Viewport;
   readonly store: Pick<ViewAtlasStore, 'getState' | 'subscribe'>;
-  /** Whether the canvas shows the players' view though the store's view switches say the GM's (a peek); null where nobody can say yet. */
-  readonly showsPlayers?: () => boolean | null;
+  /** Whether the canvas shows the players' picture now (`CanvasAudience.showsPlayers`). */
+  readonly showsPlayers: () => boolean;
 }
 
 export class FogMenuTarget {
@@ -63,7 +62,7 @@ export class FogMenuTarget {
   }
 
   private shown(state: ViewAtlasState): boolean {
-    return !state.isMapLoading && showsGmView(state, this.deps.showsPlayers);
+    return !state.isMapLoading && !this.deps.showsPlayers();
   }
 
   /** Draws the outlines as wide on screen as at any zoom. */

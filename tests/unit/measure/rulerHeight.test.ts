@@ -179,7 +179,7 @@ describe('the measure tool on a map with fliers', () => {
     captureWithLayerVisibility(s.measure.getPlayerViewLayers(seen), () => undefined, () => { framed = shown(s); });
     return framed;
   };
-  const view = (onCanvas: ((id: string) => boolean) | null): MeasurePlayersView => ({ footprints: () => [], seenAtStart: () => () => true, seenOnCanvas: () => onCanvas });
+  const view = (onCanvas: ((id: string) => boolean) | null): MeasurePlayersView => ({ footprints: () => [], seenAtStart: () => () => true, seenOnCanvas: () => onCanvas, onChange: () => () => undefined });
 
   it('counts for the players only the height of a token they see: a hidden flier adds nothing to their label', () => {
     // A flier 30 ft up, three cells from the hero: 15 ft on the floor.

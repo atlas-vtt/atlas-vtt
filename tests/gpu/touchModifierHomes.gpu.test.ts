@@ -43,7 +43,7 @@ describe('the lighting tool\'s Snap switch under a finger', () => {
   async function zoneCorners(snap: boolean): Promise<{ corners: readonly Point[]; m: TouchMap }> {
     const m = await map();
     const controller = new LightingController({
-      viewport: m.viewport, app: m.app, store: m.store, eventBus: new EventEmitter(), obsApp: m.obsidian, viewId: 'touch-homes',
+      viewport: m.viewport, app: m.app, store: m.store, eventBus: new EventEmitter(), obsApp: m.obsidian, viewId: 'touch-homes', audience: m.audience,
       bounds: () => ({ x: 0, y: 0, width: VIEW.width, height: VIEW.height }), albedo: () => null,
     });
     controller.wire(m.tokens);

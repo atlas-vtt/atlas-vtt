@@ -6,6 +6,7 @@ import { createStore } from 'zustand/vanilla';
 import { DEFAULT_FOG_TOOL } from '../../src/app/fog/fogToolChoices';
 import { FogOfWarRenderer } from '../../src/app/pixi/fog/FogOfWarRenderer';
 import { captureWithLayerVisibility } from '../../src/app/pixi/playerSafeFrame';
+import { viewAudience } from '../helpers/viewAudience';
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -21,7 +22,7 @@ it('captures painted fog at full opacity and preserves the DM preview across rep
       x: 0, y: 0, width: 100, height: 100, isErasing: false,
     } } },
   }));
-  const renderer = new FogOfWarRenderer(Object.assign(new Container(), { options: {} }) as any, { canvas: createEl('canvas') } as any, new EventEmitter(), store as any, () => null);
+  const renderer = new FogOfWarRenderer(Object.assign(new Container(), { options: {} }) as any, { canvas: createEl('canvas') } as any, new EventEmitter(), store as any, () => null, viewAudience(store as never).audience);
   try {
     const fog = renderer.getContainer().children.find(child => child instanceof Sprite && child.alpha > 0)!;
     expect(fog.visible).toBe(true);

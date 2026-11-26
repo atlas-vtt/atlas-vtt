@@ -12,6 +12,7 @@ import { watchGl } from '../../src/app/pixi/lighting/engine/__tests__/strictGl';
 import type { FogOperation, FogRectangleFill } from '../../src/app/types/fogTypes';
 import type { MapRect } from '../../src/app/grid/cellNumbering';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { viewAudience } from './viewAudience';
 
 export function fogRect(id = 'paint', timestamp = 1, isErasing = false): FogRectangleFill {
   return { id, timestamp, kind: 'fog', type: 'rectangle', isErasing, x: 16, y: 16, width: 64, height: 64 };
@@ -22,6 +23,8 @@ interface FogScene {
   store: ViewAtlasStore;
   fog: FogOfWarRenderer;
   events: EventEmitter;
+  /** Holds or lets go of the peek key: the canvas shows the players' picture meanwhile. */
+  peek(held: boolean): void;
   lookAt(x: number, y: number): void;
   setFog(ops: Record<string, FogOperation>): void;
   /** Shows a map image of this rect (null: none) and announces it as the orchestrator does. */
@@ -80,8 +83,9 @@ export function fogScenes({ fades = false } = {}): { scene: (ops?: Record<string
     store.temporal.getState().clear();
     const unsubscribe = beforeRenderer?.(store);
     const events = new EventEmitter();
+    const view = viewAudience(store, events);
     let mapRect: MapRect | null = null;
-    const fog = new FogOfWarRenderer(viewport, app, events, store, () => mapRect);
+    const fog = new FogOfWarRenderer(viewport, app, events, store, () => mapRect, view.audience);
     viewport.addChild(fog.getContainer());
     const target = RenderTexture.create({ width: 128, height: 128 });
     const pixels = (): Uint8ClampedArray => {
@@ -100,7 +104,7 @@ export function fogScenes({ fades = false } = {}): { scene: (ops?: Record<string
       renderer.destroy();
     });
     return {
-      app, store, fog, events, viewport,
+      app, store, fog, events, viewport, peek: view.peek,
       rgba(layers?: readonly LayerVisibility[]): Uint8ClampedArray {
         if (!layers) return pixels();
         let all = new Uint8ClampedArray();

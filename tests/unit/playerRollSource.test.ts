@@ -25,8 +25,8 @@ const spritesOf = (tokens: TokenEntity[]): Record<string, TokenGroupContainer> =
 
 /** The players' perception as a frame composes it: lighting, then committed fog. */
 function framePerception(tokens: TokenEntity[], lighting: TokenPerception | undefined, coverage: FogCoverage | null | 'none'): TokenPerception | undefined {
-  const sight = new PlayerSightTokens({ tokens: () => scene(tokens).objects.tokens, sprites: () => spritesOf(tokens), held: () => new Set() });
-  if (coverage !== 'none') sight.setFogProvider(() => coverage, () => false);
+  const sight = new PlayerSightTokens({ tokens: () => scene(tokens).objects.tokens, sprites: () => spritesOf(tokens), held: () => new Set(), showsPlayers: () => false });
+  if (coverage !== 'none') sight.setFogProvider(() => coverage);
   return sight.framePerception(lighting);
 }
 
