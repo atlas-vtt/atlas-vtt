@@ -5,6 +5,7 @@ import { deviceId, RelaySocket, sessionRig, type Rig } from './sessionRig.ts';
 
 const PHONE = deviceId('p');
 const LATER = 10 * 60_000;
+const macrotask = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
 beforeEach(() => {
   RelaySocket.all = [];
@@ -77,6 +78,31 @@ describe('Stop and New link while the relay cannot be reached', () => {
     expect(ends(old?.secret)).toBe(1);
     expect(ends(rig.saved.at(-1)?.secret)).toBe(0);
     expect(rig.session.view().status).not.toBe('stopped');
+  });
+
+  it('keeps a stopped room until the relay shows it ended: an end lost with its connection is asked again by the next one', async () => {
+    const rig = await withPhone();
+    const { link, secret } = rig.saved.at(-1) ?? {};
+    const gm = rig.socket();
+    rig.session.stop();
+    // The GM's connection died unnoticed: its end reaches nobody.
+    gm.read = gm.sent.length;
+    const ender = rig.socket(link?.code);
+    expect(ender).not.toBe(gm);
+    ender.welcome();
+    await macrotask();
+    expect(ender.framesOf('end')).toHaveLength(1);
+    // The network goes the moment after the welcome: that end is lost too, and no close ever comes.
+    ender.read = ender.sent.length;
+    expect(rig.saved.at(-1)?.ending).toEqual([{ code: link?.code, secret }]);
+    await relayBack(rig, link?.code);
+    // The GM's connection's, the lost one's, and the one the relay heard.
+    expect(ends(secret)).toBe(3);
+    expect(rig.saved.at(-1)?.ending).toEqual([]);
+    const tries = socketsTo(link?.code);
+    rig.timers.advance(LATER);
+    await rig.settle();
+    expect(socketsTo(link?.code)).toBe(tries);
   });
 
   it('ends the room on the next load of Atlas when it could not be reached before Atlas unloaded', async () => {

@@ -75,7 +75,7 @@ function scriptedSession(timers: Timers): { session: GmScreenSession; relay: { e
     open: (_room, events, gate) => {
       relay.events = events;
       relay.gate = gate;
-      return { start: () => (events.status('online'), events.welcome([])), stop: ignore, end: ignore, send: ignore, sendLive: ignore, sendTime: () => false, sendGate: ignore, answer: ignore, kick: ignore, setPlayers: ignore, sendCode: ignore, connected: new Set(), batches: true, minLevel: null, closeCode: null, onSent: null, stats: () => ({ status: 'online', reconnects: 0, lastClose: null, latencyMs: null, players: 0 }) } as unknown as TableOutbox;
+      return { start: () => (events.status('online'), events.welcome([])), stop: ignore, end: ignore, askEnd: ignore, send: ignore, sendLive: ignore, sendTime: () => false, sendGate: ignore, answer: ignore, kick: ignore, setPlayers: ignore, sendCode: ignore, connected: new Set(), batches: true, minLevel: null, closeCode: null, onSent: null, stats: () => ({ status: 'online', reconnects: 0, lastClose: null, latencyMs: null, players: 0 }) } as unknown as TableOutbox;
     },
     save: ignore,
     notice: ignore,

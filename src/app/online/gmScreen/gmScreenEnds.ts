@@ -3,10 +3,11 @@ import type { OpenOutbox, TableOutbox } from '../gm/tableOutbox.ts';
 import type { GmScreenRoom } from './gmScreenRecord.ts';
 
 /**
- * Ends the rooms the GM stopped while the relay could not be reached: for each, a connection with its
- * secret that keeps trying until the relay welcomes it, then ends the room. A room is done once ended,
- * or once the relay refuses its secret for good (it ended the room itself: expired, or replaced by a
- * room made at the same code). Until then the record keeps it, so the next load of Atlas ends it.
+ * Ends the rooms the GM stopped: for each, a connection with its secret that asks the relay to end the
+ * room on every welcome and stays until the relay closes it for good. A room is done only once the relay
+ * shows it gone: the close that follows the end, or a refusal for good (no such room, expired, or replaced
+ * by a room made at the same code). An end lost with its connection is asked again by the next one, and
+ * until a room is done the record keeps it, so the next load of Atlas ends it.
  */
 export class RoomEnds {
   /** The rooms tried now and their connections, by the secret of the room. */
@@ -44,10 +45,7 @@ export class RoomEnds {
     };
     const outbox = this.open({ code: room.code, secret: room.secret, maxPlayers: MAX_PLAYERS }, {
       status: (status) => status === 'refused' && finished(),
-      welcome: () => {
-        outbox.end();
-        finished();
-      },
+      welcome: () => outbox.askEnd(),
       joined: ignore,
       left: ignore,
       message: ignore,

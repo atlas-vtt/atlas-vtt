@@ -3,7 +3,7 @@ import { checkNumber, DeviceChannel, linkKey } from '../../../../src/app/online/
 import { GmScreenSession, readGmScreenRecord, type CreateRoom, type GmScreenRecord } from '../../../../src/app/online/gmScreen/index.ts';
 import { BATCH_MS } from '../../../../src/app/online/gm/sendQueue.ts';
 import { TableConnection } from '../../../../src/app/online/gm/TableConnection.ts';
-import { KEEPALIVE_PING, KEEPALIVE_PONG, type DeviceMessage, type GmScreenMessage } from '../../../../src/app/online/protocol/index.ts';
+import { CLOSE, KEEPALIVE_PING, KEEPALIVE_PONG, type DeviceMessage, type GmScreenMessage } from '../../../../src/app/online/protocol/index.ts';
 import { nodeCrypto } from './channelPair.ts';
 import { fakeTimers } from './fakeTimers.ts';
 
@@ -135,8 +135,11 @@ export function sessionRig(saved: GmScreenRecord | null = null, create?: CreateR
         const text = each.sent[each.read] ?? '';
         moved = true;
         if (text === KEEPALIVE_PING) each.receive(KEEPALIVE_PONG);
-        if (!text.startsWith('{') || each !== current()) continue;
+        if (!text.startsWith('{')) continue;
         const frame = JSON.parse(text) as Frame;
+        // The relay ends the room and closes its host's socket with the code that says so.
+        if (frame.t === 'end') each.drop(CLOSE.ended);
+        if (each !== current()) continue;
         const sends = frame.t === 'sends' ? (frame.sends as Frame[]) : frame.t === 'send' ? [frame] : [];
         for (const { to, body } of sends) if (typeof to === 'string') devices.get(to)?.device.channel.receive(body);
       }

@@ -12,6 +12,8 @@ export interface TableOutbox extends RosterLink {
   stop(): void;
   /** Ends the table on the relay, then stops. */
   end(): void;
+  /** Asks the relay to end the table, staying connected until the relay closes the link. */
+  askEnd(): void;
   /** Sends a game message to one player, or to all (`ALL_PLAYERS`, the default). */
   send(body: GmMessage, to?: string): void;
   /** Sends a live message, which a newer one of the same `key` replaces while it waits. */

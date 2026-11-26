@@ -238,8 +238,13 @@ export class TableConnection {
 
   /** Ends the table on the relay and closes the socket for good. */
   end(): void {
-    if (this.socket?.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'end' }));
+    this.askEnd();
     this.stop();
+  }
+
+  /** Asks the relay to end the table and keeps the socket, so the relay's final close says it ended; a frame lost with the socket is asked again on the next welcome. */
+  askEnd(): void {
+    if (this.socket?.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'end' }));
   }
 
   stop(): void {
