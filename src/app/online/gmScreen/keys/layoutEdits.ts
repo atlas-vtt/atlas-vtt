@@ -1,5 +1,5 @@
 import {
-  isFolderGlyph, isForeignKey, isKeyCommand, layoutKeyCount, MAX_FOLDER_DEPTH, MAX_KEY_TEXT, MAX_LAYOUT_KEYS, slotPrint, slotsAt,
+  isFolderGlyph, isForeignKey, isKeyCommand, layoutKeyCount, MAX_FOLDER_DEPTH, MAX_KEY_TEXT, MAX_LAYOUT_KEYS, pathPrint, shownLayout, slotsAt,
   type GmScreenDevice, type GmScreenLayout, type KeyChoice, type LayoutEdit, type LayoutKey, type LayoutRefusal, type LayoutSlot, type SlotPath, type SlotPrint,
 } from '../../protocol/index.ts';
 
@@ -97,20 +97,23 @@ function rename(slots: Slots, at: SlotPath, name: string, glyph: string): EditRe
 }
 
 /**
- * Whether a slot the edit names no longer holds what the device saw there: the device acted on a grid another device or
- * Atlas changed since. A slot whose way is gone is left to the edit, which refuses it as `no-slot`.
+ * Whether anything along a path the edit names, or beneath the slot it names, is not what the device saw: the device acted
+ * on a grid another device or Atlas changed since. Prints are of the grid as devices are sent it. A path whose way is gone is
+ * left to the edit, which refuses it as `no-slot`.
  */
-function changedSince(slots: Slots, edit: LayoutEdit): boolean {
+function changedSince(layout: GmScreenLayout, edit: LayoutEdit): boolean {
   const seen: readonly (readonly [SlotPath, SlotPrint | undefined])[] = edit.op === 'move' ? [[edit.from, edit.held], [edit.to, edit.there]] : [[edit.at, edit.held]];
+  if (seen.every(([, print]) => print === undefined)) return false;
+  const shown = shownLayout(layout).slots;
   return seen.some(([path, print]) => {
-    const slot = print === undefined ? undefined : slotAt(slots, path);
-    return slot !== undefined && slotPrint(slot) !== print;
+    const now = print === undefined ? undefined : pathPrint(shown, path);
+    return now !== undefined && now !== print;
   });
 }
 
 /** `layout` with `edit` applied, or why it was refused; a refused edit changes nothing. */
 export function applyLayoutEdit(layout: GmScreenLayout, edit: LayoutEdit, device: GmScreenDevice, library: KeyLibrary): EditResult {
-  if (changedSince(layout.slots, edit)) return { refused: 'changed' };
+  if (changedSince(layout, edit)) return { refused: 'changed' };
   switch (edit.op) {
     case 'put':
       return put(layout.slots, edit.at, edit.key, device, library);

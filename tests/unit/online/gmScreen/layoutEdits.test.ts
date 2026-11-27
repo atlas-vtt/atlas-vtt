@@ -60,10 +60,10 @@ describe('a change that names what the device saw in its slots', () => {
     expect(apply(grid, { op: 'rename', at: [0], name: 'A', glyph: 'dice', held: seen(1) })).toBe('changed');
   });
 
-  it('tells a folder by its name and picture, not by what it holds', () => {
+  it('tells a folder by its name, its picture and what it holds', () => {
     const empty: LayoutSlot = { k: 'folder', name: 'F', glyph: 'dice', slots: Array.from({ length: GRID_SLOTS.tablet - 1 }, () => null) };
     const filled: LayoutSlot = { ...empty, slots: [{ k: 'moods' }, ...empty.slots.slice(1)] };
-    expect(slotPrint(filled)).toBe(slotPrint(empty));
+    expect(slotPrint(filled)).not.toBe(slotPrint(empty));
     expect(slotPrint({ ...empty, name: 'G' })).not.toBe(slotPrint(empty));
     expect(slotPrint(null)).not.toBe(slotPrint({ k: 'moods' }));
   });

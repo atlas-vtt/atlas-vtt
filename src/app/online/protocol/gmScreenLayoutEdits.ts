@@ -29,14 +29,14 @@ export type KeyChoice =
   | { readonly k: 'folder'; readonly name: string; readonly glyph: string };
 
 /**
- * What lies in a slot as a device saw it (`slotPrint`), so Atlas can tell an edit made on a grid that changed since.
+ * What lay along a slot's path as a device saw it (`pathPrint`), so Atlas can tell an edit made on a grid that changed since.
  * A device sends it where it knows it; an edit without it acts on whatever lies there, as from a page before prints.
  */
 export type SlotPrint = string & { readonly '~print': true };
 
 /**
  * One change to a grid. `move` onto a filled slot swaps the two; `rename` names and draws a folder anew. `held` is
- * what the device saw in the slot it acts on (`at`, or `from` for a move), `there` what it saw at a move's `to`.
+ * what the device saw along the path of the slot it acts on (`at`, or `from` for a move), `there` along a move's `to`.
  */
 export type LayoutEdit =
   | { readonly op: 'put'; readonly at: SlotPath; readonly key: KeyChoice; readonly held?: SlotPrint }
@@ -66,7 +66,7 @@ export const LAYOUT_REFUSALS = [
   'no-roll',
   /** The dice tool would not roll the formula. */
   'bad-formula',
-  /** A slot no longer holds what the device saw there (`held`, `there`): another device or Atlas changed it first. */
+  /** A slot on the way, or the slot or anything in it, is not what the device saw (`held`, `there`): another device or Atlas changed it first. */
   'changed',
 ] as const;
 export type LayoutRefusal = (typeof LAYOUT_REFUSALS)[number];
@@ -95,10 +95,20 @@ export type LayoutMessage =
 const REFUSAL_PATTERN = /^[a-z][a-z-]{0,31}$/;
 const PRINT_PATTERN = /^[0-9a-z]{1,7}\.[0-9a-z]{1,7}$/;
 
-/** What names a slot's key: its kind and what it is (a folder by its name and picture, not what it holds; a key of a newer kind by its kind). */
-function slotIdentity(slot: LayoutSlot): readonly string[] {
+/** `value` with each object's fields in one order, so the same data writes the same on both sides. */
+function inOrder(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(inOrder);
+  if (!isRecord(value)) return value;
+  return Object.keys(value).sort().map((name) => [name, inOrder(value[name])]);
+}
+
+/**
+ * What names a slot's key: its kind and what it is, a folder with everything it holds, and a key of a newer kind by all of
+ * its own data. Atlas's folder of all moods is named by its kind alone: Atlas fills it, so a change of its library changes no print.
+ */
+function slotIdentity(slot: LayoutSlot): unknown {
   if (slot === null) return [];
-  if (isForeignKey(slot)) return ['?', slot.k];
+  if (isForeignKey(slot)) return ['?', inOrder(slot)];
   switch (slot.k) {
     case 'command':
       return [slot.k, slot.command];
@@ -110,7 +120,7 @@ function slotIdentity(slot: LayoutSlot): readonly string[] {
     case 'moods':
       return [slot.k];
     case 'folder':
-      return [slot.k, slot.name, slot.glyph];
+      return [slot.k, slot.name, slot.glyph, slot.slots.map(slotIdentity)];
   }
 }
 
@@ -125,6 +135,22 @@ export function slotPrint(slot: LayoutSlot): SlotPrint {
     b = Math.imul(b ^ code, 0x5bd1e995);
   }
   return `${(a >>> 0).toString(36)}.${(b >>> 0).toString(36)}` as SlotPrint;
+}
+
+/**
+ * The print of what lies along `path` in `slots`, a grid as the device was sent it (`shownLayout`): the slot at its first
+ * place with everything it holds, so it covers every folder on the way and everything beneath the slot `path` names. An
+ * edit made on it is refused where anything else in that slot changed too, which is safe. Undefined where the way is gone.
+ */
+export function pathPrint(slots: readonly LayoutSlot[], path: readonly number[]): SlotPrint | undefined {
+  const [first, ...rest] = path;
+  const top = first === undefined ? undefined : slots[first];
+  let slot = top;
+  for (const place of rest) {
+    if (slot == null || isForeignKey(slot) || slot.k !== 'folder') return undefined;
+    slot = slot.slots[place];
+  }
+  return top === undefined || slot === undefined ? undefined : slotPrint(top);
 }
 
 /** The prints an edit names, only those it names; null where one it names is none. */
