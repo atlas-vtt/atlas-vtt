@@ -1,12 +1,15 @@
 import type { App } from 'obsidian';
+import type { SceneLevels } from '../../../levels/sceneLevels';
 import type { AtlasView } from '../../../atlas-view';
 import { zoomToTokenWithHighlight } from '../../../pixi/utils/tokenHighlight';
 import { mapResources } from '../../../resources/collectionResources';
 import type { ResourceDefinition } from '../../../resources/resourceTypes';
+import { mapInitiativeRules } from '../../../services/mapInitiativeRules';
 import { rulesLookup } from '../../../services/mapRules';
 import { remoteMapView } from '../../../soundRemote/remoteMapView';
 import type { TokenUpdates } from '../../../types/viewState';
 import type { TokenEntity } from '../../../types';
+import type { InitiativeRules } from '../../../types/initiativeRulesTypes';
 import type { InitiativeState } from '../../../types/initiativeTypes';
 import { isOffMap } from '../../../tokens/offMap';
 
@@ -17,6 +20,9 @@ export interface FrontSceneState {
   readonly isMapLoading: boolean;
   readonly objects: { readonly tokens: Readonly<Record<string, TokenEntity>> };
   readonly initiative: InitiativeState;
+  /** Whether the map numbers look-alikes (`showInstanceBadges`); on where unset. */
+  readonly tokenSettings?: { readonly showInstanceBadges?: boolean };
+  readonly levels?: SceneLevels;
 }
 
 /** The map the GM has in front: its scene, and what the DM screen's token controls do there. */
@@ -27,6 +33,8 @@ export interface FrontScene {
   subscribe(listener: () => void): () => void;
   /** The resources of the rules its map plays by. */
   definitions(): readonly ResourceDefinition[];
+  /** The initiative rules its map plays by. */
+  rules(): InitiativeRules;
   updateToken(id: string, updates: TokenUpdates): void;
   locateToken(id: string): void;
 }
@@ -45,6 +53,7 @@ function frontSceneOf(app: App, view: AtlasView): FrontScene {
     state: () => store.getState(),
     subscribe: (listener) => store.subscribe(listener),
     definitions: () => mapResources(rulesLookup(app), store.getState().mapPath),
+    rules: () => mapInitiativeRules(app, store.getState().mapPath),
     updateToken: (id, updates) => store.getState().updateToken(id, updates),
     locateToken: (id) => {
       const token = store.getState().objects.tokens[id];

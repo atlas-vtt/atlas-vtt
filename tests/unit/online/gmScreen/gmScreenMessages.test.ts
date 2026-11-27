@@ -19,6 +19,16 @@ const keys: KeysState = { ...remote, player: { ...remote.player, online: false }
 const hash = 'a'.repeat(64);
 const mood = { id: 'tavern', name: 'Tavern', tone: { light: '#b3261e', dark: '#e5534b' }, crest: 'beer-stein' };
 const entry = { id: 'goblin', name: 'Goblin', portrait: hash, count: 3, turn: true, fight: true, player: false };
+const combatant = { key: 's1-c1', name: 'Goblin', statblock: 'goblin', portrait: hash, ring: '#3a7d44', badge: 2, turn: true as const, hidden: true as const };
+const fight = {
+  round: 3,
+  parts: [
+    { k: 'group' as const, key: 'opponents', side: { id: 'opponents', name: 'Opponents', roll: 14, turn: true }, combatants: [combatant, { ...combatant, key: 's1-c2', badge: 3, turn: undefined, hidden: undefined, defeated: true as const }] },
+    { k: 'round' as const, round: 4 },
+    { k: 'group' as const, key: 'players', side: { id: 'players', name: 'Players', roll: null, turn: false }, combatants: [{ key: 's1-c3', name: 'Mira', statblock: null, portrait: null, ring: null, ally: true as const, sitsOut: true as const }] },
+  ],
+};
+const plainFight = JSON.parse(JSON.stringify(fight)) as typeof fight;
 
 const fromAtlas: GmScreenMessage[] = [
   { t: 'your-code', code: '123456', first: true },
@@ -29,6 +39,10 @@ const fromAtlas: GmScreenMessage[] = [
   { t: 'press-answer', id: 5, refused: 'no-player-window' },
   { t: 'statblocks', map: true, entries: [entry, { ...entry, id: 'mira', portrait: null, turn: false, fight: false, player: true }] },
   { t: 'statblocks', map: false, entries: [] },
+  { t: 'statblocks', map: true, entries: [entry], fight: plainFight },
+  { t: 'statblock', id: 'goblin', cut: false, drawing: 7, nodes: [{ e: 'span', dice: '1d20+4', roll: 0, k: ['+4'] }, { e: 'span', dice: '2d6', roll: 1, k: ['2d6'] }] },
+  { t: 'statblock-roll-answer', id: 9, refused: null },
+  { t: 'statblock-roll-answer', id: 10, refused: 'changed' },
   { t: 'statblock', id: 'goblin', cut: false, nodes: [{ e: 'div', c: ['atlas-sb-heading'], k: ['Goblin', { e: 'span', dice: '1d20+4', k: ['+4'] }, { e: 'img', src: hash }] }, { e: 'td', colspan: 2, k: ['x'] }] },
   { t: 'statblock-gone', id: 'goblin', reason: 'missing' },
   { t: 'portrait', hash, mime: 'image/webp', data: 'UklGRg==' },
@@ -38,6 +52,7 @@ const fromDevice: DeviceMessage[] = [
   { t: 'statblock-view', id: 'goblin' },
   { t: 'statblock-view', id: null },
   { t: 'portrait-ask', hash },
+  { t: 'statblock-roll', id: 9, statblock: 'goblin', drawing: 7, roll: 1 },
 ];
 
 describe('the GM screen\'s messages', () => {
@@ -52,6 +67,22 @@ describe('the GM screen\'s messages', () => {
     expect(read(older)).toEqual(older);
     expect(read({ ...older, online: 'yes' })).toEqual(older);
     expect(read({ ...older, online: true })).toEqual({ ...older, online: true });
+  });
+
+  it('read a list and a drawing of an older Atlas, and leave out a fight or numbers that are malformed while the rest reads', () => {
+    const list = { t: 'statblocks', map: true, entries: [entry] };
+    expect(parseGmScreenMessage(list)).toEqual(list);
+    for (const bad of [{ ...plainFight, round: -1 }, { ...plainFight, parts: [{ k: 'group', key: 'order', combatants: [{ ...combatant, ring: 'green' }] }] },
+      { ...plainFight, parts: [{ k: 'group', key: 'order', combatants: [combatant, combatant] }] }, { ...plainFight, parts: [{ k: 'side' }] },
+      { ...plainFight, parts: [{ k: 'group', key: 'order', combatants: Array.from({ length: 201 }, (_, index) => ({ ...combatant, key: `c${index}` })) }] }]) {
+      expect(parseGmScreenMessage({ ...list, fight: bad }), JSON.stringify(bad).slice(0, 80)).toEqual(list);
+    }
+    // A badge that is no number, and a flag that is not true, are left out of the row
+    const odd = { ...plainFight, parts: [{ k: 'group', key: 'order', combatants: [{ ...combatant, badge: 0, turn: 'yes', hidden: 1 }] }] };
+    expect((parseGmScreenMessage({ ...list, fight: odd }) as Extract<GmScreenMessage, { t: 'statblocks' }>).fight?.parts[0]).toEqual({ k: 'group', key: 'order', combatants: [{ key: 's1-c1', name: 'Goblin', statblock: 'goblin', portrait: hash, ring: '#3a7d44' }] });
+    const drawn = { t: 'statblock', id: 'goblin', cut: false, nodes: [{ e: 'span', dice: '1d20', k: ['x'] }] };
+    expect(parseGmScreenMessage(drawn)).toEqual(drawn);
+    expect(parseGmScreenMessage({ ...drawn, drawing: 0, nodes: [{ e: 'span', roll: 0, k: ['x'] }, { e: 'span', dice: '1d6', roll: -1 }] })).toEqual({ ...drawn, nodes: [{ e: 'span', k: ['x'] }, { e: 'span', dice: '1d6' }] });
   });
 
   it('read a message only from the end that sends it', () => {
@@ -78,7 +109,9 @@ describe('the GM screen\'s messages', () => {
       expect(() => parseGmScreenMessage(value)).not.toThrow();
       expect(parseGmScreenMessage(value), JSON.stringify(value).slice(0, 120)).toBeNull();
     }
-    for (const value of [{ t: 'press', id: 1 }, { t: 'press', id: 1, command: { type: 'stop all' } }, { t: 'press', id: 1.5, command: { type: 'pause' } }, { t: 'statblock-view' }, { t: 'portrait-ask', hash: 'A'.repeat(64) }, { t: 'move' }]) {
+    for (const value of [{ t: 'press', id: 1 }, { t: 'press', id: 1, command: { type: 'stop all' } }, { t: 'press', id: 1.5, command: { type: 'pause' } }, { t: 'statblock-view' }, { t: 'portrait-ask', hash: 'A'.repeat(64) }, { t: 'move' },
+      { t: 'statblock-roll', id: 1, statblock: 'goblin', drawing: 1, roll: '1d20' }, { t: 'statblock-roll', id: 1, statblock: 'goblin', drawing: 0, roll: 0 },
+      { t: 'statblock-roll', id: 1, statblock: 'Notes/Goblin.md', drawing: 1, roll: 0 }, { t: 'statblock-roll', id: 1, statblock: 'goblin', formula: '1d20' }]) {
       expect(parseDeviceMessage(value), JSON.stringify(value)).toBeNull();
     }
   });

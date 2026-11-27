@@ -16,6 +16,8 @@ export interface DrawnTree {
   readonly nodes: readonly DrawnNode[];
   /** More was drawn than one statblock may carry; the rest was left out. */
   readonly cut: boolean;
+  /** The roll links sent, each at the place of its number (`DrawnElement.roll`): what a device's press on one names. */
+  readonly rolls: readonly Element[];
 }
 
 /** The hash of the portrait an `<img>` shows, which the device asks for by it; null to leave the picture out. */
@@ -122,6 +124,7 @@ class TreeWriter {
   private text = 0;
   private bytes = 0;
   cut = false;
+  readonly rolls: Element[] = [];
 
   constructor(private readonly portraitOf: PortraitOf) {}
 
@@ -147,8 +150,10 @@ class TreeWriter {
       }
       return;
     }
-    const attributes = attributesOf(element, treatment.as, this.portraitOf);
+    const drawn = attributesOf(element, treatment.as, this.portraitOf);
+    const attributes = drawn?.dice === undefined ? drawn : { ...drawn, roll: this.rolls.length };
     if (attributes === null || !this.take(utf8Length(JSON.stringify(attributes)) + ',"k":[]'.length + 1)) return;
+    if (attributes.roll !== undefined) this.rolls.push(element);
     if (treatment.empty || treatment.as === 'br' || treatment.as === 'hr' || treatment.as === 'img' || !element.hasChildNodes()) {
       out.push(attributes);
       return;
@@ -210,5 +215,5 @@ class TreeWriter {
 export function drawnTree(root: Node, portraitOf: PortraitOf): DrawnTree {
   const writer = new TreeWriter(portraitOf);
   const nodes = writer.children(root, 1);
-  return { nodes, cut: writer.cut };
+  return { nodes, cut: writer.cut, rolls: writer.rolls };
 }

@@ -3,13 +3,16 @@ import { subscribePlayerTokens } from '../../../characters/playerTokens';
 import { screenStatblocks } from '../../../react/components/dm-screen/screenStatblocks';
 import { toTokenVitals } from '../../../services/statblockVitalsSync';
 import { captureRollContext } from '../../../tools/diceRollOrigins';
-import { MAX_GM_SCREEN_MESSAGE, type DeviceMessage, type GmScreenMessage, type StatblockEntry } from '../../protocol/index.ts';
+import { MAX_GM_SCREEN_MESSAGE, type DeviceMessage, type GmScreenMessage, type StatblockEntry, type StatblocksFight } from '../../protocol/index.ts';
 import type { GmScreen, GmScreenOutlet } from '../screens.ts';
 import { drawnTree } from './drawnTree.ts';
+import { fightArt, fightOf } from './fightList.ts';
 import type { FrontScene, FrontScenes } from './frontScene.ts';
 import type { PortraitShelf } from './PortraitShelf.ts';
 import type { DrawnStatblockProps } from './StatblockDrawing.ts';
 import { listedStatblocks, type ListedStatblock } from './statblockList.ts';
+import { ScreenIds } from './screenIds.ts';
+import { pressRoll, sentRolls, type SentDrawing } from './statblockRolls.ts';
 
 /** How soon after a change of the scene the list is read again; a token dragged changes it on every step. */
 export const LIST_MS = 200;
@@ -38,6 +41,8 @@ interface Shown {
   /** The statblock as last read, and its JSON. */
   message: GmScreenMessage | null;
   json: string;
+  /** The drawing its devices were sent, which a press on one of its rolls names. */
+  sent: SentDrawing | undefined;
 }
 
 const utf8Length = (text: string): number => new TextEncoder().encode(text).length;
@@ -49,10 +54,12 @@ const utf8Length = (text: string): number => new TextEncoder().encode(text).leng
  * Pictures go by hash, and only to the device that asks. Nothing is sent twice to a device that has it.
  */
 export class StatblocksScreen implements GmScreen {
-  readonly takes = ['statblock-view', 'portrait-ask'] as const;
-  private readonly idsByPath = new Map<string, string>();
-  /** Ids differ from one load of Atlas to the next, so a device that asks again by an id of an earlier load is told it is gone, not shown another statblock. */
-  private readonly idPrefix = `s${Date.now().toString(36)}`;
+  readonly takes = ['statblock-view', 'portrait-ask', 'statblock-roll'] as const;
+  private readonly load = `s${Date.now().toString(36)}`;
+  private readonly statblockIds = new ScreenIds(`${this.load}-`);
+  private readonly combatantKeys = new ScreenIds(`${this.load}-c`);
+  /** Drawings are numbered across the screen, so a number never names two drawings in one load. */
+  private drawings = 0;
   private listed = new Map<string, ListedStatblock>();
   private list: GmScreenMessage | null = null;
   private readonly views = new Map<string, string>();
@@ -85,6 +92,11 @@ export class StatblocksScreen implements GmScreen {
       const portrait = this.ports.portraits.portrait(message.hash);
       if (portrait) this.ports.outlet.send(portrait, device);
     } else if (message.t === 'statblock-view') this.view(device, message.id);
+    else if (message.t === 'statblock-roll') {
+      const shown = message.statblock === this.views.get(device) ? this.shown.get(message.statblock) : undefined;
+      const mapInFront = this.list?.t === 'statblocks' && this.list.map;
+      this.ports.outlet.send({ t: 'statblock-roll-answer', id: message.id, refused: pressRoll(shown?.sent, message, mapInFront) }, device);
+    }
   }
 
   closed(device: string): void {
@@ -132,9 +144,20 @@ export class StatblocksScreen implements GmScreen {
     try {
       const statblocks = await screenStatblocks(this.ports.app, state.objects.tokens);
       if (run !== this.runs) return;
-      const listed = listedStatblocks(this.ports.app, statblocks, state, scene.definitions());
-      const portraits = await Promise.all(listed.map((entry) => this.portraitOf(entry.art)));
-      if (run === this.runs) this.publish(scene, listed, portraits);
+      const definitions = scene.definitions();
+      const listed = listedStatblocks(this.ports.app, statblocks, state, definitions);
+      const art = fightArt(state);
+      const [portraits, fightPortraits] = await Promise.all([Promise.all(listed.map((entry) => this.portraitOf(entry.art))), Promise.all(art.map((path) => this.portraitOf(path)))]);
+      if (run !== this.runs) return;
+      const fightPortrait = new Map(art.map((path, index) => [path, fightPortraits[index] ?? null]));
+      const listedPaths = new Set(listed.map((entry) => entry.path));
+      const fight = fightOf(state, {
+        rules: scene.rules(), definitions,
+        keyOf: (entryId) => this.combatantKeys.of(entryId),
+        statblockOf: (path) => (listedPaths.has(path) ? this.idOf(path) : null),
+        portraitOf: (path) => fightPortrait.get(path) ?? null,
+      });
+      this.publish(scene, listed, portraits, fight);
     } catch (error) {
       console.error('[Atlas] Could not read the statblocks of the map for a GM screen device:', error);
     }
@@ -146,20 +169,15 @@ export class StatblocksScreen implements GmScreen {
   }
 
   private idOf(path: string): string {
-    let id = this.idsByPath.get(path);
-    if (id === undefined) {
-      id = `${this.idPrefix}-${this.idsByPath.size + 1}`;
-      this.idsByPath.set(path, id);
-    }
-    return id;
+    return this.statblockIds.of(path);
   }
 
-  private publish(scene: FrontScene | null, listed: readonly ListedStatblock[], portraits: readonly (string | null)[] = []): void {
+  private publish(scene: FrontScene | null, listed: readonly ListedStatblock[], portraits: readonly (string | null)[] = [], fight: StatblocksFight | null = null): void {
     this.listed = new Map(listed.map((entry) => [this.idOf(entry.path), entry]));
     const entries = listed.map((entry, index): StatblockEntry => ({
       id: this.idOf(entry.path), name: entry.name, portrait: portraits[index] ?? null, count: entry.tokens.length, turn: entry.turn, fight: entry.fight, player: entry.player,
     }));
-    this.list = { t: 'statblocks', map: scene !== null, entries };
+    this.list = { t: 'statblocks', map: scene !== null, entries, ...(fight && { fight }) };
     for (const device of this.ports.outlet.devices) this.sendList(device);
     for (const [id, shown] of this.shown) {
       const entry = this.listed.get(id);
@@ -210,7 +228,7 @@ export class StatblocksScreen implements GmScreen {
     }
     let shown = this.shown.get(id);
     if (!shown) {
-      const made: Shown = { drawing: this.ports.drawing((element) => void this.read(id, made, element)), viewers: new Set(), drawnKey: '', message: null, json: '' };
+      const made: Shown = { drawing: this.ports.drawing((element) => void this.read(id, made, element)), viewers: new Set(), drawnKey: '', message: null, json: '', sent: undefined };
       shown = made;
       this.shown.set(id, shown);
       this.draw(shown, this.scene, entry);
@@ -261,11 +279,15 @@ export class StatblocksScreen implements GmScreen {
       const file = fileOf(image);
       return file ? portraits.knownHash(file) ?? null : null;
     });
-    const message: GmScreenMessage = { t: 'statblock', id, nodes: tree.nodes, cut: tree.cut };
+    const same = shown.message?.t === 'statblock' && JSON.stringify(shown.message.nodes) === JSON.stringify(tree.nodes);
+    const drawing = same && shown.sent ? shown.sent.drawing : (this.drawings += 1);
+    const message: GmScreenMessage = { t: 'statblock', id, nodes: tree.nodes, cut: tree.cut, drawing };
     const json = JSON.stringify(message);
     // Within its limits a tree fits one message; should it not, the device is told so rather than sent nothing.
     shown.message = utf8Length(json) <= MAX_GM_SCREEN_MESSAGE ? message : { t: 'statblock-gone', id, reason: 'too-large' };
     shown.json = JSON.stringify(shown.message);
+    // The links of a drawing read again stand for the same rolls, though the DM screen may have drawn them anew.
+    shown.sent = shown.message.t === 'statblock' ? { drawing, rolls: sentRolls(tree.rolls) } : undefined;
     for (const device of shown.viewers) this.sendTree(device, shown);
   }
 

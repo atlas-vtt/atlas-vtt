@@ -93,8 +93,19 @@ describe('a statblock drawn for a GM screen device', () => {
       { e: 'span', c: ['btn', 'btn--ghost', 'btn--icon'], k: [{ e: 'span', c: ['lucide', 'lucide-minus'] }] },
       { e: 'span', c: ['stat-value', 'hp-2', 'atlas-sb-pip', 'is-checked'] },
       { e: 'span', c: ['atlas-sb-pip'] },
-      { e: 'span', c: ['atlas-dice-link'], dice: '2d6+3', k: ['2d6+3'] },
+      { e: 'span', c: ['atlas-dice-link'], dice: '2d6+3', roll: 0, k: ['2d6+3'] },
     ]);
+  });
+
+  it('numbers the rolls it sends in their order, and names each roll link a press may name by its number', () => {
+    const root = document.createElement('div');
+    root.innerHTML = `
+      <p>Bite <span class="atlas-dice-link" data-formula="1d20+5">+5</span></p><span hidden><span class="atlas-dice-link" data-formula="9d9">9d9</span></span>
+      <p><span class="atlas-dice-link" data-formula="2d6+3">2d6 + 3</span> and <span class="atlas-dice-link" data-formula="${'1'.repeat(70)}">long</span></p>`;
+    const tree = drawnTree(root, portraitOf);
+    const rolls = JSON.stringify(tree.nodes).match(/"dice":"[^"]+","roll":\d+/g);
+    expect(rolls).toEqual(['"dice":"1d20+5","roll":0', '"dice":"2d6+3","roll":1']);
+    expect(tree.rolls.map((link) => link.getAttribute('data-formula'))).toEqual(['1d20+5', '2d6+3']);
   });
 
   it('leaves out what is hidden, and keeps a table cell\'s span', () => {

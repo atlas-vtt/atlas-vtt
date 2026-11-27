@@ -41,13 +41,18 @@ describe('the statblocks a GM screen device lists', () => {
       const byPath = new Map(listed.map((each) => [each.path, each]));
       const fight = listed.filter((each) => each.fight).map((each) => each.path);
       const players = new Set(listed.filter((each) => each.player).map((each) => each.path));
-      for (const scope of ['fight', 'players', 'all'] as StatblockScope[]) {
+      for (const scope of ['fight', 'players', 'npcs', 'all'] as StatblockScope[]) {
         // What `useFightStatblocks` shows for the same scene.
         const dmFight = scene.initiative.isActive ? fightStatblockPaths(scene.initiative.entries, TOKENS).filter((path) => SHOWN.has(path)) : [];
         const dmPlayers = new Set([...playerStatblockPaths(TOKENS)].filter((path) => SHOWN.has(path)));
         const dmScreen = statblocksForScreen(SHOWN, dmFight, scope, dmPlayers).map(([path]) => path);
         expect(statblocksForScreen(byPath, fight, scope, players).map(([path]) => path), `turn ${turn}, ${scope}`).toEqual(dmScreen);
       }
+      // The players' and the others' statblocks part the list: none is in both, none in neither.
+      const scoped = (scope: StatblockScope): string[] => statblocksForScreen(byPath, fight, scope, players).map(([path]) => path);
+      expect([...scoped('players'), ...scoped('npcs')].sort()).toEqual(scoped('all').sort());
+      expect(scoped('npcs').filter((path) => scoped('players').includes(path))).toEqual([]);
+      expect(scoped('npcs')).toEqual(scoped('all').filter((path) => !playerStatblockPaths(TOKENS).has(path)));
       const holding = turn === null ? null : TOKENS[FIGHT[turn]!.tokenId!]!;
       expect(listed.filter((each) => each.turn).map((each) => each.path)).toEqual(holding?.kind === 'character' ? [holding.statblockPath] : []);
     }

@@ -61,7 +61,7 @@ export function knownSideIds(initiative: Pick<InitiativeState, 'sides'>): SideId
  * turn that acts this round (neither sitting out, delayed nor among the `defeated` entry ids).
  * Tokens decide a combatant's side.
  */
-function turnEntries(
+export function turnEntries(
   turn: CurrentTurn | null,
   initiative: Pick<InitiativeState, 'sides'> & { readonly entries: readonly InitiativeEntry[] },
   tokens: Readonly<Record<string, TokenEntity>>,

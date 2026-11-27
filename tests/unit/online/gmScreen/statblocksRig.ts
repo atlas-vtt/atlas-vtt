@@ -6,6 +6,8 @@ import { StatblockDrawing } from '../../../../src/app/online/gmScreen/statblocks
 import { StatblocksScreen } from '../../../../src/app/online/gmScreen/statblocks/StatblocksScreen.ts';
 import type { GmScreenMessage } from '../../../../src/app/online/protocol/index.ts';
 import type { TokenEntity } from '../../../../src/app/types';
+import { DEFAULT_INITIATIVE_RULES } from '../../../../src/app/gameSystems/initiativeRules';
+import type { InitiativeRules } from '../../../../src/app/types/initiativeRulesTypes';
 import type { InitiativeState } from '../../../../src/app/types/initiativeTypes';
 import { HIT_POINTS, type StatblockScenario } from '../../../fixtures/gmScreenStatblockNotes';
 import { scenarioApp, type ScenarioApp } from '../../../helpers/statblockScenarioApp';
@@ -18,6 +20,8 @@ export class TestScene implements FrontScene {
   private current: FrontSceneState;
   readonly updateToken = vi.fn();
   readonly locateToken = vi.fn();
+  /** The initiative rules its map plays by, which a test may change. */
+  initiativeRules: InitiativeRules = { ...DEFAULT_INITIATIVE_RULES };
 
   constructor(readonly viewId: string, tokens: Record<string, TokenEntity>, mapPath = 'atlas-vtt/maps/Marsh.atlasmap') {
     this.current = { mapPath, mapLoaded: true, isMapLoading: false, objects: { tokens }, initiative: NO_FIGHT };
@@ -25,6 +29,7 @@ export class TestScene implements FrontScene {
 
   state = (): FrontSceneState => this.current;
   definitions = (): typeof HIT_POINTS[] => [HIT_POINTS];
+  rules = (): InitiativeRules => this.initiativeRules;
 
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
