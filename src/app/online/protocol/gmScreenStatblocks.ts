@@ -90,6 +90,12 @@ export interface DrawnElement {
   readonly dice?: string;
   /** The roll's number in its drawing, by which a device presses it (`statblock-roll`); absent from an Atlas that rolls none for devices. */
   readonly roll?: number;
+  /**
+   * A control of the statblock's tokens the element stands for (a step of a resource, a box of one, the token's locate),
+   * by its number in its drawing, by which a device presses it (`statblock-press`); absent where it may not be pressed now
+   * and from an Atlas that presses none for devices.
+   */
+  readonly press?: number;
   /** An `img`'s picture: a portrait by its hash. An `img` without one is left out. */
   readonly src?: string;
   readonly colspan?: number;
@@ -140,7 +146,7 @@ export type StatblocksAsk =
 const isStatblockId = (value: unknown): value is string => typeof value === 'string' && STATBLOCK_ID_PATTERN.test(value);
 const isSpan = (value: unknown): value is number => typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= MAX_SPAN;
 const isWhole = (value: unknown, max: number): value is number => typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= max;
-/** A roll's number in its drawing: one per element, so never more than a drawing's nodes. */
+/** A roll's or a control's number in its drawing: one per element, so never more than a drawing's nodes. */
 export const isDrawnRoll = (value: unknown): value is number => isWhole(value, MAX_DRAWN_NODES);
 export const isDrawing = (value: unknown): value is number => isWhole(value, MAX_DRAWING) && value >= 1;
 
@@ -166,8 +172,9 @@ function attributes(name: string, value: Record<string, unknown>): Omit<DrawnEle
   const dice = typeof value.dice === 'string' && value.dice.length > 0 && value.dice.length <= MAX_DRAWN_DICE
     ? { dice: value.dice, ...(isDrawnRoll(value.roll) && { roll: value.roll }) }
     : {};
-  if (name !== 'td' && name !== 'th') return { ...dice, ...hooks };
-  return { ...dice, ...(isSpan(value.colspan) && { colspan: value.colspan }), ...(isSpan(value.rowspan) && { rowspan: value.rowspan }), ...hooks };
+  const press = isDrawnRoll(value.press) ? { press: value.press } : {};
+  if (name !== 'td' && name !== 'th') return { ...dice, ...press, ...hooks };
+  return { ...dice, ...press, ...(isSpan(value.colspan) && { colspan: value.colspan }), ...(isSpan(value.rowspan) && { rowspan: value.rowspan }), ...hooks };
 }
 
 /** Children read into `out`; false where one is malformed or the statblock holds more than it may. */

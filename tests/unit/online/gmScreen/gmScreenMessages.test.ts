@@ -46,6 +46,9 @@ const fromAtlas: GmScreenMessage[] = [
   { t: 'statblock-roll-answer', id: 11, refused: null, result: { formula: '1d6+1+1d4[Bless]', total: 9, crit: 'high' } },
   { t: 'statblock-roll-answer', id: 12, refused: null, result: { total: -2 } },
   { t: 'statblock-roll-answer', id: 13, refused: 'too-fast' },
+  { t: 'statblock', id: 'goblin', cut: false, drawing: 8, nodes: [{ e: 'span', c: ['atlas-sb-token-name'], press: 0, k: ['Goblin #1'] }, { e: 'span', press: 1, k: [{ e: 'span', c: ['lucide', 'lucide-minus'] }] }] },
+  { t: 'statblock-press-answer', id: 14, refused: null },
+  { t: 'statblock-press-answer', id: 15, refused: 'changed' },
   { t: 'statblock', id: 'goblin', cut: false, nodes: [{ e: 'div', c: ['atlas-sb-heading'], k: ['Goblin', { e: 'span', dice: '1d20+4', k: ['+4'] }, { e: 'img', src: hash }] }, { e: 'td', colspan: 2, k: ['x'] }] },
   { t: 'statblock-gone', id: 'goblin', reason: 'missing' },
   { t: 'portrait', hash, mime: 'image/webp', data: 'UklGRg==' },
@@ -56,6 +59,7 @@ const fromDevice: DeviceMessage[] = [
   { t: 'statblock-view', id: null },
   { t: 'portrait-ask', hash },
   { t: 'statblock-roll', id: 9, statblock: 'goblin', drawing: 7, roll: 1 },
+  { t: 'statblock-press', id: 10, statblock: 'goblin', drawing: 8, press: 1 },
 ];
 
 describe('the GM screen\'s messages', () => {
@@ -127,7 +131,9 @@ describe('the GM screen\'s messages', () => {
     }
     for (const value of [{ t: 'press', id: 1 }, { t: 'press', id: 1, command: { type: 'stop all' } }, { t: 'press', id: 1.5, command: { type: 'pause' } }, { t: 'statblock-view' }, { t: 'portrait-ask', hash: 'A'.repeat(64) }, { t: 'move' },
       { t: 'statblock-roll', id: 1, statblock: 'goblin', drawing: 1, roll: '1d20' }, { t: 'statblock-roll', id: 1, statblock: 'goblin', drawing: 0, roll: 0 },
-      { t: 'statblock-roll', id: 1, statblock: 'Notes/Goblin.md', drawing: 1, roll: 0 }, { t: 'statblock-roll', id: 1, statblock: 'goblin', formula: '1d20' }]) {
+      { t: 'statblock-roll', id: 1, statblock: 'Notes/Goblin.md', drawing: 1, roll: 0 }, { t: 'statblock-roll', id: 1, statblock: 'goblin', formula: '1d20' },
+      { t: 'statblock-press', id: 1, statblock: 'goblin', drawing: 1, press: -1 }, { t: 'statblock-press', id: 1, statblock: 'goblin', drawing: 1, press: 'minus' },
+      { t: 'statblock-press', id: 1, statblock: 'goblin', drawing: 1, token: 't1', delta: -1 }]) {
       expect(parseDeviceMessage(value), JSON.stringify(value)).toBeNull();
     }
   });
