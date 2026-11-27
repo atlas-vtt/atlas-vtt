@@ -70,10 +70,16 @@ describe('a press in the moment after the GM brought another map to the front', 
     expect(tools['view-1']).not.toHaveBeenCalled();
     expect(tools['view-2']).not.toHaveBeenCalled();
 
+    // Until React put the drawing in place for the map in front, a press is refused as changed and rolls nothing. Each try is a
+    // new press, made once the one before was answered: a press sent again is answered as it was first.
+    let id = 1;
     await vi.waitFor(() => {
-      started.screen.message('p', { t: 'statblock-roll', id: 2, statblock: hag, drawing: started.heard('p', 'statblock').at(-1)!.drawing!, roll: 0 });
-      expect(answer(2)?.refused).toBeNull();
-    }, { timeout: 5000 });
+      if (answer(id)?.refused) {
+        id += 1;
+        started.screen.message('p', { t: 'statblock-roll', id, statblock: hag, drawing: started.heard('p', 'statblock').at(-1)!.drawing!, roll: 0 });
+      }
+      expect(answer(id)?.refused).toBeNull();
+    }, { timeout: 5000, interval: 100 });
     expect(tools['view-1']).not.toHaveBeenCalled();
     expect(tools['view-2']).toHaveBeenCalledTimes(1);
   });
