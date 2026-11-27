@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Minus, Plus } from 'lucide-react';
+import { Minus, Plus, Settings } from 'lucide-react';
 import { t } from '../../../i18n';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import type { CounterRow } from '../../values/counterValues';
@@ -157,6 +157,36 @@ function Count({ row, index, controls }: ShownCounter & { controls: CounterContr
   );
 }
 
+function CounterCell({ row, index, controls }: ShownCounter & { controls: CounterControls | undefined }): React.JSX.Element {
+  const [configMode, setConfigMode] = useState(false)
+
+  const handleCommit = (index: number, max: number) => {
+    setConfigMode(false)
+    if (controls?.setMax) controls?.setMax(index, max)
+  }
+
+  return (
+    <span className="atlas-sb-counter">
+      <div className='atlas-sb-counter__header'>
+        <span className="atlas-sb-counter__name">{row.name}</span>
+        <button type="button" className="atlas-sb-counter__settings" onClick={() => setConfigMode(prev => !prev)}>
+          <Settings />
+        </button>
+      </div>
+
+      {!configMode ? (
+        row.max > MAX_COUNTER_PIPS
+          ? <Count row={row} index={index} controls={controls} />
+          : <Pips row={row} index={index} controls={controls} />
+      ) : (
+        controls?.setMax && <CounterMaxInput row={row} index={index} onCommit={handleCommit} />
+      )}
+
+      {controls?.after?.({ row, index })}
+    </span>
+  );
+}
+
 /**
  * A Counters block's rows: a small cell each, its name over its pips (◆ left,
  * ◇ used), or over its count with − and + where it has more uses than pips fit.
@@ -167,12 +197,7 @@ export function CountersGrid({ counters, controls }: CountersGridProps): React.J
     <span className="atlas-sb-counters__body">
       <span className="atlas-sb-counters__cells">
         {counters.map((shown) => (
-          <span key={shown.index} className="atlas-sb-counter">
-            <span className="atlas-sb-counter__name">{shown.row.name}</span>
-            {shown.row.max > MAX_COUNTER_PIPS ? <Count {...shown} controls={controls} /> : <Pips {...shown} controls={controls} />}
-            {controls?.setMax && <CounterMaxInput {...shown} onCommit={controls.setMax} />}
-            {controls?.after?.(shown)}
-          </span>
+          <CounterCell key={shown.index} {...shown} controls={controls} />
         ))}
       </span>
     </span>

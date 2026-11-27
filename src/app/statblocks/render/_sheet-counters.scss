@@ -1,4 +1,5 @@
 @use '../../../../styles/tokens' as *;
+@use 'sheet-buttons';
 
 // Counters in the native card: a small cell per row of limited uses, its name
 // over its pips (filled: left, hollow: used), cells wrapping three or four to
@@ -29,8 +30,17 @@ $cell-min: 5.5em;
     min-width: 0;
   }
 
+  .atlas-sb-counter__header {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+    min-width: 0;
+    height: 20px
+  }
+
   // A long name wraps rather than losing its end: it may be what tells two rows apart.
   .atlas-sb-counter__name {
+    min-width: 0;
     color: var(--text-muted);
     font-size: $font-ui-smaller;
     overflow-wrap: anywhere;
@@ -105,6 +115,12 @@ $cell-min: 5.5em;
 // Buttons in the card take none of the theme's button look: the pips are the control. A linked statblock (a hover
 // preview, which stands outside Atlas' own elements, and the DM screen) presses them too.
 :is(.atlas-vtt-plugin, .atlas-linked-statblock) .atlas-sb-sheet {
+  button.atlas-sb-counter__settings {
+    @include sheet-buttons.quiet-button;
+    flex: none;
+    margin: 0;
+  }
+
   button.atlas-sb-counter__pip-button,
   button.atlas-sb-counter__step {
     display: inline-flex;
