@@ -1,6 +1,6 @@
 import {
-  isFolderGlyph, isForeignKey, isKeyCommand, layoutKeyCount, MAX_FOLDER_DEPTH, MAX_KEY_TEXT, MAX_LAYOUT_KEYS, slotsAt,
-  type GmScreenDevice, type GmScreenLayout, type KeyChoice, type LayoutEdit, type LayoutKey, type LayoutRefusal, type LayoutSlot, type SlotPath,
+  isFolderGlyph, isForeignKey, isKeyCommand, layoutKeyCount, MAX_FOLDER_DEPTH, MAX_KEY_TEXT, MAX_LAYOUT_KEYS, slotPrint, slotsAt,
+  type GmScreenDevice, type GmScreenLayout, type KeyChoice, type LayoutEdit, type LayoutKey, type LayoutRefusal, type LayoutSlot, type SlotPath, type SlotPrint,
 } from '../../protocol/index.ts';
 
 /** What Atlas knows of the keys a device chooses: its moods' names, the map in front's saved rolls, and whether the dice tool rolls a formula. */
@@ -96,8 +96,21 @@ function rename(slots: Slots, at: SlotPath, name: string, glyph: string): EditRe
   return { layout: { slots: withSlot(slots, at, { ...slot, name, glyph }) } };
 }
 
+/**
+ * Whether a slot the edit names no longer holds what the device saw there: the device acted on a grid another device or
+ * Atlas changed since. A slot whose way is gone is left to the edit, which refuses it as `no-slot`.
+ */
+function changedSince(slots: Slots, edit: LayoutEdit): boolean {
+  const seen: readonly (readonly [SlotPath, SlotPrint | undefined])[] = edit.op === 'move' ? [[edit.from, edit.held], [edit.to, edit.there]] : [[edit.at, edit.held]];
+  return seen.some(([path, print]) => {
+    const slot = print === undefined ? undefined : slotAt(slots, path);
+    return slot !== undefined && slotPrint(slot) !== print;
+  });
+}
+
 /** `layout` with `edit` applied, or why it was refused; a refused edit changes nothing. */
 export function applyLayoutEdit(layout: GmScreenLayout, edit: LayoutEdit, device: GmScreenDevice, library: KeyLibrary): EditResult {
+  if (changedSince(layout.slots, edit)) return { refused: 'changed' };
   switch (edit.op) {
     case 'put':
       return put(layout.slots, edit.at, edit.key, device, library);

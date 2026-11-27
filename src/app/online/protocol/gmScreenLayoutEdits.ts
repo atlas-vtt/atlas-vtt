@@ -1,6 +1,6 @@
 import { isPressId } from './gmScreenKeys.ts';
 import {
-  isCommandName, isFolderName, isGlyphName, isGmScreenDevice, isKeyText, MAX_FOLDER_DEPTH, parseLayout, slotsAt, type GmScreenDevice, type GmScreenLayout,
+  isCommandName, isFolderName, isForeignKey, isGlyphName, isGmScreenDevice, isKeyText, MAX_FOLDER_DEPTH, parseLayout, slotsAt, type GmScreenDevice, type GmScreenLayout, type LayoutSlot,
 } from './gmScreenLayout.ts';
 import { isRecord } from './shape.ts';
 
@@ -28,12 +28,21 @@ export type KeyChoice =
   | { readonly k: 'moods' }
   | { readonly k: 'folder'; readonly name: string; readonly glyph: string };
 
-/** One change to a grid. `move` onto a filled slot swaps the two; `rename` names and draws a folder anew. */
+/**
+ * What lies in a slot as a device saw it (`slotPrint`), so Atlas can tell an edit made on a grid that changed since.
+ * A device sends it where it knows it; an edit without it acts on whatever lies there, as from a page before prints.
+ */
+export type SlotPrint = string & { readonly '~print': true };
+
+/**
+ * One change to a grid. `move` onto a filled slot swaps the two; `rename` names and draws a folder anew. `held` is
+ * what the device saw in the slot it acts on (`at`, or `from` for a move), `there` what it saw at a move's `to`.
+ */
 export type LayoutEdit =
-  | { readonly op: 'put'; readonly at: SlotPath; readonly key: KeyChoice }
-  | { readonly op: 'move'; readonly from: SlotPath; readonly to: SlotPath }
-  | { readonly op: 'remove'; readonly at: SlotPath }
-  | { readonly op: 'rename'; readonly at: SlotPath; readonly name: string; readonly glyph: string };
+  | { readonly op: 'put'; readonly at: SlotPath; readonly key: KeyChoice; readonly held?: SlotPrint }
+  | { readonly op: 'move'; readonly from: SlotPath; readonly to: SlotPath; readonly held?: SlotPrint; readonly there?: SlotPrint }
+  | { readonly op: 'remove'; readonly at: SlotPath; readonly held?: SlotPrint }
+  | { readonly op: 'rename'; readonly at: SlotPath; readonly name: string; readonly glyph: string; readonly held?: SlotPrint };
 
 /** Why Atlas refused a change; the page says each in a sentence of its own. */
 export const LAYOUT_REFUSALS = [
@@ -57,6 +66,8 @@ export const LAYOUT_REFUSALS = [
   'no-roll',
   /** The dice tool would not roll the formula. */
   'bad-formula',
+  /** A slot no longer holds what the device saw there (`held`, `there`): another device or Atlas changed it first. */
+  'changed',
 ] as const;
 export type LayoutRefusal = (typeof LAYOUT_REFUSALS)[number];
 
@@ -82,6 +93,51 @@ export type LayoutMessage =
   | { readonly t: 'layout-answer'; readonly id: number; readonly refused: string | null };
 
 const REFUSAL_PATTERN = /^[a-z][a-z-]{0,31}$/;
+const PRINT_PATTERN = /^[0-9a-z]{1,7}\.[0-9a-z]{1,7}$/;
+
+/** What names a slot's key: its kind and what it is (a folder by its name and picture, not what it holds; a key of a newer kind by its kind). */
+function slotIdentity(slot: LayoutSlot): readonly string[] {
+  if (slot === null) return [];
+  if (isForeignKey(slot)) return ['?', slot.k];
+  switch (slot.k) {
+    case 'command':
+      return [slot.k, slot.command];
+    case 'mood':
+    case 'roll':
+      return [slot.k, slot.id];
+    case 'dice':
+      return [slot.k, slot.formula];
+    case 'moods':
+      return [slot.k];
+    case 'folder':
+      return [slot.k, slot.name, slot.glyph];
+  }
+}
+
+/** A slot's print: a few characters that tell what lies there (`slotIdentity`) from anything else, the same on both sides. */
+export function slotPrint(slot: LayoutSlot): SlotPrint {
+  const text = JSON.stringify(slotIdentity(slot));
+  let a = 0x811c9dc5;
+  let b = 0x9e3779b9 ^ text.length;
+  for (let index = 0; index < text.length; index++) {
+    const code = text.charCodeAt(index);
+    a = Math.imul(a ^ code, 0x01000193);
+    b = Math.imul(b ^ code, 0x5bd1e995);
+  }
+  return `${(a >>> 0).toString(36)}.${(b >>> 0).toString(36)}` as SlotPrint;
+}
+
+/** The prints an edit names, only those it names; null where one it names is none. */
+function parsePrints(value: Record<string, unknown>, names: readonly ('held' | 'there')[]): { held?: SlotPrint; there?: SlotPrint } | null {
+  const prints: { held?: SlotPrint; there?: SlotPrint } = {};
+  for (const name of names) {
+    const print = value[name];
+    if (print === undefined) continue;
+    if (typeof print !== 'string' || !PRINT_PATTERN.test(print)) return null;
+    prints[name] = print as SlotPrint;
+  }
+  return prints;
+}
 
 function parseSlotPath(value: unknown, device: GmScreenDevice): SlotPath | null {
   if (!Array.isArray(value) || value.length < 1 || value.length > MAX_FOLDER_DEPTH + 1) return null;
@@ -112,24 +168,26 @@ function parseKeyChoice(value: unknown): KeyChoice | null {
 /** A change to `device`'s grid, or null for anything that is none. */
 export function parseLayoutEdit(value: unknown, device: GmScreenDevice): LayoutEdit | null {
   if (!isRecord(value)) return null;
+  const prints = parsePrints(value, value.op === 'move' ? ['held', 'there'] : ['held']);
+  if (prints === null) return null;
   switch (value.op) {
     case 'put': {
       const at = parseSlotPath(value.at, device);
       const key = parseKeyChoice(value.key);
-      return at && key ? { op: 'put', at, key } : null;
+      return at && key ? { op: 'put', at, key, ...prints } : null;
     }
     case 'move': {
       const from = parseSlotPath(value.from, device);
       const to = parseSlotPath(value.to, device);
-      return from && to ? { op: 'move', from, to } : null;
+      return from && to ? { op: 'move', from, to, ...prints } : null;
     }
     case 'remove': {
       const at = parseSlotPath(value.at, device);
-      return at ? { op: 'remove', at } : null;
+      return at ? { op: 'remove', at, ...prints } : null;
     }
     case 'rename': {
       const at = parseSlotPath(value.at, device);
-      return at && isFolderName(value.name) && isGlyphName(value.glyph) ? { op: 'rename', at, name: value.name, glyph: value.glyph } : null;
+      return at && isFolderName(value.name) && isGlyphName(value.glyph) ? { op: 'rename', at, name: value.name, glyph: value.glyph, ...prints } : null;
     }
     default:
       return null;

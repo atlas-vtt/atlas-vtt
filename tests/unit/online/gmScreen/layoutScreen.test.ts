@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defaultLayout } from '../../../../src/app/online/gmScreen/keys/defaultLayouts.ts';
 import { LayoutScreen } from '../../../../src/app/online/gmScreen/keys/LayoutScreen.ts';
 import { LAYOUT_SAVE_QUIET_MS, settingsLayouts } from '../../../../src/app/online/gmScreen/keys/settingsLayouts.ts';
-import { GRID_SLOTS, type GmScreenLayout, type LayoutSlot } from '../../../../src/app/online/protocol/index.ts';
+import { GRID_SLOTS, slotPrint, type GmScreenLayout, type LayoutSlot } from '../../../../src/app/online/protocol/index.ts';
 import { memoryPluginData } from '../../../mocks/pluginData';
 import { allowedDevice, keysRig, settleUntil } from './keysRig.ts';
 import { joinedDevice, lastLayout, layoutHeard, layoutRig, worldLibrary } from './layoutRig.ts';
@@ -91,6 +91,26 @@ describe("the Keys screen's grid on Atlas's side", () => {
     expect(at(stored, 12)).toEqual({ k: 'dice', formula: '3d4' });
     expect(at(stored, 13)).toEqual({ k: 'dice', formula: '1d8' });
     expect(at(stored, 0)).toBeNull();
+  });
+
+  it('refuses as changed a removal by a phone that had not yet heard another phone move a key into that slot', async () => {
+    const rig = await layoutRig();
+    const phone = await joinedDevice(rig, PHONE);
+    const second = await joinedDevice(rig, SECOND_PHONE);
+    await rig.ask(phone, 'phone');
+    await rig.ask(second, 'phone');
+    const before = rig.store.layout('phone');
+    const meant = slotPrint(at(before, 0) ?? null);
+    await second.say({ t: 'layout-edit', id: 1, edit: { op: 'move', from: [1], to: [0], held: slotPrint(at(before, 1) ?? null), there: meant } });
+    await settleUntil(rig, () => layoutHeard(second).some((message) => message.t === 'layout-answer'));
+    // Made on the grid before the second phone's move, which is still on its way to this phone.
+    await phone.say({ t: 'layout-edit', id: 1, edit: { op: 'remove', at: [0], held: meant } });
+    await settleUntil(rig, () => layoutHeard(phone).some((message) => message.t === 'layout-answer'));
+    await rig.settle();
+    expect(layoutHeard(phone).find((message) => message.t === 'layout-answer')).toMatchObject({ refused: 'changed' });
+    const stored = rig.store.layout('phone');
+    expect([at(stored, 0), at(stored, 1)], 'the key the second phone moved stays').toEqual([at(before, 1), at(before, 0)]);
+    expect(lastLayout(phone)).toEqual(stored);
   });
 
   it('shows a grid naming what this Atlas does not know as it is, and keeps it when another slot is saved', async () => {
