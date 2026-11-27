@@ -6,6 +6,7 @@ import { CloseButton } from '../../../packages/components/primitives/CloseButton
 import { useAnchoredPopoverVariants } from '../../../packages/components/primitives/dialogMotion';
 import { HOLDS_SCREEN_KEYS } from '../../../react/components/dm-screen/screenKeys';
 import type { AccountApi } from '../../gm/account/AccountControl.ts';
+import { mayStartSidekick } from '../../gm/account/accountView.ts';
 import { AccountSignIn } from '../../gm/account/AccountSignIn';
 import { signInActions, signInPrompt } from '../../gm/account/signInPrompt.ts';
 import { useAccountView } from '../../gm/account/useAccountView.ts';
@@ -26,7 +27,7 @@ const NAME = t('gmScreen.name');
 interface GmScreenPanelProps {
   readonly session: GmScreenSession;
   readonly view: GmScreenView;
-  /** Online play's account: until it may host, the shared sign-in stands where Start would. */
+  /** Online play's account: until it may start Sidekick, the shared sign-in stands where Start would. */
   readonly account: AccountApi;
   readonly onClose: (reason: CloseReason) => void;
 }
@@ -34,9 +35,10 @@ interface GmScreenPanelProps {
 /** A leaving panel takes no press: it goes as a press would find it gone. */
 const leaving = (variants: Variants): Variants => ({ ...variants, exit: { ...(variants.exit as object), pointerEvents: 'none' } });
 
-/** While it is off: what Sidekick is, the shared sign-in until the account may host, then Start (and why it did not start or ended). */
+/** While it is off: what Sidekick is, the shared sign-in until the account may start Sidekick, then Start (and why it did not start or ended). */
 function StoppedBody({ session, view, account }: Omit<GmScreenPanelProps, 'onClose'>): React.JSX.Element {
-  const prompt = signInPrompt(useAccountView(account), { intro: null, unreachable: null });
+  const accountView = useAccountView(account);
+  const prompt = mayStartSidekick(accountView) ? null : signInPrompt(accountView, { intro: null, unreachable: null });
   const actions = useMemo(() => signInActions(account), [account]);
   return (
     <>

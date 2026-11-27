@@ -4,7 +4,7 @@
     {
       "version": "0.21.1-beta.0",
       "title": "Coming in 0.21.1",
-      "markdown": "## Fixed\n\n- Laser pointer and grid alignment: the mouse cursor no longer turns back into an arrow while you move it over the map"
+      "markdown": "## Fixed\n\n- Sidekick works with any free Atlas account, no Atlas Online access needed\n- Laser pointer and grid alignment: the mouse cursor no longer turns back into an arrow while you move it over the map"
     },
     {
       "version": "0.21.0",
