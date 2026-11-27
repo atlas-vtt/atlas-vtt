@@ -16,8 +16,8 @@ export interface RoomAccount {
   refresh(force: boolean): Promise<void>;
 }
 
-/** The room the relay made, or the sentence that says why there is none. */
-export type RoomAnswer = { readonly room: CreatedTable } | { readonly refused: string };
+/** The room the relay made, or the sentence that says why there is none; `later` where asking again may get one (not reached, or busy). */
+export type RoomAnswer = { readonly room: CreatedTable } | { readonly refused: string; readonly later?: true };
 
 /** Asks the relay for the GM screen's room at the lasting `code`. */
 export type CreateRoom = (code: string) => Promise<RoomAnswer>;
@@ -44,6 +44,6 @@ export function relayRooms(http: Http, origin: string, account: RoomAccount, ope
       return { refused: SIGN_IN_TEXT };
     }
     if (created.status === 403) void account.refresh(true);
-    return { refused: created.message };
+    return created.status === 0 || created.status >= 500 ? { refused: created.message, later: true } : { refused: created.message };
   };
 }

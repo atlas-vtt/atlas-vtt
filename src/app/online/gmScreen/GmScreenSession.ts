@@ -1,15 +1,17 @@
-import { MAX_PLAYERS, type DeviceMessage, type GmScreenMessage, type PlayerInfo } from '../protocol/index.ts';
+import { MAX_PLAYERS, type GmScreenMessage } from '../protocol/index.ts';
 import type { CreatedTable } from '../gm/createdTable.ts';
 import type { TableEvents, TableStatus } from '../gm/TableConnection.ts';
 import type { TableOutbox } from '../gm/tableOutbox.ts';
 import { t } from '../../i18n';
 import { checkNumber, linkKey } from './channel/index.ts';
-import { DeviceChannels } from './deviceChannels.ts';
 import { gmScreenEndText } from './gmScreenEnd.ts';
 import { RoomEnds } from './gmScreenEnds.ts';
 import { GmScreenKnocks } from './gmScreenKnocks.ts';
-import { newGmScreenRecord, seatsOf, seenAt, withDevice, withEnding, withoutDevice, withoutEnding, withRoomEnding, type GmScreenRecord } from './gmScreenRecord.ts';
+import { newGmScreenRecord, seatsOf, withDevice, withEnding, withoutDevice, withoutEnding, withRoomEnding, type GmScreenRecord } from './gmScreenRecord.ts';
 import type { GmScreenPorts } from './gmScreenPorts.ts';
+import { expiredWhileAway, HeldClock, Restarts } from './gmScreenRestart.ts';
+import type { RoomAnswer } from './gmScreenRoom.ts';
+import { LinkedDevices } from './linkedDevices.ts';
 import { ScreenRouter, type GmScreen, type GmScreenOutlet } from './screens.ts';
 import { gmScreenView, type GmScreenView } from './gmScreenView.ts';
 
@@ -25,19 +27,18 @@ const NAME = t('gmScreen.name');
  */
 export class GmScreenSession implements GmScreenOutlet {
   private record: GmScreenRecord | null;
-  private phase: 'stopped' | 'starting' | 'running' = 'stopped';
+  /** `restarting`: the room the GM left running expired, and a new one at the same link is on its way. */
+  private phase: 'stopped' | 'starting' | 'running' | 'restarting' = 'stopped';
   private connection: TableOutbox | null = null;
   private connectionStatus: TableStatus = 'connecting';
-  private channels: DeviceChannels | null = null;
   private key: CryptoKey | null = null;
-  /** Allowed devices connected now. */
-  private readonly connected = new Set<string>();
-  /** Devices allowed in this session that have not been told their code yet. */
-  private readonly fresh = new Set<string>();
+  private readonly linked: LinkedDevices;
   private readonly knocks: GmScreenKnocks;
   /** Rooms stopped and not yet seen ended: each is ended, or found ended, once the relay can be reached. */
   private readonly ends: RoomEnds;
   private readonly router = new ScreenRouter();
+  private readonly restarts: Restarts;
+  private readonly held: HeldClock;
   private problem: string | null = null;
   /** The room came back with Atlas (`resume`) and the relay has not welcomed it yet. */
   private comingBack = false;
@@ -48,6 +49,9 @@ export class GmScreenSession implements GmScreenOutlet {
 
   constructor(private readonly ports: GmScreenPorts, saved: GmScreenRecord | null) {
     this.record = saved;
+    this.linked = new LinkedDevices({ crypto: ports.crypto, timers: ports.timers, router: this.router, record: () => this.record, keep: (record) => this.keep(record), connection: () => this.connection, now: () => ports.now() });
+    this.restarts = new Restarts(ports.timers);
+    this.held = new HeldClock(ports.timers, () => ports.now(), (heldAt) => this.record !== null && this.keep({ ...this.record, heldAt }));
     this.knocks = new GmScreenKnocks(ports.timers, (id) => (this.key === null ? Promise.resolve('') : checkNumber(ports.crypto, this.key, id)), () => this.changed());
     this.ends = new RoomEnds(ports.open, ports.timers, (room) => this.record !== null && this.keep(withEnding(this.record, room)), (ended) => {
       if (this.record !== null) this.keep(withoutEnding(this.record, (room) => room.secret === ended.secret));
@@ -65,7 +69,7 @@ export class GmScreenSession implements GmScreenOutlet {
   }
 
   get devices(): readonly string[] {
-    return this.channels?.devices ?? [];
+    return this.linked.open;
   }
 
   /** Plugs a screen in; returns what unplugs it. */
@@ -76,7 +80,7 @@ export class GmScreenSession implements GmScreenOutlet {
   }
 
   send(message: GmScreenMessage, to?: string): void {
-    this.channels?.send(message, to);
+    this.linked.send(message, to);
   }
 
   /** Asks the relay for the room at this computer's lasting code and connects to it. */
@@ -86,17 +90,9 @@ export class GmScreenSession implements GmScreenOutlet {
     this.keep(record);
     this.problem = null;
     this.phase = 'starting';
-    const run = (this.run += 1);
+    this.restarts.held();
     this.changed();
-    const answer = await this.ports.create(record.link.code);
-    if (run !== this.run) {
-      if ('room' in answer) this.ends.overtaken(answer.room);
-      return;
-    }
-    if ('refused' in answer) return this.halt(answer.refused);
-    this.ends.forget(record.link.code);
-    this.keep({ ...withoutEnding(this.record ?? record, (room) => room.code === record.link.code), secret: answer.room.secret });
-    await this.connect(run);
+    await this.make((this.run += 1), (refused) => this.halt(refused.refused));
   }
 
   /** Comes back to the room that ran before Obsidian or Atlas was reloaded, with the same link and devices, and ends the rooms stopped offline. */
@@ -124,6 +120,7 @@ export class GmScreenSession implements GmScreenOutlet {
 
   /** Lets go of the connections, leaving the room on the relay for `resume` (Atlas unloads). */
   close(): void {
+    if (this.phase === 'running' && this.connectionStatus === 'online') this.held.hold();
     this.letGo();
     this.ends.close();
   }
@@ -132,7 +129,7 @@ export class GmScreenSession implements GmScreenOutlet {
   newLink(): void {
     const running = this.phase !== 'stopped';
     this.stop();
-    this.fresh.clear();
+    this.linked.forget();
     this.keep(newGmScreenRecord(this.ports.crypto, this.record?.ending));
     if (running) void this.start();
     else this.changed();
@@ -149,7 +146,7 @@ export class GmScreenSession implements GmScreenOutlet {
       this.ports.notice(t('gmScreen.tooMany', { name: NAME }));
       return false;
     }
-    this.fresh.add(id);
+    this.linked.allowed(id);
     this.keep(next);
     connection.answer(id, true);
     connection.setPlayers(seatsOf(next));
@@ -166,10 +163,39 @@ export class GmScreenSession implements GmScreenOutlet {
   remove(id: string): void {
     if (this.record === null) return;
     this.keep(withoutDevice(this.record, id));
-    this.fresh.delete(id);
-    this.left(id);
+    this.linked.forget(id);
     this.connection?.setPlayers(seatsOf(this.record));
     this.connection?.kick(id);
+    this.changed();
+  }
+
+  /** Asks the relay for the room at the link's code and connects to it, unless a stop, close or new link came first. */
+  private async make(run: number, refused: (answer: Extract<RoomAnswer, { refused: string }>) => void): Promise<void> {
+    const code = this.record?.link.code;
+    if (code === undefined) return;
+    const answer = await this.ports.create(code);
+    if (run !== this.run || this.record === null) {
+      if ('room' in answer) this.ends.overtaken(answer.room);
+      return;
+    }
+    if ('refused' in answer) return refused(answer);
+    // The relay ended every room at this code as it made this one: none is to be ended any more, and this one never.
+    this.ends.forget(code);
+    this.keep({ ...withoutEnding(this.record, (room) => room.code === code), secret: answer.room.secret });
+    await this.connect(run);
+  }
+
+  /**
+   * The room the GM left running expired while Atlas was away: a new one at the same link, with the same
+   * devices, which come back by their own codes, and not a word to the GM. The old secret stays in the record
+   * until the new room is made, so an unload meanwhile comes back here on the next load.
+   */
+  private restart(): void {
+    this.letGo();
+    const run = this.run;
+    const again = (): void => void this.make(run, (answer) => (answer.later ? this.restarts.retry(again) : this.halt(answer.refused, true)));
+    if (!this.restarts.restart(again)) return this.halt(t('gmScreen.end.refused', { name: NAME }), true);
+    this.phase = 'restarting';
     this.changed();
   }
 
@@ -179,10 +205,7 @@ export class GmScreenSession implements GmScreenOutlet {
     if (run !== this.run) return;
     if (record?.secret == null || key === null) return this.halt(t('gmScreen.end.refused', { name: NAME }));
     this.key = key;
-    this.channels = new DeviceChannels(this.ports.crypto, key, this.ports.timers, (device, body) => this.connection?.send(body, device), {
-      opened: (device) => this.opened(device),
-      message: (device, message: DeviceMessage) => this.router.message(device, message),
-    });
+    this.linked.start(key);
     this.phase = 'running';
     this.connectionStatus = 'connecting';
     const room: CreatedTable = { code: record.link.code, secret: record.secret, maxPlayers: MAX_PLAYERS };
@@ -198,61 +221,35 @@ export class GmScreenSession implements GmScreenOutlet {
   private tableEvents(live: () => boolean): TableEvents {
     return {
       status: (status) => live() && this.statusChanged(status),
-      welcome: (players) => {
-        if (!live()) return;
-        for (const id of [...this.connected]) if (!players.some((player) => player.id === id)) this.left(id);
-        for (const player of players) this.joined(player);
-      },
-      joined: (player) => live() && this.joined(player),
-      left: (id) => {
-        if (!live()) return;
-        this.left(id);
-        this.changed();
-      },
-      message: (from, body) => {
-        if (live() && this.connected.has(from)) this.channels?.receive(from, body);
-      },
+      welcome: (players) => live() && (this.linked.welcome(players), this.changed()),
+      joined: (player) => live() && (this.linked.joined(player), this.changed()),
+      left: (id) => live() && (this.linked.left(id), this.changed()),
+      message: (from, body) => live() && this.linked.receive(from, body),
       access: () => undefined,
     };
   }
 
   /** A device let in while every seat was taken: it must ask again once one is free. */
   private full(id: string): void {
-    if (!this.fresh.has(id)) return;
+    if (!this.linked.isFresh(id)) return;
     this.remove(id);
     this.ports.notice(t('gmScreen.full', { name: NAME }));
   }
 
   private statusChanged(status: TableStatus): void {
+    const whileOnline = this.connectionStatus === 'online';
     this.connectionStatus = status;
-    if (status === 'refused') return this.halt(gmScreenEndText(this.connection?.closeCode ?? null, this.comingBack), true);
-    if (status === 'online') this.comingBack = false;
-    // Until the next welcome no device is known to be there; that welcome opens every channel anew.
-    if (status === 'connecting') for (const id of [...this.connected]) this.left(id);
+    if (status === 'online') this.held.hold();
+    else this.held.release();
+    const closeCode = this.connection?.closeCode ?? null;
+    if (status === 'refused' && expiredWhileAway({ closeCode, whileOnline, heldAt: this.record?.heldAt, now: this.ports.now() })) return this.restart();
+    if (status === 'refused') return this.halt(gmScreenEndText(closeCode, this.comingBack), true);
+    if (status === 'online') {
+      this.comingBack = false;
+      this.restarts.held();
+    }
+    if (status === 'connecting') this.linked.away();
     this.changed();
-  }
-
-  private joined(player: PlayerInfo): void {
-    const known = this.record?.devices.some((device) => device.id === player.id) === true;
-    if (!known) return this.connection?.kick(player.id);
-    if (this.record !== null) this.keep(seenAt(this.record, player.id, this.ports.now()));
-    this.connected.add(player.id);
-    this.channels?.connect(player.id);
-    this.changed();
-  }
-
-  private left(id: string): void {
-    if (!this.connected.delete(id)) return;
-    if (this.record?.devices.some((device) => device.id === id) === true) this.keep(seenAt(this.record, id, this.ports.now()));
-    this.channels?.drop(id);
-    this.router.closed(id);
-  }
-
-  private opened(device: string): void {
-    const code = this.record?.devices.find((known) => known.id === device)?.code;
-    if (code === undefined) return;
-    this.send({ t: 'your-code', code, first: this.fresh.delete(device) }, device);
-    this.router.opened(device);
   }
 
   /** The room is over here: nothing more connects, and `problem` says why (null: the GM stopped it). */
@@ -267,14 +264,14 @@ export class GmScreenSession implements GmScreenOutlet {
   /** Lets go of the connection and forgets who is connected and waits: nothing more goes to anyone, and nothing it still says is heard. */
   private letGo(): void {
     this.run += 1;
+    this.restarts.cancel();
+    this.held.release();
     const { connection } = this;
     this.connection = null;
     connection?.stop();
     this.phase = 'stopped';
     this.comingBack = false;
-    for (const id of [...this.connected]) this.left(id);
-    this.channels?.clear();
-    this.channels = null;
+    this.linked.stop();
     this.key = null;
     this.knocks.clear();
   }
@@ -291,7 +288,7 @@ export class GmScreenSession implements GmScreenOutlet {
   }
 
   private makeView(): GmScreenView {
-    const status = this.phase === 'running' ? (this.connectionStatus === 'online' ? 'online' : 'connecting') : this.phase;
-    return gmScreenView({ status, origin: this.ports.origin, record: this.record, connected: this.connected, knock: this.knocks.first, waiting: this.knocks.count, problem: this.problem });
+    const status = this.phase === 'restarting' ? 'connecting' : this.phase === 'running' ? (this.connectionStatus === 'online' ? 'online' : 'connecting') : this.phase;
+    return gmScreenView({ status, origin: this.ports.origin, record: this.record, connected: this.linked.connected, knock: this.knocks.first, waiting: this.knocks.count, problem: this.problem });
   }
 }
