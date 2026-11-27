@@ -15,6 +15,8 @@
 - Dice: after a graphics driver crash the 3D dice roll with their numbers, colours and light again, instead of an empty panel, and the dice colours in Dice settings draw again
 - Atlas' quieter text (hints, counts, placeholders, sleeping scene tabs, loot rarities, links) is easier to read and meets WCAG AA contrast with your own theme and in the Sci-fi look's dark scheme
 - Medieval and Sci-fi looks: in source mode only the bold word that opens a line takes the heading font, as in reading view
+- Table log: roll totals are written in the text colour instead of your accent colour, so they read well with a red or pale accent; critical rolls keep their colour
+- Appearance settings and the welcome wizard: dragging in the colour picker for the accent or ivy colour is smooth again; Atlas takes the colour once you stop moving
 - Initiative: taking the combatant whose turn it is out of the initiative, or deleting its token, now passes the turn by defeated combatants, as Next turn does, and when nobody else can act, the turn rests at the next combatant's place
 - Initiative: delaying the last combatant in a fight by cards now deals the next round's cards, as Next turn does
 

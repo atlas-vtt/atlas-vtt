@@ -329,7 +329,8 @@ $log-width: 360px;
   font-size: 16px;
   font-weight: 700;
   font-family: var(--font-monospace);
-  color: var(--interactive-accent);
+  // Text, not the accent: the GM may pick any accent, and a red total reads as a failure.
+  color: var(--text-normal);
   line-height: 1;
 }
 
