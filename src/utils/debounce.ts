@@ -1,7 +1,8 @@
-/** A debounced function; `flush` runs a pending call immediately. */
+/** A debounced function; `flush` runs a pending call immediately, `cancel` drops it. */
 export interface DebouncedFunction<A extends unknown[]> {
   (...args: A): void;
   flush: () => void;
+  cancel: () => void;
 }
 
 /**
@@ -42,6 +43,12 @@ export function debounce<A extends unknown[]>(
       window.clearTimeout(timeout);
       invoke();
     }
+  };
+
+  debounced.cancel = (): void => {
+    window.clearTimeout(timeout);
+    timeout = undefined;
+    lastArgs = undefined;
   };
 
   return debounced;
