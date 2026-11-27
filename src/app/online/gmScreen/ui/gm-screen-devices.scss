@@ -171,11 +171,10 @@
     font-weight: $font-weight-semibold;
   }
 
-  // Until it takes the second press: it shows the danger it asks about, a step back.
-  &[data-confirming][aria-disabled='true'] {
-    opacity: 0.6;
-    cursor: default;
-  }
+}
+
+.atlas-gm-screen-device__said {
+  @include atlas-visually-hidden;
 }
 
 @media (prefers-reduced-motion: reduce) {

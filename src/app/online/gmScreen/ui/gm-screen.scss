@@ -57,6 +57,13 @@
   background: var(--interactive-accent);
 }
 
+// A control of the panel that takes no press yet, since it appeared or moved a moment ago (`useArmed`): Stop, New
+// link and a Remove's confirm alike stand a step back until they do, so a press they ignore is seen to be ignored.
+.atlas-gm-screen-panel .btn[aria-disabled='true'] {
+  opacity: 0.6;
+  cursor: default;
+}
+
 // Wide enough that the code is large and the line under it stays one line in every language.
 .atlas-gm-screen-panel {
   @include atlas-elevated-surface;

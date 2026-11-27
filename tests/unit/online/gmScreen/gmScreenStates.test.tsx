@@ -73,6 +73,7 @@ describe('Sidekick\'s panel in each of its states', () => {
   it('makes a new link at once while no device is allowed', async () => {
     const rig = await shown();
     await startedFromPanel(rig);
+    await armed();
     const before = rig.session.view().link;
     await act(async () => {
       fireEvent.click(within(panel()).getByRole('button', { name: 'New link' }));

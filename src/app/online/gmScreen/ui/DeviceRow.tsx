@@ -71,6 +71,8 @@ export function DeviceRow({ device, arrived, layout = '', remove }: DeviceRowPro
           {confirming ? t('gmScreen.confirmRemove') : <X />}
         </Button>
       </LabelTooltip>
+      {/* Said once the confirm takes its second press: until then it looks a step back, which a screen reader does not see. */}
+      {confirming && <span className="atlas-gm-screen-device__said" role="status">{armed ? label : ''}</span>}
     </li>
   );
 }

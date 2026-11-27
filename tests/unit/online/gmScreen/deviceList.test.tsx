@@ -3,7 +3,7 @@ import React from 'react';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { GmScreenDeviceView } from '../../../../src/app/online/gmScreen/index.ts';
-import { foldAfter, restingFold } from '../../../../src/app/online/gmScreen/ui/deviceFold.ts';
+import { foldAfter, restingFold, useDeviceFold } from '../../../../src/app/online/gmScreen/ui/deviceFold.ts';
 import { DeviceList } from '../../../../src/app/online/gmScreen/ui/DeviceList';
 import { ARM_MS } from '../../../../src/app/online/gm/armedCards.ts';
 import { CONFIRM_MS, deviceState } from '../../../../src/app/online/gmScreen/ui/DeviceRow';
@@ -16,6 +16,11 @@ afterEach(() => {
 const NOW = 1_700_000_000_000;
 const phone = (connected: boolean, lastSeen = NOW): GmScreenDeviceView => ({ id: 'phone', name: 'Mira’s phone', connected, lastSeen });
 const tablet = (connected: boolean, lastSeen = NOW): GmScreenDeviceView => ({ id: 'tablet', name: 'Tablet', connected, lastSeen });
+
+/** The section with its fold kept beside it, as the panel keeps it. */
+function Listed(props: Omit<React.ComponentProps<typeof DeviceList>, 'fold'>): React.JSX.Element {
+  return <DeviceList {...props} fold={useDeviceFold(props.devices)} />;
+}
 
 const toggle = (): HTMLButtonElement => screen.getByRole('button', { name: /Devices/ });
 
@@ -37,7 +42,7 @@ describe('the devices section that folds', () => {
   });
 
   it('counts its devices in its heading and folds them out of reach', () => {
-    render(<DeviceList devices={[phone(true), tablet(false)]} remove={() => undefined} />);
+    render(<Listed devices={[phone(true), tablet(false)]} remove={() => undefined} />);
     expect(toggle().textContent).toBe('Devices2');
     expect(toggle().getAttribute('aria-expanded')).toBe('true');
     const fold = document.getElementById(toggle().getAttribute('aria-controls') ?? '')!;
@@ -49,16 +54,16 @@ describe('the devices section that folds', () => {
   });
 
   it('says there is none yet, with nothing to fold, before a device is allowed, and opens for the first one', () => {
-    const { rerender } = render(<DeviceList devices={[]} remove={() => undefined} />);
+    const { rerender } = render(<Listed devices={[]} remove={() => undefined} />);
     expect(screen.getByText('No device allowed yet.')).toBeTruthy();
     expect(screen.queryByRole('button')).toBeNull();
-    rerender(<DeviceList devices={[phone(true)]} remove={() => undefined} />);
+    rerender(<Listed devices={[phone(true)]} remove={() => undefined} />);
     expect(toggle().getAttribute('aria-expanded')).toBe('true');
     expect(document.querySelector('.atlas-gm-screen-device')?.hasAttribute('data-arrived')).toBe(true);
   });
 
   it('lets rows there as it opened stand still', () => {
-    render(<DeviceList devices={[phone(true)]} remove={() => undefined} />);
+    render(<Listed devices={[phone(true)]} remove={() => undefined} />);
     expect(document.querySelector('.atlas-gm-screen-device')?.hasAttribute('data-arrived')).toBe(false);
   });
 });
@@ -80,7 +85,7 @@ describe('a device\'s row', () => {
   it('removes an away device on two presses, as a connected one, the second once the confirm has stood a moment', () => {
     vi.useFakeTimers();
     const removed: string[] = [];
-    render(<DeviceList devices={[phone(false)]} remove={(id) => removed.push(id)} />);
+    render(<Listed devices={[phone(false)]} remove={(id) => removed.push(id)} />);
     fireEvent.click(toggle());
     fireEvent.click(removeButton());
     expect(removed).toEqual([]);
@@ -92,7 +97,7 @@ describe('a device\'s row', () => {
   it('asks before it removes: a second press removes, a pause lets the confirm go', () => {
     vi.useFakeTimers();
     const removed: string[] = [];
-    render(<DeviceList devices={[phone(true)]} remove={(id) => removed.push(id)} />);
+    render(<Listed devices={[phone(true)]} remove={(id) => removed.push(id)} />);
     fireEvent.click(removeButton());
     expect(removed).toEqual([]);
     expect(confirmButton().textContent).toBe('Remove');
@@ -107,7 +112,7 @@ describe('a device\'s row', () => {
   it('takes no second press from a double-click: the confirm comes under the pointer and waits before it removes', () => {
     vi.useFakeTimers();
     const removed: string[] = [];
-    render(<DeviceList devices={[phone(true)]} remove={(id) => removed.push(id)} />);
+    render(<Listed devices={[phone(true)]} remove={(id) => removed.push(id)} />);
     fireEvent.click(removeButton());
     act(() => vi.advanceTimersByTime(150));
     fireEvent.click(confirmButton());
@@ -118,7 +123,7 @@ describe('a device\'s row', () => {
   });
 
   it('lets the confirm go when the focus leaves it', () => {
-    render(<DeviceList devices={[phone(true)]} remove={() => undefined} />);
+    render(<Listed devices={[phone(true)]} remove={() => undefined} />);
     fireEvent.click(removeButton());
     fireEvent.blur(confirmButton());
     expect(removeButton()).toBeTruthy();
@@ -128,15 +133,15 @@ describe('a device\'s row', () => {
     vi.useFakeTimers();
     const removed: string[] = [];
     const remove = (id: string): void => void removed.push(id);
-    const { rerender } = render(<DeviceList devices={[phone(true)]} remove={remove} />);
+    const { rerender } = render(<Listed devices={[phone(true)]} remove={remove} />);
     fireEvent.click(removeButton());
     expect(confirmButton()).toBeTruthy();
     // The phone's screen sleeps a second later; ten minutes pass; it wakes. The focus stays on the button.
     act(() => vi.advanceTimersByTime(1000));
-    rerender(<DeviceList devices={[phone(false)]} remove={remove} />);
+    rerender(<Listed devices={[phone(false)]} remove={remove} />);
     expect(screen.queryByRole('button', { name: 'Press again to remove Mira’s phone' })).toBeNull();
     act(() => vi.advanceTimersByTime(10 * 60_000 + CONFIRM_MS));
-    rerender(<DeviceList devices={[phone(true)]} remove={remove} />);
+    rerender(<Listed devices={[phone(true)]} remove={remove} />);
     expect(screen.queryByRole('button', { name: 'Press again to remove Mira’s phone' })).toBeNull();
     fireEvent.click(document.querySelector('.atlas-gm-screen-device__remove')!);
     expect(removed).toEqual([]);
@@ -146,11 +151,11 @@ describe('a device\'s row', () => {
     vi.useFakeTimers();
     const removed: string[] = [];
     const remove = (id: string): void => void removed.push(id);
-    const { rerender } = render(<DeviceList devices={[phone(true), tablet(true)]} layout="quiet" remove={remove} />);
+    const { rerender } = render(<Listed devices={[phone(true), tablet(true)]} layout="quiet" remove={remove} />);
     fireEvent.click(removeButton());
     act(() => vi.advanceTimersByTime(ARM_MS));
     // A device asks to join: its prompt stands above the rows, which move down under the pointer.
-    rerender(<DeviceList devices={[phone(true), tablet(true)]} layout="a device asks" remove={remove} />);
+    rerender(<Listed devices={[phone(true), tablet(true)]} layout="a device asks" remove={remove} />);
     fireEvent.click(removeButton());
     expect(removed).toEqual([]);
     expect(confirmButton().getAttribute('aria-disabled')).toBe('true');

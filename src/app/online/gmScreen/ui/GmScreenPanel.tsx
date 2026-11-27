@@ -11,6 +11,7 @@ import { signInActions, signInPrompt } from '../../gm/account/signInPrompt.ts';
 import { useAccountView } from '../../gm/account/useAccountView.ts';
 import type { GmScreenSession, GmScreenView } from '../GmScreenSession.ts';
 import { AllowPrompt } from './AllowPrompt';
+import { useDeviceFold, type DeviceFoldState } from './deviceFold.ts';
 import { DeviceList } from './DeviceList';
 import { GmScreenQr } from './GmScreenQr';
 import { LinkCopy } from './LinkCopy';
@@ -53,11 +54,14 @@ function StoppedBody({ session, view, account }: Omit<GmScreenPanelProps, 'onClo
   );
 }
 
-/** What moves the panel's rows and buttons on screen: a device that asks (and how many wait), and the devices listed. */
-const layoutOf = (view: GmScreenView): string => `${view.knock?.id ?? ''} ${String(view.waiting > 1)} ${view.devices.length}`;
+/**
+ * What moves the panel's rows and buttons on screen: a device that asks (and how many wait), the devices listed, the
+ * devices section folding or opening, and the line under the code, which may take another number of lines.
+ */
+const layoutOf = (view: GmScreenView, fold: DeviceFoldState): string => `${view.knock?.id ?? ''} ${String(view.waiting > 1)} ${view.devices.length} ${String(fold.open)} ${view.status}`;
 
 /** While it runs: the code to scan and the link to copy, the devices, New link and Stop. */
-function RunningBody({ session, view, openedForKnock }: { session: GmScreenSession; view: GmScreenView; openedForKnock: boolean }): React.JSX.Element {
+function RunningBody({ session, view, fold, openedForKnock }: { session: GmScreenSession; view: GmScreenView; fold: DeviceFoldState; openedForKnock: boolean }): React.JSX.Element {
   return (
     <>
       {view.link !== null && (
@@ -69,8 +73,8 @@ function RunningBody({ session, view, openedForKnock }: { session: GmScreenSessi
           <LinkCopy key={view.link} link={view.link} />
         </>
       )}
-      <DeviceList devices={view.devices} layout={layoutOf(view)} remove={(id) => session.remove(id)} />
-      <PanelActions devices={view.devices.length} layout={layoutOf(view)} openedForKnock={openedForKnock} newLink={() => session.newLink()} stop={() => session.stop()} />
+      <DeviceList devices={view.devices} fold={fold} layout={layoutOf(view, fold)} remove={(id) => session.remove(id)} />
+      <PanelActions devices={view.devices.length} layout={layoutOf(view, fold)} openedForKnock={openedForKnock} newLink={() => session.newLink()} stop={() => session.stop()} />
     </>
   );
 }
@@ -84,6 +88,7 @@ export function GmScreenPanel({ session, view, account, onClose }: GmScreenPanel
   const escapes = useMemo(() => escapeStack(), []);
   // A device that asks to join opens the panel by itself, under wherever the pointer rests.
   const [openedForKnock] = useState(view.knock !== null);
+  const fold = useDeviceFold(view.devices);
   const variants = leaving(useAnchoredPopoverVariants());
   useLightDismiss(root, useIsPresent(), () => escapes.undo(), onClose);
   const running = view.status === 'connecting' || view.status === 'online';
@@ -99,8 +104,8 @@ export function GmScreenPanel({ session, view, account, onClose }: GmScreenPanel
         </header>
         <div className="atlas-gm-screen-panel__body">
           {view.knock !== null && <AllowPrompt knock={view.knock} waiting={view.waiting} allow={(id) => session.allow(id)} refuse={(id) => session.refuse(id)} />}
-          {running ? <RunningBody session={session} view={view} openedForKnock={openedForKnock} /> : <StoppedBody session={session} view={view} account={account} />}
-          {!running && view.devices.length > 0 && <DeviceList devices={view.devices} layout={layoutOf(view)} remove={(id) => session.remove(id)} />}
+          {running ? <RunningBody session={session} view={view} fold={fold} openedForKnock={openedForKnock} /> : <StoppedBody session={session} view={view} account={account} />}
+          {!running && view.devices.length > 0 && <DeviceList devices={view.devices} fold={fold} layout={layoutOf(view, fold)} remove={(id) => session.remove(id)} />}
         </div>
       </motion.div>
     </PanelEscape.Provider>
