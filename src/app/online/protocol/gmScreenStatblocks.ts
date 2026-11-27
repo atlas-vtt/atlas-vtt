@@ -1,5 +1,6 @@
 import { IMAGE_MIME_TYPES, isHash } from './asset.ts';
 import { DRAWN_CLASSES } from './drawnClasses.ts';
+import { parseFight, type StatblocksFight } from './gmScreenFight.ts';
 import { isRecord } from './shape.ts';
 
 /**
@@ -30,6 +31,8 @@ export const MAX_DRAWN_CLASSES = 16;
 /** As long as a formula the dice tool reads. */
 export const MAX_DRAWN_DICE = 64;
 const MAX_SPAN = 64;
+/** The highest drawing number (`statblock.drawing`): Atlas counts its drawings from 1. */
+export const MAX_DRAWING = 2 ** 31 - 1;
 
 const WORD = /^[a-z][a-z-]{0,31}$/;
 const NUMBER = /^\d{1,4}(\.\d{1,6})?$/;
@@ -85,6 +88,8 @@ export interface DrawnElement {
   readonly k?: readonly DrawnNode[];
   /** A roll the element stands for, as its formula. */
   readonly dice?: string;
+  /** The roll's number in its drawing, by which a device presses it (`statblock-roll`); absent from an Atlas that rolls none for devices. */
+  readonly roll?: number;
   /** An `img`'s picture: a portrait by its hash. An `img` without one is left out. */
   readonly src?: string;
   readonly colspan?: number;
@@ -112,10 +117,17 @@ export interface StatblockEntry {
 }
 
 export type StatblocksMessage =
-  /** The statblocks of the map in front, in the DM screen's order with every one listed; `map` is false while no map is in front. */
-  | { readonly t: 'statblocks'; readonly map: boolean; readonly entries: readonly StatblockEntry[] }
-  /** A statblock as drawn; `cut` when it held more than a drawn statblock may, and the rest was left out. */
-  | { readonly t: 'statblock'; readonly id: string; readonly nodes: readonly DrawnNode[]; readonly cut: boolean }
+  /**
+   * The statblocks of the map in front, in the DM screen's order with every one listed; `map` is false while no map is
+   * in front. `fight` is the running fight as the GM's tracker shows it; absent outside a fight and from older Atlases.
+   */
+  | { readonly t: 'statblocks'; readonly map: boolean; readonly entries: readonly StatblockEntry[]; readonly fight?: StatblocksFight }
+  /**
+   * A statblock as drawn; `cut` when it held more than a drawn statblock may, and the rest was left out. `drawing`
+   * numbers this drawing among those of its statblock, so a press on one of its rolls names what it pressed; absent from
+   * an Atlas that rolls none for devices.
+   */
+  | { readonly t: 'statblock'; readonly id: string; readonly nodes: readonly DrawnNode[]; readonly cut: boolean; readonly drawing?: number }
   /** A statblock that cannot be shown, and why. */
   | { readonly t: 'statblock-gone'; readonly id: string; readonly reason: string }
   | { readonly t: 'portrait'; readonly hash: string; readonly mime: string; readonly data: string };
@@ -127,6 +139,10 @@ export type StatblocksAsk =
 
 const isStatblockId = (value: unknown): value is string => typeof value === 'string' && STATBLOCK_ID_PATTERN.test(value);
 const isSpan = (value: unknown): value is number => typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= MAX_SPAN;
+const isWhole = (value: unknown, max: number): value is number => typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= max;
+/** A roll's number in its drawing: one per element, so never more than a drawing's nodes. */
+export const isDrawnRoll = (value: unknown): value is number => isWhole(value, MAX_DRAWN_NODES);
+export const isDrawing = (value: unknown): value is number => isWhole(value, MAX_DRAWING) && value >= 1;
 
 interface Budget {
   nodes: number;
@@ -147,7 +163,9 @@ function attributes(name: string, value: Record<string, unknown>): Omit<DrawnEle
   const style = listed(value.s, DRAWN_STYLES);
   const hooks = { ...(data && { d: data }), ...(style && { s: style }) };
   if (name === 'img') return isHash(value.src) ? { src: value.src, ...hooks } : null;
-  const dice = typeof value.dice === 'string' && value.dice.length > 0 && value.dice.length <= MAX_DRAWN_DICE ? { dice: value.dice } : {};
+  const dice = typeof value.dice === 'string' && value.dice.length > 0 && value.dice.length <= MAX_DRAWN_DICE
+    ? { dice: value.dice, ...(isDrawnRoll(value.roll) && { roll: value.roll }) }
+    : {};
   if (name !== 'td' && name !== 'th') return { ...dice, ...hooks };
   return { ...dice, ...(isSpan(value.colspan) && { colspan: value.colspan }), ...(isSpan(value.rowspan) && { rowspan: value.rowspan }), ...hooks };
 }
@@ -204,11 +222,13 @@ export function parseStatblocksMessage(value: Record<string, unknown>): Statbloc
       if (typeof value.map !== 'boolean' || !Array.isArray(value.entries) || value.entries.length > MAX_STATBLOCK_ENTRIES) return null;
       const entries = value.entries.map(parseEntry);
       if (!entries.every((entry): entry is StatblockEntry => entry !== null) || new Set(entries.map((entry) => entry.id)).size !== entries.length) return null;
-      return { t: 'statblocks', map: value.map, entries };
+      const fight = parseFight(value.fight);
+      return { t: 'statblocks', map: value.map, entries, ...(fight && { fight }) };
     }
     case 'statblock': {
       const nodes = parseDrawnNodes(value.nodes);
-      return isStatblockId(value.id) && nodes !== null && typeof value.cut === 'boolean' ? { t: 'statblock', id: value.id, nodes, cut: value.cut } : null;
+      if (!isStatblockId(value.id) || nodes === null || typeof value.cut !== 'boolean') return null;
+      return { t: 'statblock', id: value.id, nodes, cut: value.cut, ...(isDrawing(value.drawing) && { drawing: value.drawing }) };
     }
     case 'statblock-gone':
       return isStatblockId(value.id) && typeof value.reason === 'string' && REASON_PATTERN.test(value.reason) ? { t: 'statblock-gone', id: value.id, reason: value.reason } : null;
