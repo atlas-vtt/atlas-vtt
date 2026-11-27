@@ -113,6 +113,9 @@ const GROUNDS: { name: string; ground: (c: (v: string) => Rgba) => Rgba; inks: s
   { name: 'a field', ground: (c) => over(c('var(--background-modifier-form-field)'), c('var(--background-primary)')), inks: [NORMAL, FAINT] },
   { name: 'a field on a sidebar', ground: (c) => over(c('var(--background-modifier-form-field)'), c('var(--background-secondary)')), inks: [NORMAL, FAINT] },
   { name: 'a hovered row', ground: (c) => over(c('var(--background-modifier-hover)'), c('var(--background-primary)')), inks: [NORMAL, MUTED, FAINT] },
+  // A hovered row's faint text takes the muted ink there (the loot roller's table tree), as faint reaches 4.5:1 on that
+  // ground only by merging into muted.
+  { name: 'a hovered row on a sidebar', ground: (c) => over(c('var(--background-modifier-hover)'), c('var(--background-secondary)')), inks: [NORMAL, MUTED] },
   { name: 'a button', ground: (c) => over(c('var(--interactive-normal)'), c('var(--background-primary)')), inks: [NORMAL, MUTED] },
   { name: 'a table head', ground: (c) => over(c('var(--table-header-background)'), c('var(--background-primary)')), inks: ['--table-header-color'] },
 ];
