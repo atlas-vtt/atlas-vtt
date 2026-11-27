@@ -103,7 +103,7 @@ describe('the look Atlas reads for a device', () => {
     const look = readLook(document);
     expect(look?.dark).toBe(false);
     expect(look?.colours).toMatchObject({
-      '--background-primary': '#f5eddc', '--background-secondary': '#e9dec3', '--text-normal': '#3a2c1a', '--text-muted': '#6d5c40',
+      '--background-primary': '#f5eddc', '--background-secondary': '#e9dec3', '--text-normal': '#3a2c1a', '--text-muted': '#67563b',
       '--text-accent': '#8a2b12', '--text-error': '#a41e22', '--interactive-normal': '#e2d5b6', '--atlas-theme-red': '#a41e22',
       '--color-accent': '#dd4646', '--background-modifier-hover': '#2a1e0e14', '--background-modifier-cover': '#3a2c1a52',
     });
@@ -125,7 +125,7 @@ describe('the look Atlas reads for a device', () => {
   it('reads the Medieval look by candle light, with and without a picked accent', () => {
     obsidian('dark', LOOK_CLASS);
     expect(readLook(document)?.dark).toBe(true);
-    expect(read()).toMatchObject({ '--background-primary': '#201b15', '--text-normal': '#ded2b8', '--text-accent': '#d4756b', '--interactive-normal': '#3a3125', '--menu-background': '#2b241c', '--color-accent': '#dd4646' });
+    expect(read()).toMatchObject({ '--background-primary': '#201b15', '--text-normal': '#ded2b8', '--text-accent': '#d6776c', '--interactive-normal': '#3a3125', '--menu-background': '#2b241c', '--color-accent': '#dd4646' });
     pickAccent(GREEN);
     const colours = read();
     expect(colours['--background-primary']).toBe('#201b15');

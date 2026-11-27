@@ -13,9 +13,12 @@ afterEach(() => teardown());
 const button = (): HTMLElement => document.querySelector<HTMLElement>('.atlas-gm-screen-control__button')!;
 const dot = (): HTMLElement => button().querySelector<HTMLElement>('.atlas-online-status__dot')!;
 
-/** A theme colour as the browser draws it, read off a probe so `var()` and mixes come out as one colour. */
+/**
+ * A theme colour as the browser draws it beside the dot, read off a probe so `var()` and mixes come out as one colour.
+ * Inside Atlas some inks are redefined (styles/_host-ink.scss), so the probe stands where the dot does.
+ */
 function drawn(variable: string): string {
-  const probe = document.body.appendChild(document.createElement('i'));
+  const probe = button().appendChild(document.createElement('i'));
   probe.style.backgroundColor = `var(${variable})`;
   const colour = getComputedStyle(probe).backgroundColor;
   probe.remove();
