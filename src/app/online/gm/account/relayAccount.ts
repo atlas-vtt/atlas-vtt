@@ -29,8 +29,8 @@ export function accessRefusal(value: unknown): AccessRefusal | null {
 /** The relay's answer about an account: what it may host, or why it may not (null: for a reason this version does not know). The plugin only shows it. */
 export type Hosting = { readonly access: HostAccess } | { readonly access: null; readonly reason: AccessRefusal | null };
 
-/** The signed-in account with what the relay says of it. */
-export type AccountAnswer = { readonly account: AccountInfo } & Hosting;
+/** The signed-in account with what the relay says of it; `sidekick`: whether it may start Sidekick, which needs no right to host. */
+export type AccountAnswer = { readonly account: AccountInfo; readonly sidekick: boolean } & Hosting;
 
 /** What `/api/me` gave: the account's answer, the trouble that kept it, or `unavailable` for an answer that names no account. */
 export type MeAnswer = AccountAnswer | AccountTrouble | 'unavailable';
@@ -78,7 +78,10 @@ export class RelayAccount {
     const account = accountOf(field(response.json, 'account'));
     if (response.status !== 200 || account === null) return 'unavailable';
     const access = accessOf(field(response.json, 'access'));
-    return access === null ? { account, access, reason: accessRefusal(field(response.json, 'reason')) } : { account, access };
+    // A relay from before Sidekick was free names no `sidekick`: there Sidekick needs what a table needs.
+    const named = typeof response.json === 'object' && response.json !== null && Object.hasOwn(response.json, 'sidekick');
+    const sidekick = named ? field(response.json, 'sidekick') !== null : access !== null;
+    return access === null ? { account, sidekick, access, reason: accessRefusal(field(response.json, 'reason')) } : { account, sidekick, access };
   }
 
   private async call(path: string): Promise<{ readonly status: number; readonly json: unknown }> {

@@ -2,7 +2,7 @@ import type { Translation } from '../../types';
 
 export const gmScreen: Translation = {
   'gmScreen.name': 'Sidekick',
-  'gmScreen.intro': 'Телефон или планшет как второй экран: командные клавиши, звук и блоки характеристик. {name} работает через Atlas Online и требует учётную запись Atlas с правом вести онлайн-игры.',
+  'gmScreen.intro': 'Телефон или планшет как второй экран: командные клавиши, звук и блоки характеристик. {name} работает через Atlas Online и требует бесплатную учётную запись Atlas.',
   'gmScreen.start': 'Запустить {name}',
   'gmScreen.starting': '{name} запускается…',
   'gmScreen.stop': 'Остановить {name}',
@@ -32,7 +32,7 @@ export const gmScreen: Translation = {
   'gmScreen.allow': 'Разрешить',
   'gmScreen.refuse': 'Отклонить',
   'gmScreen.moreWaiting': { one: 'Ждёт ещё {count} устройство', few: 'Ждут ещё {count} устройства', many: 'Ждут ещё {count} устройств', other: 'Ждут ещё {count} устройства' },
-  'gmScreen.signIn': 'Войдите в учётную запись Atlas, чтобы запустить {name}. Нужна учётная запись с правом вести онлайн-игры.',
+  'gmScreen.signIn': 'Войдите в учётную запись Atlas, чтобы запустить {name}. Подойдёт любая бесплатная учётная запись Atlas.',
   'gmScreen.relayTooOld': 'Сервер пока не может запустить {name}. Попробуйте позже.',
   'gmScreen.tooMany': '{name} хранит не больше 16 устройств. Сначала удалите одно.',
   'gmScreen.full': 'Когда вы разрешили последнее устройство, все места {name} были заняты. Оно сможет попросить снова, когда уйдёт другое устройство.',

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AccountControl } from '../../../../src/app/online/gm/account/AccountControl.ts';
-import { accessText, accountText, planText } from '../../../../src/app/online/gm/account/accountView.ts';
+import { accessText, accountText, mayStartSidekick, planText } from '../../../../src/app/online/gm/account/accountView.ts';
 import { AtlasAccount } from '../../../../src/app/account/AtlasAccount';
 import { DeviceSignIn } from '../../../../src/app/account/deviceFlow.ts';
 import type { HttpRequest, HttpResponse } from '../../../../src/app/account/http.ts';
@@ -126,7 +126,7 @@ describe('the device sign-in', () => {
     await timers.advance(10_000);
     await done;
     expect(tokens.value).toBe('bearer-token');
-    expect(control.view()).toEqual({ kind: 'no-access', account: MARA, reason: 'no-access' });
+    expect(control.view()).toEqual({ kind: 'no-access', account: MARA, reason: 'no-access', sidekick: false });
     expect(servers.requests.at(-1)).toMatchObject({ url: `${RELAY}/api/me`, authorization: 'Bearer bearer-token' });
     expect(timers.pending).toBe(0);
     // The token never travels in a URL.
@@ -180,6 +180,21 @@ describe('the device sign-in', () => {
 });
 
 describe('the signed-in account', () => {
+  it('may start Sidekick where the relay says so, though it may not host online play; a relay that names no Sidekick asks what a table asks', async () => {
+    const { control, servers, tokens } = setup();
+    tokens.value = 'tok';
+    const startsSidekick = async (json: Record<string, unknown>): Promise<boolean> => {
+      servers.me = { status: 200, json: { account: MARA, ...json } };
+      await control.refresh(true);
+      return mayStartSidekick(control.view());
+    };
+    expect(await startsSidekick({ access: null, reason: 'no-access', sidekick: { devices: 4 } })).toBe(true);
+    expect(control.view()).toMatchObject({ kind: 'no-access', reason: 'no-access' });
+    expect(await startsSidekick({ access: null, reason: 'account-restricted', sidekick: null, sidekickReason: 'account-restricted' })).toBe(false);
+    expect(await startsSidekick({ access: null, reason: 'no-access' })).toBe(false);
+    expect(await startsSidekick({ access: { plan: 'beta', maxPlayers: 12, endsAt: null } })).toBe(true);
+  });
+
   it('shows what the relay says it may host, and for each reason it may not the relay\'s own', async () => {
     const { control, servers, tokens } = setup();
     tokens.value = 'tok';
@@ -187,13 +202,13 @@ describe('the signed-in account', () => {
     for (const reason of ACCESS_REFUSALS) {
       servers.me = { status: 200, json: { account: MARA, access: null, reason } };
       await control.refresh(true);
-      expect(control.view()).toEqual({ kind: 'no-access', account: MARA, reason });
+      expect(control.view()).toEqual({ kind: 'no-access', account: MARA, reason, sidekick: false });
     }
     // A reason a later relay names, or none at all, is still no access: for a reason not known here.
     for (const json of [{ account: MARA, access: null, reason: 'something-new' }, { account: MARA, access: null }]) {
       servers.me = { status: 200, json };
       await control.refresh(true);
-      expect(control.view()).toEqual({ kind: 'no-access', account: MARA, reason: null });
+      expect(control.view()).toEqual({ kind: 'no-access', account: MARA, reason: null, sidekick: false });
     }
     // The key was redeemed on the website: the next question shows it.
     servers.me = { status: 200, json: { account: MARA, access: { plan: 'beta', maxPlayers: 12, endsAt: null } } };

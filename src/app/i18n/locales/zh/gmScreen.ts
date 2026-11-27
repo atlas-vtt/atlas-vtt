@@ -2,7 +2,7 @@ import type { Translation } from '../../types';
 
 export const gmScreen: Translation = {
   'gmScreen.name': 'Sidekick',
-  'gmScreen.intro': '把手机或平板当作第二块屏幕：命令按键、声音和属性块。{name} 通过 Atlas Online 运行，需要一个可以主持在线游戏的 Atlas 账户。',
+  'gmScreen.intro': '把手机或平板当作第二块屏幕：命令按键、声音和属性块。{name} 通过 Atlas Online 运行，需要一个免费的 Atlas 账户。',
   'gmScreen.start': '启动 {name}',
   'gmScreen.starting': '正在启动 {name}…',
   'gmScreen.stop': '停止 {name}',
@@ -32,7 +32,7 @@ export const gmScreen: Translation = {
   'gmScreen.allow': '允许',
   'gmScreen.refuse': '拒绝',
   'gmScreen.moreWaiting': { other: '还有 {count} 台设备在等待' },
-  'gmScreen.signIn': '登录你的 Atlas 账户以启动 {name}。需要一个可以主持在线游戏的账户。',
+  'gmScreen.signIn': '登录你的 Atlas 账户以启动 {name}。任何免费的 Atlas 账户都可以。',
   'gmScreen.relayTooOld': '服务器暂时无法运行 {name}。请稍后再试。',
   'gmScreen.tooMany': '{name} 最多保留 16 台设备。请先移除一台。',
   'gmScreen.full': '你允许最后一台设备时，{name} 的所有位置都已占满。等其他设备离开后它可以再次请求。',
