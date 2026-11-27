@@ -14,7 +14,7 @@ const panel = (): HTMLElement => document.querySelector<HTMLElement>('.atlas-gm-
 const opacity = (name: string): string => getComputedStyle(within(panel()).getByRole('button', { name })).opacity;
 
 describe('Sidekick\'s panel while its controls take no press', () => {
-  it('shows Stop and New link a step back until they take a press again, as a Remove\'s confirm', async () => {
+  it('shows Stop and New link a step back, as a Remove\'s confirm, from the panel opening itself for a device that asks until they take a press', async () => {
     const view = await dmScreen('dark');
     teardown = view.remove;
     const timers = handTimers();
@@ -28,6 +28,9 @@ describe('Sidekick\'s panel while its controls take no press', () => {
     await act(() => new Promise<void>((resolve) => setTimeout(resolve, ARM_MS + 50)));
     expect([opacity('Stop Sidekick'), opacity('New link')]).toEqual(['1', '1']);
 
+    // Closed, the panel opens itself under the pointer for a device that asks.
+    act(() => within(panel()).getByRole('button', { name: 'Close' }).click());
+    await expect.poll(() => document.querySelector('.atlas-gm-screen-panel')).toBeNull();
     await act(async () => {
       relay.gate?.knocked({ id: PHONE, name: 'iPhone' });
       await expect.poll(() => session.view().knock?.check).not.toBeNull();
