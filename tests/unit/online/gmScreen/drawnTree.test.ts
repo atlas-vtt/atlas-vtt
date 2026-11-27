@@ -4,15 +4,22 @@ import { drawnTree, MAX_DRAWN_BYTES, type PortraitOf } from '../../../../src/app
 import {
   MAX_DRAWN_DEPTH, MAX_DRAWN_NODES, STATBLOCK_STYLE_CLASSES, MAX_DRAWN_TEXT, parseDrawnNodes, parseGmScreenMessage, type DrawnNode,
 } from '../../../../src/app/online/protocol/index.ts';
+import { markOwnDiceLink } from '../../../../src/app/services/ownDiceLinks';
 
 const PORTRAIT = 'a'.repeat(64);
 /** A portrait for the one vault picture the test names, none for any other address. */
 const portraitOf: PortraitOf = (image) => (image.getAttribute('src') === 'app://vault/Art/Hag.png' ? PORTRAIT : null);
 
-function drawn(html: string): { nodes: readonly DrawnNode[]; cut: boolean; json: string } {
+/** Every roll link of `root` counted as one Atlas's dice code made, as `createDiceLink` and `diceLinkProps` count theirs. */
+function ownLinks(root: Element): Element {
+  root.querySelectorAll('.atlas-dice-link').forEach(markOwnDiceLink);
+  return root;
+}
+
+function drawn(html: string, own = true): { nodes: readonly DrawnNode[]; cut: boolean; json: string } {
   const root = document.createElement('div');
   root.innerHTML = html;
-  const tree = drawnTree(root, portraitOf);
+  const tree = drawnTree(own ? ownLinks(root) : root, portraitOf);
   return { ...tree, json: JSON.stringify(tree.nodes) };
 }
 
@@ -102,10 +109,23 @@ describe('a statblock drawn for a GM screen device', () => {
     root.innerHTML = `
       <p>Bite <span class="atlas-dice-link" data-formula="1d20+5">+5</span></p><span hidden><span class="atlas-dice-link" data-formula="9d9">9d9</span></span>
       <p><span class="atlas-dice-link" data-formula="2d6+3">2d6 + 3</span> and <span class="atlas-dice-link" data-formula="${'1'.repeat(70)}">long</span></p>`;
-    const tree = drawnTree(root, portraitOf);
+    const tree = drawnTree(ownLinks(root), portraitOf);
     const rolls = JSON.stringify(tree.nodes).match(/"dice":"[^"]+","roll":\d+/g);
     expect(rolls).toEqual(['"dice":"1d20+5","roll":0', '"dice":"2d6+3","roll":1']);
     expect(tree.rolls.map((link) => link.getAttribute('data-formula'))).toEqual(['1d20+5', '2d6+3']);
+  });
+
+  it('sends as text alone a roll link a press must not reach: the hit dice, one inside a link, one Atlas\'s dice code did not make', () => {
+    const own = drawn(`
+      <p data-hit-points=""><strong>Hit Points</strong> 82 (<span class="atlas-dice-link" data-formula="11d8+33">11d8 + 33</span>) <span class="atlas-dice-link" data-formula="+2">+2</span></p>
+      <p><a class="internal-link" data-href="Fireball"><span class="atlas-dice-link" data-formula="8d6">8d6</span></a> <span class="atlas-dice-link" data-formula="1d4">1d4</span></p>`);
+    expect(own.json.match(/"dice":"[^"]+","roll":\d+/g)).toEqual(['"dice":"+2","roll":0', '"dice":"1d4","roll":1']);
+    expect(own.json).toContain('11d8 + 33');
+    expect(own.json).not.toMatch(/"dice":"(11d8\+33|8d6)"/);
+
+    // The same markup from a note's raw HTML or a layout's script
+    const forged = drawn('<p><span class="atlas-dice-link" data-formula="1d20+5" role="button" tabindex="0">+5</span></p>', false);
+    expect(forged.nodes).toEqual([{ e: 'p', k: [{ e: 'span', k: ['+5'] }] }]);
   });
 
   it('leaves out what is hidden, and keeps a table cell\'s span', () => {

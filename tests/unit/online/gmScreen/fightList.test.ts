@@ -48,10 +48,10 @@ describe('the fight a GM screen device is sent', () => {
     expect(shape(fight)).toEqual(['order: k-goblin-a k-goblin-b k-ogre', 'round 3', 'next: k-ilsa']);
     expect(rows(fight).filter((each) => each.turn).map((each) => each.key)).toEqual(['k-goblin-a']);
     const [goblinA, goblinB, ogre, ilsa] = rows(fight);
-    expect(goblinA).toEqual({ key: 'k-goblin-a', name: 'Goblin', statblock: 'sb-goblin', portrait: 'a'.repeat(64), ring: '#ffffff', badge: 1, turn: true });
-    expect(goblinB).toEqual({ key: 'k-goblin-b', name: 'Goblin', statblock: 'sb-goblin', portrait: 'a'.repeat(64), ring: '#ffffff', badge: 2, hidden: true });
-    expect(ogre).toEqual({ key: 'k-ogre', name: 'ogre', statblock: null, portrait: null, ring: null, defeated: true });
-    expect(ilsa).toMatchObject({ ring: '#33aa77', ally: true });
+    expect(goblinA).toEqual({ key: 'k-goblin-a', name: 'Goblin', statblock: 'sb-goblin', portrait: 'a'.repeat(64), ring: '#ffffff', turnColour: null, badge: 1, turn: true });
+    expect(goblinB).toEqual({ key: 'k-goblin-b', name: 'Goblin', statblock: 'sb-goblin', portrait: 'a'.repeat(64), ring: '#ffffff', turnColour: null, badge: 2, hidden: true });
+    expect(ogre).toEqual({ key: 'k-ogre', name: 'ogre', statblock: null, portrait: null, ring: null, turnColour: null, defeated: true });
+    expect(ilsa).toMatchObject({ ring: '#33aa77', turnColour: '#33aa77', ally: true });
     // A device reads it back whole.
     expect(parseFight(JSON.parse(JSON.stringify(fight)))).toEqual(fight);
   });
@@ -85,6 +85,29 @@ describe('the fight a GM screen device is sent', () => {
 
     expect(fightOf(scene({ isActive: false }), INPUTS)).toBeNull();
     expect(fightArt(scene({ isActive: false }))).toEqual([]);
+  });
+
+  it('gives each row the colour its turn shows in on the tracker: a ring set to white, and the ring\'s colour of a token shown without one', () => {
+    const tokens = { ...TOKENS, 'goblin-a': { ...TOKENS['goblin-a']!, ringColor: '#ffffff' }, ogre: { ...TOKENS.ogre!, ringColor: '#b3261e' } } as Record<string, TokenEntity>;
+    const byKey = new Map(rows(fightOf(scene({}, tokens), INPUTS)).map((row) => [row.key, row]));
+    expect(byKey.get('k-goblin-a')).toMatchObject({ ring: '#ffffff', turnColour: '#ffffff' });
+    expect(byKey.get('k-ogre')).toMatchObject({ ring: null, turnColour: '#b3261e' });
+    expect(byKey.get('k-goblin-b')).toMatchObject({ ring: '#ffffff', turnColour: null });
+  });
+
+  it('cuts a side\'s name, id and roll and the round to what a device reads, so the fight is never dropped', () => {
+    const wolves = `s-${'w'.repeat(90)}`;
+    const rules = { ...DEFAULT_INITIATIVE_RULES, mode: 'sides' as const };
+    const order = [{ id: 'players' as const }, { id: 'opponents' as const }, { id: wolves, name: `${'Wolves of the Marsh '.repeat(15)}!` }];
+    const tokens = { ...TOKENS, ogre: { ...TOKENS.ogre!, side: wolves } } as Record<string, TokenEntity>;
+    for (const round of [2, -1, 1.5, 2_000_000_000, Number.NaN]) {
+      const sides = { first: 'players' as const, active: 'opponents' as const, order, roll: '1d20', rolls: { [String(round)]: { opponents: 1.5e12, players: 12.5, [wolves]: 7 } } };
+      const fight = fightOf(scene({ round, sides }, tokens), { ...INPUTS, rules });
+      const read = parseFight(JSON.parse(JSON.stringify(fight)));
+      expect(read, `round ${round}`).toEqual(fight);
+      expect(read?.parts.find((part) => part.k === 'group' && part.side?.id === 'opponents'), `round ${round}`).toMatchObject({ side: { roll: null } });
+      expect(read?.parts.find((part) => part.k === 'group' && part.side?.name.startsWith('Wolves')), `round ${round}`).toMatchObject({ k: 'group', key: wolves.slice(0, 64) });
+    }
   });
 
   it('stays the same when a token moves', () => {

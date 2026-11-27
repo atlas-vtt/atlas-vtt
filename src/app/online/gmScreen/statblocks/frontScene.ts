@@ -7,6 +7,7 @@ import type { ResourceDefinition } from '../../../resources/resourceTypes';
 import { mapInitiativeRules } from '../../../services/mapInitiativeRules';
 import { rulesLookup } from '../../../services/mapRules';
 import { remoteMapView } from '../../../soundRemote/remoteMapView';
+import type { DiceRollResult } from '../../../types/diceTypes';
 import type { TokenUpdates } from '../../../types/viewState';
 import type { TokenEntity } from '../../../types';
 import type { InitiativeRules } from '../../../types/initiativeRulesTypes';
@@ -37,6 +38,8 @@ export interface FrontScene {
   rules(): InitiativeRules;
   updateToken(id: string, updates: TokenUpdates): void;
   locateToken(id: string): void;
+  /** Calls `listener` with every roll its map's dice tool makes, as it is made (`dice-rolled`); returns what stops it. */
+  watchRolls(listener: (result: DiceRollResult) => void): () => void;
 }
 
 /** Which map the GM has in front, and word when that may have changed. */
@@ -59,6 +62,12 @@ function frontSceneOf(app: App, view: AtlasView): FrontScene {
       const token = store.getState().objects.tokens[id];
       // A combatant kept beside the map has no place on it to show
       if (token && !isOffMap(token)) zoomToTokenWithHighlight(view, id, { x: token.x, y: token.y });
+    },
+    watchRolls: (listener) => {
+      const bus = view.serviceManager.getEventBus();
+      const rolled = (result: DiceRollResult): void => listener(result);
+      bus.on('dice-rolled', rolled);
+      return () => void bus.off('dice-rolled', rolled);
     },
   };
 }

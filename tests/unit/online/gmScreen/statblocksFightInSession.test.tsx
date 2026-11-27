@@ -124,4 +124,31 @@ describe('a fight on the Statblocks screen of a device, through its encrypted ch
     expect(sides.fight!.parts[2]).toMatchObject({ side: { id: 'players', turn: false } });
     expect(rows(sides.fight).find((each) => each.name === 'Bog Lurker')).toMatchObject({ ally: true });
   });
+
+  it('leaves the list standing where the fight cannot be read, and gives a new fight keys of its own', async () => {
+    const scene = new TestScene('view-1', marsh());
+    session = await statblocksSession([native, auto], scene, ART.buffer.slice(ART.byteOffset, ART.byteOffset + ART.byteLength));
+    const phone = await allowed(session.rig, PHONE);
+    await heardBy(session.rig, phone, 'statblocks', (list) => list.entries.length === 2);
+    const failed = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const rules = scene.rules;
+    scene.rules = () => {
+      throw new Error('a collection whose rules do not read');
+    };
+    scene.set({ initiative: fightAt('hag-1') });
+    await quiet(session);
+    // The marsh's statblocks still reach the device, without the fight
+    expect(lists(phone).at(-1)).toMatchObject({ map: true, entries: [{ name: 'Marsh Hag' }, { name: 'Bog Lurker' }] });
+    expect(lists(phone).at(-1)!.fight).toBeUndefined();
+    expect(failed).toHaveBeenCalled();
+    failed.mockRestore();
+
+    scene.rules = rules;
+    const first = await changeSendsOnce(session, phone, () => scene.set({ initiative: fightAt('hag-2') }));
+    await changeSendsOnce(session, phone, () => scene.set({ initiative: { ...fightAt('hag-2'), isActive: false } }));
+    const second = await changeSendsOnce(session, phone, () => scene.set({ initiative: fightAt('hag-1') }));
+    const firstKeys = rows(first.fight).map((row) => row.key);
+    expect(firstKeys).toHaveLength(3);
+    expect(rows(second.fight).map((row) => row.key).filter((key) => firstKeys.includes(key))).toEqual([]);
+  });
 });

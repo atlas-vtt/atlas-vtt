@@ -6,13 +6,15 @@ import { captureRollContext } from '../../../tools/diceRollOrigins';
 import { MAX_GM_SCREEN_MESSAGE, type DeviceMessage, type GmScreenMessage, type StatblockEntry, type StatblocksFight } from '../../protocol/index.ts';
 import type { GmScreen, GmScreenOutlet } from '../screens.ts';
 import { drawnTree } from './drawnTree.ts';
-import { fightArt, fightOf } from './fightList.ts';
+import { fightArt } from './fightList.ts';
+import { FightRows } from './fightRows.ts';
 import type { FrontScene, FrontScenes } from './frontScene.ts';
 import type { PortraitShelf } from './PortraitShelf.ts';
 import type { DrawnStatblockProps } from './StatblockDrawing.ts';
 import { listedStatblocks, type ListedStatblock } from './statblockList.ts';
 import { ScreenIds } from './screenIds.ts';
-import { pressRoll, sentRolls, type SentDrawing } from './statblockRolls.ts';
+import { RollPresses } from './rollPresses.ts';
+import { loadedFront, pressRoll, sentRolls, type SentDrawing } from './statblockRolls.ts';
 
 /** How soon after a change of the scene the list is read again; a token dragged changes it on every step. */
 export const LIST_MS = 200;
@@ -57,7 +59,8 @@ export class StatblocksScreen implements GmScreen {
   readonly takes = ['statblock-view', 'portrait-ask', 'statblock-roll'] as const;
   private readonly load = `s${Date.now().toString(36)}`;
   private readonly statblockIds = new ScreenIds(`${this.load}-`);
-  private readonly combatantKeys = new ScreenIds(`${this.load}-c`);
+  private readonly fightRows = new FightRows(`${this.load}-c`);
+  private readonly presses = new RollPresses();
   /** Drawings are numbered across the screen, so a number never names two drawings in one load. */
   private drawings = 0;
   private listed = new Map<string, ListedStatblock>();
@@ -94,13 +97,13 @@ export class StatblocksScreen implements GmScreen {
     } else if (message.t === 'statblock-view') this.view(device, message.id);
     else if (message.t === 'statblock-roll') {
       const shown = message.statblock === this.views.get(device) ? this.shown.get(message.statblock) : undefined;
-      const mapInFront = this.list?.t === 'statblocks' && this.list.map;
-      this.ports.outlet.send({ t: 'statblock-roll-answer', id: message.id, refused: pressRoll(shown?.sent, message, mapInFront) }, device);
+      this.ports.outlet.send(this.presses.answer(device, message.id, (pace) => pressRoll(shown?.sent, message, loadedFront(this.ports.scenes, this.scene?.viewId), pace)), device);
     }
   }
 
   closed(device: string): void {
     this.leave(device);
+    this.presses.forget(device);
     this.sentList.delete(device);
     this.sentTree.delete(device);
   }
@@ -151,10 +154,9 @@ export class StatblocksScreen implements GmScreen {
       if (run !== this.runs) return;
       const fightPortrait = new Map(art.map((path, index) => [path, fightPortraits[index] ?? null]));
       const listedPaths = new Set(listed.map((entry) => entry.path));
-      const fight = fightOf(state, {
-        rules: scene.rules(), definitions,
-        keyOf: (entryId) => this.combatantKeys.of(entryId),
-        statblockOf: (path) => (listedPaths.has(path) ? this.idOf(path) : null),
+      const fight = this.fightRows.read(scene, state, {
+        definitions,
+        statblockOf: (path) => (listedPaths.has(path) ? this.statblockIds.of(path) : null),
         portraitOf: (path) => fightPortrait.get(path) ?? null,
       });
       this.publish(scene, listed, portraits, fight);
@@ -168,14 +170,10 @@ export class StatblocksScreen implements GmScreen {
     return file ? this.ports.portraits.hashOf(file) : null;
   }
 
-  private idOf(path: string): string {
-    return this.statblockIds.of(path);
-  }
-
   private publish(scene: FrontScene | null, listed: readonly ListedStatblock[], portraits: readonly (string | null)[] = [], fight: StatblocksFight | null = null): void {
-    this.listed = new Map(listed.map((entry) => [this.idOf(entry.path), entry]));
+    this.listed = new Map(listed.map((entry) => [this.statblockIds.of(entry.path), entry]));
     const entries = listed.map((entry, index): StatblockEntry => ({
-      id: this.idOf(entry.path), name: entry.name, portrait: portraits[index] ?? null, count: entry.tokens.length, turn: entry.turn, fight: entry.fight, player: entry.player,
+      id: this.statblockIds.of(entry.path), name: entry.name, portrait: portraits[index] ?? null, count: entry.tokens.length, turn: entry.turn, fight: entry.fight, player: entry.player,
     }));
     this.list = { t: 'statblocks', map: scene !== null, entries, ...(fight && { fight }) };
     for (const device of this.ports.outlet.devices) this.sendList(device);

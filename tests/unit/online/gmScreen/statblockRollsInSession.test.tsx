@@ -1,23 +1,16 @@
 // @vitest-environment jsdom
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
 import { act, cleanup, render } from '@testing-library/react';
 import { createElement } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { DeviceMessage, DrawnElement, DrawnNode, GmScreenMessage } from '../../../../src/app/online/protocol/index.ts';
+import type { DeviceMessage } from '../../../../src/app/online/protocol/index.ts';
 import { toTokenVitals } from '../../../../src/app/services/statblockVitalsSync';
 import { TemplateLibrary } from '../../../../src/app/statblocks/library/TemplateLibrary';
 import { LinkedStatblock } from '../../../../src/app/statblocks/render/LinkedStatblock';
 import { captureRollContext } from '../../../../src/app/tools/diceRollOrigins';
-import { STATBLOCK_SCENARIOS } from '../../../fixtures/gmScreenStatblockNotes';
-import { deviceId, type Device } from './sessionRig.ts';
-import { allowed, heardBy, statblocksSession, type StatblocksSession } from './statblocksSession.ts';
+import { isPressableRoll } from '../../../../src/app/online/gmScreen/statblocks/pressableRoll.ts';
+import { answers, answerTo, diceTool, native, auto, rollsIn, showingHag } from './statblockRollsRig.ts';
+import { heardBy, type StatblocksSession } from './statblocksSession.ts';
 import { TestScene, tokensOf } from './statblocksRig.ts';
-
-const PHONE = deviceId('p');
-const native = STATBLOCK_SCENARIOS.find((scenario) => scenario.id === 'native')!;
-const auto = STATBLOCK_SCENARIOS.find((scenario) => scenario.id === 'auto')!;
-const ART = readFileSync(path.resolve(__dirname, '../../../fixtures/images/rgb8.png'));
 
 let session: StatblocksSession | null = null;
 
@@ -31,44 +24,12 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
-/** The map view's dice tool, where every roll of a statblock ends: what it was asked to roll. */
-function diceTool(started: StatblocksSession): ReturnType<typeof vi.fn> {
-  const rollDice = vi.fn(() => null);
-  Object.assign(started.harness.app.workspace, {
-    getLeavesOfType: () => [{ view: { viewId: 'view-1', serviceManager: { getToolController: () => ({ getDiceTool: () => ({ rollDice }) }) } } }],
-  });
-  return rollDice;
-}
-
-/** The rolls of a drawn statblock, in the order Atlas numbered them. */
-function rollsIn(nodes: readonly DrawnNode[]): DrawnElement[] {
-  return nodes.flatMap((node) => (typeof node === 'string' ? [] : [...(node.roll === undefined ? [] : [node]), ...rollsIn(node.k ?? [])]));
-}
-
-const answers = (device: Device): Extract<GmScreenMessage, { t: 'statblock-roll-answer' }>[] =>
-  device.heard.filter((message): message is Extract<GmScreenMessage, { t: 'statblock-roll-answer' }> => message.t === 'statblock-roll-answer');
-
-async function answerTo(started: StatblocksSession, device: Device, id: number): Promise<string | null> {
-  return (await heardBy(started.rig, device, 'statblock-roll-answer', (answer) => answer.id === id)).refused;
-}
-
-/** A phone showing the hag's statblock as drawn. */
-async function showingHag(scene: TestScene): Promise<{ started: StatblocksSession; phone: Device; id: string; drawn: Extract<GmScreenMessage, { t: 'statblock' }> }> {
-  const started = await statblocksSession([native, auto], scene, ART.buffer.slice(ART.byteOffset, ART.byteOffset + ART.byteLength));
-  session = started;
-  const phone = await allowed(started.rig, PHONE);
-  const list = await heardBy(started.rig, phone, 'statblocks', (each) => each.entries.length === 2);
-  const id = list.entries.find((each) => each.name === 'Marsh Hag')!.id;
-  await phone.say({ t: 'statblock-view', id });
-  const drawn = await heardBy(started.rig, phone, 'statblock', (each) => each.id === id);
-  return { started, phone, id, drawn };
-}
-
 describe('a press on a roll of a statblock a device shows', { timeout: 20_000 }, () => {
   it('rolls in Atlas exactly as a click on that roll on the DM screen does', async () => {
     const scene = new TestScene('view-1', { ...tokensOf(native), ...tokensOf(auto) });
     const { started, phone, id, drawn } = await showingHag(scene);
-    const rollDice = diceTool(started);
+    session = started;
+    const rollDice = diceTool(started, scene);
     const rolls = rollsIn(drawn.nodes);
     expect(rolls.length).toBeGreaterThan(2);
     expect(rolls.map((roll) => roll.roll)).toEqual(rolls.map((_, index) => index));
@@ -77,6 +38,8 @@ describe('a press on a roll of a statblock a device shows', { timeout: 20_000 },
 
     await phone.say({ t: 'statblock-roll', id: 1, statblock: id, drawing: drawn.drawing!, roll: pressed });
     expect(await answerTo(started, phone, 1)).toBeNull();
+    // What the roll came to, as the dice tool made it
+    expect(answers(phone).find((answer) => answer.id === 1)?.result).toEqual({ formula: '2d8+4', total: 9, crit: 'high' });
     expect(rollDice).toHaveBeenCalledTimes(1);
     const fromDevice = rollDice.mock.calls[0];
 
@@ -88,7 +51,7 @@ describe('a press on a roll of a statblock a device shows', { timeout: 20_000 },
       tokenActions: { definitions: scene.definitions(), onUpdateToken: vi.fn(), onLocateToken: vi.fn() },
     })));
     const links = await vi.waitFor(() => {
-      const found = [...document.querySelectorAll<HTMLElement>('.atlas-dice-link')].filter((link) => !link.closest('.atlas-gm-screen-drawing'));
+      const found = [...document.querySelectorAll<HTMLElement>('.atlas-dice-link')].filter((link) => !link.closest('.atlas-gm-screen-drawing') && isPressableRoll(link));
       expect(found.length).toBe(rolls.length);
       return found;
     });
@@ -107,7 +70,8 @@ describe('a press on a roll of a statblock a device shows', { timeout: 20_000 },
   it('is refused, and rolls nothing, for a roll it does not name, another statblock, a drawing gone, or no map', async () => {
     const scene = new TestScene('view-1', { ...tokensOf(native), ...tokensOf(auto) });
     const { started, phone, id, drawn } = await showingHag(scene);
-    const rollDice = diceTool(started);
+    session = started;
+    const rollDice = diceTool(started, scene);
     const rolls = rollsIn(drawn.nodes);
     const lurker = (await heardBy(started.rig, phone, 'statblocks')).entries.find((each) => each.name === 'Bog Lurker')!.id;
 
@@ -136,8 +100,10 @@ describe('a press on a roll of a statblock a device shows', { timeout: 20_000 },
   });
 
   it('never rolls a formula of the device\'s own', async () => {
-    const { started, phone, id, drawn } = await showingHag(new TestScene('view-1', { ...tokensOf(native), ...tokensOf(auto) }));
-    const rollDice = diceTool(started);
+    const scene = new TestScene('view-1', { ...tokensOf(native), ...tokensOf(auto) });
+    const { started, phone, id, drawn } = await showingHag(scene);
+    session = started;
+    const rollDice = diceTool(started, scene);
     const hostile = (message: Record<string, unknown>): Promise<boolean> => phone.say(message as unknown as DeviceMessage);
 
     // A formula beside the roll's number is not read: the roll drawn is what rolls.

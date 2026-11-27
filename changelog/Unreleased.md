@@ -1,6 +1,6 @@
 ## New
 
-- Atlas Online: Sidekick puts the DM screen on your phone or tablet. Start it on the DM screen, where you sign in to your Atlas account first if you are not yet, open its link or QR code on the device and allow it with the number both show. It has three screens: your Stream Deck keys, the sound controls and the statblocks of the map in front. In a fight the statblocks list it as your initiative tracker does, with the turn, the look-alike numbers and the sides, and can show only the players or only the NPCs. Press a roll in a statblock to roll it in Atlas as on the DM screen
+- Atlas Online: Sidekick puts the DM screen on your phone or tablet. Start it on the DM screen, where you sign in to your Atlas account first if you are not yet, open its link or QR code on the device and allow it with the number both show. It has three screens: your Stream Deck keys, the sound controls and the statblocks of the map in front. In a fight the statblocks list it as your initiative tracker does, with the turn, the look-alike numbers and the sides, and can show only the players or only the NPCs. Press a roll in a statblock to roll it in Atlas as on the DM screen and see its result on the device; hit dice, which reroll your tokens' hit points, roll only on the DM screen
 
 ## Improved
 

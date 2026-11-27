@@ -21,6 +21,8 @@ export interface FightCombatant {
   readonly portrait: string | null;
   /** The colour of its token's ring (`#rrggbb`); null for art shown without a ring. */
   readonly ring: string | null;
+  /** The colour its turn shows in, as the tracker's (`#rrggbb`); null for the accent. Absent from an Atlas that does not say. */
+  readonly turnColour?: string | null;
   /** The look-alike number its token's badge shows on the GM's map; absent without a badge. */
   readonly badge?: number;
   /** It holds the turn (by sides: it acts on the side that does). */
@@ -69,12 +71,13 @@ const isName = (value: unknown): value is string => typeof value === 'string' &&
 
 function parseCombatant(value: unknown): FightCombatant | null {
   if (!isRecord(value) || typeof value.key !== 'string' || !KEY_PATTERN.test(value.key) || !isName(value.name)) return null;
-  const { statblock, portrait, ring, badge } = value;
+  const { statblock, portrait, ring, badge, turnColour } = value;
   if (!(statblock === null || (typeof statblock === 'string' && KEY_PATTERN.test(statblock)))) return null;
   if (!(portrait === null || isHash(portrait)) || !(ring === null || (typeof ring === 'string' && COLOUR_PATTERN.test(ring)))) return null;
   const flags = Object.fromEntries(FLAGS.flatMap((flag) => (value[flag] === true ? [[flag, true]] : [])));
   return {
     key: value.key, name: value.name, statblock, portrait, ring,
+    ...((turnColour === null || (typeof turnColour === 'string' && COLOUR_PATTERN.test(turnColour))) && { turnColour }),
     ...(isWhole(badge, MAX_INSTANCE_NUMBER) && badge >= 1 && { badge }),
     ...flags,
   };

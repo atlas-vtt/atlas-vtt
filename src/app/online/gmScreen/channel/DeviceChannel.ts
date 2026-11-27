@@ -18,7 +18,7 @@ import { Opening, Sealing } from './seal';
 export class DeviceChannel {
   private readonly crypto: ChannelCrypto;
   private readonly link: CryptoKey;
-  private readonly transport: (body: DeviceWire) => void;
+  private readonly transport: (body: DeviceWire) => boolean | void;
   private readonly events: ChannelEvents<GmScreenMessage>;
   private readonly turns = new SerialLock();
   private keys: ChannelKeys | null = null;
@@ -28,8 +28,8 @@ export class DeviceChannel {
   private troubles = 0;
   private nextAsk = 1;
 
-  /** `link`: the link's key (`linkKey`); `transport` hands a body to the relay for Atlas. */
-  constructor(crypto: ChannelCrypto, link: CryptoKey, transport: (body: DeviceWire) => void, events: ChannelEvents<GmScreenMessage>) {
+  /** `link`: the link's key (`linkKey`); `transport` hands a body to the relay for Atlas, false where it could not. */
+  constructor(crypto: ChannelCrypto, link: CryptoKey, transport: (body: DeviceWire) => boolean | void, events: ChannelEvents<GmScreenMessage>) {
     this.crypto = crypto;
     this.link = link;
     this.transport = transport;
@@ -48,7 +48,7 @@ export class DeviceChannel {
     return this.turns.run(() => (wire.t === 'seal-open' ? this.answer(wire) : this.sealed(wire)));
   }
 
-  /** Seals a message for Atlas; false while the channel is not open, or for a message larger than one may be. */
+  /** Seals a message for Atlas; false while the channel is not open, for a message larger than one may be, or where the transport could not take it. */
   send(message: DeviceMessage): Promise<boolean> {
     return this.turns.run(async () => {
       const bytes = encodeMessage(message, MAX_DEVICE_MESSAGE);
@@ -58,8 +58,7 @@ export class DeviceChannel {
         this.trouble();
         return false;
       }
-      this.transport(frame);
-      return true;
+      return this.transport(frame) !== false;
     });
   }
 

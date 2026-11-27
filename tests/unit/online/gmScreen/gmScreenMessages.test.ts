@@ -43,6 +43,9 @@ const fromAtlas: GmScreenMessage[] = [
   { t: 'statblock', id: 'goblin', cut: false, drawing: 7, nodes: [{ e: 'span', dice: '1d20+4', roll: 0, k: ['+4'] }, { e: 'span', dice: '2d6', roll: 1, k: ['2d6'] }] },
   { t: 'statblock-roll-answer', id: 9, refused: null },
   { t: 'statblock-roll-answer', id: 10, refused: 'changed' },
+  { t: 'statblock-roll-answer', id: 11, refused: null, result: { formula: '1d6+1+1d4[Bless]', total: 9, crit: 'high' } },
+  { t: 'statblock-roll-answer', id: 12, refused: null, result: { total: -2 } },
+  { t: 'statblock-roll-answer', id: 13, refused: 'too-fast' },
   { t: 'statblock', id: 'goblin', cut: false, nodes: [{ e: 'div', c: ['atlas-sb-heading'], k: ['Goblin', { e: 'span', dice: '1d20+4', k: ['+4'] }, { e: 'img', src: hash }] }, { e: 'td', colspan: 2, k: ['x'] }] },
   { t: 'statblock-gone', id: 'goblin', reason: 'missing' },
   { t: 'portrait', hash, mime: 'image/webp', data: 'UklGRg==' },
@@ -83,6 +86,19 @@ describe('the GM screen\'s messages', () => {
     const drawn = { t: 'statblock', id: 'goblin', cut: false, nodes: [{ e: 'span', dice: '1d20', k: ['x'] }] };
     expect(parseGmScreenMessage(drawn)).toEqual(drawn);
     expect(parseGmScreenMessage({ ...drawn, drawing: 0, nodes: [{ e: 'span', roll: 0, k: ['x'] }, { e: 'span', dice: '1d6', roll: -1 }] })).toEqual({ ...drawn, nodes: [{ e: 'span', k: ['x'] }, { e: 'span', dice: '1d6' }] });
+  });
+
+  it('keep an answer whose result is malformed or stands beside a refusal, without that result, and a fight row\'s turn colour only where it is one', () => {
+    const answer = (result: unknown, refused: string | null = null): unknown => parseGmScreenMessage({ t: 'statblock-roll-answer', id: 3, refused, result });
+    expect(answer({ total: '9' })).toEqual({ t: 'statblock-roll-answer', id: 3, refused: null });
+    expect(answer({ total: 1e12 })).toEqual({ t: 'statblock-roll-answer', id: 3, refused: null });
+    expect(answer({ total: 5, formula: `${'1'.repeat(400)}`, crit: 'max' })).toEqual({ t: 'statblock-roll-answer', id: 3, refused: null, result: { total: 5 } });
+    expect(answer({ total: 5 }, 'not-rolled')).toEqual({ t: 'statblock-roll-answer', id: 3, refused: 'not-rolled' });
+
+    const row = (turnColour: unknown): unknown => (parseGmScreenMessage({ t: 'statblocks', map: true, entries: [], fight: { round: 1, parts: [{ k: 'group', key: 'order', combatants: [{ key: 'c1', name: 'Ogre', statblock: null, portrait: null, ring: null, turnColour }] }] } }) as { fight?: { parts: { combatants: unknown[] }[] } }).fight?.parts[0]?.combatants[0];
+    expect(row('#b3261e')).toMatchObject({ turnColour: '#b3261e' });
+    expect(row(null)).toMatchObject({ turnColour: null });
+    expect(row('red')).not.toHaveProperty('turnColour');
   });
 
   it('read a message only from the end that sends it', () => {

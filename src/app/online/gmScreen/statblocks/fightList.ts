@@ -4,17 +4,29 @@ import type { ListSegment } from '../../../initiative/listSegments';
 import { entrySide, entryToken } from '../../../initiative/party';
 import { listedSides } from '../../../initiative/sides';
 import { trackerSegments } from '../../../initiative/trackerSegments';
+import { turnColor } from '../../../initiative/turnColor';
 import { currentTurn, holdsTurn, turnEntries } from '../../../initiative/turnHolders';
 import { tokenDisplayName } from '../../../pixi/token-renderer/tokenDisplayName';
 import type { ResourceDefinition } from '../../../resources/resourceTypes';
 import { isOffMap } from '../../../tokens/offMap';
 import type { InitiativeRules } from '../../../types/initiativeRulesTypes';
 import type { InitiativeEntry } from '../../../types/initiativeTypes';
-import { ringColour } from '../../gm/scenePicture.ts';
-import { MAX_COMBATANTS, MAX_SIDES, type FightCombatant, type FightPart, type StatblocksFight } from '../../protocol/index.ts';
+import { hexColour, ringColour } from '../../gm/scenePicture.ts';
+import { MAX_COMBATANTS, MAX_NAME, MAX_SIDE_ID, MAX_SIDES, type FightCombatant, type FightPart, type FightSide, type StatblocksFight } from '../../protocol/index.ts';
 import type { FrontSceneState } from './frontScene.ts';
 
-const MAX_NAME = 200;
+/** The largest round or side's roll a device is sent, as the protocol takes them. */
+const MAX_NUMBER = 1e9;
+
+/** A round as a device takes one: a whole number from 0, whatever the scene holds. */
+const wholeRound = (round: number): number => (Number.isFinite(round) ? Math.min(Math.max(Math.trunc(round), 0), MAX_NUMBER) : 0);
+
+/** A side's head within what a device takes, as the players' table cuts side names; none where it has no id to name it by. */
+function sideOf(side: { readonly id: string; readonly name: string; readonly roll?: number | null }, turn: boolean): FightSide | undefined {
+  const id = side.id.slice(0, MAX_SIDE_ID);
+  const { roll } = side;
+  return id === '' ? undefined : { id, name: side.name.trim().slice(0, MAX_NAME), roll: typeof roll === 'number' && Number.isFinite(roll) && Math.abs(roll) <= MAX_NUMBER ? roll : null, turn };
+}
 
 /** What a fight's rows are made of beside the scene: the map's rules and resources, and the ids and hashes the device knows. */
 export interface FightInputs {
@@ -74,21 +86,23 @@ export function fightOf(state: FrontSceneState, inputs: FightInputs): Statblocks
       statblock: path ? inputs.statblockOf(path) : null,
       portrait: entry.imagePath ? inputs.portraitOf(entry.imagePath) : null,
       ring: token?.showRing === false ? null : ringColour(token?.ringColor),
+      turnColour: hexColour(turnColor(token) ?? undefined),
       ...(badge !== undefined && { badge }),
       ...Object.fromEntries(Object.entries(flags).flatMap(([flag, on]) => (on ? [[flag, true]] : []))),
     };
   };
 
   const part = (segment: ListSegment<InitiativeEntry>): FightPart => {
-    if (segment.kind === 'round') return { k: 'round', round: segment.round };
+    if (segment.kind === 'round') return { k: 'round', round: wholeRound(segment.round) };
+    const side = segment.side && sideOf(segment.side, segment.active === true);
     return {
-      k: 'group', key: segment.key,
-      ...(segment.side && { side: { id: segment.side.id, name: segment.side.name, roll: segment.side.roll, turn: segment.active === true } }),
+      k: 'group', key: segment.key.slice(0, MAX_SIDE_ID) || 'order',
+      ...(side && { side }),
       ...(segment.delayed && { delayed: true as const }),
       combatants: segment.items.map(combatant),
     };
   };
-  return { round: initiative.round, parts: bounded(segments.map(part)) };
+  return { round: wholeRound(initiative.round), parts: bounded(segments.map(part)) };
 }
 
 /** The parts within what one message may carry (`MAX_COMBATANTS` combatants, `MAX_SIDES` sides): the rest is left out. */

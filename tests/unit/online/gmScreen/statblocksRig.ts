@@ -6,6 +6,7 @@ import { StatblockDrawing } from '../../../../src/app/online/gmScreen/statblocks
 import { StatblocksScreen } from '../../../../src/app/online/gmScreen/statblocks/StatblocksScreen.ts';
 import type { GmScreenMessage } from '../../../../src/app/online/protocol/index.ts';
 import type { TokenEntity } from '../../../../src/app/types';
+import type { DiceRollResult } from '../../../../src/app/types/diceTypes';
 import { DEFAULT_INITIATIVE_RULES } from '../../../../src/app/gameSystems/initiativeRules';
 import type { InitiativeRules } from '../../../../src/app/types/initiativeRulesTypes';
 import type { InitiativeState } from '../../../../src/app/types/initiativeTypes';
@@ -17,6 +18,7 @@ const NO_FIGHT: InitiativeState = { entries: [], currentIndex: 0, round: 1, isAc
 /** A map view's scene the test changes as the GM would. */
 export class TestScene implements FrontScene {
   private readonly listeners = new Set<() => void>();
+  private readonly rollWatchers = new Set<(result: DiceRollResult) => void>();
   private current: FrontSceneState;
   readonly updateToken = vi.fn();
   readonly locateToken = vi.fn();
@@ -34,6 +36,16 @@ export class TestScene implements FrontScene {
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  }
+
+  watchRolls(listener: (result: DiceRollResult) => void): () => void {
+    this.rollWatchers.add(listener);
+    return () => this.rollWatchers.delete(listener);
+  }
+
+  /** Its map's dice tool made a roll, as the tool's `dice-rolled` says it. */
+  rolled(result: DiceRollResult): void {
+    for (const watcher of [...this.rollWatchers]) watcher(result);
   }
 
   set(changes: Partial<FrontSceneState>): void {

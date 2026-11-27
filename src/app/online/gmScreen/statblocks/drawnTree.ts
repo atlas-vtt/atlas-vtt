@@ -2,6 +2,7 @@ import {
   DRAWN_CLASSES, DRAWN_DATA, DRAWN_ELEMENTS, DRAWN_STYLES, MAX_DRAWN_CLASSES, MAX_DRAWN_DEPTH, MAX_DRAWN_DICE, MAX_DRAWN_NODES,
   MAX_DRAWN_TEXT, MAX_GM_SCREEN_MESSAGE, type DrawnElement, type DrawnElementName, type DrawnNode,
 } from '../../protocol/index.ts';
+import { isPressableRoll } from './pressableRoll.ts';
 
 /**
  * A drawn statblock as a device is sent it: the elements, classes and texts Atlas drew, from allow-lists alone.
@@ -10,7 +11,8 @@ import {
  * (`DRAWN_STYLES`) are read one by one, each value checked; nothing else of an element is read. Links become
  * their text, controls become plain elements that show their state, a picture is kept only as the hash of a
  * vault image (`PortraitOf`), and scripts, styles, embedded content and form fields are left out with all
- * they hold.
+ * they hold. Only a roll a device may press (`isPressableRoll`) is sent as one, numbered; any other roll link is
+ * sent as its text.
  */
 export interface DrawnTree {
   readonly nodes: readonly DrawnNode[];
@@ -67,8 +69,8 @@ function isHidden(element: Element): boolean {
   return style !== null && /(^|;)\s*display\s*:\s*none\b/i.test(style);
 }
 
-function classesOf(element: Element): string[] {
-  const kept = [...element.classList].filter((name) => DRAWN_CLASSES.has(name));
+function classesOf(element: Element, pressable: boolean): string[] {
+  const kept = [...element.classList].filter((name) => DRAWN_CLASSES.has(name) && (pressable || name !== DICE_LINK));
   if (element.localName === 'input') {
     kept.push(PIP);
     if ((element as HTMLInputElement).checked) kept.push(CHECKED);
@@ -91,7 +93,9 @@ const span = (value: number): number | null => (Number.isInteger(value) && value
 
 /** The attributes the element keeps, apart from its children; null where it is left out (a picture that is no portrait). */
 function attributesOf(element: Element, as: DrawnElementName, portraitOf: PortraitOf): Omit<DrawnElement, 'k'> | null {
-  const classes = classesOf(element);
+  const formula = element.classList.contains(DICE_LINK) && isPressableRoll(element) ? element.getAttribute('data-formula') : null;
+  const dice = formula && formula.length <= MAX_DRAWN_DICE ? formula : null;
+  const classes = classesOf(element, dice !== null);
   const data = hooksOf(DRAWN_DATA, (name) => element.getAttribute(`data-${name}`));
   const style = styleOf(element);
   const styles = style === null ? null : hooksOf(DRAWN_STYLES, (name) => style.getPropertyValue(name));
@@ -102,8 +106,7 @@ function attributesOf(element: Element, as: DrawnElementName, portraitOf: Portra
     if (portrait === null) return null;
     kept.src = portrait;
   }
-  const formula = element.classList.contains(DICE_LINK) ? element.getAttribute('data-formula') : null;
-  if (formula && formula.length <= MAX_DRAWN_DICE) kept.dice = formula;
+  if (dice) kept.dice = dice;
   if (element.localName === 'td' || element.localName === 'th') {
     const cell = element as HTMLTableCellElement;
     const colspan = span(cell.colSpan);

@@ -30,6 +30,8 @@ export interface ChannelPair {
   readonly versions: { gm: number[]; device: number[] };
   /** Atlas's clock. */
   readonly timers: ReturnType<typeof fakeTimers>;
+  /** Whether the device's transport takes what it is handed: false while its socket is down, and the body is gone. */
+  readonly deviceTransport: { up: boolean };
   /** Hands on everything either end sent, both ways, until neither has anything more to say. */
   deliver(): Promise<void>;
   /** Lets `ms` pass on Atlas's clock, then delivers what that made either end send. */
@@ -57,9 +59,12 @@ export async function channelPair(key: string, gmRandom: string[] = [], deviceRa
     wire.push(JSON.stringify(body));
     toDevice.push(body);
   }, { opened: () => (opened.gm += 1), message: (message) => gmHeard.push(message), otherVersion: (version) => versions.gm.push(version) });
+  const deviceTransport = { up: true };
   const device = new DeviceChannel(deviceCrypto, deviceLink, (body) => {
+    if (!deviceTransport.up) return false;
     wire.push(JSON.stringify(body));
     toGm.push(body);
+    return true;
   }, { opened: () => (opened.device += 1), message: (message) => deviceHeard.push(message), otherVersion: (version) => versions.device.push(version) });
   const deliver = async (): Promise<void> => {
     while (toDevice.length > 0 || toGm.length > 0) {
@@ -75,5 +80,5 @@ export async function channelPair(key: string, gmRandom: string[] = [], deviceRa
     await new Promise((resolve) => setTimeout(resolve, 0));
     await deliver();
   };
-  return { gm, device, toDevice, toGm, wire, gmHeard, deviceHeard, opened, versions, timers, deliver, elapse };
+  return { gm, device, toDevice, toGm, wire, gmHeard, deviceHeard, opened, versions, timers, deviceTransport, deliver, elapse };
 }

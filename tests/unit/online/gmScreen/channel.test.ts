@@ -37,6 +37,13 @@ describe('a GM screen channel', () => {
     expect(pair.gmHeard).toEqual([{ t: 'press', id: 7, command: { type: 'stopAll' } }]);
   });
 
+  it('tells a screen its message did not leave the device where the transport could not take it', async () => {
+    const pair = await openPair();
+    pair.deviceTransport.up = false;
+    expect(await pair.device.send({ t: 'press', id: 8, command: { type: 'stopAll' } })).toBe(false);
+    expect(pair.toGm).toEqual([]);
+  });
+
   it('seals nothing while an exchange waits for the device, and opens nothing new however often the device asks meanwhile', async () => {
     const pair = await channelPair(KEY);
     await pair.gm.open();
