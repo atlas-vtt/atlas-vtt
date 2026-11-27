@@ -24,6 +24,7 @@ export * from './gmScreenKeys.ts';
 export * from './gmScreenLayout.ts';
 export * from './gmScreenLayoutEdits.ts';
 export * from './gmScreenLink.ts';
+export * from './gmScreenLook.ts';
 export * from './gmScreenStatblockRolls.ts';
 export * from './gmScreenStatblocks.ts';
 export * from './gmScreenWire.ts';

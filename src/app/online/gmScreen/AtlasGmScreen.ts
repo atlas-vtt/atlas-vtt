@@ -14,6 +14,7 @@ import { gmScreenControlShown, setGmScreenHost } from './gmScreenSlot.ts';
 import { plugKeysScreen } from './keys/atlasKeys.ts';
 import { plugLayoutScreen } from './keys/atlasLayout.ts';
 import { noticeKnocks } from './knockNotice.ts';
+import { plugLookScreen } from './look/plugLook.ts';
 import { plugAtlasStatblocks } from './statblocks/atlasStatblocks.ts';
 
 /** Where the vault's local storage on this device keeps when the relay last held Sidekick's room. */
@@ -55,6 +56,7 @@ export class AtlasGmScreen {
       plugKeysScreen(app, this.session, companionTimers()),
       plugLayoutScreen(app, this.session, companionTimers()),
       plugAtlasStatblocks(app, this.session),
+      plugLookScreen(app, this.session, companionTimers()),
       noticeKnocks(this.session, gmScreenControlShown, showNotice),
     ];
     setGmScreenHost({ session: this.session, account: signIn });
