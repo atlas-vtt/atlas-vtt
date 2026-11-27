@@ -267,8 +267,8 @@ it('keeps the ivy colour of this device, natural until one is picked', () => {
   expect(storage.get('atlas-vtt:ivy-colour')).toBe('natural');
 });
 
-it('announces an accent colour change as a change of CSS, which Obsidian does not, so the dice and the canvas follow it', () => {
-  const s = stub('');
+/** Registers the look sync on `s` with a spy for what Atlas announces on the workspace. */
+function lookSync(s: Stub): { service: LookService; trigger: ReturnType<typeof vi.fn>; dispose: () => void } {
   const trigger = vi.fn();
   const disposers: (() => void)[] = [];
   const plugin = {
@@ -278,17 +278,69 @@ it('announces an accent colour change as a change of CSS, which Obsidian does no
   } as unknown as Plugin;
   const service = looks(s);
   registerLookSync(plugin, service);
-  // With the GM's own theme as with an Atlas look: accent dice take the accent either way.
-  s.app.vault.setConfig('accentColor', '#c9a227');
-  expect(trigger).toHaveBeenLastCalledWith('css-change');
-  service.set('mediaeval');
-  trigger.mockClear();
-  s.app.vault.setConfig('accentColor', '#3b82c4');
-  expect(document.body.classList.contains(CUSTOM_ACCENT_CLASS)).toBe(true);
-  expect(trigger).toHaveBeenCalledWith('css-change');
-  trigger.mockClear();
-  s.app.vault.setConfig('accentColor', '');
-  expect(document.body.classList.contains(CUSTOM_ACCENT_CLASS)).toBe(false);
-  expect(trigger).toHaveBeenCalledWith('css-change');
-  for (const dispose of disposers) dispose();
+  return { service, trigger, dispose: () => { for (const dispose of disposers) dispose(); } };
+}
+
+it('announces an accent colour change as a change of CSS, which Obsidian does not, so the dice and the canvas follow it', () => {
+  vi.useFakeTimers();
+  try {
+    const s = stub('');
+    const { service, trigger, dispose } = lookSync(s);
+    // With the GM's own theme as with an Atlas look: accent dice take the accent either way.
+    s.app.vault.setConfig('accentColor', '#c9a227');
+    vi.runAllTimers();
+    expect(trigger).toHaveBeenLastCalledWith('css-change');
+    service.set('mediaeval');
+    trigger.mockClear();
+    s.app.vault.setConfig('accentColor', '#3b82c4');
+    expect(document.body.classList.contains(CUSTOM_ACCENT_CLASS)).toBe(true);
+    vi.runAllTimers();
+    expect(trigger).toHaveBeenCalledWith('css-change');
+    trigger.mockClear();
+    s.app.vault.setConfig('accentColor', '');
+    expect(document.body.classList.contains(CUSTOM_ACCENT_CLASS)).toBe(false);
+    vi.runAllTimers();
+    expect(trigger).toHaveBeenCalledWith('css-change');
+    dispose();
+  } finally {
+    vi.useRealTimers();
+  }
 });
+
+it('announces a run of accent changes once, when the accent rests, as a colour picker\'s drag makes them', () => {
+  vi.useFakeTimers();
+  try {
+    const s = stub('');
+    const { service, trigger, dispose } = lookSync(s);
+    service.set('scifi');
+    trigger.mockClear();
+    for (const colour of ['#200000', '#400000', '#600000']) {
+      s.app.vault.setConfig('accentColor', colour);
+      vi.advanceTimersByTime(30);
+    }
+    expect(document.body.classList.contains(CUSTOM_ACCENT_CLASS)).toBe(true);
+    expect(trigger).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(500);
+    expect(trigger).toHaveBeenCalledTimes(1);
+    expect(trigger).toHaveBeenCalledWith('css-change');
+    dispose();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it('drops an announcement of the accent still waiting when Atlas unloads', () => {
+  vi.useFakeTimers();
+  try {
+    const s = stub('');
+    const { trigger, dispose } = lookSync(s);
+    trigger.mockClear();
+    s.app.vault.setConfig('accentColor', '#600000');
+    dispose();
+    vi.runAllTimers();
+    expect(trigger).not.toHaveBeenCalled();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
