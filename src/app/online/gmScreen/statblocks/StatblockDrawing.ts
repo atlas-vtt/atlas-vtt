@@ -1,4 +1,4 @@
-import { createElement } from 'react';
+import { createElement, useLayoutEffect, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import type { App } from 'obsidian';
 import type { StatblockTokenActions } from '../../../react/components/statblock/StatblockTokenResources';
@@ -17,6 +17,22 @@ export interface DrawnStatblockProps {
   readonly tokenActions: StatblockTokenActions;
 }
 
+/** A statblock drawn for the devices that show it. */
+export interface Drawing {
+  draw(props: DrawnStatblockProps): void;
+  /** The map whose dice its roll links roll on now: the view it was last put in place for, which a draw just made may not be yet. */
+  rollsOn(): string | undefined;
+  dispose(): void;
+}
+
+/** Hands on, once React has put a drawing in place, which map its rolls go to (`useStatblockDiceRolling` reads it in a layout effect, which runs first). */
+function Placed({ viewId, placed, children }: { readonly viewId: string | undefined; readonly placed: (viewId: string | undefined) => void; readonly children: ReactNode }): ReactNode {
+  useLayoutEffect(() => {
+    placed(viewId);
+  });
+  return children;
+}
+
 /** How long the drawing must stay unchanged before it counts as settled: Markdown and a layout's scripts draw after React. */
 export const SETTLE_MS = 150;
 /** At most twice a second: a statblock is read again no sooner than this after it was last read. */
@@ -29,7 +45,7 @@ const SKELETON = '.atlas-statblock-skeleton';
  * given. Whenever the drawing has settled (no skeleton, nothing changed for `SETTLE_MS`), and at most every
  * `RESEND_MS`, `settled` is handed the element that holds it.
  */
-export class StatblockDrawing {
+export class StatblockDrawing implements Drawing {
   private readonly host: HTMLElement;
   private readonly feed: HTMLElement;
   private readonly root: Root;
@@ -37,6 +53,7 @@ export class StatblockDrawing {
   private timer: number | null = null;
   private readAt = Number.NEGATIVE_INFINITY;
   private disposed = false;
+  private placedOn: string | undefined;
 
   constructor(private readonly app: App, private readonly settled: (drawing: HTMLElement) => void) {
     // Laid out, so blocks that measure themselves choose as in a feed, but never seen, focused or read out.
@@ -50,7 +67,10 @@ export class StatblockDrawing {
   /** Draws the statblock with these props; a drawing already shown follows them in place. */
   draw(props: DrawnStatblockProps): void {
     if (this.disposed) return;
-    this.root.render(createElement(LinkedStatblock, {
+    const placed = (viewId: string | undefined): void => {
+      this.placedOn = viewId;
+    };
+    this.root.render(createElement(Placed, { viewId: props.viewId, placed, children: createElement(LinkedStatblock, {
       app: this.app,
       path: props.path,
       variant: 'feed',
@@ -59,7 +79,11 @@ export class StatblockDrawing {
       originContext: props.originContext,
       pressableCounters: true,
       tokenActions: props.tokenActions,
-    }));
+    }) }));
+  }
+
+  rollsOn(): string | undefined {
+    return this.placedOn;
   }
 
   dispose(): void {

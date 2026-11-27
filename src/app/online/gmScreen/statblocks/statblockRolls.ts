@@ -22,6 +22,8 @@ export function loadedFront(scenes: FrontScenes, viewId: string | undefined): Fr
 export interface SentDrawing {
   readonly drawing: number;
   readonly rolls: readonly { readonly link: Element; readonly formula: string }[];
+  /** The map whose dice those links roll on now (`Drawing.rollsOn`). */
+  rollsOn(): string | undefined;
 }
 
 /** What a drawing's roll links were as they were sent (`drawnTree`'s `rolls`). */
@@ -59,13 +61,14 @@ function resultOf(roll: DiceRollResult): { result?: StatblockRollResult } {
  * Rolls what a device pressed in the statblock it shows: the roll link of that number in the drawing it was sent, which
  * is clicked where Atlas drew it, so the DM screen's own roll runs (`attachDiceRolling`: the formula as drawn, the roll's
  * name, the creature that rolls, the map's dice and rules, who is shown it). Refused, and nothing rolls, without a map
- * loaded in front (`scene` null), where the drawing is not the one sent, holds no roll of that number, or that link left
- * the drawing, shows another formula since or may not be pressed (`isPressableRoll`), and where `pace` says the device
+ * loaded in front (`scene` null), where the drawing is not the one sent or its links roll on another map than the one in
+ * front, holds no roll of that number, or that link left the drawing, shows another formula since or may not be pressed (`isPressableRoll`), and where `pace` says the device
  * presses too fast. A click that made no roll on that map is told as such. A device names a number Atlas gave, never a formula.
  */
-export function pressRoll(sent: SentDrawing | undefined, press: StatblockRollPress, scene: Pick<FrontScene, 'watchRolls'> | null, pace: () => boolean): StatblockRollOutcome {
+export function pressRoll(sent: SentDrawing | undefined, press: StatblockRollPress, scene: Pick<FrontScene, 'viewId' | 'watchRolls'> | null, pace: () => boolean): StatblockRollOutcome {
   if (scene === null) return { refused: 'no-map' };
-  const link = pressedLink(sent, press);
+  // Drawn again for another map just now and not yet put in place, its links would still roll on the map left behind.
+  const link = sent?.rollsOn() === scene.viewId ? pressedLink(sent, press) : null;
   if (link === null) return { refused: 'changed' };
   if (!pace()) return { refused: 'too-fast' };
   const roll = clickRoll(link, scene);

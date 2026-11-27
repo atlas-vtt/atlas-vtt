@@ -10,7 +10,7 @@ import { fightArt } from './fightList.ts';
 import { FightRows } from './fightRows.ts';
 import type { FrontScene, FrontScenes } from './frontScene.ts';
 import type { PortraitShelf } from './PortraitShelf.ts';
-import type { DrawnStatblockProps } from './StatblockDrawing.ts';
+import type { Drawing } from './StatblockDrawing.ts';
 import { listedStatblocks, type ListedStatblock } from './statblockList.ts';
 import { ScreenIds } from './screenIds.ts';
 import { RollPresses } from './rollPresses.ts';
@@ -18,12 +18,6 @@ import { loadedFront, pressRoll, sentRolls, type SentDrawing } from './statblock
 
 /** How soon after a change of the scene the list is read again; a token dragged changes it on every step. */
 export const LIST_MS = 200;
-
-/** A statblock drawn for the devices that show it. */
-export interface Drawing {
-  draw(props: DrawnStatblockProps): void;
-  dispose(): void;
-}
 
 /** What the Statblocks screen needs: the vault, the session's outlet, the map in front, the pictures, and a way to draw. */
 export interface StatblocksPorts {
@@ -104,7 +98,6 @@ export class StatblocksScreen implements GmScreen {
   closed(device: string): void {
     this.leave(device);
     this.sentList.delete(device);
-    this.sentTree.delete(device);
   }
 
   forgotten(device?: string): void {
@@ -288,7 +281,7 @@ export class StatblocksScreen implements GmScreen {
     shown.message = utf8Length(json) <= MAX_GM_SCREEN_MESSAGE ? message : { t: 'statblock-gone', id, reason: 'too-large' };
     shown.json = JSON.stringify(shown.message);
     // The links of a drawing read again stand for the same rolls, though the DM screen may have drawn them anew.
-    shown.sent = shown.message.t === 'statblock' ? { drawing, rolls: sentRolls(tree.rolls) } : undefined;
+    shown.sent = shown.message.t === 'statblock' ? { drawing, rolls: sentRolls(tree.rolls), rollsOn: () => shown.drawing.rollsOn() } : undefined;
     for (const device of shown.viewers) this.sendTree(device, shown);
   }
 
