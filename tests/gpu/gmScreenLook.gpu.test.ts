@@ -103,7 +103,7 @@ describe('the look Atlas reads for a device', () => {
     const look = readLook(document);
     expect(look?.dark).toBe(false);
     expect(look?.colours).toMatchObject({
-      '--background-primary': '#f5eddc', '--background-secondary': '#e9dec3', '--text-normal': '#3a2c1a', '--text-muted': '#67563b',
+      '--background-primary': '#f5eddc', '--background-secondary': '#e9dec3', '--text-normal': '#3a2c1a', '--text-muted': '#59482e',
       '--text-accent': '#8a2b12', '--text-error': '#a41e22', '--interactive-normal': '#e2d5b6', '--atlas-theme-red': '#a41e22',
       '--color-accent': '#dd4646', '--background-modifier-hover': '#2a1e0e14', '--background-modifier-cover': '#3a2c1a52',
     });
