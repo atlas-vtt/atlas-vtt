@@ -125,7 +125,8 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.
         handleClose();
         return;
       }
-      if (e.defaultPrevented) return;
+      // A popover over the screen that holds its keys (Sidekick's panel) keeps the screen's own key too, whichever it is.
+      if (!screenTakesKey(e, screenRef.current, view?.viewId)) return;
       const settings = SettingsService.forApp(app);
       if (matchesMapHotkey(e, 'dashboard', settings)) {
         e.preventDefault();
