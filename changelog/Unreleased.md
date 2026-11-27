@@ -12,7 +12,7 @@
 - Maps: after a graphics driver crash, the whole map comes back by itself instead of staying black, or black at its edges, until you open it again; so do the dynamic lighting's colours and tokens without art
 - Maps: after a graphics driver crash, door badges, token icons and conditions, cell numbers and the fog show again by themselves instead of staying blank until the map is reopened
 - Dice: numbers on coloured dice are easy to read again. Light dice get numbers in a deep shade of their own colour, dark dice keep their light numbers
-- Dice: after a graphics driver crash the 3D dice roll with their numbers, colours and light again, instead of an empty panel
+- Dice: after a graphics driver crash the 3D dice roll with their numbers, colours and light again, instead of an empty panel, and the dice colours in Dice settings draw again
 - Atlas' quieter text (hints, counts, placeholders, sleeping scene tabs, loot rarities, links) is easier to read and meets WCAG AA contrast with your own theme and in the Sci-fi look's dark scheme
 - Medieval and Sci-fi looks: in source mode only the bold word that opens a line takes the heading font, as in reading view
 - Initiative: taking the combatant whose turn it is out of the initiative, or deleting its token, now passes the turn by defeated combatants, as Next turn does, and when nobody else can act, the turn rests at the next combatant's place
