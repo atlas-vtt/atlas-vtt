@@ -1,4 +1,5 @@
-import { MAX_PLAYERS, type StatblockRollAnswer } from '../../protocol/index.ts';
+import type { StatblockRollAnswer } from '../../protocol/index.ts';
+import { MAX_DEVICES } from '../gmScreenRecord.ts';
 import type { StatblockRollOutcome } from './statblockRolls.ts';
 
 /**
@@ -11,8 +12,8 @@ export const PRESS_BURST = 6;
 export const PRESS_REFILL_MS = 1000;
 /** How many answers are kept per device, by press id, so a press sent again is answered as it was. */
 export const KEPT_ANSWERS = 64;
-/** How many devices' presses are kept: as many as a link seats, since a device removed is forgotten anyway. */
-export const KEPT_DEVICES = MAX_PLAYERS;
+/** How many devices' presses are kept: as many as a link allows, since a device removed is forgotten anyway. */
+export const KEPT_DEVICES = MAX_DEVICES;
 
 interface Ledger {
   readonly answers: Map<number, StatblockRollAnswer>;

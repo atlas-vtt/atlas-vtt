@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { MAX_DEVICES } from '../../../../src/app/online/gmScreen/gmScreenRecord.ts';
 import { KEPT_DEVICES, PRESS_BURST, PRESS_REFILL_MS, RollPresses } from '../../../../src/app/online/gmScreen/statblocks/rollPresses.ts';
 import { TemplateLibrary } from '../../../../src/app/statblocks/library/TemplateLibrary';
 import { answers, answerTo, auto, diceTool, native, rollsIn, showingHag } from './statblockRollsRig.ts';
@@ -120,6 +121,15 @@ describe('the pace of a device\'s rolls', () => {
       return press('a', at + 1);
     });
     expect(refused).toEqual(Array<null>(7).fill(null));
+  });
+
+  it('keeps the presses of every device a link allows, so a press sent again by the first of them is answered as it was', () => {
+    const presses = new RollPresses(() => 0);
+    const press = pressing(presses);
+    for (let device = 0; device < MAX_DEVICES; device++) press(`d${device}`, 1);
+    let rolled = 0;
+    presses.answer('d0', 1, () => ((rolled += 1), { refused: null }));
+    expect(rolled).toBe(0);
   });
 
   it(`keeps the presses of at most ${KEPT_DEVICES} devices, the one heard from longest ago going first`, () => {
