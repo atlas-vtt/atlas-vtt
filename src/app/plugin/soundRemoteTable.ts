@@ -2,7 +2,6 @@ import type { App } from 'obsidian';
 import { t } from '../i18n';
 import { showNotice } from '../ui/notice';
 import type { AtlasView } from '../atlas-view';
-import { defeatedOnMap } from '../initiative/defeatedOnMap';
 import { rollInitiative } from '../initiative/rollInitiative';
 import { handoutShown, takeBackHandout } from '../packages/components/player-window-bar/playerHandout';
 import { collectionDiceShelf } from '../react/components/dice/useDiceShelf';
@@ -13,13 +12,12 @@ import { SettingsService } from '../services/SettingsService';
 import { presentTab } from '../services/PlayerWindowPresenter';
 import { ImageDisplayService } from '../services/ImageDisplayService';
 import { PlayerWindowService } from '../services/PlayerWindowService';
-import { setTableCurtain, toggleTablePause } from '../services/tableControls';
+import { isTablePaused, setTableCurtain, toggleTablePause } from '../services/tableControls';
 import { tableControlsStore } from '../stores/tableControlsStore';
 import { presentedSceneOf } from '../services/presentedScene';
 import type { HoveredElement } from '../soundRemote/hoveredElement';
 import { remoteMapView } from '../soundRemote/remoteMapView';
 import type { TableMap, TablePlayerWindow, TableShareRolls, TableSource } from '../soundRemote/remoteTable';
-import { playerWindowStore } from '../stores/playerWindowStore';
 import type { InitiativeRules } from '../types/initiativeRulesTypes';
 
 /** The map a remote acts on, with the tracker's and the scene tab's own functions bound to it. */
@@ -30,7 +28,6 @@ function tableMap(app: App, view: AtlasView): TableMap {
   return {
     state: () => store.getState(),
     rules,
-    defeated: () => defeatedOnMap(app, store.getState()),
     roll: () => { void rollInitiative(app, store, rules()); },
     presented: () => activeTab() !== null && presentedSceneOf(app).get()?.tabId === activeTab(),
     present: (): void => {
@@ -43,6 +40,10 @@ function tableMap(app: App, view: AtlasView): TableMap {
     },
     // The view's own dice tool: the 3D dice, the player window, online players and the table log follow as from the tray
     rollSaved: (preset) => rollSavedRoll(view.serviceManager.getToolController().getDiceTool(), preset),
+    rollFormula: (formula) => {
+      view.serviceManager.getToolController().getDiceTool().rollDice(formula);
+    },
+    checkRoll: (formula) => view.serviceManager.getToolController().getDiceTool().checkRoll(formula),
   };
 }
 
@@ -58,11 +59,13 @@ function shareRolls(app: App): TableShareRolls {
   };
 }
 
-/** The player window as its bar reads it (`PlayerWindowBar`) and presses it, and the image menus' "Display on player view". */
+/** The player window and the online table as the bar reads them (`PlayerWindowBar`) and presses them, and the image menus' "Display on player view". */
 function playerWindow(hovered: HoveredElement): TablePlayerWindow {
   return {
     isOpen: () => PlayerWindowService.getInstance()?.isWindowOpen() ?? false,
-    isFrozen: () => playerWindowStore.getState().isFrozen,
+    isOnline: () => tableControlsStore.getState().online,
+    // Without an online table the key shows the window's own freeze, as it always did
+    isPaused: () => (tableControlsStore.getState().online ? isTablePaused() : PlayerWindowService.getInstance()?.isFrozen() ?? false),
     isTrueScale: () => PlayerWindowService.getInstance()?.isTrueScale() ?? false,
     isCurtained: () => tableControlsStore.getState().curtain,
     handoutShown,

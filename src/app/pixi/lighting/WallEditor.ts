@@ -4,7 +4,6 @@ import type { Viewport } from 'pixi-viewport';
 import { chosenLightPreset, emissionOf } from '../../lighting/lightPresetChoice';
 import type { LightPresetDefinition } from '../../types/lightPresetTypes';
 import type { ViewAtlasStore } from '../../storeFactory';
-import { runHistoryTransaction } from '../../stores/history';
 import { placesFreely } from '../../types/toolSwitches';
 import { WallTool, type WallToolMode, type WallToolSubMode } from '../../tools/WallTool';
 import type { Point } from '../../types/visionTypes';
@@ -118,7 +117,7 @@ export class WallEditor {
     }
     if (settings.subMode === 'place-light') {
       const emission = emissionOf(chosenLightPreset(this.lightPresets(), settings.lightPreset));
-      this.store.getState().addLight({ x: point.x, y: point.y, emission });
+      this.store.getState().addObject('lights', { x: point.x, y: point.y, emission });
       return true;
     }
     if (settings.mode === 'point-to-point') {
@@ -315,10 +314,7 @@ export class WallEditor {
     const wall = levelObjects(state).walls[wallId];
     const halves = wall ? splitWall(wall, at) : null;
     if (!halves) return;
-    runHistoryTransaction(this.store, () => {
-      state.deleteWall(wallId);
-      for (const half of halves) state.addWall(half);
-    });
+    state.editWalls([wallId], halves);
   }
 
   private listen(eventBus: EventEmitter): void {

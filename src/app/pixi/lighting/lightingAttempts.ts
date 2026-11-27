@@ -2,7 +2,10 @@ export const LIGHTING_ATTEMPTS_KEY = 'atlas-vtt:lighting-attempts';
 
 /** One view's attempts to light its map with the GPU engine. */
 export interface LightingAttempt {
-  /** Notes that lighting the map starts now. False when an earlier start on it never finished: do not start. */
+  /**
+   * Notes that lighting the map starts now. False when an earlier start on it never finished: do not
+   * start. A view's own start that a lost context cut short begins again once.
+   */
   begin(): boolean;
   /** The engine drew the map, or the attempt was called off in an orderly way: the note goes. */
   finish(): void;
@@ -30,23 +33,30 @@ const running = new Map<string, number>();
  * sync to another one.
  */
 export class StoredLightingAttempt implements LightingAttempt {
-  private open: string | null = null;
+  /** The map of the attempt this view has open, and whether a lost context cut it short already. */
+  private open: { path: string; cutShort: boolean } | null = null;
 
   constructor(private readonly storage: LocalStorage, private readonly mapPath: () => string | null) {}
 
   begin(): boolean {
     const path = this.mapPath();
     if (!path) return true;
-    if (this.open === path) {
-      // This view's own attempt, begun again: a lost WebGL context cut it short. It no longer
-      // runs, and its note stays for every later start, in this session too.
+    if (this.open?.path === path) {
+      // This view's own attempt, begun again: a lost WebGL context cut it short. A graphics process
+      // dies for more than the lighting (a driver reset, another program), so the attempt goes on
+      // once. Cut short again, it no longer runs, and its note stays for every later start, in this
+      // session too: after a few crashes of its graphics process, Chromium gives the app no WebGL.
+      if (!this.open.cutShort) {
+        this.open.cutShort = true;
+        return true;
+      }
       this.stopRunning();
       return false;
     }
     const noted = this.read();
     if (noted.includes(path) && !running.has(path)) return false;
     this.finish();
-    this.open = path;
+    this.open = { path, cutShort: false };
     running.set(path, (running.get(path) ?? 0) + 1);
     if (!noted.includes(path)) this.write([...noted, path]);
     return true;
@@ -68,7 +78,7 @@ export class StoredLightingAttempt implements LightingAttempt {
 
   /** Ends this view's part in the attempt it has open and returns that map's path. */
   private stopRunning(): string | null {
-    const path = this.open;
+    const path = this.open?.path;
     if (!path) return null;
     this.open = null;
     const others = (running.get(path) ?? 1) - 1;

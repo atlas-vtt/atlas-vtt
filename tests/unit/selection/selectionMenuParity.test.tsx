@@ -139,7 +139,7 @@ describe('the desktop menus of what is selected', () => {
     const { store } = scene(() => []);
     const id = store.getState().addNotePin(120, 80, 'Notes/Tavern.md');
     expect(shape(pinMenuEntries(store, store.getState().objects.pins[id]!))).toMatchSnapshot();
-    store.getState().updateNotePin(id, { showName: true, readable: true });
+    store.getState().patchObject('pins', id, { showName: true, readable: true });
     expect(shape(pinMenuEntries(store, store.getState().objects.pins[id]!))).toMatchSnapshot();
   });
 });

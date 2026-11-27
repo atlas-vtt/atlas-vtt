@@ -2,7 +2,7 @@ import { FLAG_FIRST, FLAG_LAST, lacingOf, MAX_PAGE_BYTES, MAX_SEGMENTS, OggCorru
 import { isOpusHead, MAX_COMMENTS, readOpusComments, readOpusHead, writeOpusTags } from './opusFormat';
 import { SEEK_COMMENT } from './seekTable';
 import { PEAK_BUCKETS } from './soundPeaks';
-import { fromBase64, toBase64 } from './soundSegments';
+import { fromBase64, toBase64 } from '../../utils/base64';
 import { isRanges, rangesOf, type FileRanges } from './fileRanges';
 
 /**

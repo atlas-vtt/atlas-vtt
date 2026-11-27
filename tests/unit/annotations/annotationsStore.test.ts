@@ -153,14 +153,14 @@ describe('drawings and texts in the store', () => {
     store.getState().setSelection([pen, label, room]);
     const before = steps();
 
-    store.getState().deleteAnnotations([pen, label, 'gone']);
+    store.getState().removeObjects([pen, label, 'gone']);
     expect(steps()).toBe(before + 1);
     expect(shown()).toEqual([room]);
     expect(store.getState().selectedIds).toEqual([room]);
     undo();
     expect(shown()).toEqual([pen, label, room]);
 
-    store.getState().deleteAnnotations(['gone']);
+    store.getState().removeObjects(['gone']);
     expect(steps()).toBe(before);
   });
 

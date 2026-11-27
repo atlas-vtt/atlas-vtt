@@ -6,13 +6,13 @@ import type { App, WorkspaceLeaf } from 'obsidian';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SceneState } from '../../../../src/app/online/gm/atlasView.ts';
 import { OnlineControl } from '../../../../src/app/online/gm/OnlineControl.ts';
-import { Ownership } from '../../../../src/app/online/gm/ownership.ts';
 import { boundOwnership, fakeCampaigns } from './fakeSeats.ts';
 import { findPresentedTab, PRESENT_COMMAND, presentedScene, readPresented, showPresentedElsewhere, showsPresented } from '../../../../src/app/online/gm/presentedScene.ts';
 import type { SavedTable } from '../../../../src/app/online/gm/savedTable.ts';
-import { app, atlasTab, FakeSocket, FakeTabs, png, present, switchScene, workspace, storedAccount } from './fakeTable.ts';
+import { app, atlasTab, FakeTabs, png, present, switchScene, workspace, storedAccount } from './fakeTable.ts';
 import { sceneState } from './shareHarness.ts';
 import { advanceSettled as advance } from './settled.ts';
+import { FakeRelay } from './fakeRelay.ts';
 
 const seen = vi.hoisted(() => ({ notices: [] as string[] }));
 
@@ -56,30 +56,26 @@ const character = (id: string, name: string, x: number): TokenEntity => ({ id, k
 const cave = (x = 140): SceneState => sceneState({ mapPath: CAVE, background: 'maps/cave.png', objects: { ...sceneState().objects, tokens: { 'gm-ogre': character('gm-ogre', 'Ogre', x) } } });
 const hall = (): SceneState => sceneState({ mapPath: HALL, background: 'maps/hall.png', objects: { ...sceneState().objects, tokens: { 'gm-goblin': character('gm-goblin', 'Goblin', 700) } } });
 
-type Body = { readonly t: string; readonly scene?: unknown; readonly id?: string; readonly tokens?: readonly { readonly id: string; readonly x: number }[] };
-const bodies = (socket: FakeSocket, to?: string): Body[] => socket.frames().flatMap((frame) => (frame.t === 'send' && frame.body !== undefined && (to === undefined || frame.to === to) ? [frame.body as Body] : []));
-const scenes = (socket: FakeSocket, to?: string): unknown[] => bodies(socket, to).filter((body) => body.t === 'scene').map((body) => body.scene);
+/** The scenes a player's page was sent, in order. */
+const scenes = (relay: FakeRelay, player = ANA): unknown[] => relay.pages.of(player).all('scene').map(({ scene }) => scene);
 const mapHash = (scene: unknown): unknown => (scene as { map?: { hash?: string } } | null)?.map?.hash;
 
 /** A running table restored from `SAVED`, welcomed by the relay with Ana at it. */
-async function running(): Promise<{ online: OnlineControl; socket: FakeSocket }> {
+async function running(): Promise<{ online: OnlineControl; relay: FakeRelay }> {
   const players = [{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }];
-  const online = new OnlineControl(app, boundOwnership(players), fakeCampaigns(players), undefined, storedAccount());
+  const relay = new FakeRelay();
+  const online = new OnlineControl(app, boundOwnership(players), fakeCampaigns(players), undefined, storedAccount(), undefined, undefined, relay.open);
   void online.resume(SAVED);
   await advance(0);
-  const socket = FakeSocket.all.at(-1);
-  if (socket === undefined) throw new Error('no socket');
-  socket.relay({ t: 'welcome', role: 'gm', players: [{ id: ANA, name: 'Ana' }] });
+  relay.outbox.welcome([{ id: ANA, name: 'Ana' }]);
   await advance(500);
-  return { online, socket };
+  return { online, relay };
 }
 
 describe('the scene players see', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'performance', 'Date'] });
     vi.stubGlobal('window', globalThis);
-    vi.stubGlobal('WebSocket', FakeSocket);
-    FakeSocket.all = [];
     seen.notices.length = 0;
     workspace.leaves = [];
     workspace.presented = null;
@@ -95,44 +91,44 @@ describe('the scene players see', () => {
     const tab = atlasTab(cave());
     workspace.leaves = [tab.leaf];
     present(tab);
-    const { online, socket } = await running();
-    const shown = scenes(socket).at(-1);
+    const { online, relay } = await running();
+    const shown = scenes(relay).at(-1);
     expect(mapHash(shown)).toBeDefined();
     online.give(['gm-ogre'], ANA);
     await advance(500);
-    const ogre = bodies(socket, undefined).filter((body) => body.t === 'tokens').at(-1)?.tokens?.[0];
+    const ogre = relay.pages.of(ANA).tokens[0];
     if (ogre === undefined) throw new Error('no token list');
 
     // The GM opens the Hall in the same view: players are sent nothing of it, nothing at all.
-    const before = socket.frames().length;
+    const before = relay.outbox.told.length;
     switchScene(tab, hall());
     await advance(3_000);
-    expect(socket.frames().slice(before)).toEqual([]);
+    expect(relay.outbox.told.slice(before)).toEqual([]);
 
     // Ana's move of her ogre is refused at the place players see, her release is not taken; Ben, joining now, gets the held Cave.
     const scene = (shown as { id: string }).id;
-    socket.relay({ t: 'game', from: ANA, body: { t: 'move', scene, id: ogre.id, x: 420, y: 140 } });
-    socket.relay({ t: 'game', from: ANA, body: { t: 'release', scene, id: ogre.id } });
-    socket.relay({ t: 'player-joined', id: BEN, name: 'Ben' });
+    relay.outbox.from(ANA, { t: 'move', scene, id: ogre.id, x: 420, y: 140 });
+    relay.outbox.from(ANA, { t: 'release', scene, id: ogre.id });
+    relay.outbox.join({ id: BEN, name: 'Ben' });
     await advance(500);
-    expect(bodies(socket, ANA).at(-1)).toMatchObject({ t: 'move-refused', x: 140, y: 140 });
+    expect(relay.pages.of(ANA).last('move-refused')).toMatchObject({ x: 140, y: 140 });
     expect(online.ownership.ownerOf('gm-ogre', undefined)).toBe(ANA);
-    expect(scenes(socket, BEN)).toEqual([shown]);
-    expect(bodies(socket, BEN).find((body) => body.t === 'tokens')?.tokens).toMatchObject([{ id: ogre.id, x: 140 }]);
-    expect(JSON.stringify(socket.frames().slice(before))).not.toMatch(/Goblin|hall\.png|Hall/);
+    expect(scenes(relay, BEN)).toEqual([shown]);
+    expect(relay.pages.of(BEN).all('tokens')[0]?.tokens).toMatchObject([{ id: ogre.id, x: 140 }]);
+    expect(JSON.stringify(relay.outbox.told.slice(before))).not.toMatch(/Goblin|hall\.png|Hall/);
 
     // Back on the presented Cave, players follow it live again: no new scene, the moved ogre.
     switchScene(tab, cave(560));
     await advance(1_500);
-    expect(scenes(socket).at(-1)).toEqual(shown);
-    expect(JSON.stringify(socket.frames().slice(before))).toContain('560');
+    expect(scenes(relay).at(-1)).toEqual(shown);
+    expect(JSON.stringify(relay.outbox.told.slice(before))).toContain('560');
 
     // The GM presents the Hall with the eye: players switch to it.
     switchScene(tab, hall());
     present(tab);
     await advance(1_500);
-    expect(mapHash(scenes(socket).at(-1))).not.toBe(mapHash(shown));
-    expect(scenes(socket).at(-1)).not.toBeNull();
+    expect(mapHash(scenes(relay).at(-1))).not.toBe(mapHash(shown));
+    expect(scenes(relay).at(-1)).not.toBeNull();
     online.stop();
   });
 
@@ -142,7 +138,7 @@ describe('the scene players see', () => {
     const tab = atlasTab(scene(CAVE, 'maps/cave.png', { 'cave-hero': hero('cave-hero', 140), 'gm-ogre': character('gm-ogre', 'Ogre', 300) }));
     workspace.leaves = [tab.leaf];
     present(tab);
-    const { online, socket } = await running();
+    const { online, relay } = await running();
     online.give(['cave-hero'], ANA);
     await advance(500);
 
@@ -150,21 +146,21 @@ describe('the scene players see', () => {
     switchScene(tab, scene(HALL, 'maps/hall.png', { 'hall-hero': hero('hall-hero', 200), 'gm-goblin': character('gm-goblin', 'Goblin', 700) }));
     present(tab);
     await advance(1_500);
-    const listed = bodies(socket).filter((body) => body.t === 'tokens').at(-1)?.tokens ?? [];
+    const listed = relay.pages.of(ANA).tokens;
     const hallHero = listed.find((entry) => entry.x === 200)?.id;
-    const mine = bodies(socket, ANA).filter((body) => body.t === 'mine').at(-1) as { tokens?: readonly string[] } | undefined;
+    const mine = relay.pages.of(ANA).last('mine');
     expect(hallHero).toBeDefined();
     expect(mine?.tokens).toEqual([hallHero]);
     expect(online.playerTokens().map(({ tokenId, owner }) => [tokenId, owner?.name])).toEqual([['hall-hero', 'Ana']]);
 
     // Ana moves her hero on the Hall: taken, while her move of the goblin is refused.
-    const hallScene = (scenes(socket).at(-1) as { id: string }).id;
+    const hallScene = (scenes(relay).at(-1) as { id: string }).id;
     const goblin = listed.find((entry) => entry.x === 700)?.id;
-    const before = bodies(socket, ANA).length;
-    socket.relay({ t: 'game', from: ANA, body: { t: 'move', scene: hallScene, id: hallHero, x: 260, y: 140 } });
-    socket.relay({ t: 'game', from: ANA, body: { t: 'move', scene: hallScene, id: goblin, x: 640, y: 140 } });
+    const before = relay.pages.mark();
+    relay.outbox.from(ANA, { t: 'move', scene: hallScene, id: hallHero, x: 260, y: 140 });
+    relay.outbox.from(ANA, { t: 'move', scene: hallScene, id: goblin, x: 640, y: 140 });
     await advance(500);
-    expect(bodies(socket, ANA).slice(before).filter((body) => body.t === 'move-refused').map((body) => body.id)).toEqual([goblin]);
+    expect(relay.pages.of(ANA).since(before, 'move-refused').map((body) => body.id)).toEqual([goblin]);
     online.stop();
   });
 
@@ -173,7 +169,7 @@ describe('the scene players see', () => {
     workspace.leaves = [tab.leaf];
     present(tab);
     expect(workspace.shownElsewhere).toBe(0);
-    const { online, socket } = await running();
+    const { online, relay } = await running();
     expect(workspace.shownElsewhere).toBe(1);
 
     // A reloaded Atlas has a presented scene of its own, which is told at the next change
@@ -182,7 +178,7 @@ describe('the scene players see', () => {
     const before = atlas.presentedScene;
     const reloaded = { ...before };
     atlas.presentedScene = reloaded;
-    socket.relay({ t: 'player-joined', id: BEN, name: 'Ben' });
+    relay.outbox.join({ id: BEN, name: 'Ben' });
     await advance(500);
     expect(workspace.shownElsewhere).toBe(1);
 
@@ -195,17 +191,17 @@ describe('the scene players see', () => {
   it('is none while Atlas presents nothing, and none again once it presents nothing', async () => {
     const tab = atlasTab(cave());
     workspace.leaves = [tab.leaf];
-    const { online, socket } = await running();
-    expect(scenes(socket)).toEqual([null]);
-    expect(bodies(socket).some((body) => body.t === 'tokens')).toBe(false);
+    const { online, relay } = await running();
+    expect(scenes(relay)).toEqual([null]);
+    expect(relay.sent().some(({ body }) => body.t === 'tokens')).toBe(false);
 
     present(tab);
     await advance(1_500);
-    expect(mapHash(scenes(socket).at(-1))).toBeDefined();
+    expect(mapHash(scenes(relay).at(-1))).toBeDefined();
 
     workspace.presented = null;
     await advance(1_500);
-    expect(scenes(socket).at(-1)).toBeNull();
+    expect(scenes(relay).at(-1)).toBeNull();
     expect(seen.notices.some((text) => text.includes('Atlas presents no map'))).toBe(true);
     online.stop();
   });
@@ -216,17 +212,17 @@ describe('the scene players see', () => {
     second.view.tabMetaStore.activate(CAVE);
     workspace.leaves = [first.leaf, second.leaf];
     present(first);
-    const { online, socket } = await running();
-    const shown = scenes(socket).at(-1);
+    const { online, relay } = await running();
+    const shown = scenes(relay).at(-1);
 
     // Atlas presents the Hall tab of the second view, which shows the Cave now: players keep the first view's Cave.
     workspace.presented = { tabId: FakeTabs.idOf(HALL), filePath: HALL };
-    const before = socket.frames().length;
+    const before = relay.outbox.told.length;
     await advance(1_500);
-    expect(socket.frames().slice(before)).toEqual([]);
+    expect(relay.outbox.told.slice(before)).toEqual([]);
     second.view.tabMetaStore.activate(HALL);
     await advance(1_500);
-    expect(mapHash(scenes(socket).at(-1))).not.toBe(mapHash(shown));
+    expect(mapHash(scenes(relay).at(-1))).not.toBe(mapHash(shown));
     expect(online.table?.sharedTab).toBe(second.leaf);
     online.stop();
   });

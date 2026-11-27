@@ -6,10 +6,11 @@ import { syncTokenArtwork, TOKEN_ART_DISC_LABEL } from './tokenArtwork';
  */
 
 import { Container, Graphics, Sprite, Circle, Texture, CanvasSource } from 'pixi.js';
-import type { ITokenSpriteFactory, TokenGroupContainer } from './types';
+import type { TokenGroupContainer } from './types';
 import type { TokenEntity } from '../../types';
 import type { GridSystem } from '../../grid/GridSystem';
 import { destroyTree } from '../utils/destroyTree';
+import { textureCanvas } from '../utils/textureCanvas';
 import { getTokenRingOuterDiameter } from './tokenRingMetrics';
 import { loadedTokenRingTexture, loadTokenRingTexture } from './tokenRingTexture';
 import { OVERLAYS_LABEL } from './TokenOverlays';
@@ -18,7 +19,7 @@ import { computeTokenPixelSize, computeTokenStrokeWidth } from './tokenSizing';
 // Cached textures - generated once, reused for all tokens
 let cachedGlassTexture: Texture | null = null;
 
-export class SpriteFactory implements ITokenSpriteFactory {
+export class SpriteFactory {
   private gridSystem: GridSystem;
   public isPlayerView: boolean;
   private onTokenRingTextureReady: (() => void) | undefined;
@@ -124,10 +125,6 @@ export class SpriteFactory implements ITokenSpriteFactory {
     container.tokenSize = tokenSize;
     container.strokeWidth = strokeWidth;
     syncTokenArtwork(container, tokenSize);
-  }
-
-  updateTokenPosition(container: Container, x: number, y: number): void {
-    container.position.set(x, y);
   }
 
   /** Turns the token's art, its ring and the overlays other plugins draw on it, never the container: its UI and glass stay upright. */
@@ -246,10 +243,9 @@ export class SpriteFactory implements ITokenSpriteFactory {
     }
 
     const size = 512;
-    const canvas = createEl('canvas');
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext('2d')!;
+    const drawn = textureCanvas(size, size);
+    if (!drawn) return Texture.EMPTY;
+    const { canvas, context: ctx } = drawn;
 
     const centerX = size / 2;
     const centerY = size / 2;

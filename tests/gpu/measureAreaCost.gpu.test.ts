@@ -39,10 +39,10 @@ const onPane = (x: number, y: number): { x: number; y: number } => ({ x: x - (MA
  * each, and a short wall standing in every room: 245 walls, which the lighting seals as it does.
  */
 function wallIn(s: Scene): number {
-  const { addWall } = s.store.getState();
+  const { addObject } = s.store.getState();
   let count = 0;
   const wall = (x0: number, y0: number, x1: number, y1: number): void => {
-    addWall({ type: 'solid', p1: { x: x0, y: y0 }, p2: { x: x1, y: y1 } });
+    addObject('walls', { type: 'solid', p1: { x: x0, y: y0 }, p2: { x: x1, y: y1 } });
     count++;
   };
   for (let line = 0; line <= MAP; line += ROOM) {
@@ -131,7 +131,7 @@ describe('the cost of dragging an area on a walled map', () => {
     const walls = wallIn(s);
     // Tokens in and around the circle's room.
     for (let index = 0; index < 12; index++) {
-      s.store.getState().addToken({ id: `t${index}`, kind: 'token', imagePath: '', size: 1, x: 1085 + (index % 4) * 3 * CELL, y: 1085 + Math.floor(index / 4) * 4 * CELL } as TokenEntity);
+      s.store.getState().addTokens([{ id: `t${index}`, kind: 'token', imagePath: '', size: 1, x: 1085 + (index % 4) * 3 * CELL, y: 1085 + Math.floor(index / 4) * 4 * CELL } as TokenEntity]);
     }
     s.store.getState().setMeasureTool({ mode: 'circle' });
     s.store.getState().setActiveTool('measure');

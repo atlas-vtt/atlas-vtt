@@ -11,6 +11,4 @@ export function sortCombatants(initiative: InitiativeState): void {
   if (initiative.cards) return sortByCards(initiative);
   initiative.entries.sort(byInitiative);
   renumber(initiative.entries);
-  const active = initiative.entries.findIndex((entry) => entry.isActive);
-  if (active !== -1) initiative.currentIndex = active;
 }

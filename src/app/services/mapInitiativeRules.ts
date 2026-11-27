@@ -1,11 +1,10 @@
 import type { App } from 'obsidian';
-import { DEFAULT_INITIATIVE_RULES, collectionInitiativeRules } from '../gameSystems/initiativeRules';
+import { initiativeRulesForMap } from '../gameSystems/initiativeRules';
 import type { InitiativeRules } from '../types/initiativeRulesTypes';
 import { systemPresetsOf } from './mapCollectionRules';
-import { mapRules } from './mapRules';
+import { rulesLookup } from './mapRules';
 
-/** Initiative rules the map plays by (`mapRules`); the default rules without any. */
+/** Initiative rules the map plays by (`initiativeRulesForMap`), with the vault's presets. */
 export function mapInitiativeRules(app: App, mapPath: string | null | undefined): InitiativeRules {
-  const { settings } = mapRules(app, mapPath);
-  return settings ? collectionInitiativeRules(settings, systemPresetsOf(app)) : { ...DEFAULT_INITIATIVE_RULES };
+  return initiativeRulesForMap(rulesLookup(app), systemPresetsOf(app), mapPath);
 }

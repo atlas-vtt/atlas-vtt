@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import type { App } from 'obsidian';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { turnBannerScaleFor } from '../../src/app/initiative/banner/turnBannerElement';
 import { createStore, type StoreApi } from 'zustand/vanilla';
@@ -8,6 +9,8 @@ import { createDefaultInitiativeState, type InitiativeEntry } from '../../src/ap
 import type { InitiativeRules } from '../../src/app/types/initiativeRulesTypes';
 import type { PlayerFrameSource } from '../../src/app/services/PlayerFrameMirror';
 import { PlayerWindowService } from '../../src/app/services/PlayerWindowService';
+import { AssetService } from '../../src/app/services/AssetService';
+import type { CollectionSettings } from '../../src/app/types/collectionSettingsTypes';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { attachFakePlayerWindow } from '../mocks/playerPopout';
@@ -21,8 +24,17 @@ const scrolls = vi.hoisted(() => ({ calls: [] as unknown[][] }));
 vi.mock('../../src/app/utils/scrollWithin', () => ({ scrollWithin: (...args: unknown[]) => { scrolls.calls.push(args); } }));
 const TURN_ORDER: InitiativeRules = { mode: 'turn-order', roll: '1d20', firstSide: 'players' };
 const initiativeRules = vi.hoisted(() => ({ value: undefined as InitiativeRules | undefined }));
-vi.mock('../../src/app/services/mapInitiativeRules', () => ({ mapInitiativeRules: () => initiativeRules.value ?? TURN_ORDER }));
 afterEach(() => { PlayerWindowService.getInstance()?.destroy(); vi.useRealTimers(); vi.restoreAllMocks(); collection.hpVisibleToPlayers = false; initiativeRules.value = undefined; scrolls.calls.length = 0; });
+
+/** The map the scenes show, in a collection that plays by `initiativeRules` (`playByTestRules`). */
+const MAP = 'atlas-vtt/collections/table/Cave.atlasmap';
+
+/** The map's collection plays by the initiative rules a test sets, else in turn order. */
+function playByTestRules(app: App): void {
+  const assets = AssetService.getInstance(app);
+  vi.spyOn(assets, 'getCollectionForMap').mockReturnValue('table');
+  vi.spyOn(assets, 'getCollectionSettings').mockImplementation(() => ({ conditions: [], initiative: initiativeRules.value ?? TURN_ORDER }) as CollectionSettings);
+}
 
 /** The map shows every nameplate, so the player view's switch alone decides. */
 const MAP_NAMES = { showNameplates: true, hiddenResources: [], showInstanceBadges: false, tokenRingSize: 1 };
@@ -35,7 +47,7 @@ function scene(name = 'Hero', initiativeTrackerOpen = true): StoreApi<ViewAtlasS
   };
   return createStore(() => ({
     initiative: { ...createDefaultInitiativeState(), entries: [entry], isActive: true, round: 1 },
-    objects: { tokens: { hero: token } }, initiativeTrackerOpen, tokenSettings: MAP_NAMES,
+    objects: { tokens: { hero: token } }, initiativeTrackerOpen, tokenSettings: MAP_NAMES, mapPath: MAP,
   })) as StoreApi<ViewAtlasState>;
 }
 
@@ -43,6 +55,7 @@ function setup(initiativeTrackerOpen = true): { service: PlayerWindowService; se
   vi.useFakeTimers();
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
   const { app } = createInMemoryApp();
+  playByTestRules(app);
   const settings = new SettingsService(app);
   const store = scene('Hero', initiativeTrackerOpen);
   const service = new PlayerWindowService(app, store, settings);
@@ -324,12 +337,13 @@ describe('player initiative panel of a collection that fights by sides', () => {
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
     initiativeRules.value = { mode: 'sides', roll: '1d20', firstSide };
     const { app } = createInMemoryApp();
+    playByTestRules(app);
     const settings = new SettingsService(app);
     settings.setLocalPlayerViewSettings({ showTokenNameplates: true });
     const store = createStore(() => ({
       initiative: { ...createDefaultInitiativeState(), entries: [entry('goblin', 0), entry('hero', 1), entry('rat', 2, { sitsOut: true }), entry('cleric', 3)], ...initiative },
       objects: { tokens: { goblin: token('goblin'), hero: token('hero', { vision: { enabled: true } }), rat: token('rat'), cleric: token('cleric', { side: 'players' }) } },
-      initiativeTrackerOpen: true, tokenSettings: MAP_NAMES,
+      initiativeTrackerOpen: true, tokenSettings: MAP_NAMES, mapPath: MAP,
     })) as StoreApi<ViewAtlasState>;
     const service = new PlayerWindowService(app, store, settings);
     return { doc: attachFakePlayerWindow(service, { canvas: createEl('canvas'), withPlayerSafeFrame: vi.fn(), store }), store };

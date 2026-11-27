@@ -1,4 +1,4 @@
-/** Liquid surfaces (`LiquidSurface`) in the view store: map geometry, each change one undo step. */
+/** Liquid surfaces (`LiquidSurface`) added to the view store: map geometry, one undo step (removed as every scene object, `sceneObjectsSlice.ts`). */
 
 import { firstLevelId, hasLevels, onLevel, placedOnViewedLevel } from '../levels/sceneLevels';
 import { MAX_LIQUIDS } from '../liquids/liquids';
@@ -13,7 +13,6 @@ export interface LiquidsSlice {
    * the level shown. A level that holds `MAX_LIQUIDS` takes no more (no id for those).
    */
   addLiquids: (data: readonly LiquidSurfaceInput[]) => string[];
-  deleteLiquid: (id: string) => void;
 }
 
 type LiquidsDraft = Pick<ViewState, 'levels' | 'viewedLevel' | 'objects'>;
@@ -56,9 +55,5 @@ export function createLiquidsActions(set: ImmerSet): LiquidsSlice {
       });
       return ids;
     },
-
-    deleteLiquid: (id) => set((draft) => {
-      delete draft.objects.liquids?.[id];
-    }),
   };
 }

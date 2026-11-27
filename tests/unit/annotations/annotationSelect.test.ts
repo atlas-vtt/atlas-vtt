@@ -126,8 +126,7 @@ describe('what a press takes, by the tool in hand', () => {
 
   it('takes none while the canvas shows the players\' picture, and none in a view that is the players\' own', () => {
     const s = scene(fill);
-    s.players.shown = true;
-    s.renderer.refreshVisibility();
+    s.peek(true);
     expect(s.press(200, 100)).toBe(false);
     expect(s.press(200, 100, { button: 2 })).toBe(false);
     expect(s.renderer.selecting.pointer.cursorAt(200, 100, () => false)).toBeNull();

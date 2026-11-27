@@ -22,6 +22,7 @@ import { normalizeImagePath } from '../utils/pathUtils';
 import { fixMapTokenPaths } from '../utils/fixMapPaths';
 import { getDataFilePath } from '../utils/dataFileMigration';
 import { sceneFromFile, sceneToFile, tokenFromFile } from '../resources/resourceFileFormat';
+import { sceneInitiativeFromFile, sceneInitiativeToFile } from '../initiative/initiativeFile';
 import { pausedTimers } from '../utils/timerWidget';
 import { preserveDamagedSceneFile, SceneFileError } from './sceneFileProblems';
 import { SceneFileWriter } from './sceneFileWriter';
@@ -201,7 +202,7 @@ export function createAtlasStorage<T extends { mapPath: string | null; mapLoaded
     app,
     (path) => store.getState().mapPath === path,
     // Only here, once per write: the store hands over its state on every change
-    (value) => JSON.stringify(withFileVersion({ ...value, state: sceneToFile(value.state as object) })),
+    (value) => JSON.stringify(withFileVersion({ ...value, state: sceneToFile(sceneInitiativeToFile(value.state as object)) })),
   );
 
   return {
@@ -261,8 +262,8 @@ export function createAtlasStorage<T extends { mapPath: string | null; mapLoaded
       if (state?.objects) fillObjectKinds(state.objects);
       // Rooms as 0.14.0 saved them are walls now
       if (state?.objects) roomsIntoWalls(state.objects);
-      // Files keep the token fields older versions of Atlas read; in memory tokens hold resources
-      if (state) Object.assign(state, sceneFromFile(state));
+      // Files keep the token and turn fields older versions of Atlas read; in memory tokens hold resources
+      if (state) Object.assign(state, sceneFromFile(sceneInitiativeFromFile(state)));
       // A timer stops when its scene closes: a run in the file was cut short by a quit or crash
       const widgets = state?.widgetSettings?.widgets;
       if (state?.widgetSettings && isRecord(widgets)) state.widgetSettings.widgets = pausedTimers(widgets);

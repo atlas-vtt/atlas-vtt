@@ -4,7 +4,9 @@ import { page } from 'vitest/browser';
 import { createStore } from 'zustand/vanilla';
 import css from '../../styles/main.scss?inline';
 import { PlayerWidgetBar } from '../../src/app/services/PlayerWidgetBar';
-import { entryTokenOf, playerInitiativeList, renderPlayerInitiative, type PlayerInitiativeEntry } from '../../src/app/services/playerInitiativeList';
+import type { PlayerInitiativeEntry } from '../../src/app/services/playerInitiativeList';
+import { playersListOf } from '../helpers/playersInitiative';
+import { renderPlayerInitiative } from '../../src/app/services/playerInitiativeView';
 import type { SettingsService } from '../../src/app/services/SettingsService';
 import type { PlayersListEdge } from '../../src/app/initiative/initiativeLayout';
 import type { CounterWidget } from '../../src/app/types/widgetTypes';
@@ -42,10 +44,10 @@ function showPlayerView(edges: PlayersListEdge[], labels: string[], combatants: 
   bar.mount(layer);
   const widgets = Object.fromEntries(labels.map((label, index) => [`w${index}`, counter(`w${index}`, label, index)]));
   bar.present(createStore(() => ({ widgetSettings: { widgets, globalVisible: true, position: 'top', scale: 1 }, widgetValues: {} })) as never);
-  const list = playerInitiativeList(
+  const list = playersListOf(
     { entries: Array.from({ length: combatants }, (_, index) => entryOf(index)), isActive: true, round: 1 },
-    (_, index) => entryTokenOf(creature(index), [], []),
-    { mode: 'turn-order', roll: '1d20', firstSide: 'players' },
+    Object.fromEntries(Array.from({ length: combatants }, (_, index) => [`t${index}`, creature(index)])),
+    { initiative: { mode: 'turn-order', roll: '1d20', firstSide: 'players' } },
   );
   for (const dock of edges) renderPlayerInitiative(layer, list, { showNames: false, mapShowsNameplates: false, portraitSrc: (src) => src, fromTurn: true, dock });
   return { layer, bar };

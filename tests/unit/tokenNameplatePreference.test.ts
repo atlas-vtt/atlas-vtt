@@ -34,8 +34,8 @@ describe('per-token nameplate preference', () => {
 
   it('is not changed by linking or unlinking a statblock', () => {
     const { store } = createMapStore('maps/link.atlasmap');
-    const shown = store.getState().addToken({ ...hero, showNameplate: true } as never);
-    const hidden = store.getState().addToken({ ...hero, showNameplate: false } as never);
+    const shown = store.getState().addTokens([{ ...hero, showNameplate: true } as never])[0]!;
+    const hidden = store.getState().addTokens([{ ...hero, showNameplate: false } as never])[0]!;
 
     store.getState().updateToken(shown, STATBLOCK_UNLINK_UPDATES);
     store.getState().updateToken(hidden, buildStatblockLinkUpdates({ fields: { name: 'Goblin', hp: 7 } }, 'Hero', [HP_RESOURCE], undefined));
@@ -62,7 +62,7 @@ describe('per-token nameplate preference', () => {
   it('is saved to and restored from the map file while the map hides nameplates', async () => {
     const path = 'maps/nameplates.atlasmap';
     const { app, files, store } = createMapStore(path);
-    const id = store.getState().addToken(hero as never);
+    const id = store.getState().addTokens([hero as never])[0]!;
     store.getState().setTokenSettings({ ...store.getState().tokenSettings, showNameplates: false });
     store.getState().updateToken(id, { showNameplate: true });
 

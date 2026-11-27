@@ -158,7 +158,7 @@ async function lightPopover(check: Check): Promise<void> {
   const store = mapStore(app, 'light');
   store.getState().setMapPath('maps/popover.atlasmap');
   store.getState().setSceneLighting({ enabled: true });
-  const torch = store.getState().addLight({ x: 400, y: 300, emission: { ...genericLight('torch'), kind: 'torch' } });
+  const torch = store.getState().addObject('lights', { x: 400, y: 300, emission: { ...genericLight('torch'), kind: 'torch' } });
   render(withStore(app, store, h(LightPopoverHost)));
   act(() => { store.getState().openLightPopover(torch); });
   await settle();
@@ -176,7 +176,7 @@ async function lightZonePopover(check: Check): Promise<void> {
   const store = mapStore(app, 'zone');
   store.getState().setMapPath('maps/zones.atlasmap');
   store.getState().setSceneLighting({ enabled: true, ambient: 1 });
-  const cave = store.getState().addLightZone({ polygon: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }], ambient: 0 });
+  const cave = store.getState().addObject('lightZones', { polygon: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }], ambient: 0 });
   render(withStore(app, store, h(LightZonePopoverHost)));
   act(() => { store.getState().openLightZonePopover(cave); });
   await settle();
@@ -247,8 +247,8 @@ async function canvasMenus(check: Check): Promise<void> {
   const { app } = appWithSettings();
   const store = mapStore(app, 'menus');
   store.setState({ activeTool: 'select', isGMView: true, objects: { ...store.getState().objects, tokens: { goblin: GOBLIN } } });
-  const door = store.getState().addWall({ type: 'door', p1: { x: 0, y: 0 }, p2: { x: 70, y: 0 } });
-  const light = store.getState().addLight({ x: 400, y: 300, emission: { ...TORCH, kind: 'torch' } });
+  const door = store.getState().addObject('walls', { type: 'door', p1: { x: 0, y: 0 }, p2: { x: 70, y: 0 } });
+  const light = store.getState().addObject('lights', { x: 400, y: 300, emission: { ...TORCH, kind: 'torch' } });
   render(withStore(app, store, h('div', { style: { position: 'fixed', inset: 0 } })));
   await settle();
   const at = { x: 200, y: 160 };

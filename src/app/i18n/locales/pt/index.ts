@@ -76,6 +76,7 @@ import { migration } from './migration';
 import { names } from './names';
 import { notice } from './notice';
 import { online } from './online';
+import { gmScreen } from './gmScreen';
 import { openings } from './openings';
 import { palette } from './palette';
 import { picker } from './picker';
@@ -211,6 +212,7 @@ export const pt: Translation = {
   ...names,
   ...notice,
   ...online,
+  ...gmScreen,
   ...openings,
   ...palette,
   ...picker,

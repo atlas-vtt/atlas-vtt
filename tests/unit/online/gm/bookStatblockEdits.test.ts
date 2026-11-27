@@ -4,10 +4,11 @@ import { BOOK_POLL_MS, BookShare, REFUSAL_BOOK_MS } from '../../../../src/app/on
 import { BookShelf } from '../../../../src/app/online/gm/book/BookShelf.ts';
 import { setStatblockGate } from '../../../../src/app/online/gm/book/statblockGate.ts';
 import type { StatblockTemplate, TemplateBlock, TemplateField } from '../../../../src/app/statblocks/model/templateTypes';
-import { FakeSocket, workspace } from './fakeTable.ts';
-import { ANA, BEN, cave, delivered, ofType, openTable, type Delivered } from './bookTableHarness.ts';
+import { workspace } from './fakeTable.ts';
+import { ANA, BEN, cave, openTable } from './bookTableHarness.ts';
 import { advanceSettled as advance } from './settled.ts';
 import { propertiesOf, StatblockNotes, templateOf } from './statblockNotes.ts';
+import type { PageMessage } from './playerPages.ts';
 
 vi.mock('obsidian', () => ({ Notice: class {}, normalizePath: (path: string) => path, requestUrl: () => Promise.resolve({ status: 201, json: null }), PluginSettingTab: class {}, Setting: class {}, Platform: { isDesktopApp: true, isMobile: false, isPhone: false } }));
 // The GM's marks draw with PIXI over Atlas's canvas, which a table of books has no use for.
@@ -39,9 +40,9 @@ const TEMPLATE: StatblockTemplate = templateOf(FIELDS, BLOCKS);
 const NOTE = `---\nstatblock: true\natlas-template: ${TEMPLATE.id}\nname: Brannoch\nspeed: 30 ft.\ntags:\n  - Brave\nactions:\n  - name: Cleave\n    desc: Hits twice.\n---\n${BODY}`;
 
 /** The statblocks a player was sent, as the page reads them. */
-function statblocks(messages: readonly Delivered[], player: string): (BookStatblock | null)[] {
-  return ofType(messages, 'book-statblock').filter(({ to }) => to === player).map(({ body }) => {
-    const read = parseGmMessage(JSON.parse(JSON.stringify(body)));
+function statblocks(messages: readonly PageMessage[]): (BookStatblock | null)[] {
+  return messages.filter(({ t }) => t === 'book-statblock').map((body) => {
+    const read = parseGmMessage(body);
     if (read?.t !== 'book-statblock') throw new Error('a statblock the page would not read');
     return read.statblock;
   });
@@ -57,7 +58,7 @@ const wordsOf = (statblock: BookStatblock | null | undefined): readonly string[]
   return node?.k === 'value' ? node.value.words : undefined;
 };
 
-const kinds = (messages: readonly Delivered[], player: string): string[] => ofType(messages, 'book', 'book-statblock').filter(({ to }) => to === player).map(({ body }) => String(body.t));
+const kinds = (messages: readonly PageMessage[]): string[] => messages.filter(({ t }) => t === 'book' || t === 'book-statblock').map(({ t }) => t);
 
 describe('a player changing their own character\'s statblock at a running table', () => {
   let notes: StatblockNotes;
@@ -65,8 +66,6 @@ describe('a player changing their own character\'s statblock at a running table'
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'performance', 'Date'] });
     vi.stubGlobal('window', globalThis);
-    vi.stubGlobal('WebSocket', FakeSocket);
-    FakeSocket.all = [];
     workspace.leaves = [];
     workspace.presented = null;
     notes = new StatblockNotes().install();
@@ -88,26 +87,26 @@ describe('a player changing their own character\'s statblock at a running table'
   }
 
   it('writes a value into the note and answers with the statblock that follows, to that player alone and never into the map\'s history', async () => {
-    const { online, socket, tab, from } = await table();
+    const { online, pages, tab, from } = await table();
     const scene = tab.store.getState();
-    const since = delivered(socket).length;
+    const since = pages.mark();
     from(ANA, { t: 'book-field', key: 'speed', base: sheetBase('30 ft.'), value: '40 ft.' });
     await advance(BOOK_POLL_MS);
     expect(notes.text(PATH)).toBe(NOTE.replace('speed: 30 ft.', 'speed: 40 ft.'));
-    const after = delivered(socket).slice(since);
-    expect(kinds(after, ANA)).toEqual(['book-statblock']);
-    expect(speedOf(statblocks(after, ANA)[0])).toBe('40 ft.');
-    expect(after.filter(({ to }) => to !== ANA)).toEqual([]);
+    const after = pages.since(since);
+    expect(kinds(after[ANA] ?? [])).toEqual(['book-statblock']);
+    expect(speedOf(statblocks(after[ANA] ?? [])[0])).toBe('40 ft.');
+    expect(Object.keys(after)).toEqual([ANA]);
     expect(tab.store.getState()).toBe(scene);
     online.stop();
   });
 
   it('sends no statblock again for an edit that sets a value to what the player was sent', async () => {
-    const { online, socket, from } = await table();
-    const since = delivered(socket).length;
+    const { online, pages, from } = await table();
+    const since = pages.mark();
     from(ANA, { t: 'book-field', key: 'speed', base: sheetBase('30 ft.'), value: '30 ft.' });
     await advance(BOOK_POLL_MS);
-    expect(kinds(delivered(socket).slice(since), ANA)).toEqual([]);
+    expect(kinds(pages.of(ANA).since(since))).toEqual([]);
     online.stop();
   });
 
@@ -126,7 +125,7 @@ describe('a player changing their own character\'s statblock at a running table'
   });
 
   it('takes two quick edits of one value, and an ability edited at once after it was added, before the note reads either back', async () => {
-    const { online, socket, from } = await table();
+    const { online, pages, from } = await table();
     notes.lagging = true;
     from(ANA, { t: 'book-field', key: 'speed', base: sheetBase('30 ft.'), value: '40 ft.' });
     from(ANA, { t: 'book-field', key: 'speed', base: sheetBase('40 ft.'), value: '50 ft.' });
@@ -142,24 +141,24 @@ describe('a player changing their own character\'s statblock at a running table'
     expect(propertiesOf(notes.text(PATH))?.actions).toEqual([{ name: 'Healing Word', desc: 'Heals a lot.', cost: 'Action' }, { name: 'Cleave', desc: 'Hits twice.' }]);
     expect(notes.text(PATH).endsWith(`---\n${BODY}`)).toBe(true);
     // Shown at once: the statblock that followed holds what was written, before the cache read it.
-    const shown = statblocks(delivered(socket), ANA).at(-1);
+    const shown = statblocks(pages.of(ANA).read).at(-1);
     expect(speedOf(shown)).toBe('50 ft.');
     expect(shown?.abilities[0]?.tabs[0]?.entries.map((entry) => entry.name)).toEqual(['Healing Word', 'Cleave']);
     notes.settle();
     await advance(BOOK_POLL_MS);
-    expect(speedOf(statblocks(delivered(socket), ANA).at(-1))).toBe('50 ft.');
+    expect(speedOf(statblocks(pages.of(ANA).read).at(-1))).toBe('50 ft.');
     online.stop();
   });
 
   it('adds and takes out words of a list, keeping what the GM wrote into it meanwhile', async () => {
-    const { online, socket, from } = await table();
+    const { online, pages, from } = await table();
     // The GM adds a word where the cache has not read it yet; the player's word goes after the one they saw last.
     notes.corrupt(PATH, NOTE.replace('  - Brave\n', '  - Brave\n  - Scarred\n'));
     from(ANA, { t: 'book-list', op: 'add', key: 'tags', item: 'Lantern-bearer' });
     await advance(BOOK_POLL_MS);
     expect(propertiesOf(notes.text(PATH))?.tags).toEqual(['Brave', 'Lantern-bearer', 'Scarred']);
     // Read back, the note holds the player's word and the GM's: the statblock that follows shows both.
-    expect(wordsOf(statblocks(delivered(socket), ANA).at(-1))).toEqual(['Brave', 'Lantern-bearer', 'Scarred']);
+    expect(wordsOf(statblocks(pages.of(ANA).read).at(-1))).toEqual(['Brave', 'Lantern-bearer', 'Scarred']);
 
     from(ANA, { t: 'book-list', op: 'remove', key: 'tags', item: 'Brave' });
     await advance(BOOK_POLL_MS);
@@ -167,11 +166,11 @@ describe('a player changing their own character\'s statblock at a running table'
     expect(notes.text(PATH).endsWith(`---\n${BODY}`)).toBe(true);
 
     // A word the list does not hold is refused with the whole book, and Ben, without a statblock, changes nothing.
-    const since = delivered(socket).length;
+    const since = pages.mark();
     from(ANA, { t: 'book-list', op: 'remove', key: 'tags', item: 'Brave' });
     from(BEN, { t: 'book-list', op: 'add', key: 'tags', item: 'Ben was here' });
     await advance(REFUSAL_BOOK_MS);
-    expect(kinds(delivered(socket).slice(since), ANA)).toEqual(['book', 'book-statblock']);
+    expect(kinds(pages.of(ANA).since(since))).toEqual(['book', 'book-statblock']);
     expect(propertiesOf(notes.text(PATH))?.tags).toEqual(['Lantern-bearer', 'Scarred']);
     online.stop();
   });
@@ -187,15 +186,15 @@ describe('a player changing their own character\'s statblock at a running table'
   });
 
   it('refuses an edit while the note is read again after a change from outside, and checks the next against what was read', async () => {
-    const { online, socket, from } = await table();
+    const { online, pages, from } = await table();
     const edit = (value: string): void => from(ANA, { t: 'book-field', key: 'speed', base: sheetBase('30 ft.'), value });
     // The GM hides Speed from players; the edit that arrives before the note is read again is refused.
-    let since = delivered(socket).length;
+    let since = pages.mark();
     notes.put(PATH, { ...TEMPLATE, players: { speed: 'hidden' } }, NOTE);
     edit('40 ft.');
     await advance(BOOK_POLL_MS);
     expect(notes.writes).toEqual([]);
-    expect(kinds(delivered(socket).slice(since), ANA)[0]).toBe('book');
+    expect(kinds(pages.of(ANA).since(since))[0]).toBe('book');
     // Read: the template still hides it.
     await advance(REFUSAL_BOOK_MS);
     edit('40 ft.');
@@ -205,12 +204,12 @@ describe('a player changing their own character\'s statblock at a running table'
     // Every note may read otherwise (a template saved): refused until read, taken once the template reads as before.
     notes.put(PATH, TEMPLATE, NOTE);
     await advance(REFUSAL_BOOK_MS);
-    since = delivered(socket).length;
+    since = pages.mark();
     notes.templatesChanged();
     edit('40 ft.');
     await advance(BOOK_POLL_MS);
     expect(notes.writes).toEqual([]);
-    expect(kinds(delivered(socket).slice(since), ANA)[0]).toBe('book');
+    expect(kinds(pages.of(ANA).since(since))[0]).toBe('book');
     await advance(REFUSAL_BOOK_MS);
     edit('45 ft.');
     await advance(BOOK_POLL_MS);
@@ -219,12 +218,12 @@ describe('a player changing their own character\'s statblock at a running table'
   });
 
   it('answers an edit that is refused with the whole book, then the statblock as the note holds it', async () => {
-    const { online, socket, from } = await table();
-    let since = delivered(socket).length;
+    const { online, pages, from } = await table();
+    let since = pages.mark();
     from(ANA, { t: 'book-field', key: 'speed', base: sheetBase('25 ft.'), value: '40 ft.' });
     await advance(BOOK_POLL_MS);
-    expect(kinds(delivered(socket).slice(since), ANA)).toEqual(['book', 'book-statblock']);
-    expect(speedOf(statblocks(delivered(socket).slice(since), ANA)[0])).toBe('30 ft.');
+    expect(kinds(pages.of(ANA).since(since))).toEqual(['book', 'book-statblock']);
+    expect(speedOf(statblocks(pages.of(ANA).since(since))[0])).toBe('30 ft.');
     expect(notes.writes).toEqual([]);
 
     // Ben plays Mira, who has no statblock: he changes nothing of Brannoch's.
@@ -234,37 +233,37 @@ describe('a player changing their own character\'s statblock at a running table'
     expect(notes.text(PATH)).toBe(NOTE);
 
     // The note changed since the cache read it: the writer finds another value and takes nothing.
-    since = delivered(socket).length;
+    since = pages.mark();
     notes.corrupt(PATH, NOTE.replace('30 ft.', '35 ft.'));
     from(ANA, { t: 'book-field', key: 'speed', base: sheetBase('30 ft.'), value: '40 ft.' });
     await advance(BOOK_POLL_MS);
     expect(notes.writes).toHaveLength(1);
     expect(notes.text(PATH)).toBe(NOTE.replace('30 ft.', '35 ft.'));
-    expect(kinds(delivered(socket).slice(since), ANA)).toEqual(['book', 'book-statblock']);
+    expect(kinds(pages.of(ANA).since(since))).toEqual(['book', 'book-statblock']);
     online.stop();
   });
 
   it('writes nothing into a note whose properties have errors, and nothing where the template is missing or of a newer Atlas, or the note is Fantasy Statblocks\'', async () => {
-    const { online, socket, from } = await table();
+    const { online, pages, from } = await table();
     const broken = NOTE.replace('speed: 30 ft.', 'speed: 30 ft.\nspeed: 35 ft.');
     notes.corrupt(PATH, broken);
-    let since = delivered(socket).length;
+    let since = pages.mark();
     from(ANA, { t: 'book-field', key: 'speed', base: sheetBase('30 ft.'), value: '40 ft.' });
     await advance(BOOK_POLL_MS);
     expect(notes.text(PATH)).toBe(broken);
-    expect(kinds(delivered(socket).slice(since), ANA)).toEqual(['book', 'book-statblock']);
+    expect(kinds(pages.of(ANA).since(since))).toEqual(['book', 'book-statblock']);
 
     for (const options of [{ status: 'missing' as const }, { status: 'newer' as const }, { kind: 'fs-frontmatter' as const }]) {
       notes.put(PATH, TEMPLATE, NOTE, options);
       // The second refusal of the step before is answered with one more book, once its time has come.
       await advance(REFUSAL_BOOK_MS * 2);
-      since = delivered(socket).length;
+      since = pages.mark();
       const writes = notes.writes.length;
       from(ANA, { t: 'book-field', key: 'speed', base: sheetBase('30 ft.'), value: '40 ft.' });
       from(ANA, { t: 'book-ability', op: 'add', list: 'actions', after: null, entry: { name: 'Dodge', text: '', parts: {} } });
       await advance(BOOK_POLL_MS);
       expect(notes.writes.length, JSON.stringify(options)).toBe(writes);
-      expect(kinds(delivered(socket).slice(since), ANA)[0]).toBe('book');
+      expect(kinds(pages.of(ANA).since(since))[0]).toBe('book');
     }
     online.stop();
   });

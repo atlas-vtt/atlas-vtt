@@ -3,8 +3,8 @@ import type { InitiativeEntry } from '../../../types/initiativeTypes';
 import { entryToken } from '../../../initiative/party';
 import { isPlayersToken } from '../../../characters/playerTokens';
 
-/** Which statblocks the DM screen shows: the fight's alone, the players' characters' alone, or all with the fight's first. */
-export type StatblockScope = 'fight' | 'players' | 'all';
+/** Which statblocks are shown: the fight's alone, the players' characters' alone, every other creature's, or all with the fight's first. */
+export type StatblockScope = 'fight' | 'players' | 'npcs' | 'all';
 
 /** The statblock notes of a fight's combatants, in turn order, each once. */
 export function fightStatblockPaths(entries: readonly InitiativeEntry[], tokens: Readonly<Record<string, TokenEntity>>): string[] {
@@ -26,7 +26,7 @@ export function playerStatblockPaths(tokens: Readonly<Record<string, TokenEntity
 /**
  * The statblocks in the order the DM screen shows them: during a fight those of its combatants
  * first, in turn order, and with `scope` `fight` only those; with `players` only the player
- * characters' (in the same order); otherwise all.
+ * characters' (in the same order), with `npcs` only the others, so each statblock is in one of the two; otherwise all.
  */
 export function statblocksForScreen<T>(
   statblocks: ReadonlyMap<string, T>,
@@ -41,5 +41,6 @@ export function statblocksForScreen<T>(
   if (scope === 'fight' && fight.length > 0) return fight;
   const inFight = new Set(fightPaths);
   const ordered = [...fight, ...[...statblocks].filter(([path]) => !inFight.has(path))];
-  return scope === 'players' ? ordered.filter(([path]) => playerPaths.has(path)) : ordered;
+  if (scope === 'players') return ordered.filter(([path]) => playerPaths.has(path));
+  return scope === 'npcs' ? ordered.filter(([path]) => !playerPaths.has(path)) : ordered;
 }

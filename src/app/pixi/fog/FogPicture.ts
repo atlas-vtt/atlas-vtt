@@ -24,7 +24,6 @@ import { FogEdgeMesh } from './fogEdgeMesh';
 import { FogFade } from './FogFade';
 import { fogBoundsChanged, fogCanvasBounds } from './fogBounds';
 import { changedCanvasRect, changedFogBox, MAX_FADED_PIXELS, unitedCanvasRect, type CanvasRect } from './fogChangedRect';
-import { resolveFogPreviewAlpha } from './fogVisibilityPolicy';
 
 const EMPTY_FOG: Readonly<Record<string, FogOperation>> = Object.freeze({});
 /** Canvas pixels per world pixel. */
@@ -44,8 +43,8 @@ export interface FogPictureDeps {
   readonly mapRect: () => MapRect | null;
   /** The committed shapes, shared with whoever asks what the fog covers. */
   readonly coverage: FogCoverageCache;
-  /** Whether the canvas shows the players' view where the store's view switches do not say so (a peek); unset or null, they alone say it. */
-  readonly showsPlayers?: () => boolean | null;
+  /** Whether the canvas shows the players' picture now (`CanvasAudience.showsPlayers`). */
+  readonly showsPlayers: () => boolean;
   /** A fade ended: fog that faded away no longer needs showing. */
   readonly onFadeEnd?: () => void;
 }
@@ -72,6 +71,7 @@ export class FogPicture {
     const bounds = this.bounds();
     this.compositor = new FogCanvasCompositor(bounds, CANVAS_SCALE, deps.coverage, () => levelMapKey(deps.store.getState().mapPath, deps.store.getState()), deviceProfile().budgets.fogCanvasSide);
     this.texture = PIXI.Texture.from(this.compositor.getCanvas());
+    this.compositor.getCanvas().addEventListener('contextrestored', this.drawAgain);
     this.sprite = new PIXI.Sprite(this.texture);
     this.sprite.position.set(bounds.x, bounds.y);
     this.sprite.width = bounds.width;
@@ -220,11 +220,11 @@ export class FogPicture {
    * peek: for a picture of the scene, which shows the fog as a fade will leave it.
    */
   gmLayers(): LayerVisibility[] {
-    const alpha = resolveFogPreviewAlpha({ isPlayerView: false, isGMView: true, gmOpacity: this.gmOpacity });
-    return [{ layer: this.sprite, visible: this.sprite.visible, alpha }, ...(this.fade.running ? [{ layer: this.fade, visible: false }] : [])];
+    return [{ layer: this.sprite, visible: this.sprite.visible, alpha: this.gmOpacity }, ...(this.fade.running ? [{ layer: this.fade, visible: false }] : [])];
   }
 
   destroy(): void {
+    this.compositor.getCanvas().removeEventListener('contextrestored', this.drawAgain);
     this.fade.end();
     this.edgeMesh?.destroy();
     this.edgeMesh = null;
@@ -234,8 +234,7 @@ export class FogPicture {
 
   /** How opaque the fog is drawn on this canvas now: as the players see it while it shows their view, a peek included. */
   private alpha(): number {
-    const { isPlayerView, isGMView } = this.deps.store.getState();
-    return resolveFogPreviewAlpha({ isPlayerView, isGMView: isGMView && this.deps.showsPlayers?.() !== true, gmOpacity: this.gmOpacity });
+    return this.deps.showsPlayers() ? 1 : this.gmOpacity;
   }
 
   /** Two pictures are mixed by the mesh's shader, which needs WebGL: elsewhere a change shows at once. */
@@ -298,6 +297,17 @@ export class FogPicture {
   private bounds(): FogBounds {
     return fogCanvasBounds(this.deps.mapRect(), levelObjects(this.deps.store.getState())?.fog);
   }
+
+  /**
+   * The canvas came back blank after the GPU process died: Chromium keeps an accelerated canvas's
+   * pixels there, and this one stays on the GPU for the blur a composite on every brush move runs.
+   * The fog it showed is drawn again, and the fade's picture, lost with it, ends.
+   */
+  private readonly drawAgain = (): void => {
+    if (!this.shown) return;
+    this.fade.end();
+    this.drawCommitted();
+  };
 
   private textureChanged(): void {
     if (this.texture.destroyed) return;

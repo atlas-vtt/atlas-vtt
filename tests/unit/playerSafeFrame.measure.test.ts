@@ -5,6 +5,8 @@ import { measurePlayersView } from '../../src/app/pixi/measurePlayersView';
 import type { LayerVisibility } from '../../src/app/pixi/playerSafeFrame';
 import { computeTokenPixelSize } from '../../src/app/pixi/token-renderer/tokenSizing';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { viewAudience } from '../helpers/viewAudience';
+import type { MeasurePlayersView } from '../../src/app/pixi/measurePartsVisibility';
 import { FRAME, fakePlayerFrames, fakeViewport } from '../mocks/playerFrameSource';
 
 const SETTINGS = { showTokenNameplates: true } as never;
@@ -64,19 +66,20 @@ describe('withPlayerSafeFrame and the measurements', () => {
 });
 
 describe('the measure renderer\'s wiring', () => {
-  it('reads the tokens when asked, follows the players\' view and subscribes once', () => {
-    const listeners: Array<() => void> = [];
-    const unsubscribe = vi.fn();
-    const refreshVisibility = vi.fn();
+  it('reads the tokens and whom the canvas is drawn for when asked, and subscribes once', () => {
     const stopHeights = vi.fn();
     const busOn = vi.fn();
     const busOff = vi.fn();
+    const state = { objects: { tokens: {} }, tokenSettings: { tokenRingSize: 1 }, isGMView: true, isPlayerView: false };
+    const store = { getState: () => state, subscribe: vi.fn(() => stopHeights) };
+    const { audience, peek } = viewAudience(store as never);
+    const measureRenderer = { rulesChanged: vi.fn(), followShown: vi.fn(), playersView: null as MeasurePlayersView | null, handles: { pointer: {}, leave: vi.fn() }, ranges: {}, effects: { setMode: vi.fn() } };
     const renderer = Object.assign(Object.create(PixiRendererOrchestrator.prototype) as PixiRendererOrchestrator, {
       obsApp: createInMemoryApp().app,
-      store: { getState: () => ({ objects: { tokens: {} }, tokenSettings: { tokenRingSize: 1 } }), subscribe: vi.fn(() => stopHeights) },
+      store,
+      audience,
       gridSystem: { getOptions: () => ({ size: 70 }) },
-      tokenRenderer: { onPlayersViewChange: vi.fn((listener: () => void) => { listeners.push(listener); return unsubscribe; }), setMeasureHandlers: vi.fn() },
-      measureRenderer: { refreshVisibility, rulesChanged: vi.fn(), followShown: vi.fn(), playersView: null, handles: { pointer: {}, leave: vi.fn() }, ranges: {}, effects: { setMode: vi.fn() } },
+      measureRenderer,
       // The popover of a kept measurement closes when the view is left
       eventBus: { on: busOn, off: busOff },
       viewId: 'view',
@@ -84,15 +87,17 @@ describe('the measure renderer\'s wiring', () => {
     const wire = (renderer as unknown as { wireMeasureRendererProvider(): void }).wireMeasureRendererProvider.bind(renderer);
     wire();
     wire();
-    expect(listeners).toHaveLength(2);
-    expect(unsubscribe).toHaveBeenCalledTimes(1);
-    // The tokens' heights are followed once too, for the rulers that end on fliers
+    // The tokens' heights are followed once, for the rulers that end on fliers
     expect(stopHeights).toHaveBeenCalledTimes(1);
     // And leaving the view is heard once
     expect([busOn.mock.calls.length, busOff.mock.calls.length]).toEqual([2, 1]);
-    listeners[1]!();
-    expect(refreshVisibility).toHaveBeenCalledTimes(1);
-    expect((renderer as unknown as { measureRenderer: { playersView: unknown } }).measureRenderer.playersView).not.toBeNull();
+    const view = measureRenderer.playersView!;
+    const heard = vi.fn();
+    view.onChange(heard);
+    expect(view.seenOnCanvas()).toBeNull();
+    peek(true);
+    expect(heard).toHaveBeenCalledTimes(1);
+    expect(view.seenOnCanvas()).not.toBeNull();
   });
 });
 
@@ -110,9 +115,9 @@ describe('measurePlayersView', () => {
     const tokens = {
       getTokenSprites: () => ({ goblin: { x: 120, y: 100 } }),
       playersSeeInFrame: vi.fn(() => () => false),
-      playersSeeOnCanvas: vi.fn(() => seenOnCanvas),
     };
-    const view = measurePlayersView({ store, grid: { getOptions: () => ({ size: 70 }) } as never, tokens: () => tokens as never, lighting });
+    const audience = { seenOnCanvas: vi.fn(() => seenOnCanvas), onChange: () => () => undefined };
+    const view = measurePlayersView({ store, grid: { getOptions: () => ({ size: 70 }) } as never, tokens: () => tokens as never, lighting, audience });
     expect(lighting).not.toHaveBeenCalled();
     const radius = (computeTokenPixelSize(70, 1) / 2) * 1.5;
     expect(view.footprints()).toEqual([{ id: 'goblin', x: 120, y: 100, radius }, { id: 'goblin', x: 100, y: 100, radius }]);
@@ -122,9 +127,9 @@ describe('measurePlayersView', () => {
     expect(view.seenOnCanvas()).toBe(seenOnCanvas);
   });
 
-  it('fails closed without a token renderer: nothing seen in a frame, the GM view on the canvas', () => {
-    const view = measurePlayersView({ store, grid: { getOptions: () => ({ size: 70 }) } as never, tokens: () => undefined, lighting: () => undefined });
+  it('fails closed without a token renderer: nothing seen in a frame', () => {
+    const audience = { seenOnCanvas: () => null, onChange: () => () => undefined };
+    const view = measurePlayersView({ store, grid: { getOptions: () => ({ size: 70 }) } as never, tokens: () => undefined, lighting: () => undefined, audience });
     expect(view.seenAtStart()('goblin')).toBe(false);
-    expect(view.seenOnCanvas()).toBeNull();
   });
 });

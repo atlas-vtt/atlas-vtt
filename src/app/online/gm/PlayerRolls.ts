@@ -4,7 +4,7 @@ import { completeFormula } from '../../tools/completeFormula';
 import { withoutConstantLabels } from '../../tools/namedModifiers';
 import { diceRollProblem, type RollOptions } from '../../tools/DiceTool';
 import type { GmMessage, PlayerRoll, RollMode, RollRefusal, RollRequestAnswer, SharedRoll } from '../protocol/index.ts';
-import { parseFormula } from '../../tools/parseFormula';
+import { rollableFormula } from '../../tools/rollableFormula';
 import { isRollFormula } from '../../tools/textRolls';
 import { changedBeforeSide, writtenSide } from '../../tools/writtenAdvantage';
 import type { TokenEntity } from '../../types';
@@ -60,18 +60,6 @@ interface PrivateRoll {
 }
 
 export type RollVerdict = { readonly ok: true; readonly tokenId: string | null } | { readonly ok: false; readonly reason: RollRefusal };
-
-/**
- * Whether Atlas's dice tool rolls a formula as it stands: it parses, and holds at least one die. A side
- * written last (`1d20+5 adv`) is the dice tool's to read and is no part of what is parsed here.
- * Atlas completes a formula without dice with the map's default roll, which a player causes only
- * with a bonus from their sheet (`playerFormula`), and tells a formula it cannot parse with a notice
- * on the GM's screen, which is never for a player to cause.
- */
-export function rollableFormula(formula: string): boolean {
-  const parsed = parseFormula(writtenSide(formula).formula);
-  return parsed.ok && parsed.terms.some((term) => term.kind === 'dice' && term.count > 0);
-}
 
 /**
  * Whether a player's formula is rolled: one with dice (`rollableFormula`), or a bonus from their sheet

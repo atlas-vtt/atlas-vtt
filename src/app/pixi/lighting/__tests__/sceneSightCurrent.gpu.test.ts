@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TokenEntity } from '../../../types';
+import { rejectEngineShaders } from '../engine/__tests__/gpuTestUtils';
 import { playerTokenSight } from '../playerLightingLayers';
 import { SIZE, resetContext, visionToken } from './rendererHarness';
-import { breakLinking, createScene, darkness, litScene, type SavedScene, type Scene } from './sceneLightingHarness';
+import { createScene, darkness, litScene, type SavedScene, type Scene } from './sceneLightingHarness';
 
 vi.mock('obsidian', () => ({ Notice: class {}, getLanguage: () => 'en' }));
 
@@ -120,7 +121,7 @@ describe('whether the lighting\'s sight is the scene\'s the store holds', () => 
 
   it('follows the line-of-sight fallback the same way', async () => {
     scene = await createScene({ enabled: false });
-    breakLinking(scene.renderer);
+    rejectEngineShaders(scene.renderer);
     scene.switchLighting(true);
     vi.restoreAllMocks();
     expect(darkness(scene.viewport)).toBeDefined();

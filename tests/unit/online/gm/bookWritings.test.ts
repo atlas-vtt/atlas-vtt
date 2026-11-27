@@ -6,8 +6,8 @@ import { EMPTY_BOOK, type StoredBook } from '../../../../src/app/online/gm/book/
 import { ownBookOf } from '../../../../src/app/online/gm/book/playerWritings.ts';
 import { setQuestGate } from '../../../../src/app/online/gm/book/questGate.ts';
 import type { TokenEntity } from '../../../../src/app/types';
-import { FakeSocket, present, switchScene, workspace, type FakeTab } from './fakeTable.ts';
-import { ANA, BEN, BRANNOCH, BRANNOCH_ART, cave, delivered, holdWorldMap, keptBooks, MIRA, ofType, openTable, type OpenTable } from './bookTableHarness.ts';
+import { present, switchScene, workspace, type FakeTab } from './fakeTable.ts';
+import { ANA, BEN, BRANNOCH, BRANNOCH_ART, cave, holdWorldMap, keptBooks, MIRA, openTable, type OpenTable } from './bookTableHarness.ts';
 import { sceneState } from './shareHarness.ts';
 import { advanceSettled as advance } from './settled.ts';
 
@@ -52,8 +52,8 @@ function showNext(tab: FakeTab, next: ReturnType<typeof sceneState>): void {
 
 /** The last whole book a player was sent, as the page reads it. */
 function lastBook(table: OpenTable, player: string): PlayerBook | undefined {
-  return ofType(delivered(table.socket), 'book').filter(({ to }) => to === player).map(({ body }) => {
-    const read = parseGmMessage(JSON.parse(JSON.stringify(body)));
+  return table.pages.of(player).all('book').map((body) => {
+    const read = parseGmMessage(body);
     if (read?.t !== 'book') throw new Error('a book the page would not read');
     return read.book;
   }).at(-1);
@@ -63,8 +63,6 @@ describe('what a player wrote on the world map, whichever scene the GM presents'
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'performance', 'Date'] });
     vi.stubGlobal('window', globalThis);
-    vi.stubGlobal('WebSocket', FakeSocket);
-    FakeSocket.all = [];
     workspace.leaves = [];
     workspace.presented = null;
   });
@@ -156,11 +154,11 @@ describe('what a player wrote on the world map, whichever scene the GM presents'
     const table = await openTable(new BookShelf(source), PLAYERS, {});
     expect(lastBook(table, ANA)?.character).toBeNull();
 
-    const before = delivered(table.socket).length;
+    const before = table.pages.mark();
     table.from(ANA, { t: 'book-pin', pin: PIN });
     table.from(ANA, { t: 'book-note', note: { id: 'c'.repeat(24), title: 'Waited', body: 'on the road' } });
     await advance(1_000);
-    expect(ofType(delivered(table.socket).slice(before), 'book')).toEqual([]);
+    expect(table.pages.since(before, 'book')).toEqual({});
     table.online.stop();
 
     const again = await openTable(new BookShelf(source), PLAYERS, {});
@@ -188,7 +186,7 @@ describe('what a player wrote on the world map, whichever scene the GM presents'
     const table = await openTable(shelf, PLAYERS);
     table.from(ANA, { t: 'book-pin', pin: PIN });
     await advance(100);
-    table.socket.relay({ t: 'player-left', id: ANA });
+    table.relay.outbox.leave(ANA);
     release();
     await advance(1_000);
     expect(shelf.of(ownBookOf(ANA)).pins).toMatchObject([{ id: PIN.id }]);

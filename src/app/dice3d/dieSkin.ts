@@ -8,9 +8,10 @@
 
 import { CELL, seededRandom } from './atlasCell';
 import {
-  DARK_INK, DEFAULT_DICE_LOOK, LIGHT_INK, parseHex, presetDiceHex, readableInk, type DiceColour, type DiceFont, type DiceLook, type Rgb,
+  DARK_INK, DEFAULT_DICE_LOOK, LIGHT_INK, parseHex, presetDiceHex, type DiceColour, type DiceFont, type DiceLook, type Rgb,
 } from './diceLook';
 import { dyeCard } from './dyedCard';
+import { readableInk } from './numeralInk';
 
 /** A look with its colours worked out for painting. */
 export interface ResolvedLook {

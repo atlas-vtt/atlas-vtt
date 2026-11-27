@@ -1,0 +1,42 @@
+// What moves in an overlay scrollbar, in its shadow root's own stylesheet (`OverlayScrollbar`), never through a document's
+// `::part()`: Chromium 130 (Electron 33, Obsidian 1.15's installer) never runs an animation whose `@keyframes` are the
+// document's on a shadow tree's element, and the thumbs would stand still while the content scrolls. The timelines are
+// the area's (`styles/_overlay-scrollbars.scss`), found from in here as names of the host's tree.
+
+// A thumb travels its track as the area scrolls.
+[part~='thumb-y'] {
+  animation: atlas-scrollbar-travel-y linear both;
+  animation-timeline: --atlas-scrollbar-y;
+}
+
+[part~='thumb-x'] {
+  animation: atlas-scrollbar-travel-x linear both;
+  animation-timeline: --atlas-scrollbar-x;
+}
+
+// An area that is the containing block of its positioned content: the frame lies in its scrolled content and is moved
+// back by what the area scrolled, on the compositor, so it holds still in the area's view.
+[part~='frame'][part~='contained'] {
+  animation: atlas-scrollbar-hold-y linear both, atlas-scrollbar-hold-x linear both;
+  animation-timeline: --atlas-scrollbar-y, --atlas-scrollbar-x;
+}
+
+@keyframes atlas-scrollbar-hold-y {
+  from { translate: 0 0; }
+  to { translate: 0 var(--atlas-scrollbar-range-y); }
+}
+
+@keyframes atlas-scrollbar-hold-x {
+  from { transform: none; }
+  to { transform: translateX(var(--atlas-scrollbar-range-x)); }
+}
+
+@keyframes atlas-scrollbar-travel-y {
+  from { translate: 0 0; }
+  to { translate: 0 var(--atlas-scrollbar-travel-y); }
+}
+
+@keyframes atlas-scrollbar-travel-x {
+  from { translate: 0 0; }
+  to { translate: var(--atlas-scrollbar-travel-x) 0; }
+}

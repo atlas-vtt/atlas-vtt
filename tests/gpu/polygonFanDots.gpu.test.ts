@@ -53,7 +53,7 @@ describe('a torch carried at Saver', () => {
       const x = c + Math.floor(random() * 14 - 7) * 70;
       const y = c + Math.floor(random() * 14 - 7) * 70;
       const length = Math.floor(random() * 3 + 1) * 70;
-      state.addWall({ type: 'solid', p1: { x, y }, p2: random() < 0.5 ? { x: x + length, y } : { x, y: y + length } });
+      state.addObject('walls', { type: 'solid', p1: { x, y }, p2: random() < 0.5 ? { x: x + length, y } : { x, y: y + length } });
     }
     const token = (id: string, x: number, y: number): TokenEntity => ({ id, kind: 'token', imagePath: '', x, y, size: 1, layer: 0, rotation: 0, isHidden: false, vision: { enabled: true, range: 500 }, light: TORCH }) as unknown as TokenEntity;
     const frames: Uint8ClampedArray[] = [];

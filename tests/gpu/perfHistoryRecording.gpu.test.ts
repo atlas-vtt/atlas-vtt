@@ -3,6 +3,7 @@ import { create, type StoreApi } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import { getHistoryStore, runUntracked, withHistory } from '../../src/app/stores/history';
+import { UNDO_DEPTHS } from '../../src/app/stores/stateBranches';
 import type { WallSegment } from '../../src/app/types/wallTypes';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 
@@ -58,7 +59,7 @@ const initial = (states: MapState['objects'][]): MapState => ({ objects: states[
 
 it('records a door toggle on 20,000 walls within the budget', () => {
   const states = doorStates();
-  const recorded = create<MapState>()(withHistory(immer<MapState>(() => initial(states))));
+  const recorded = create<MapState>()(withHistory(UNDO_DEPTHS)(immer<MapState>(() => initial(states))));
   const plain = create<MapState>()(immer<MapState>(() => initial(states)));
   const measured = timeWrites(recorded, states);
   const unrecorded = timeWrites(plain, states);

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import type { App } from 'obsidian';
-import { atlasPlayerSettings } from '../../../../src/app/online/gm/atlasLighting.ts';
+import { atlasPlayerSettings, followAtlasSettings } from '../../../../src/app/online/gm/atlasLighting.ts';
 import { SettingsService } from '../../../../src/app/services/SettingsService';
 
 describe('the Atlas settings an online table follows', () => {
@@ -44,5 +44,17 @@ describe('the Atlas settings an online table follows', () => {
     settingsService.setFogEdge({ style: 'soft', width: 60 });
     expect(atlasPlayerSettings(app).fogEdge).toEqual({ style: 'soft', width: 60 });
     expect(atlasPlayerSettings({} as App)).not.toHaveProperty('fogEdge');
+  });
+
+  it('tells of each change of Atlas\'s settings until stopped, and of none where they cannot be read', () => {
+    const settingsService = new SettingsService({} as never);
+    const app = { plugins: { plugins: { 'atlas-vtt': { settingsService } } } } as unknown as App;
+    let heard = 0;
+    const stop = followAtlasSettings(app, () => (heard += 1));
+    settingsService.setLocalPlayerViewSettings({ sharedVision: true });
+    stop();
+    settingsService.setLocalPlayerViewSettings({ sharedVision: false });
+    expect(heard).toBe(1);
+    expect(() => followAtlasSettings({} as App, () => undefined)()).not.toThrow();
   });
 });

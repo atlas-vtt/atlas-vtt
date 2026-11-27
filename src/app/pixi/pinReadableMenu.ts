@@ -13,6 +13,6 @@ export function readablePinEntry(store: ViewAtlasStore, pin: NotePin): ContextMe
     label: t('pinMenu.readable'),
     icon: 'book-open',
     checked: readable,
-    onClick: () => store.getState().updateNotePin(pin.id, { readable: readable ? undefined : true }),
+    onClick: () => store.getState().patchObject('pins', pin.id, { readable: readable ? undefined : true }),
   };
 }

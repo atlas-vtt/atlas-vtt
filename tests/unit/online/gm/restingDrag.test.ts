@@ -3,7 +3,7 @@ import { BookShelf } from '../../../../src/app/online/gm/book/BookShelf.ts';
 import { CARRY_MS } from '../../../../src/app/online/gm/LiveShare.ts';
 import { BULK_BUFFERED } from '../../../../src/app/online/gm/sendQueue.ts';
 import { LIVE_INTERVAL_MS } from '../../../../src/app/online/protocol/index.ts';
-import { FakeSocket, workspace } from './fakeTable.ts';
+import { workspace } from './fakeTable.ts';
 import { ANA, BEN, BRANNOCH, cave, openTable } from './bookTableHarness.ts';
 import { advanceSettled as advance } from './settled.ts';
 
@@ -24,21 +24,10 @@ vi.mock('../../../../src/app/online/gm/atlasLighting.ts', async (original) => ({
 
 const PLAYERS = [{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }];
 
-/** The game messages written to the socket from `since` on, single sends and batches alike. */
-function bodies(socket: FakeSocket, since = 0): Record<string, unknown>[] {
-  return socket.sent.slice(since).flatMap((text) => {
-    if (!text.startsWith('{')) return [];
-    const frame = JSON.parse(text) as { t: string; body?: Record<string, unknown>; sends?: { body: Record<string, unknown> }[] };
-    return frame.t === 'send' && frame.body !== undefined ? [frame.body] : frame.t === 'sends' ? (frame.sends ?? []).map(({ body }) => body) : [];
-  });
-}
-
 describe('a drag that rests while the socket is busy', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'performance', 'Date'] });
     vi.stubGlobal('window', globalThis);
-    vi.stubGlobal('WebSocket', FakeSocket);
-    FakeSocket.all = [];
     workspace.leaves = [];
     workspace.presented = null;
   });
@@ -50,33 +39,34 @@ describe('a drag that rests while the socket is busy', () => {
   });
 
   it('keeps reaching the pages through the live lane while the token list waits behind other messages', async () => {
-    const { online, socket, tab } = await openTable(new BookShelf(), PLAYERS);
+    const { online, relay, pages, tab } = await openTable(new BookShelf(), PLAYERS);
     const held = (x: number): ReturnType<typeof cave> => ({ ...cave({ brannoch: { x } }), heldTokens: { [BRANNOCH]: { x: 140, y: 140 } } });
     for (let step = 1; step <= 10; step += 1) {
       tab.store.set(held(140 + step * 10));
       await advance(LIVE_INTERVAL_MS);
     }
     // Artwork or a join fills the socket: ordinary messages wait, live ones still go.
-    socket.bufferedAmount = BULK_BUFFERED * 2;
-    const since = socket.sent.length;
+    relay.outbox.socket.bufferedAmount = BULK_BUFFERED * 2;
+    const since = relay.sent().length;
     await advance(3_000);
-    const during = bodies(socket, since);
-    const places = during.filter((body) => body.t === 'live').flatMap((body) => body.tokens as { x: number; end?: true }[]);
+    const during = relay.sent().slice(since);
+    const places = during.flatMap(({ body }) => (body.t === 'live' ? body.tokens : []));
     expect(places.length).toBeGreaterThanOrEqual(Math.floor(3_000 / CARRY_MS) - 1);
     expect(places.every((place) => place.x === 240 && place.end === undefined)).toBe(true);
     expect(places.length).toBeLessThanOrEqual(Math.ceil(3_000 / CARRY_MS));
-    expect(during.some((body) => body.t === 'tokens' || body.t === 'delta')).toBe(false);
+    expect(during.some(({ body }) => body.t === 'tokens' || body.t === 'delta')).toBe(false);
     // The socket drains: the list lands the resting place.
-    socket.bufferedAmount = 0;
-    const drained = socket.sent.length;
+    relay.outbox.socket.bufferedAmount = 0;
+    const drained = relay.sent().length;
     await advance(500);
-    expect(bodies(socket, drained).some((body) => body.t === 'delta' || body.t === 'tokens')).toBe(true);
+    expect(relay.sent().slice(drained).some(({ body }) => body.t === 'delta' || body.t === 'tokens')).toBe(true);
+    expect(pages.of(ANA).tokens.find(({ name }) => name === 'Brannoch')?.x).toBe(240);
     // Let go of: the keep-alive stops.
     tab.store.set(cave({ brannoch: { x: 240 } }));
     await advance(LIVE_INTERVAL_MS);
-    const dropped = socket.sent.length;
+    const dropped = relay.sent().length;
     await advance(3 * CARRY_MS);
-    expect(bodies(socket, dropped).filter((body) => body.t === 'live')).toEqual([]);
+    expect(relay.sent().slice(dropped).filter(({ body }) => body.t === 'live')).toEqual([]);
     online.stop();
   });
 });

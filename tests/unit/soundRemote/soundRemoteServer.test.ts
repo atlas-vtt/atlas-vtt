@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import http from 'node:http';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { NodeHttpModule } from '@/app/soundRemote/nodeHttp';
-import { REMOTE_HEADER } from '@/app/soundRemote/remoteProtocol';
-import { SoundRemoteServer, type PairingPrompt } from '@/app/soundRemote/SoundRemoteServer';
+import type { NodeHttpModule } from '@/app/soundRemote/http/nodeHttp';
+import { REMOTE_HEADER } from '@/app/soundRemote/http/remoteHttp';
+import { SoundRemoteServer, type PairingPrompt } from '@/app/soundRemote/http/SoundRemoteServer';
+import { RemoteControl } from '@/app/soundRemote/remoteControl';
 import { fakeRemoteDirector, fakeTable, memoryRemoteSettings, remoteMood, withMusic } from '../../helpers/soundRemoteRig';
 
 interface Answer {
@@ -13,6 +14,7 @@ interface Answer {
 
 const PORT = 47_900 + Math.floor(Math.random() * 90);
 let server: SoundRemoteServer | null = null;
+let control: RemoteControl | null = null;
 
 function call(method: string, path: string, options: { body?: unknown; headers?: Record<string, string>; token?: string } = {}): Promise<Answer> {
   return new Promise((resolve, reject) => {
@@ -58,12 +60,16 @@ function start(answer: boolean | 'never' = true) {
   const prompts: Array<PairingPrompt & { client: string }> = [];
   const cancel = vi.fn();
   const table = fakeTable();
-  server = new SoundRemoteServer({
-    http: http as unknown as NodeHttpModule,
-    port: PORT,
+  control?.dispose();
+  control = new RemoteControl({
     director,
     moods: { moods: () => [tavern], mood: (id) => (id === 'tavern' ? tavern : null), onChange: () => () => undefined },
     table: table.table,
+  });
+  server = new SoundRemoteServer({
+    http: http as unknown as NodeHttpModule,
+    port: PORT,
+    control,
     settings,
     askToPair: (client) => {
       const prompt = { client, answer: answer === 'never' ? new Promise<boolean>(() => undefined) : Promise.resolve(answer), cancel };
@@ -87,6 +93,8 @@ async function paired(): Promise<{ token: string } & ReturnType<typeof start>> {
 afterEach(() => {
   server?.stop();
   server = null;
+  control?.dispose();
+  control = null;
 });
 
 describe('the sound remote over HTTP', () => {
@@ -164,5 +172,14 @@ describe('the sound remote over HTTP', () => {
     table.window.open = false;
     expect(await call('POST', '/v1/command', { body: { type: 'curtain' }, token })).toEqual({ status: 409, body: JSON.stringify({ error: 'no-player-window' }) });
     expect((await call('POST', '/v1/command', { body: { type: 'pause' }, token })).status).toBe(409);
+  });
+
+  it('rolls a dice formula on the map in front, and refuses one the dice tool would not roll with its reason', async () => {
+    const { token, table } = await paired();
+    expect((await call('POST', '/v1/command', { body: { type: 'dice', formula: '1d20+2' }, token })).status).toBe(204);
+    expect(table.map.rollFormula).toHaveBeenCalledWith('1d20+2');
+    expect(await call('POST', '/v1/command', { body: { type: 'dice', formula: '101d6' }, token })).toEqual({ status: 409, body: JSON.stringify({ error: 'bad-formula' }) });
+    expect((await call('POST', '/v1/command', { body: { type: 'dice' }, token })).status).toBe(400);
+    expect(table.map.rollFormula).toHaveBeenCalledOnce();
   });
 });

@@ -45,7 +45,7 @@ const lastRules = (sent: readonly { readonly body: GmMessage }[]): Extract<GmMes
   sent.flatMap(({ body }) => (body.t === 'rules' ? [body] : [])).at(-1);
 
 describe('the GM\'s dice row at an online table', () => {
-  it('reaches players in the scene\'s rules, in the GM\'s order, and follows the GM\'s changes within the second', async () => {
+  it('reaches players in the scene\'s rules, in the GM\'s order, and follows the GM\'s changes', async () => {
     const settings = { current: { dicePresets: [SMITE, LONGSWORD, UNPINNED], diceRow: [{ kind: 'die', sides: 20 }, { kind: 'preset', id: 'smite' }, { kind: 'preset', id: 'longsword' }] } as Partial<CollectionSettings> };
     const gm = await table(settings);
     const rules = lastRules(gm.sent);
@@ -57,14 +57,16 @@ describe('the GM\'s dice row at an online table', () => {
     // A page reads it back whole.
     expect(parseGmMessage(JSON.parse(JSON.stringify(rules)))).toEqual(rules);
 
-    // The GM pins another roll: the running table hears of it with the next look.
+    // The GM pins another roll: the collection's settings are saved, which Atlas tells of.
     settings.current = { ...settings.current, diceRow: [{ kind: 'preset', id: 'fireball' }, { kind: 'die', sides: 20 }] };
-    await gm.advance(1000);
+    gm.atlasChanged();
+    await gm.settle();
     expect(lastRules(gm.sent)?.diceRow).toEqual([{ roll: { id: 'fireball', name: 'Fireball', formula: '', look: [{ count: 8, sides: 6 }] } }, { die: 20 }]);
 
     // Back to the standard dice: the rules name no row.
     settings.current = { dicePresets: settings.current.dicePresets };
-    await gm.advance(1000);
+    gm.atlasChanged();
+    await gm.settle();
     expect(lastRules(gm.sent)).not.toHaveProperty('diceRow');
   });
 

@@ -1,16 +1,15 @@
-import type { DeltaOf, GmMessage, SharedFog, SharedFogEdge, SharedLightingScene } from '../protocol/index.ts';
+import type { SharedFog, SharedFogEdge, SharedLightingScene } from '../protocol/index.ts';
 import type { LightingSource } from './atlasLighting.ts';
 import type { SceneState, SceneStore } from './atlasView.ts';
-import { Pacer, type PacerClock } from '../marks/index.ts';
+import { Feed, type FeedPorts, type FeedScene } from './feed/Feed.ts';
+import type { FeedOut } from './feed/feedOutbox.ts';
 import { sharedLightingScene, sharedSight } from './sceneInputs.ts';
 import { SharedFogLog } from './sharedFogLog.ts';
-import { SequencedList } from './sequencedList.ts';
 import { levelObjects } from '../../levels/levelObjects';
 import type { SightPolicy } from '../../vision/tokenSightPolicy';
 import { t } from '../../i18n';
 
-export interface InputSharePorts extends PacerClock {
-  send(body: GmMessage, to?: string): void;
+export interface InputSharePorts extends FeedPorts {
   randomId(): string;
   /** The ids of the tokens the players see now, or null while the tab cannot say (no renderer, loading). */
   shownTokens(): ReadonlySet<string> | null;
@@ -28,12 +27,6 @@ export interface InputSharePorts extends PacerClock {
 
 /** The shortest time between two sends of the scene's inputs, as for the token list. */
 export const INPUT_INTERVAL_MS = 66;
-
-interface Sent {
-  readonly scene: string;
-  readonly text: string;
-  readonly body: GmMessage;
-}
 
 /** What `lighting` was last worked out from: it is worked out again only when one of these changes. */
 interface LightingKey {
@@ -53,10 +46,7 @@ interface LightingKey {
  * one, its walls, zones and senses (`lighting`) and its lighting, lights and tokens (`sight`).
  */
 export class InputShare {
-  private readonly store: SceneStore;
-  private readonly ports: InputSharePorts;
-  private scene: { readonly id: string; readonly lit: boolean } | null = null;
-  private readonly last = new Map<GmMessage['t'], Sent>();
+  readonly feed: Feed;
   private fogOf: unknown = undefined;
   /** The fog and its edge as players were sent them last, so that a change of the edge alone sends the same fog again. */
   private sharedFog: SharedFog = [];
@@ -68,26 +58,13 @@ export class InputShare {
   private readonly lightAliases = new Map<string, string>();
   /** The random ids of the shared scene's fog operations, by their keys in the store. */
   private readonly fogAliases = new Map<string, string>();
-  private readonly pacer: Pacer;
-  /** The fog and sight inputs sent: whole for a new scene, a joiner or a player who asks, else as deltas. */
-  private readonly fog: SequencedList<'fog'>;
-  private readonly sight: SequencedList<'sight'>;
 
-  constructor(store: SceneStore, ports: InputSharePorts) {
-    this.store = store;
-    this.ports = ports;
-    this.pacer = new Pacer(ports, INPUT_INTERVAL_MS, () => this.flush());
-    this.fog = new SequencedList('fog', ports);
-    this.sight = new SequencedList('sight', ports);
+  constructor(private readonly store: SceneStore, private readonly ports: InputSharePorts) {
+    // The fog and sight inputs go whole for a new scene, a joiner or a player who asks, else as deltas.
+    this.feed = new Feed(ports, { interval: INPUT_INTERVAL_MS, sequenced: ['fog', 'sight'], build: (scene, out) => this.build(scene, out), reset: () => this.reset() });
   }
 
-  /** The shared scene the inputs belong to; null sends none. */
-  setScene(scene: { readonly id: string; readonly lit: boolean } | null): void {
-    if (scene?.id === this.scene?.id) return;
-    this.scene = scene;
-    this.last.clear();
-    this.fog.reset();
-    this.sight.reset();
+  private reset(): void {
     this.fogOf = undefined;
     this.sharedFog = [];
     this.fogEdge = undefined;
@@ -95,35 +72,11 @@ export class InputShare {
     this.fogTooMuch = false;
     this.fogAliases.clear();
     this.lighting = null;
-    this.pacer.cancel();
-    this.update();
   }
 
-  /** Works the inputs out again; they go out now, or once the interval has passed. */
-  update(): void {
-    if (this.scene !== null) this.pacer.request();
-  }
-
-  /** The last inputs again, whole, to one player or to all. */
-  resend(to?: string): void {
-    for (const sent of this.last.values()) if (sent.scene === this.scene?.id) this.ports.send(sent.body, to);
-    this.fog.resend(this.scene?.id ?? null, to);
-    this.sight.resend(this.scene?.id ?? null, to);
-  }
-
-  /** A player's fog or sight inputs stopped following on: they get the last ones whole (at most once a second). */
-  resync(player: string, scene: string, of: Exclude<DeltaOf, 'tokens'>): void {
-    if (scene === this.scene?.id) (of === 'fog' ? this.fog : this.sight).resync(player, scene);
-  }
-
-  stop(): void {
-    this.setScene(null);
-  }
-
-  private flush(): void {
-    const scene = this.scene;
+  private build(scene: FeedScene, out: FeedOut): void {
     const state = this.store.getState();
-    if (scene === null || !state.mapLoaded || state.isMapLoading) return;
+    if (!state.mapLoaded || state.isMapLoading) return;
     const fog = levelObjects(state).fog;
     const edge = this.ports.fogEdge?.();
     const edgeChanged = edge?.style !== this.fogEdge?.style || edge?.width !== this.fogEdge?.width;
@@ -134,7 +87,7 @@ export class InputShare {
         this.tellFogTooMuch(this.fogLog.tooMuch);
       }
       this.fogEdge = edge;
-      this.fog.publish(scene.id, { fog: this.sharedFog, ...(edge !== undefined && { edge: { style: edge.style, width: edge.width } }) });
+      out.sequenced('fog', { fog: this.sharedFog, ...(edge !== undefined && { edge: { style: edge.style, width: edge.width } }) });
     }
     if (!scene.lit) return;
     const source = this.ports.lightingSource();
@@ -144,11 +97,11 @@ export class InputShare {
     const lighting = this.lightingScene(state, source);
     // The walls may run to megabytes: they are compared as text only when worked out anew.
     if (lighting !== this.lighting?.sent) {
-      this.publish({ t: 'lighting', scene: scene.id, ...lighting });
+      out.send({ t: 'lighting', scene: scene.id, ...lighting });
       if (this.lighting !== null) this.lighting.sent = lighting;
     }
     const policy = this.ports.sightPolicy?.();
-    this.sight.publish(scene.id, sharedSight({
+    out.sequenced('sight', sharedSight({
       state, rules, shown, tokenAlias: (id) => this.ports.tokenAlias(id), lightAlias: (id) => this.lightAlias(id), measurement: source.measurement(), ...(policy !== undefined && { policy }),
     }));
   }
@@ -162,17 +115,6 @@ export class InputShare {
     const scene = sharedLightingScene(state, rules, measurement);
     this.lighting = { walls: levelObjects(state).walls, zones: levelObjects(state).lightZones, grid: state.grid, rules, unitDistance: measurement.unitDistance, scene, sent: null };
     return scene;
-  }
-
-  /** Sends a message unless it says what the last of its kind said. */
-  private publish(body: GmMessage): void {
-    const scene = this.scene;
-    if (scene === null) return;
-    const text = JSON.stringify(body);
-    const last = this.last.get(body.t);
-    if (last?.scene === scene.id && last.text === text) return;
-    this.last.set(body.t, { scene: scene.id, text, body });
-    this.ports.send(body);
   }
 
   /** Players see the map covered while its fog is more than they can be sent: the GM is told when that begins, once until it has ended. */

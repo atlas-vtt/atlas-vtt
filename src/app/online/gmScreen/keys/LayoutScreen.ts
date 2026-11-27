@@ -1,0 +1,123 @@
+import type { Timers } from '../../gm/companionTimers.ts';
+import { parseLayoutEdit, shownLayout, type DeviceMessage, type GmScreenDevice, type GmScreenLayout } from '../../protocol/index.ts';
+import type { GmScreen, GmScreenOutlet } from '../screens.ts';
+import { applyLayoutEdit, type EditResult, type KeyLibrary } from './layoutEdits.ts';
+
+/**
+ * Changes to the grid that come faster than this go to devices as one grid. A grid is up to hundreds of times
+ * the keys' state (`KEYS_GAP_MS`), and every frame into the relay is billed, once per device.
+ */
+export const LAYOUT_GAP_MS = 500;
+
+/** Where the GM's grids are kept: one per kind of device, the default until the GM changes it. */
+export interface LayoutStore {
+  layout(device: GmScreenDevice): GmScreenLayout;
+  /** Keeps a changed grid: `layout` reads it at once, the settings file may get it later. */
+  save(device: GmScreenDevice, layout: GmScreenLayout): void;
+  /** Writes every grid that still waits; true where one did. */
+  flush(): boolean;
+  /** Calls `listener` whenever the grids may have changed, here or synced from another computer; returns what stops that. */
+  onChange(listener: () => void): () => void;
+}
+
+export interface LayoutScreenDeps {
+  readonly store: LayoutStore;
+  /** What a key may name now, read for every change. */
+  library(): KeyLibrary;
+  readonly outlet: GmScreenOutlet;
+  readonly timers: Timers;
+}
+
+/**
+ * The Keys screen's grid on Atlas's side: a device says which kind it is, once while its channel is open, and
+ * gets that kind's grid; its changes are read, applied to the stored grid one after the other and answered at
+ * once, and every connected device of that kind gets the grid again after the answer, a burst of changes as
+ * one grid (`LAYOUT_GAP_MS`). A device that never says its kind (a page that shows the long list) is sent nothing.
+ */
+export class LayoutScreen implements GmScreen {
+  readonly takes = ['layout-ask', 'layout-edit'] as const;
+  private readonly kinds = new Map<string, GmScreenDevice>();
+  /** The grid each device was last sent, as JSON: a device is sent only a grid that differs. */
+  private readonly shown = new Map<string, string>();
+  private stopWatching: (() => void) | null = null;
+  private timer: number | null = null;
+  private sentAt = Number.NEGATIVE_INFINITY;
+
+  constructor(private readonly deps: LayoutScreenDeps) {}
+
+  opened(device: string): void {
+    this.shown.delete(device);
+    this.send(device);
+  }
+
+  message(device: string, message: DeviceMessage): void {
+    if (message.t === 'layout-ask') {
+      // A device is one kind while its channel is open, so a phone never changes the tablet's grid and
+      // switching kinds never buys a grid: an ask for another kind than the first is not answered.
+      const declared = this.kinds.get(device);
+      if (declared !== undefined && declared !== message.device) return;
+      this.kinds.set(device, message.device);
+      this.stopWatching ??= this.deps.store.onChange(() => this.schedule());
+      this.send(device);
+      return;
+    }
+    if (message.t !== 'layout-edit') return;
+    const kind = this.kinds.get(device);
+    const result = kind === undefined ? { refused: 'no-layout' as const } : this.apply(kind, message.edit);
+    this.deps.outlet.send({ t: 'layout-answer', id: message.id, refused: 'refused' in result ? result.refused : null }, device);
+    if (kind === undefined || 'refused' in result) return;
+    this.deps.store.save(kind, result.layout);
+    this.schedule();
+  }
+
+  closed(device: string): void {
+    this.kinds.delete(device);
+    this.shown.delete(device);
+    if (this.kinds.size > 0) return;
+    this.dispose();
+    // Nobody is left to arrange keys (the GM stopped the room, or the devices went): what they changed is written now.
+    this.deps.store.flush();
+  }
+
+  /** Stops watching the store and drops a grid waiting to go: no device is left to show it. */
+  dispose(): void {
+    if (this.timer !== null) this.deps.timers.clearTimer(this.timer);
+    this.timer = null;
+    this.stopWatching?.();
+    this.stopWatching = null;
+  }
+
+  private apply(kind: GmScreenDevice, raw: Readonly<Record<string, unknown>>): EditResult {
+    const edit = parseLayoutEdit(raw, kind);
+    if (edit === null) return { refused: 'malformed' };
+    return applyLayoutEdit(this.deps.store.layout(kind), edit, kind, this.deps.library());
+  }
+
+  /** Never at once: a burst of changes goes as one grid, at most every `LAYOUT_GAP_MS`. */
+  private schedule(): void {
+    if (this.timer !== null) return;
+    const wait = Math.max(0, this.sentAt + LAYOUT_GAP_MS - this.deps.timers.now());
+    this.timer = this.deps.timers.setTimer(() => {
+      this.timer = null;
+      this.refresh();
+    }, wait);
+  }
+
+  private refresh(): void {
+    let sent = false;
+    for (const device of this.deps.outlet.devices) sent = this.send(device) || sent;
+    if (sent) this.sentAt = this.deps.timers.now();
+  }
+
+  /** Sends a device its kind's grid where it holds another; true where it did. */
+  private send(device: string): boolean {
+    const kind = this.kinds.get(device);
+    if (kind === undefined) return false;
+    const layout = shownLayout(this.deps.store.layout(kind));
+    const json = JSON.stringify(layout);
+    if (this.shown.get(device) === json) return false;
+    this.shown.set(device, json);
+    this.deps.outlet.send({ t: 'layout', device: kind, layout }, device);
+    return true;
+  }
+}

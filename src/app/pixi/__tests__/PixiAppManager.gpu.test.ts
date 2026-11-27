@@ -1,5 +1,7 @@
-import { Ticker, isWebGLSupported, type WebGLRenderer } from 'pixi.js';
+import { Sprite, Texture, Ticker, isWebGLSupported, type WebGLRenderer } from 'pixi.js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { copiedPixel } from '../lighting/engine/__tests__/gpuTestUtils';
+import { resetContext } from '../lighting/__tests__/rendererHarness';
 import { PixiAppManager } from '../PixiAppManager';
 
 const told = vi.hoisted(() => vi.fn());
@@ -59,6 +61,22 @@ describe('PixiAppManager.init with real renderers', () => {
     expect(renderer.backBuffer.useBackBuffer).toBe(true);
     expect((renderer.backBuffer as unknown as { _antialias: boolean })._antialias).toBe(true);
     expectOpenMap('webgl');
+  });
+
+  it('draws the map again by itself when the graphics process died while the view drew it for the first time', async () => {
+    await manager.init(container);
+    // Only the renders below draw.
+    manager.app.ticker.stop();
+    const renderer = manager.app.renderer as WebGLRenderer;
+    const map = new Sprite({ texture: Texture.WHITE, tint: 0x3366cc, width: 320, height: 240 });
+    manager.getViewport()!.addChild(map);
+
+    // A render in the moments the context dies links the map's programs on it, as when Obsidian's
+    // graphics process is killed while a lit map opens.
+    await resetContext(renderer, () => manager.app.render());
+    manager.app.render();
+
+    expect(copiedPixel(manager.getCanvasElement(), 160, 120)).toEqual([0x33, 0x66, 0xcc]);
   });
 
   it('refuses to start without WebGL, tells the user and leaves no renderer behind', async () => {

@@ -60,6 +60,27 @@ export function shaderLinkFailures({ gl, links }: ShaderLinks): ShaderFailure[] 
   return failures;
 }
 
+/** A program every WebGL context links, in GLSL ES 1.00 so WebGL 1 takes it too. */
+const CONTROL_VERTEX = 'attribute vec2 aPosition;\nvoid main() { gl_Position = vec4(aPosition, 0.0, 1.0); }';
+const CONTROL_FRAGMENT = 'precision mediump float;\nvoid main() { gl_FragColor = vec4(1.0); }';
+
+/**
+ * Whether the context still links a program every context links. Chromium says a context whose
+ * graphics process died is lost only from a later task on; until then every link fails with empty
+ * logs and no framebuffer is complete, which says nothing about the device.
+ */
+export function contextAnswers(gl: Gl): boolean {
+  const vertex = compile(gl, gl.VERTEX_SHADER, CONTROL_VERTEX);
+  const fragment = compile(gl, gl.FRAGMENT_SHADER, CONTROL_FRAGMENT);
+  const program = vertex && fragment ? gl.createProgram() : null;
+  if (program) {
+    gl.attachShader(program, vertex!);
+    gl.attachShader(program, fragment!);
+    gl.linkProgram(program);
+  }
+  return linkLog(gl, program, vertex, fragment) === null;
+}
+
 /** One line per failed shader, for the console. */
 export function describeShaderFailures(failures: readonly ShaderFailure[]): string {
   return failures.map(({ name, log }) => `${name}: ${log}`).join('\n');

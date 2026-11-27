@@ -20,6 +20,7 @@ import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { roofPieces } from '../../src/app/levels/roofs';
 import type { RoofImageRead } from '../../src/app/pixi/lighting/levels/Roof';
 import { ViewRoofs } from '../../src/app/pixi/roofs/ViewRoofs';
+import { viewAudience } from './viewAudience';
 
 /** The scene's two floors: the view looks at the upper one and down into the ground floor. */
 export const LEVELS: SceneLevel[] = [
@@ -263,7 +264,7 @@ export async function openLevelsView({ map, pane, paneHeight = pane, resolution 
     ...(withRoofs !== 'vault' && { host: { createMapImage: () => fakeMapImage(maps, Promise.resolve(), 'roof-image'), readRoof } }), fadeMs: 0,
   }) : null;
   const controller = new LightingController({
-    viewport, app, store, eventBus: new EventEmitter(), obsApp, viewId: 'levels-view',
+    viewport, app, store, eventBus: new EventEmitter(), obsApp, viewId: 'levels-view', audience: viewAudience(store).audience,
     bounds, albedo: () => null, below: host, roofFadeMs: 0, ...(roofs && { roofs }),
     ...(quality && { quality: { current: () => quality, onChange: () => () => undefined } }),
     ...(qualitySource && { quality: qualitySource }),
@@ -271,9 +272,7 @@ export async function openLevelsView({ map, pane, paneHeight = pane, resolution 
   made.controller = controller;
   const ignore = (): void => undefined;
   controller.wire({
-    setLightHandlers: ignore, setWallPointerDownHandler: ignore, setWallContextMenuHandler: ignore, setWallPointerMoveHandler: ignore,
-    setWallPointerUpHandler: ignore, setWallDoubleClickHandler: ignore, setWallCursorProvider: ignore, setDoorMenuHandlers: ignore,
-    setDoorClickHandler: ignore, setPlayerSightProvider: ignore, setGlideWay: ignore, setArtFloors: ignore, refreshPlayerSight: ignore, getSensedOutlineLayer: () => ({ visible: false }),
+    setPlayerSightProvider: ignore, setGlideWay: ignore, setArtFloors: ignore, getSensedOutlineLayer: () => ({ visible: false }),
   } as unknown as TokenRenderer);
   let time = 1000;
   const renderer = app.renderer as WebGLRenderer;

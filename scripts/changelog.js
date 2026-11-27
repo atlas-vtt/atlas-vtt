@@ -85,6 +85,7 @@ function formatPrerelease(version, pendingNotes) {
   return `# Atlas VTT ${version} — Beta build\n\nPre-release build for testing ahead of ${base}. Install it through BRAT; it is not published to the Obsidian community directory.\n\n${notes}\n`;
 }
 
+/** Also recreates an empty `changelog/Unreleased.md` once a release has moved its notes out: `AGENTS.md` names that file. */
 function generateChangelog(root, { check = false } = {}) {
   const manifest = JSON.parse(read(root, 'manifest.json'));
   const pkg = JSON.parse(read(root, 'package.json'));
@@ -97,6 +98,8 @@ function generateChangelog(root, { check = false } = {}) {
     'CHANGELOG.md': '# Atlas VTT changelog\n\n<!-- Generated from changelog/*.md. Run npm run changelog:generate. -->\n\n' +
       releases.map(release => `## ${release.version} — ${release.title}\n\n${release.date}\n\n${nestHeadings(release.markdown, 3)}\n`).join('\n'),
   };
+  const pendingFile = path.join(root, PENDING_FILE);
+  if (!check && !fs.existsSync(pendingFile)) fs.writeFileSync(pendingFile, '');
   for (const [file, content] of Object.entries(outputs)) {
     const destination = path.join(root, file);
     const existing = fs.existsSync(destination) ? read(root, file) : null;

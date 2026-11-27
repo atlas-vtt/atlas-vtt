@@ -21,6 +21,7 @@
 @use './native-checkboxes';
 @use './button-press';
 @use './notices';
+@use './host-ink';
 @use './coarse-pointer';
 // At the root, outside the plugin's namespace: its scope includes the floating layer under <body>.
 @use '../src/app/packages/components/asset-manager/open-window';
@@ -144,6 +145,11 @@ body.theme-light {
     @import '../src/app/react/components/zoom-cluster.scss';
   @import '../src/app/react/components/undo-redo-controls.scss';
   @import '../src/app/react/components/dm-screen.scss';
+  @import '../src/app/online/gmScreen/ui/gm-screen.scss';
+  @import '../src/app/online/gmScreen/ui/gm-screen-link.scss';
+  @import '../src/app/online/gmScreen/ui/gm-screen-devices.scss';
+  @import '../src/app/online/gmScreen/ui/gm-screen-prompts.scss';
+  @import '../src/app/online/gm/account/sign-in.scss';
   @import '../src/app/react/components/linked-note-panel.scss';
   @import '../src/app/react/components/dm-screen/sound/sound-pane.scss';
   @import '../src/app/react/components/dm-screen/sound/sound-moods.scss';

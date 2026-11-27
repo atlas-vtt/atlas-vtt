@@ -4,13 +4,13 @@ import type { SceneState } from '../../../../src/app/online/gm/atlasView.ts';
 import { STROKE_KEPT_MS } from '../../../../src/app/online/gm/gmStrokes.ts';
 import { MAP_LAYER_INTERVAL_MS } from '../../../../src/app/online/gm/MapLayerShare.ts';
 import type { SeatSource } from '../../../../src/app/online/gm/seatSource.ts';
-import { TOKEN_POLL_MS } from '../../../../src/app/online/gm/TokenShare.ts';
 import { GM_LEVEL, MARKS_INTERVAL_MS, parseGmMessage, PLAYERS_DRAW_GM_LEVEL, type DrawLook, type DrawMine, type GmMessage, type MarksMessage } from '../../../../src/app/online/protocol/index.ts';
 import type { DrawingStroke } from '../../../../src/app/types';
 import type { FogOperation } from '../../../../src/app/types/fogTypes';
 import type { SceneLevel } from '../../../../src/app/types/sceneLevelTypes';
 import { fakeLayers } from './fakeAtlasTab.ts';
 import { GENERIC_SOURCE, PLAYER_SETTINGS } from './gmLighting.ts';
+import { toAll } from './playerPages.ts';
 import { sceneState, shareHarness, token, type Sent, type ShareHarness } from './shareHarness.ts';
 
 const ANA = 'a'.repeat(20);
@@ -24,7 +24,7 @@ const DRAWING = { ...PLAYER_SETTINGS, playersDraw: true };
 const ofKind = <T extends GmMessage['t']>(sent: readonly Sent[], t: T): (Sent & { body: Extract<GmMessage, { t: T }> })[] =>
   sent.filter((entry): entry is Sent & { body: Extract<GmMessage, { t: T }> } => entry.body.t === t);
 const sceneId = (table: ShareHarness): string => ofKind(table.sent, 'scene').at(-1)?.body.scene?.id ?? '';
-const mineOf = (table: ShareHarness, player: string): DrawMine | undefined => ofKind(table.sent, 'draw-mine').filter(({ to }) => to === player).at(-1)?.body;
+const mineOf = (table: ShareHarness, player: string): DrawMine | undefined => table.pages.of(player).last('draw-mine');
 const lastMarks = (table: ShareHarness): MarksMessage | undefined => ofKind(table.sent, 'marks').at(-1)?.body;
 const drawn = (table: ShareHarness): DrawingStroke[] => Object.values(table.state().objects.drawings);
 
@@ -35,11 +35,12 @@ function seats(online: readonly string[] = [ANA, BEN]): SeatSource {
 /** A table whose shared scene has a grid and nothing drawn; players may draw where `settings` say so. */
 async function started(settings = DRAWING, state = sceneState({ grid: GRID }), seated = seats()): Promise<ShareHarness> {
   const table = shareHarness(state, IMAGES, seated);
+  table.pages.join(...seated.onlinePlayers());
   table.settings = settings;
   table.layers = fakeLayers({ state: () => table.state(), source: GENERIC_SOURCE, bounds: { width: 2000, height: 2000 }, grid: () => null, collections: null });
   table.share.start();
   await table.set(state);
-  await table.advance(TOKEN_POLL_MS);
+  await table.advance(1000);
   return table;
 }
 
@@ -73,7 +74,7 @@ describe('whether players may draw', () => {
   it('follows the GM\'s switch while the table runs: the rules name the cell sizes are shares of, and stop naming it', async () => {
     const table = await started(PLAYER_SETTINGS);
     table.settings = DRAWING;
-    await table.advance(TOKEN_POLL_MS);
+    await table.advance(1000);
     expect(ofKind(table.sent, 'rules').at(-1)?.body.draw).toEqual({ cell: CELL });
     expect(mineOf(table, ANA)).toMatchObject({ drawings: [], texts: [], seen: 0 });
     await draws(table, ANA, [100, 100, 200, 200]);
@@ -84,7 +85,7 @@ describe('whether players may draw', () => {
     await draws(table, ANA, [100, 100, 200, 200]);
     expect(drawn(table)).toHaveLength(1);
     expect(ofKind(table.sent, 'draw-refused').at(-1)?.body.reason).toBe('off');
-    await table.advance(TOKEN_POLL_MS);
+    await table.advance(1000);
     expect(ofKind(table.sent, 'rules').at(-1)?.body).not.toHaveProperty('draw');
     // What was drawn stays on the map: it is the scene's.
     expect(drawn(table)[0]?.by).toBe(ANA);
@@ -107,7 +108,8 @@ describe('what each player is told is theirs', () => {
     // Each is told after the drawings their places count in, and to nobody else.
     const order = table.sent.map(({ body }) => body.t);
     expect(order.lastIndexOf('draw-mine')).toBeGreaterThan(order.lastIndexOf('annotations'));
-    expect(ofKind(table.sent, 'draw-mine').every(({ to }) => to === ANA || to === BEN)).toBe(true);
+    expect(ofKind(table.sent, 'draw-mine').length).toBeGreaterThan(0);
+    expect(toAll(ofKind(table.sent, 'draw-mine'))).toEqual([]);
     // The drawings themselves say nothing of who made them.
     expect(JSON.stringify(annotations.body)).not.toContain(ANA);
     expect(JSON.stringify(annotations.body)).not.toMatch(/"by"|"id"/);
@@ -116,11 +118,11 @@ describe('what each player is told is theirs', () => {
   it('tells a player who joins what is theirs with the drawings, and everyone again when the GM draws', async () => {
     const table = await started();
     await draws(table, ANA, [100, 100, 200, 200]);
-    table.sent.length = 0;
+    const joined = table.pages.mark();
     table.share.resend(ANA);
-    const kinds = table.sent.filter(({ to }) => to === ANA).map(({ body }) => body.t);
+    const kinds = (table.pages.since(joined)[ANA] ?? []).map(({ t }) => t);
     expect(kinds.indexOf('draw-mine')).toBeGreaterThan(kinds.indexOf('annotations'));
-    expect(ofKind(table.sent, 'draw-mine').map(({ to }) => to)).toEqual([ANA]);
+    expect(table.pages.since(joined, 'draw-mine')).toEqual({ [ANA]: [mineOf(table, ANA)] });
 
     const before = mineOf(table, ANA)!.rev;
     const gms: DrawingStroke = { id: 'gm', kind: 'drawing', timestamp: 1, type: 'pen', points: [{ x: 5, y: 5 }, { x: 9, y: 9 }], color: '#ffffff', width: 3, opacity: 1, order: -5 };
@@ -233,15 +235,15 @@ describe('a player on another floor than the GM looks at', () => {
     const owners: Readonly<Record<string, string>> = { ana: ANA, ben: BEN };
     const seated: SeatSource = { onlinePlayers: () => [ANA, BEN], ownerOf: (id) => owners[id], claimOf: (_map, id) => (owners[id] === undefined ? null : 'taken') };
     const table = shareHarness({ ...base, objects: { ...base.objects, tokens } }, IMAGES, seated);
+    table.pages.join(ANA, BEN);
     table.settings = DRAWING;
     table.presented = 'ground';
     table.layers = fakeLayers({ state: () => table.state(), source: GENERIC_SOURCE, bounds: { width: 2000, height: 2000 }, grid: () => null, collections: null });
     table.share.start();
     await table.set(table.state());
-    await table.advance(TOKEN_POLL_MS);
-    const scenes = ofKind(table.sent, 'scene');
-    const ground = scenes.filter(({ to }) => to === ANA || to === undefined).at(-1)?.body.scene?.id ?? '';
-    const upper = scenes.filter(({ to }) => to === BEN).at(-1)?.body.scene?.id ?? '';
+    await table.advance(1000);
+    const ground = table.pages.of(ANA).scene?.id ?? '';
+    const upper = table.pages.of(BEN).scene?.id ?? '';
     expect(upper).not.toBe('');
     expect(upper).not.toBe(ground);
 
@@ -250,9 +252,10 @@ describe('a player on another floor than the GM looks at', () => {
     table.share.receive(BEN, { t: 'draw-add', scene: ground, n: next(), mode: 'pen', pts: [50, 50, 60, 60], look: LOOK });
     await table.advance(MAP_LAYER_INTERVAL_MS);
     expect(drawn(table)).toEqual([expect.objectContaining({ by: BEN, level: 'upper', points: [{ x: 10, y: 10 }, { x: 20, y: 20 }] })]);
-    expect(ofKind(table.sent, 'draw-refused').map(({ body, to }) => [to, body.reason])).toEqual([[ANA, 'scene'], [BEN, 'scene']]);
+    expect(table.pages.of(ANA).all('draw-refused').map(({ reason }) => reason)).toEqual(['scene']);
+    expect(table.pages.of(BEN).all('draw-refused').map(({ reason }) => reason)).toEqual(['scene']);
     // Ben is told his own on his floor's message; Ana's floor has none of it.
-    expect(ofKind(table.sent, 'draw-mine').filter(({ to }) => to === BEN).at(-1)?.body).toMatchObject({ scene: upper, drawings: [{ at: 0, id: '1' }] });
+    expect(mineOf(table, BEN)).toMatchObject({ scene: upper, drawings: [{ at: 0, id: '1' }] });
     const anas = ofKind(table.sent, 'annotations').filter(({ body }) => body.scene === ground).at(-1);
     expect(anas?.body.drawings).toEqual([]);
   });

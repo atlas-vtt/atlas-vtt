@@ -11,6 +11,7 @@ import { PlayerSightTokens } from '../../src/app/pixi/token-renderer/PlayerSight
 import type { TokenGroupContainer } from '../../src/app/pixi/token-renderer/types';
 import type { FogRectangleFill } from '../../src/app/types/fogTypes';
 import { fogRectangle } from '../helpers/fogOperations';
+import { viewAudience } from '../helpers/viewAudience';
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -34,11 +35,11 @@ it('names rolls from the fog the renderer already holds, working out nothing aga
   const builds = vi.spyOn(coverage, 'fogCoverage');
   // A viewport without a ticker of its own, as the areas' layer reads it when it goes.
   const viewport = Object.assign(new Container(), { options: {} });
-  const renderer = new FogOfWarRenderer(viewport as never, { canvas: createEl('canvas') } as never, new EventEmitter() as never, store as never, () => null);
+  const renderer = new FogOfWarRenderer(viewport as never, { canvas: createEl('canvas') } as never, new EventEmitter() as never, store as never, () => null, viewAudience(store as never).audience);
   try {
     const sprites = Object.fromEntries(Object.values(tokens).map((t) => [t.id, { x: t.x, y: t.y } as TokenGroupContainer]));
-    const sight = new PlayerSightTokens({ tokens: () => tokens as never, sprites: () => sprites, held: () => new Set() });
-    sight.setFogProvider(() => renderer.getCommittedCoverage(), () => false);
+    const sight = new PlayerSightTokens({ tokens: () => tokens as never, sprites: () => sprites, held: () => new Set(), showsPlayers: () => false });
+    sight.setFogProvider(() => renderer.getCommittedCoverage());
     const roll = (): string[] => [...shownRollTokens(store.getState() as unknown as RollSceneState, MAP, sprites, () => sight.framePerception()).keys()];
 
     expect(roll()).toEqual(['wolf']);

@@ -24,6 +24,18 @@ describe('the element under the pointer', () => {
     hovered.dispose();
   });
 
+  it('is none once it left the document, as an image of a note closed under a resting pointer does', () => {
+    const hovered = new HoveredElement(workspace);
+    hovered.start();
+    const note = document.body.appendChild(document.createElement('div'));
+    const img = note.appendChild(document.createElement('img'));
+    img.dispatchEvent(new Event('pointerover', { bubbles: true }));
+    expect(hovered.element()).toBe(img);
+    note.remove();
+    expect(hovered.element()).toBeNull();
+    hovered.dispose();
+  });
+
   it('listens only between start and dispose', () => {
     const hovered = new HoveredElement(workspace);
     const img = document.body.appendChild(document.createElement('img'));

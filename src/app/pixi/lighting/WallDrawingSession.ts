@@ -27,7 +27,7 @@ export class WallDrawingSession {
 
   add(wall: WallInput): string {
     if (this.drawing && this.wallIds.length === 0) beginHistoryTransaction(this.store);
-    const id = this.store.getState().addWall(wall);
+    const id = this.store.getState().addObject('walls', wall);
     if (this.drawing) this.wallIds.push(id);
     return id;
   }
@@ -36,7 +36,7 @@ export class WallDrawingSession {
   removeLast(): void {
     const id = this.wallIds.pop();
     if (id === undefined) return;
-    this.store.getState().deleteWalls([id]);
+    this.store.getState().removeObjects([id]);
     if (this.wallIds.length === 0) abandonHistoryTransaction(this.store);
   }
 
@@ -52,7 +52,7 @@ export class WallDrawingSession {
     if (!this.drawing) return;
     this.drawing = false;
     if (this.wallIds.length === 0) return;
-    this.store.getState().deleteWalls(this.wallIds);
+    this.store.getState().removeObjects(this.wallIds);
     this.wallIds = [];
     discardHistoryTransaction(this.store);
   }

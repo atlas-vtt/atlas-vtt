@@ -1,7 +1,7 @@
 import type { ButtonComponent } from 'obsidian';
 import { getLocale, t } from '../i18n';
-import { REMOTE_PORT } from '../soundRemote/remoteProtocol';
-import type { RemoteSettingsStore } from '../soundRemote/remoteSettings';
+import { REMOTE_PORT } from '../soundRemote/http/remoteHttp';
+import type { RemoteSettingsStore } from '../soundRemote/http/remoteSettings';
 import { showNotice } from '../ui/notice';
 import { ATLAS_STREAM_DECK_URL } from '../support/communityLinks';
 import type { AtlasSettingSection } from './settingSections';

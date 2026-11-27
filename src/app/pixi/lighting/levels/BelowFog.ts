@@ -55,8 +55,17 @@ export class BelowFog {
     destroyTree(this.view);
   }
 
+  /** The canvas came back blank after the GPU process died, as the view's own fog's does (`FogPicture`): the fog is drawn again. */
+  private readonly drawAgain = (): void => {
+    if (!this.compositor || !this.texture || !this.operations) return;
+    this.compositor.composite(this.operations);
+    this.texture.source.update();
+    this.onChange();
+  };
+
   /** Lets go of the canvas and its texture. */
   private release(): void {
+    this.compositor?.getCanvas().removeEventListener('contextrestored', this.drawAgain);
     this.view.texture = Texture.EMPTY;
     this.texture?.destroy(true);
     this.compositor?.destroy();
@@ -71,6 +80,7 @@ export class BelowFog {
     if (current && current.width === width && current.height === height) return false;
     this.release();
     this.compositor = new FogCanvasCompositor(bounds, FOG_SCALE, this.cache, () => this.mapKey, this.canvasSide);
+    this.compositor.getCanvas().addEventListener('contextrestored', this.drawAgain);
     this.texture = Texture.from(this.compositor.getCanvas());
     this.view.texture = this.texture;
     this.view.position.set(0, 0);

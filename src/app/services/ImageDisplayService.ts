@@ -12,6 +12,7 @@ import { imageHeader } from '../imageProcessing/imageDimensions';
 import { showNotice } from '../ui/notice';
 import { statblockImageAt } from './statblockImageTarget';
 import { playerWindowStore } from '../stores/playerWindowStore';
+import { imageDisplayChanged } from './imageDisplayChanges';
 import { isResourceUrl, resourceUrlToFilePath, resourceUrlToVaultPath } from '../utils/pathUtils';
 import { followEveryDocument } from '../platform/atlasDocuments';
 import { canCopyItems } from '../platform/clipboardWrites';
@@ -383,6 +384,7 @@ export class ImageDisplayService {
     // A replaced image leaves above the new one, so the scrim stays dark while they crossfade
     previous?.container.before(this.imageContainer);
     playerWindowStore.setState({ imageShown: true });
+    imageDisplayChanged();
     const entrance = playImageEnter(this.imageContainer, this.imageStage, this.currentImage, previous !== null);
     // The previous image stays until the new one can paint, so the crossfade never shows an empty scrim
     if (previous) void this.leave(previous, entrance);
@@ -509,6 +511,7 @@ export class ImageDisplayService {
     this.imageStage = null;
     this.currentImage = null;
     playerWindowStore.setState({ imageShown: false });
+    imageDisplayChanged();
     return display;
   }
 

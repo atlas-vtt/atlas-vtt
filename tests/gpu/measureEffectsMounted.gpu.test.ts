@@ -62,8 +62,8 @@ describe('effects and lights of kept areas, mounted', () => {
     cleanup.push(() => { measure.destroy(); view.dispose(); });
     const state = store.getState();
     state.setSceneLighting({ enabled: true, ambient: options.ambient ?? 0 });
-    state.addWall({ type: 'solid', p1: { x: WALL_X, y: -64 }, p2: { x: WALL_X, y: MAP + 64 } });
-    if (options.lamp) state.addLight({ x: 96, y: 256, emission: LAMP });
+    state.addObject('walls', { type: 'solid', p1: { x: WALL_X, y: -64 }, p2: { x: WALL_X, y: MAP + 64 } });
+    if (options.lamp) state.addObject('lights', { x: 96, y: 256, emission: LAMP });
     displayFrames(30);
     const read = (layers: Parameters<typeof captureWithLayerVisibility>[0]): Uint8ClampedArray => {
       const target = RenderTexture.create({ width: MAP, height: MAP });
@@ -110,7 +110,7 @@ describe('effects and lights of kept areas, mounted', () => {
     await measureMotionDone();
     view.displayFrames(4);
     const washed = players();
-    view.store.getState().updateMeasure(id, { effect: 'fire' });
+    view.store.getState().patchObject('measures', id, { effect: 'fire' });
     view.displayFrames(4);
     const fire = players();
     // The lamp's room shows the fire in the wash's place.
@@ -120,11 +120,11 @@ describe('effects and lights of kept areas, mounted', () => {
     // The room behind the wall is dark for the players: fire or wash, they see neither there.
     for (let y = 0; y < MAP; y += 4) for (let x = WALL_X + 6; x < MAP; x += 4) expect(differs(fire, washed, x, y), `${x},${y}`).toBe(false);
     // Stopping at walls, the effect ends at the wall for the GM too: lit by a lamp past the wall, nothing of it shows there.
-    view.store.getState().addLight({ x: 416, y: 256, emission: LAMP });
-    view.store.getState().updateMeasure(id, { walls: undefined, effect: undefined });
+    view.store.getState().addObject('lights', { x: 416, y: 256, emission: LAMP });
+    view.store.getState().patchObject('measures', id, { walls: undefined, effect: undefined });
     view.displayFrames(30);
     const cutWash = players();
-    view.store.getState().updateMeasure(id, { effect: 'fire' });
+    view.store.getState().patchObject('measures', id, { effect: 'fire' });
     view.displayFrames(4);
     const cutFire = players();
     const ring = Array.from({ length: 64 }, (_, i) => ({ x: 224 + 128 * Math.cos((i / 64) * 2 * Math.PI), y: 256 + 128 * Math.sin((i / 64) * 2 * Math.PI) }));
@@ -179,7 +179,7 @@ describe('effects and lights of kept areas, mounted', () => {
     place(96);
     store.getState().setTokenAuras([{ tokenId: 'hero', aura: 5, points: [{ x: 96, y: 224 }, { x: 192, y: 224 }] }], { color: '#e0ac00' });
     const [aura] = Object.keys(store.getState().objects.measures ?? {});
-    store.getState().updateMeasure(aura!, { effect: 'radiance', light: startingLight({ shape: 'circle', points: [{ x: 96, y: 224 }, { x: 192, y: 224 }] }, 'radiance', SCALE, '#e0ac00') });
+    store.getState().patchObject('measures', aura!, { effect: 'radiance', light: startingLight({ shape: 'circle', points: [{ x: 96, y: 224 }, { x: 192, y: 224 }] }, 'radiance', SCALE, '#e0ac00') });
     displayFrames(30);
     const before = players();
     const drawn = piece();
@@ -210,25 +210,25 @@ describe('effects and lights of kept areas, mounted', () => {
     displayFrames(4);
     expect(measure.effects.playing).toBe(false);
     const plain = managed();
-    store.getState().updateMeasure(first, { effect: 'fire' });
-    store.getState().updateMeasure(second, { effect: 'frost' });
+    store.getState().patchObject('measures', first, { effect: 'fire' });
+    store.getState().patchObject('measures', second, { effect: 'frost' });
     displayFrames(4);
     expect(measure.effects.playing).toBe(true);
     expect(managed()).toBe(plain + 2);
     // Another look, colour and size use the field they have or build one in its place.
-    store.getState().updateMeasure(first, { effect: 'shadow', color: '#7852ee', points: [{ x: 224, y: 256 }, { x: 288, y: 256 }] });
+    store.getState().patchObject('measures', first, { effect: 'shadow', color: '#7852ee', points: [{ x: 224, y: 256 }, { x: 288, y: 256 }] });
     displayFrames(4);
     expect(managed()).toBe(plain + 2);
     // A look taken away gives its field back, and a measurement deleted with its look leaves what one deleted without leaves.
-    store.getState().updateMeasure(first, { effect: undefined });
+    store.getState().patchObject('measures', first, { effect: undefined });
     displayFrames(4);
     expect(managed()).toBe(plain + 1);
     expect(measure.effects.playing).toBe(true);
-    store.getState().updateMeasure(second, { effect: undefined });
+    store.getState().patchObject('measures', second, { effect: undefined });
     displayFrames(4);
     expect(managed()).toBe(plain);
     expect(measure.effects.playing).toBe(false);
-    store.getState().deleteMeasure(second);
+    store.getState().removeObjects([second]);
     await measureMotionDone();
     displayFrames(4);
     const withOne = managed();
@@ -236,7 +236,7 @@ describe('effects and lights of kept areas, mounted', () => {
     await measureMotionDone();
     displayFrames(4);
     expect(measure.effects.playing).toBe(true);
-    store.getState().deleteMeasure(third);
+    store.getState().removeObjects([third]);
     await measureMotionDone();
     displayFrames(4);
     expect(managed()).toBe(withOne);
@@ -246,7 +246,7 @@ describe('effects and lights of kept areas, mounted', () => {
   it.skipIf(!capture)('writes the GM\'s and the players\' picture of a fire circle that gives light', async () => {
     const { view, gm, players } = await open();
     const state = view.store.getState();
-    state.addWall({ type: 'solid', p1: { x: 64, y: 128 }, p2: { x: 192, y: 128 } });
+    state.addObject('walls', { type: 'solid', p1: { x: 64, y: 128 }, p2: { x: 192, y: 128 } });
     state.addMeasure({ ...CIRCLE, effect: 'fire', light: startingLight(CIRCLE, 'fire', SCALE, '#ec7500') });
     view.displayFrames(40);
     await savePng(contactSheet([gm(), players()], MAP, MAP, 2), 'mounted/fire-circle-gm-and-players');

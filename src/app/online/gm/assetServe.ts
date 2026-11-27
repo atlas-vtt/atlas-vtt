@@ -1,13 +1,7 @@
 import { headerOf } from '../../imageProcessing/imageDimensions';
+import { toBase64 } from '../../utils/base64';
 import { sha256 } from '../../utils/hashing';
 import { IMAGE_MIME_TYPES, MAX_PARTS, PART_BYTES, type GmMessage } from '../protocol/index.ts';
-
-/** Bytes in base64, in slices small enough for `String.fromCharCode`. */
-export function toBase64(bytes: Uint8Array): string {
-  let text = '';
-  for (let offset = 0; offset < bytes.length; offset += 0x8000) text += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
-  return btoa(text);
-}
 
 /**
  * A message as it goes out: itself while its JSON fits one frame, else in `part` messages of at

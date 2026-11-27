@@ -25,11 +25,15 @@ export function readAfterOwnWrite(now: FieldRead, key: FieldKey, own: Map<FieldK
 
 /**
  * Sends a write of field `key` as the surface's own (`write`, or null for one that is no whole
- * value) and forgets it again where the note refused it, so the next read is the note's.
+ * value) and forgets it again where the note refused it, so the next read is the note's. A write
+ * built on the surface's last one keeps that one's base: until the first of them lands, the note
+ * still holds what the first started from (disk writes of a note wait to be written together).
  */
 export async function sendOwnWrite(own: Map<FieldKey, OwnWrite>, key: FieldKey, write: OwnWrite | null, send: () => Promise<WriteOutcome>): Promise<WriteOutcome> {
-  if (write) own.set(key, write);
+  const last = own.get(key);
+  const sent = write && last && deepEqual(last.mine, write.base) ? { base: last.base, mine: write.mine } : write;
+  if (sent) own.set(key, sent);
   const outcome = await send();
-  if ((outcome.conflicts.length > 0 || outcome.problem) && own.get(key) === write) own.delete(key);
+  if ((outcome.conflicts.length > 0 || outcome.problem) && own.get(key) === sent) own.delete(key);
   return outcome;
 }

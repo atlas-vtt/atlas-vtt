@@ -9,10 +9,10 @@ vi.mock('@/app/ui/notice', () => ({ showNotice: vi.fn() }));
 beforeEach(() => vi.mocked(showNotice).mockClear());
 
 describe('the remote\'s combat keys', () => {
-  it('starts a fight as the tracker does, with the defeated combatants of the map, and ends it', () => {
+  it('starts a fight as the tracker does, by the rules of the map, and ends it', () => {
     const { table, state, map } = fakeTable();
     expect(runTableCommand(table, { type: 'combat' })).toBeNull();
-    expect(state.startCombat).toHaveBeenCalledWith(map.rules(), new Set(['e1']));
+    expect(state.startCombat).toHaveBeenCalledWith(map.rules());
     expect(remoteCombat(table)).toEqual({ active: true, round: 1, combatants: 2, rolls: true });
     expect(runTableCommand(table, { type: 'combat' })).toBeNull();
     expect(state.endCombat).toHaveBeenCalledOnce();
@@ -88,6 +88,45 @@ describe('the remote\'s player window keys', () => {
     window.hoveringImage = true;
     expect(runTableCommand(table, { type: 'showHoveredImage' })).toBeNull();
     expect(player.showHoveredImage).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('the remote\'s Freeze and Curtain keys at every table', () => {
+  const reached = [
+    { name: 'a player window alone', open: true, online: false },
+    { name: 'an online table alone', open: false, online: true },
+    { name: 'a player window and an online table', open: true, online: true },
+  ];
+  for (const { name, open, online } of reached) {
+    it(`pause and curtain ${name}, and the state says so`, () => {
+      const { table, player, window } = fakeTable();
+      Object.assign(window, { open, online });
+      expect(runTableCommand(table, { type: 'freeze' })).toBeNull();
+      expect(runTableCommand(table, { type: 'curtain' })).toBeNull();
+      expect(remotePlayer(table)).toMatchObject({ open, frozen: true, hidden: true });
+      expect(runTableCommand(table, { type: 'freeze' })).toBeNull();
+      expect(runTableCommand(table, { type: 'curtain' })).toBeNull();
+      expect(remotePlayer(table)).toMatchObject({ open, frozen: false, hidden: false });
+      expect(player.toggleFreeze).toHaveBeenCalledTimes(2);
+      expect(player.setCurtain.mock.calls).toEqual([[true], [false]]);
+    });
+  }
+
+  it('are refused with neither a player window nor a table, whose state shows nothing paused or curtained', () => {
+    const { table, player, window } = fakeTable();
+    Object.assign(window, { open: false, online: false, frozen: true, curtained: true });
+    expect(runTableCommand(table, { type: 'freeze' })).toBe('no-player-window');
+    expect(runTableCommand(table, { type: 'curtain' })).toBe('no-player-window');
+    expect(remotePlayer(table)).toMatchObject({ open: false, frozen: false, hidden: false });
+    expect(player.toggleFreeze).not.toHaveBeenCalled();
+    expect(player.setCurtain).not.toHaveBeenCalled();
+  });
+
+  it('pause online players while TrueScale pins the player window', () => {
+    const { table, window } = fakeTable();
+    Object.assign(window, { trueScale: true, online: true });
+    expect(runTableCommand(table, { type: 'freeze' })).toBeNull();
+    expect(remotePlayer(table)).toMatchObject({ trueScale: true, frozen: true });
   });
 });
 

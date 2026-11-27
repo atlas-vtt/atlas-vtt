@@ -36,7 +36,7 @@ function setup(walls: readonly WallInput[] = []): { store: ViewAtlasStore; rect:
   const store = createViewAtlasStore(createInMemoryApp({ files: {} }).app, `rooms-as-walls-${Math.random()}`);
   store.getState().setPersistenceEnabled(false);
   store.getState().setActiveTool('wall');
-  for (const wall of walls) store.getState().addWall(wall);
+  for (const wall of walls) store.getState().addObject('walls', wall);
   const bus = new EventEmitter();
   const editor = new RoomEditor({ viewport, store, eventBus: bus, bounds: () => ({ width: 2000, height: 2000 }), onActiveChange: () => undefined, canvas });
   bus.emit('wall-submode-changed', 'rooms');
@@ -160,7 +160,7 @@ describe('a room with an opening and no door', () => {
   const without = (store: ViewAtlasStore, span: string): void => {
     const wall = walls(store).find(({ p1, p2 }) => [`${p1.x},${p1.y} - ${p2.x},${p2.y}`, `${p2.x},${p2.y} - ${p1.x},${p1.y}`].includes(span));
     if (!wall) throw new Error(`No wall ${span}`);
-    store.getState().deleteWalls([wall.id]);
+    store.getState().removeObjects([wall.id]);
   };
 
   it('is still a room: its floor reaches the line across the opening, and no further', () => {
@@ -181,8 +181,8 @@ describe('a room with an opening and no door', () => {
     rect({ x: 100, y: 100 }, { x: 400, y: 300 });
     // An entrance: the wall goes and two jambs come back.
     without(store, '400,100 - 400,300');
-    store.getState().addWall({ type: 'solid', closed: true, floor: 'left', p1: { x: 400, y: 300 }, p2: { x: 400, y: 240 } });
-    store.getState().addWall({ type: 'solid', closed: true, floor: 'left', p1: { x: 400, y: 160 }, p2: { x: 400, y: 100 } });
+    store.getState().addObject('walls', { type: 'solid', closed: true, floor: 'left', p1: { x: 400, y: 300 }, p2: { x: 400, y: 240 } });
+    store.getState().addObject('walls', { type: 'solid', closed: true, floor: 'left', p1: { x: 400, y: 160 }, p2: { x: 400, y: 100 } });
     expect(isFloor(store, { x: 250, y: 200 })).toBe(true);
     expect(isFloor(store, { x: 430, y: 200 })).toBe(false);
     // A second room carved against the first room's corner: the opening now ends at a corner that is no loose end.

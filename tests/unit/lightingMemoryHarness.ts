@@ -11,6 +11,7 @@ import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFa
 import { SEES_ALL } from '../../src/app/vision/sight';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { stubJsdomGraphics } from '../mocks/jsdomGraphics';
+import { viewAudience } from '../helpers/viewAudience';
 
 const memory = vi.hoisted(() => ({ edits: [] as unknown[], resets: 0, watcher: null as SceneLightingDeps['exploredWatcher'] | null }));
 
@@ -47,10 +48,7 @@ vi.mock('../../src/app/pixi/lighting/lightingNotices', async (importOriginal) =>
   showExploredTravelNotice: (undone: boolean) => { notices.push(undone); },
 }));
 
-type Press = (x: number, y: number, e: FederatedPointerEvent) => boolean;
-type Move = (x: number, y: number, e: FederatedPointerEvent) => void;
-
-/** A lighting controller wired as `TokenRenderer` wires it, over a lighting view that only notes what is asked of the memory. Import this module first: it mocks what the controller imports. */
+/** A lighting controller, its pointer layers as the map's pointer asks them, over a lighting view that only notes what is asked of the memory. Import this module first: it mocks what the controller imports. */
 export interface Setup {
   controller: LightingController;
   store: ViewAtlasStore;
@@ -100,24 +98,15 @@ export function setup(prepare?: (store: ViewAtlasStore) => void): Setup {
     eventBus,
     obsApp,
     viewId: 'memory-view',
+    audience: viewAudience(store, eventBus).audience,
     bounds: () => ({ width: 1000, height: 1000 }),
     albedo: () => null,
   });
-  const wired: { down?: Press; move?: Move; up?: () => void; light?: LightPointerHandlers; cursor?: (x: number, y: number) => string } = {};
   controller.wire({
-    setWallPointerDownHandler: (fn: Press) => { wired.down = fn; },
-    setWallPointerMoveHandler: (fn: Move) => { wired.move = fn; },
-    setWallPointerUpHandler: (fn: () => void) => { wired.up = fn; },
-    setWallDoubleClickHandler: vi.fn(),
-    setWallContextMenuHandler: vi.fn(),
-    setWallCursorProvider: (fn: (x: number, y: number) => string) => { wired.cursor = fn; },
-    setDoorMenuHandlers: vi.fn(),
-    setDoorClickHandler: vi.fn(),
-    setLightHandlers: (handlers: LightPointerHandlers) => { wired.light = handlers; },
     setPlayerSightProvider: vi.fn(), setGlideWay: vi.fn(), setArtFloors: vi.fn(),
-    refreshPlayerSight: vi.fn(),
     getSensedOutlineLayer: () => ({ visible: false }),
   } as unknown as TokenRenderer);
+  const { lights, walls } = controller.pointerLayers();
   cleanup = () => {
     controller.destroy();
     viewport.destroy();
@@ -128,12 +117,12 @@ export function setup(prepare?: (store: ViewAtlasStore) => void): Setup {
     store,
     eventBus,
     canvas,
-    // As the token renderer dispatches a press of the lighting tool: lights first, then the tool.
-    down: (x, y) => wired.light!.pointerDown(x, y, KEYS) || wired.down!(x, y, KEYS),
-    move: (x, y) => wired.move!(x, y, KEYS),
-    up: () => wired.up!(),
-    light: wired.light!,
-    cursor: (x, y) => wired.cursor!(x, y),
+    // As the map's pointer hands on a press of the lighting tool: lights first, then the tool.
+    down: (x, y) => lights.pointerDown(x, y, KEYS) || walls.pointerDown(x, y, KEYS),
+    move: (x, y) => walls.pointerMove(x, y, KEYS),
+    up: () => walls.pointerUp(),
+    light: lights,
+    cursor: (x, y) => walls.cursorAt(x, y),
     enterMode: () => {
       store.getState().setSceneLighting({ enabled: true });
       store.getState().setActiveTool('wall');

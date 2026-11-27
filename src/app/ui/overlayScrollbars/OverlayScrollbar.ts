@@ -1,3 +1,4 @@
+import motion from './overlay-scrollbar-motion.scss?inline';
 import { containsItsPositioned, scrollAxes } from './scrollAreas';
 import { thumbGeometry } from './thumbGeometry';
 
@@ -8,6 +9,12 @@ export const HIDE_AFTER_MS = 1000;
 /** Thickness of a thumb's grab band (`$band` in `_overlay-scrollbars.scss`): a corner both thumbs would share is left free. */
 const BAND_PX = 12;
 const WHEEL_LINE_PX = 16;
+/**
+ * The area's anchor name, which its frame is placed by: one of its own, since Chromium 130 (Electron 33) has no
+ * `anchor-scope` and there a name several areas share is the last one's for every frame.
+ */
+const ANCHOR_PROP = '--atlas-scrollbar-anchor';
+let anchorsMade = 0;
 /** Marks the slot of a shadow root Atlas made, so a reloaded Atlas finds its own roots again. */
 const SLOT_MARK = 'data-atlas-scrollbar-slot';
 /** Presses on the thumbs stay with them: the area under them (a grid's marquee, a list's click) never sees them. */
@@ -21,10 +28,11 @@ export interface OverlayScrollbarHost {
 /**
  * The scrollbar of one scroll area, drawn over its content in the area's shadow root (the area's children are
  * slotted as they are, so no selector or layout of theirs changes) and styled by `styles/_overlay-scrollbars.scss`
- * through `::part()`. The thumbs move with a scroll-driven animation, so scrolling runs no script; this only
- * sizes them, shows them for a moment and lets them be dragged.
+ * through `::part()`. The thumbs move with a scroll-driven animation (`overlay-scrollbar-motion.scss`, in the shadow
+ * root), so scrolling runs no script; this only sizes them, shows them for a moment and lets them be dragged.
  */
 export class OverlayScrollbar {
+  private readonly motion: HTMLStyleElement;
   private readonly frame: HTMLElement;
   private readonly thumbs: Record<Axis, HTMLElement>;
   private readonly travel: Record<Axis, number> = { y: 0, x: 0 };
@@ -47,6 +55,7 @@ export class OverlayScrollbar {
   }
 
   constructor(readonly area: HTMLElement, root: ShadowRoot, private readonly host: OverlayScrollbarHost) {
+    this.motion = root.createEl('style', { text: motion });
     this.frame = root.createDiv({ attr: { part: 'frame', 'aria-hidden': 'true' } });
     this.thumbs = {
       y: this.frame.createDiv({ attr: { part: 'thumb thumb-y', hidden: '' } }),
@@ -60,6 +69,7 @@ export class OverlayScrollbar {
       thumb.addEventListener('pointerenter', () => { this.hovered = true; this.arm(); });
       thumb.addEventListener('pointerleave', () => { this.hovered = false; this.arm(); });
     }
+    area.setCssProps({ [ANCHOR_PROP]: `--atlas-scrollbar-${++anchorsMade}` });
     area.setAttribute('data-atlas-scrollbar', '');
   }
 
@@ -125,8 +135,10 @@ export class OverlayScrollbar {
 
   destroy(): void {
     this.area.win.clearTimeout(this.hideTimer);
+    this.motion.remove();
     this.frame.remove();
     this.area.removeAttribute('data-atlas-scrollbar');
+    this.area.setCssProps({ [ANCHOR_PROP]: '' });
   }
 
   private arm(): void {

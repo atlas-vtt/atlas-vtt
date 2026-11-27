@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
-import { TFile, type App } from 'obsidian';
+import type { App } from 'obsidian';
 import type { TokenEntity } from '../../../types';
 import type { TokenRollContext } from '../../../types/diceRollOrigin';
 import { captureRollContext } from '../../../tools/diceRollOrigins';
-import { hasCreatureForNotePath } from '../../../services/FantasyStatblocksService';
-import { isStatblockNote } from '../../../statblocks/resolve/statblockNote';
 import { runInBackground } from '../../../utils/backgroundTask';
+import { showsStatblock, statblockPathOf, tokensByStatblock } from './screenStatblocks';
 
 /** A statblock the DM screen shows, with the map's tokens linked to it. */
 export interface LoadedStatblock {
@@ -22,20 +21,6 @@ export interface DMScreenScene {
   mapLoaded: boolean;
   isMapLoading: boolean;
   tokens: Record<string, TokenEntity>;
-}
-
-function getStatblockPath(token: TokenEntity): string | undefined {
-  return token.kind === 'character' ? token.statblockPath : undefined;
-}
-
-/** Whether a note defines a statblock of its own. One that cannot be read defines none, so the other notes keep theirs. */
-async function definesStatblock(app: App, file: TFile): Promise<boolean> {
-  try {
-    return await isStatblockNote(app, file);
-  } catch (error) {
-    console.error(`[Atlas] Could not read the statblock note ${file.path}:`, error);
-    return false;
-  }
 }
 
 /**
@@ -60,12 +45,9 @@ export function useDMScreenStatblocks(isOpen: boolean, app: App, scene: DMScreen
       setLoading(true);
       const tokensArray = Object.values(tokens);
 
-      // Extract just the statblock paths from tokens to check if we need to reload
-      const currentStatblockPaths = new Set<string>();
-      tokensArray.forEach((token) => {
-        const path = getStatblockPath(token);
-        if (path) currentStatblockPaths.add(path);
-      });
+      // Group tokens by statblock path, and see whether the paths changed
+      const tokensByStatblockPath = tokensByStatblock(tokens);
+      const currentStatblockPaths = new Set(tokensByStatblockPath.keys());
 
       // Check if statblock paths have changed
       const existingPaths = new Set(statblocks.keys());
@@ -79,7 +61,7 @@ export function useDMScreenStatblocks(isOpen: boolean, app: App, scene: DMScreen
 
           // Redistribute tokens
           tokensArray.forEach((token) => {
-            const path = getStatblockPath(token);
+            const path = statblockPathOf(token);
             if (path) updatedMap.get(path)?.tokens.push(token);
           });
           for (const statblock of updatedMap.values()) statblock.originContext = contextOf(statblock.tokens);
@@ -93,24 +75,10 @@ export function useDMScreenStatblocks(isOpen: boolean, app: App, scene: DMScreen
       // Only recreate the Map if statblock paths have actually changed
       const uniqueStatblocks = new Map<string, LoadedStatblock>();
 
-      // Group tokens by statblock path
-      const tokensByStatblock = new Map<string, TokenEntity[]>();
-      tokensArray.forEach((token) => {
-        const path = getStatblockPath(token);
-        if (!path) return;
-        const existing = tokensByStatblock.get(path) || [];
-        existing.push(token);
-        tokensByStatblock.set(path, existing);
-      });
-
       // Old Atlas notes can still be linked to tokens, but define no statblock. Only allocate cards for statblock notes.
       try {
-        for (const [path, pathTokens] of tokensByStatblock.entries()) {
-          const file = app.vault.getAbstractFileByPath(path);
-          // The bestiary is asked first: when it cannot be asked, the load fails here, before any statblock is shown.
-          if (file instanceof TFile && (hasCreatureForNotePath(path) || await definesStatblock(app, file))) {
-            uniqueStatblocks.set(path, { path, tokens: pathTokens, originContext: contextOf(pathTokens) });
-          }
+        for (const [path, pathTokens] of tokensByStatblockPath) {
+          if (await showsStatblock(app, path)) uniqueStatblocks.set(path, { path, tokens: pathTokens, originContext: contextOf(pathTokens) });
         }
       } finally {
         // The screen stays hidden while its statblocks load, so a failed load ends too, with what it found.

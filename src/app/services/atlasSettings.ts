@@ -10,6 +10,7 @@ import { DEFAULT_DUNGEON_GENERATOR_SETTINGS, type DungeonGeneratorSettings } fro
 import { DEFAULT_SOUND_SETTINGS, type SoundSettings } from './soundSettings';
 import type { SharedSoundRoots } from '../soundLibrary/soundRootsStore';
 import { DEFAULT_TABLE_TV_SETTINGS, readTableTvSettings, type TableTvSettings } from './tableTvSettings';
+import { readGmScreenKeys, type GmScreenKeys } from './gmScreenKeysSettings';
 import { DEFAULT_FOG_EDGE, type FogEdge } from '../fog/fogEdge';
 import { DEFAULT_DRAG_DISTANCE, type DragDistance } from '../measure/dragDistance';
 import { isRecord } from '../utils/guards';
@@ -88,6 +89,8 @@ export interface AtlasSettings {
   toolbar: StoredToolbarLayout;
   /** Whether the bars along the bottom and the level switcher show only while the pointer is near them; unset, always shown. Read with `isToolbarAutoHide`. */
   toolbarAutoHide?: boolean;
+  /** The GM screen's grids of keys, by kind of device, each only once the GM changed it. Read with `getGmScreenKeys`. */
+  gmScreenKeys?: GmScreenKeys | undefined;
   /** The dungeon generator's style, view and last tags. Read with `getDungeonGenerator`. */
   dungeonGenerator: DungeonGeneratorSettings;
   localPlayerView: {
@@ -210,6 +213,7 @@ export function readStoredSettings(stored: unknown, inputMode: NavigationInputMo
       navigation: { inputMode },
       experimental: isRecord(record.experimental) ? merged.experimental : {},
       toolbar: readToolbarLayout(record.toolbar),
+      gmScreenKeys: readGmScreenKeys(record.gmScreenKeys),
       tableTv: readTableTvSettings(record.tableTv),
       hiddenStarterOffers: readIdList(record.hiddenStarterOffers),
       hiddenSoundOffers: readIdList(record.hiddenSoundOffers),

@@ -8,16 +8,17 @@ import { fogRectangle } from '../helpers/fogOperations';
 
 const token = (id: string, x: number, changes: Partial<TokenEntity> = {}): TokenEntity => ({ id, kind: 'token', imagePath: '', x, y: 10, ...changes }) as TokenEntity;
 
-function sightOf(tokens: Record<string, TokenEntity>, fog: () => FogCoverage | null, players = { active: false, playerView: false }): PlayerSightTokens {
+/** The players' sight of `tokens` under `fog`, on a canvas that shows the players' picture while `canvas.players` says so. */
+function sightOf(tokens: Record<string, TokenEntity>, fog: () => FogCoverage | null, canvas = { players: false }): PlayerSightTokens {
   const sprites: Record<string, TokenGroupContainer> = {};
   for (const t of Object.values(tokens)) {
     const group = Object.assign(new Container(), { tokenId: t.id, tokenData: t, tokenSize: 20, artPath: '', strokeWidth: 0 });
     group.position.set(t.x, t.y);
     sprites[t.id] = group;
   }
-  const sight = new PlayerSightTokens({ tokens: () => tokens, sprites: () => sprites, held: () => new Set() });
-  sight.setProvider(() => undefined, () => players.active);
-  sight.setFogProvider(fog, () => players.playerView);
+  const sight = new PlayerSightTokens({ tokens: () => tokens, sprites: () => sprites, held: () => new Set(), showsPlayers: () => canvas.players });
+  sight.setProvider(() => undefined);
+  sight.setFogProvider(fog);
   return sight;
 }
 
@@ -66,25 +67,12 @@ describe('the party under committed fog', () => {
   });
 });
 
-describe('PlayerSightTokens.showsPlayers', () => {
-  it('is on while the canvas shows the players\' view: session view, or the peek', () => {
-    const players = { active: false, playerView: false };
-    const sight = sightOf({}, () => null, players);
-    expect(sight.showsPlayers()).toBe(false);
-    players.playerView = true;
-    expect(sight.showsPlayers()).toBe(true);
-    players.playerView = false;
-    players.active = true;
-    expect(sight.showsPlayers()).toBe(true);
-  });
-});
-
 describe('PlayerSightTokens.sightIsCurrent', () => {
   it('follows the provider that keeps sight of its own, and holds where sight is read when asked', () => {
     const sight = sightOf({}, () => null);
     expect(sight.sightIsCurrent()).toBe(true);
     let current = false;
-    sight.setProvider(() => undefined, () => true, () => current);
+    sight.setProvider(() => undefined, () => current);
     expect(sight.sightIsCurrent()).toBe(false);
     current = true;
     expect(sight.sightIsCurrent()).toBe(true);
@@ -99,18 +87,18 @@ describe('a roof over the players\' picture', () => {
 
   it('hides the tokens whose centre it covers in a frame, lit scene or not, with fog or without', () => {
     const sight = sightOf(tokens, () => fogCoverage({}));
-    sight.setRoofProvider(underRoof, () => false);
+    sight.setRoofProvider(underRoof);
     const seen = seenByPlayers(tokens, sight.framePerception());
     expect(['open', 'roofed', 'hidden'].map(seen)).toEqual([true, false, false]);
     expect(seenByPlayers(tokens, sight.framePerception(() => 'sensed'))('open')).toBe(false);
   });
 
   it('hides them on the canvas only while it shows the players\' view', () => {
-    const players = { active: false, playerView: false };
-    const sight = sightOf(tokens, () => fogCoverage({}), players);
-    sight.setRoofProvider(underRoof, () => players.playerView);
+    const canvas = { players: false };
+    const sight = sightOf(tokens, () => fogCoverage({}), canvas);
+    sight.setRoofProvider(underRoof);
     expect(sight.hides('roofed')).toBe(false);
-    players.playerView = true;
+    canvas.players = true;
     expect(sight.hides('roofed')).toBe(true);
     expect(sight.hides('open')).toBe(false);
   });

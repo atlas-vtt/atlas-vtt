@@ -71,7 +71,7 @@ const POLYGON_SHADERS = ALL_SHADERS.filter((source) => source.polygons === true)
 /**
  * The programs a picture may draw with, which the device is asked about before it draws. A device
  * stepped down to the polygon picture after its graphics driver died must not compile the traced
- * picture's long loops, which Direct3D's compiler unrolls.
+ * picture's programs, which that picture never draws.
  */
 export function shadersOfPicture(picture: PictureChoice): readonly EngineShaderSource[] {
   return picture === 'traced' ? ALL_SHADERS : POLYGON_SHADERS;

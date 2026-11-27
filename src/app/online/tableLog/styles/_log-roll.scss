@@ -112,8 +112,9 @@
     font-weight: $font-weight-medium;
   }
 
+  // Text, not the accent: the GM may pick any accent, and a red total reads as a failure. A crit's takes its colour.
   .atlas-online-log__roll-total {
-    color: var(--atlas-dice-accent);
+    color: var(--text-normal);
     font-size: $font-ui-large;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
@@ -127,6 +128,11 @@
     &.is-landed {
       animation: atlas-online-log-total-in $transition-normal $transition-ease-out both;
     }
+  }
+
+  .atlas-online-log__roll--crit-success .atlas-online-log__roll-total,
+  .atlas-online-log__roll--crit-fail .atlas-online-log__roll-total {
+    color: var(--atlas-dice-accent);
   }
 
   .atlas-online-log__roll-toggle {

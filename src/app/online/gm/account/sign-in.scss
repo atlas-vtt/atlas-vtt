@@ -1,0 +1,56 @@
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+// The shared sign-in in a React surface, in the online dock's words and order: lines, the code, the buttons.
+.atlas-sign-in {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-m;
+}
+
+.atlas-sign-in__help {
+  @include atlas-help-text;
+  margin: 0;
+}
+
+.atlas-sign-in__status {
+  display: flex;
+  align-items: center;
+  gap: $spacing-s;
+  margin: 0;
+  font-size: $font-ui-small;
+  color: var(--text-normal);
+
+  &::before {
+    content: '';
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: $radius-full;
+    background: var(--atlas-online-tone);
+  }
+}
+
+// Set as the approve page sets it: large, spaced, monospaced.
+.atlas-sign-in__code {
+  margin: 0;
+  font-family: var(--font-monospace);
+  font-size: $font-ui-large;
+  font-weight: $font-weight-semibold;
+  letter-spacing: 0.12em;
+  color: var(--text-normal);
+  user-select: all;
+}
+
+.atlas-sign-in__actions {
+  display: flex;
+  gap: $spacing-s;
+
+  > .btn {
+    flex: 1;
+  }
+
+  > .btn--ghost {
+    flex: none;
+  }
+}

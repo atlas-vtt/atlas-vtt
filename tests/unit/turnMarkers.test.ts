@@ -9,6 +9,7 @@ import { TurnTextures } from '../../src/app/pixi/token-renderer/turnMarker/turnT
 import type { TokenGroupContainer } from '../../src/app/pixi/token-renderer/types';
 import type { TokenEntity } from '../../src/app/types';
 import { createDefaultInitiativeState, type InitiativeEntry, type InitiativeState } from '../../src/app/types/initiativeTypes';
+import { HP } from '../mocks/resourceFixtures';
 
 const token = (id: string, changes: Partial<TokenEntity> = {}): TokenEntity => ({ id, kind: 'token', x: 100, y: 100, imagePath: '', ...changes } as TokenEntity);
 const entry = (tokenId: string, order: number, changes: Partial<InitiativeEntry> = {}): InitiativeEntry => ({
@@ -23,7 +24,7 @@ function sprite(x: number, y: number): TokenGroupContainer {
 }
 
 /** A store and the flashes over it; `sprites` are the tokens on the map (one beside the map has none). */
-function setup(initiative: InitiativeState, tokens: Record<string, TokenEntity>, sprites: Record<string, TokenGroupContainer>, reduced = false, defeated: ReadonlySet<string> = new Set()) {
+function setup(initiative: InitiativeState, tokens: Record<string, TokenEntity>, sprites: Record<string, TokenGroupContainer>, reduced = false) {
   let state: TurnMarkerState = { initiative, objects: { tokens }, grid: { size: 70 }, isMapLoading: false };
   const listeners = new Set<(next: TurnMarkerState) => void>();
   const world = new Container();
@@ -39,7 +40,7 @@ function setup(initiative: InitiativeState, tokens: Record<string, TokenEntity>,
     spriteOf: (id) => sprites[id] ?? null,
     ticker: () => ticker,
     reducedMotion: () => reduced,
-    defeated: () => defeated,
+    resources: () => [HP],
     now: () => time,
   });
   const set = (changes: Partial<TurnMarkerState>): void => {
@@ -171,7 +172,7 @@ describe('the turn flash', () => {
 
   it('leaves the defeated of the side whose turn begins without a flash', () => {
     const sides = { ...order('none'), sides: { first: 'players' as const, active: 'players' as const } };
-    const { markers, set } = setup(sides, tokens, sprites, false, new Set(['e-ogre']));
+    const { markers, set } = setup(sides, { ...tokens, ogre: token('ogre', { resources: { hp: { current: 0, max: 12 } } }) }, sprites);
     cleanups.push(() => markers.destroy());
     set({ initiative: { ...sides, sides: { ...sides.sides, active: 'opponents' as const } } });
     expect(markers.tokenIds).toEqual(['ghost']);

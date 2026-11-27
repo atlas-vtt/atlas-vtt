@@ -1,6 +1,6 @@
 import { produce } from 'immer';
 import { describe, expect, it } from 'vitest';
-import type { SceneState, SceneStore } from '../../../../../src/app/online/gm/atlasView.ts';
+import type { ObservedStore, SceneState } from '../../../../../src/app/online/gm/atlasView.ts';
 import { PlayerDoorAsks, type DoorAskShown } from '../../../../../src/app/online/gm/doors/PlayerDoorAsks.ts';
 import { parseGmMessage, parsePlayerMessage, sameDoor, type DoorEnds, type GmMessage } from '../../../../../src/app/online/protocol/index.ts';
 import type { WallSegment } from '../../../../../src/app/types/wallTypes';
@@ -18,7 +18,7 @@ function door(changes: Partial<WallSegment> = {}): WallSegment {
   return { id: 'door', kind: 'wall', type: 'door', p1: { x: 140, y: 70 }, p2: { x: 140, y: 140 }, closed: true, ...changes } as WallSegment;
 }
 
-function fakeStore(walls: Record<string, WallSegment>, ogre = { x: 105, y: 105 }): SceneStore & { writes: number } {
+function fakeStore(walls: Record<string, WallSegment>, ogre = { x: 105, y: 105 }): ObservedStore & { writes: number } {
   let state = { objects: { tokens: { ogre: token('ogre', ogre) }, walls }, grid: { enabled: true, size: CELL, offsetX: 0, offsetY: 0, opacity: 1 } } as unknown as SceneState;
   const listeners = new Set<(next: SceneState) => void>();
   const store = {
@@ -37,7 +37,8 @@ function fakeStore(walls: Record<string, WallSegment>, ogre = { x: 105, y: 105 }
   return store;
 }
 
-function desk(store: SceneStore, allowed = true): { asks: PlayerDoorAsks; shown: DoorAskShown[]; withdrawn: string[]; sent: { body: GmMessage; to: string }[]; bumps: unknown[][] } {
+/** The asks of the floor whose store is `store`, which hear every change of it as the floor's share hands it on. */
+function desk(store: ObservedStore, allowed = true): { asks: PlayerDoorAsks; shown: DoorAskShown[]; withdrawn: string[]; sent: { body: GmMessage; to: string }[]; bumps: unknown[][] } {
   const shown: DoorAskShown[] = [];
   const withdrawn: string[] = [];
   const sent: { body: GmMessage; to: string }[] = [];
@@ -57,6 +58,7 @@ function desk(store: SceneStore, allowed = true): { asks: PlayerDoorAsks; shown:
     },
     bump: (...args) => bumps.push(args),
   });
+  store.subscribe((state) => asks.storeChanged(state));
   return { asks, shown, withdrawn, sent, bumps };
 }
 

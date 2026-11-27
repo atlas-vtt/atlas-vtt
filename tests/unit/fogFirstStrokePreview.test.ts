@@ -8,6 +8,7 @@ import { DEFAULT_FOG_TOOL } from '../../src/app/fog/fogToolChoices';
 import { FogOfWarRenderer } from '../../src/app/pixi/fog/FogOfWarRenderer';
 import type { MapRect } from '../../src/app/grid/cellNumbering';
 import type { ViewAtlasState } from '../../src/app/storeFactory';
+import { viewAudience } from '../helpers/viewAudience';
 
 const MAP: MapRect = { x: 0, y: 0, width: 1000, height: 800 };
 
@@ -24,7 +25,7 @@ it('shows the first stroke after all fog was deleted while it is drawn', () => {
   const viewport = Object.assign(new Container(), { options: {}, toWorld: (point: { x: number; y: number }) => ({ x: point.x, y: point.y }) });
   const renderer = new FogOfWarRenderer(
     viewport as never, { canvas: createEl('canvas') } as never, new EventEmitter() as never,
-    store as unknown as StoreApi<ViewAtlasState>, () => MAP,
+    store as unknown as StoreApi<ViewAtlasState>, () => MAP, viewAudience(store as never).audience,
   );
   const preview = renderer.getContainer().children.find((child) => child instanceof Sprite && child.zIndex === 999)!;
   try {

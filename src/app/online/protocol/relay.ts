@@ -1,11 +1,14 @@
 import { JOIN_CODE_PATTERN, PLAYER_ID_PATTERN, playerName } from './identity.ts';
 import { parseSends, type BatchedSend } from './relayBatch.ts';
 import { levelIn } from './level.ts';
+import { roomKind, type RoomKind } from './roomKind.ts';
 import { type CampaignSeat, parseSeats } from './seat.ts';
 import { isRecord } from './shape.ts';
 
+export * from './closeCodes.ts';
 export * from './identity.ts';
 export * from './relayBatch.ts';
+export * from './roomKind.ts';
 
 /** The version every frame carries. A hello of another version is closed with `CLOSE.version`. */
 export const PROTOCOL_VERSION = 1;
@@ -33,39 +36,6 @@ export const MAX_PLAYERS = 12;
 /** Players who wait for the GM's answer at once. */
 export const MAX_WAITING = 8;
 
-/** Close codes the relay uses; clients do not reconnect after `badSecret`, `version` and `ended`. */
-export const CLOSE = {
-  badSecret: 4001,
-  replaced: 4002,
-  full: 4003,
-  tooLarge: 4004,
-  rateLimited: 4005,
-  protocol: 4006,
-  version: 4007,
-  ended: 4008,
-  kicked: 4009,
-  /** The table asks for a join code and the hello had none or a wrong one. */
-  wrongCode: 4010,
-  /** Too many wrong codes: nobody new joins for a while. */
-  paused: 4011,
-  declined: 4012,
-  /** The GM answered a knock neither way in time. */
-  noAnswer: 4013,
-  tooManyKnocks: 4014,
-  /** The table's account may not host (any more): a GM's hello is refused, and the table is over for everyone at it. */
-  noAccess: 4015,
-  /** The table ended because its account started another table. */
-  superseded: 4016,
-  /** A newcomer's name is another player's in the GM's campaign: they come back with their own code, or under another name. */
-  nameTaken: 4017,
-} as const;
-
-/** The close codes of the join gates: the player's page stops and says why; only a new try by the player connects again. */
-export const GATE_CLOSE_CODES: readonly number[] = [CLOSE.wrongCode, CLOSE.paused, CLOSE.declined, CLOSE.noAnswer, CLOSE.tooManyKnocks, CLOSE.nameTaken];
-
-/** Close codes after which a client gives up instead of reconnecting. */
-export const FINAL_CLOSE_CODES: readonly number[] = [CLOSE.badSecret, CLOSE.version, CLOSE.ended, CLOSE.replaced, CLOSE.kicked, CLOSE.noAccess, CLOSE.superseded, ...GATE_CLOSE_CODES];
-
 /** A player as the GM knows them: the relay's id and the name they gave, shown as text only. */
 export interface PlayerInfo {
   readonly id: string;
@@ -76,7 +46,8 @@ export interface PlayerInfo {
  * A player's hello: `key` for a player the table knows, `code` (the join code) for one it does not.
  * `waits`: the page keeps the token of a wait for the GM, so the relay hands it one; `wait`: the
  * token it holds, which takes that wait up again. A page from before tokens sends neither.
- * `newcomer`: the page holds no code and is new here.
+ * `newcomer`: the page holds no code and is new here. `kind`: the room the page is for, named where
+ * it is not a `table`; a hello at a room of another kind is refused (`CLOSE.otherRoom`).
  */
 export interface PlayerHello {
   readonly v: 1;
@@ -88,6 +59,7 @@ export interface PlayerHello {
   readonly waits?: true;
   readonly wait?: string;
   readonly newcomer?: true;
+  readonly kind?: Exclude<RoomKind, 'table'>;
 }
 
 /** A GM's hello; `level`: what its Atlas serves (`GM_LEVEL`), a GM from before levels names none and serves level 1. */
@@ -128,8 +100,9 @@ export type RelayFrame =
    * relay takes `sends` frames; an older one says nothing. `minLevel`: the least GM level the relay's
    * player page needs; a GM below it was let in because players sit at the table, and should update.
    * `clock`: the relay answers time exchanges; an older one says nothing, and would close a socket that sent one.
+   * `kind`: the room's kind where it is not a `table`.
    */
-  | { readonly v: 1; readonly t: 'welcome'; readonly role: 'gm'; readonly players: readonly PlayerInfo[]; readonly waiting?: readonly PlayerInfo[]; readonly batch?: true; readonly minLevel?: number; readonly clock?: true }
+  | { readonly v: 1; readonly t: 'welcome'; readonly role: 'gm'; readonly players: readonly PlayerInfo[]; readonly waiting?: readonly PlayerInfo[]; readonly batch?: true; readonly minLevel?: number; readonly clock?: true; readonly kind?: Exclude<RoomKind, 'table'> }
   /** A newcomer waits for the GM's answer; `knock-gone` once they do not (left, timed out, answered; `full`: admitted into a table without a seat). */
   | { readonly v: 1; readonly t: 'knock'; readonly id: string; readonly name: string }
   | { readonly v: 1; readonly t: 'knock-gone'; readonly id: string; readonly full?: true }
@@ -137,9 +110,11 @@ export type RelayFrame =
   | { readonly v: 1; readonly t: 'gate-paused'; readonly until: number }
   /**
    * To a newcomer: the knock is taken, the GM decides. `wait`: the wait's token, once, for a page
-   * that keeps it (in memory only): a later hello with it takes the same wait up again.
+   * that keeps it (in memory only): a later hello with it takes the same wait up again. `id`: the
+   * knock's id, which the GM's knock names too (a GM screen's device shows its check number from it);
+   * an older relay names none.
    */
-  | { readonly v: 1; readonly t: 'waiting'; readonly wait?: string }
+  | { readonly v: 1; readonly t: 'waiting'; readonly wait?: string; readonly id?: string }
   /** `gmLevel`: what the table's GM serves (`GM_LEVEL`) while one is there; an older relay names none. `clock`: as the GM's. */
   | { readonly v: 1; readonly t: 'welcome'; readonly role: 'player'; readonly id: string; readonly key: string; readonly gmOnline: boolean; readonly gmLevel?: number; readonly clock?: true }
   | { readonly v: 1; readonly t: 'player-joined'; readonly id: string; readonly name: string }
@@ -205,11 +180,13 @@ export function parseClientFrame(text: string): ClientFrame | null {
   if (code === undefined) return null;
   if (value.wait !== undefined && !(typeof value.wait === 'string' && SECRET_PATTERN.test(value.wait))) return null;
   if (value.waits !== undefined && value.waits !== true) return null;
+  const kind = roomKind(value.kind);
+  if (kind === undefined) return null;
   return {
     v: 1, t: 'hello', role: 'player', name,
     ...(value.key === undefined ? {} : { key: value.key }), ...(code === null ? {} : { code }),
     ...(value.waits === true ? { waits: true as const } : {}), ...(value.wait === undefined ? {} : { wait: value.wait }),
-    ...(value.newcomer === true ? { newcomer: true as const } : {}),
+    ...(value.newcomer === true ? { newcomer: true as const } : {}), ...(kind === 'table' ? {} : { kind }),
   };
 }
 
@@ -241,10 +218,12 @@ export function parseRelayFrame(text: string): RelayFrame | null {
       if (value.role === 'gm') {
         const players = value.players === undefined ? null : playerList(value.players);
         const waiting = playerList(value.waiting);
+        // A kind this side does not know is left out, as an older relay's welcome names none.
+        const kind = roomKind(value.kind) ?? 'table';
         if (players === null || waiting === null) return null;
         return {
           v: 1, t: 'welcome', role: 'gm', players, ...(waiting.length > 0 && { waiting }), ...(value.batch === true && { batch: true as const }),
-          ...(value.minLevel !== undefined && { minLevel: levelIn(value, 'minLevel') }), ...(value.clock === true && { clock: true as const }),
+          ...(value.minLevel !== undefined && { minLevel: levelIn(value, 'minLevel') }), ...(value.clock === true && { clock: true as const }), ...(kind !== 'table' && { kind }),
         };
       }
       if (value.role === 'player' && typeof value.id === 'string' && typeof value.key === 'string' && typeof value.gmOnline === 'boolean') {
@@ -267,7 +246,10 @@ export function parseRelayFrame(text: string): RelayFrame | null {
     case 'gate-paused':
       return typeof value.until === 'number' && Number.isFinite(value.until) ? { v: 1, t: 'gate-paused', until: value.until } : null;
     case 'waiting':
-      return typeof value.wait === 'string' && SECRET_PATTERN.test(value.wait) ? { v: 1, t: 'waiting', wait: value.wait } : { v: 1, t: 'waiting' };
+      return {
+        v: 1, t: 'waiting', ...(typeof value.wait === 'string' && SECRET_PATTERN.test(value.wait) && { wait: value.wait }),
+        ...(typeof value.id === 'string' && PLAYER_ID_PATTERN.test(value.id) && { id: value.id }),
+      };
     case 'gm':
       if (typeof value.online !== 'boolean') return null;
       return value.level === undefined ? { v: 1, t: 'gm', online: value.online } : { v: 1, t: 'gm', online: value.online, level: levelIn(value, 'level') };
