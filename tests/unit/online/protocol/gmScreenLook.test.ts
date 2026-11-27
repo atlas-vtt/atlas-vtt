@@ -1,13 +1,26 @@
 import { describe, expect, it } from 'vitest';
-import { LOOK_COLOURS, parseGmScreenMessage, parseLookMessage, type LookMessage } from '../../../../src/app/online/protocol/index.ts';
+import {
+  isRecord, LOOK_COLOURS, parseGmScreenMessage, parseKeysMessage, parseLayoutMessage, parseLookMessage, parseStatblockRollAnswer, parseStatblocksMessage, parseYourCode, type LookMessage,
+} from '../../../../src/app/online/protocol/index.ts';
 
 const look: LookMessage = { t: 'look', dark: false, colours: { '--background-primary': '#f5eddc', '--text-normal': '#3a2c1a', '--interactive-accent': '#3fa34d', '--background-modifier-hover': '#2a1e0e14' } };
 const sent = (value: unknown): unknown => JSON.parse(JSON.stringify(value));
+
+/** How a device's page read Atlas's messages before the look was one of them: the parser of that release, whole. */
+function parseBeforeLook(value: unknown): unknown {
+  if (!isRecord(value)) return null;
+  if (value.t === 'your-code') return parseYourCode(value);
+  return parseKeysMessage(value) ?? parseLayoutMessage(value) ?? parseStatblocksMessage(value) ?? parseStatblockRollAnswer(value);
+}
 
 describe('the look Atlas sends a device', () => {
   it('reads as it was sent, through the channel\'s parser', () => {
     expect(parseGmScreenMessage(sent(look))).toEqual(look);
     expect(parseGmScreenMessage(sent({ ...look, dark: true }))).toEqual({ ...look, dark: true });
+  });
+
+  it('reads as nothing on a device from before it, which drops a message it does not know', () => {
+    expect(parseBeforeLook(sent(look))).toBeNull();
   });
 
   it('keeps only the colours of its list, each one plain colour in its one written form', () => {

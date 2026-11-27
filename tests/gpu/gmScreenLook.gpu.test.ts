@@ -1,8 +1,10 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, describe, expect, it } from 'vitest';
+import { commands } from 'vitest/browser';
 import looksCss from '../../styles/looks/atlas-looks.css?inline';
 import { CUSTOM_ACCENT_CLASS, LOOK_CLASS, SCIFI_LOOK_CLASS } from '../../src/app/appearance/atlasLook';
+import { COLOUR_PRESETS } from '../../src/app/appearance/colourPresets';
 import { readLook } from '../../src/app/online/gmScreen/look/readLook.ts';
-import { LOOK_COLOUR_VALUE, type LookColour } from '../../src/app/online/protocol/index.ts';
+import { LOOK_COLOUR_VALUE, LOOK_COLOURS, type LookColour, type LookMessage } from '../../src/app/online/protocol/index.ts';
 import { OBSIDIAN_DEFAULT_COLOURS } from './obsidianDefaultColours.ts';
 
 afterEach(() => {
@@ -69,8 +71,31 @@ function near(actual: string | undefined, expected: string): boolean {
 
 const read = (): Partial<Record<LookColour, string>> => readLook(document)?.colours ?? {};
 
-const GREEN = '#2e9e44';
-const ORANGE = '#e8772e';
+const preset = (id: string): string => COLOUR_PRESETS.find((each) => each.id === id)?.hex ?? '';
+const GREEN = preset('moss');
+const ORANGE = preset('ember');
+/** Where the looks Atlas reads go, for the device's page to be drawn in. */
+const FIXTURE = 'tests/fixtures/gmScreenLooks.json';
+const LOOKS = [
+  { id: 'medieval-light', scheme: 'light', classes: [LOOK_CLASS], accent: null },
+  { id: 'medieval-light-moss', scheme: 'light', classes: [LOOK_CLASS], accent: GREEN },
+  { id: 'medieval-dark', scheme: 'dark', classes: [LOOK_CLASS], accent: null },
+  { id: 'medieval-dark-moss', scheme: 'dark', classes: [LOOK_CLASS], accent: GREEN },
+  { id: 'scifi-light', scheme: 'light', classes: [LOOK_CLASS, SCIFI_LOOK_CLASS], accent: null },
+  { id: 'scifi-light-ember', scheme: 'light', classes: [LOOK_CLASS, SCIFI_LOOK_CLASS], accent: ORANGE },
+  { id: 'scifi-dark', scheme: 'dark', classes: [LOOK_CLASS, SCIFI_LOOK_CLASS], accent: null },
+  { id: 'scifi-dark-ember', scheme: 'dark', classes: [LOOK_CLASS, SCIFI_LOOK_CLASS], accent: ORANGE },
+] as const;
+const kept: Array<{ id: string; look: LookMessage }> = [];
+
+afterAll(async () => {
+  if (kept.length !== LOOKS.length) return;
+  const about = 'The looks Atlas sends a GM screen device (tests/gpu/gmScreenLook.gpu.test.ts writes this file): Atlas\'s Medieval and '
+    + 'Sci-fi looks by day and by night, with their own accent and with a preset picked, read off a body with the looks stylesheet '
+    + 'over Obsidian\'s default colours. The device\'s page is drawn in them.';
+  const lines = kept.map((entry) => `    ${JSON.stringify(entry)}`);
+  await commands.writeFile(FIXTURE, `{\n  "about": ${JSON.stringify(about)},\n  "looks": [\n${lines.join(',\n')}\n  ]\n}\n`);
+});
 
 describe('the look Atlas reads for a device', () => {
   it('reads the Medieval look by day: parchment, ink, the module\'s red, the accent of the look', () => {
@@ -145,6 +170,18 @@ describe('the look Atlas reads for a device', () => {
     expect(readLook(document)?.colours).toMatchObject({ '--background-primary': '#ffffff', '--text-normal': '#222222' });
     expect(readLook(document)?.dark).toBe(false);
   });
+
+  for (const { id, scheme, classes, accent } of LOOKS) {
+    it(`reads the ${id} look whole, every colour the page draws with`, () => {
+      obsidian(scheme, ...classes);
+      if (accent !== null) pickAccent(accent);
+      const look = readLook(document);
+      expect(look?.dark).toBe(scheme === 'dark');
+      // Every colour of the list but the one only the device's page has (Obsidian draws its selections otherwise).
+      expect(LOOK_COLOURS.filter((name) => look?.colours[name] === undefined)).toEqual(['--background-modifier-selected']);
+      if (look) kept.push({ id, look });
+    });
+  }
 
   it('leaves nothing behind in the document', () => {
     obsidian('light', LOOK_CLASS);
