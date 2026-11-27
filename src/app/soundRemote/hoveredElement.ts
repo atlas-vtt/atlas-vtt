@@ -25,9 +25,10 @@ export class HoveredElement {
     this.hovered = null;
   }
 
-  /** The element last under the pointer, while it is still there. */
+  /** The element last under the pointer, while it is still there: none once it left its document (a note closed under the resting pointer). */
   element(): Element | null {
-    return this.hovered?.deref() ?? null;
+    const element = this.hovered?.deref();
+    return element?.isConnected === true ? element : null;
   }
 
   private watch(doc: Document): () => void {
