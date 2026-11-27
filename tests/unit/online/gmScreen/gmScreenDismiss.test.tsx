@@ -197,7 +197,7 @@ describe('Sidekick\'s panel as a light popover over the DM screen', () => {
     const rig = await shown();
     page = dmScreen();
     await startedFromPanel(rig);
-    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    fireEvent.keyDown(document.body, { key: 'Escape' });
     await closed();
     await knocks(rig, PHONE, 'Phone');
     expect(screen.getByRole('alertdialog', { name: 'Allow this device?' })).toBeTruthy();

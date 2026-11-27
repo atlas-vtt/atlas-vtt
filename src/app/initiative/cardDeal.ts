@@ -65,6 +65,26 @@ export function dealCards(initiative: InitiativeState, { deck, groupOf }: CardDe
 }
 
 /**
+ * The holders of each card move to where the other card's first holder stood; everyone else
+ * stays where they are. A combatant that acted now sits out of its card's
+ * place for the round, so sorting the whole list by card again would move it back.
+ */
+function tradePlaces(initiative: InitiativeState, a: number, b: number): void {
+  const holders = (card: number): InitiativeEntry[] => initiative.entries.filter((entry) => entry.card === card);
+  const [holdersOfA, holdersOfB] = [holders(a), holders(b)];
+  const placed = new Set<number>();
+  const traded = initiative.entries.flatMap((entry) => {
+    const card = entry.card;
+    if (card !== a && card !== b) return [entry];
+    if (placed.has(card)) return [];
+    placed.add(card);
+    return card === a ? holdersOfB : holdersOfA;
+  });
+  initiative.entries.splice(0, traded.length, ...traded);
+  renumber(initiative.entries);
+}
+
+/**
  * Two combatants swap their cards (and so their places), each with every combatant sharing its
  * card. In a running fight the turn stays with the card that had it: whoever holds it now acts,
  * so a combatant waiting on its turn hands it to the one it swapped with.
@@ -75,11 +95,11 @@ export function swapCards(initiative: InitiativeState, id: string, withId: strin
   const b = entries.find((entry) => entry.id === withId)?.card;
   if (a === undefined || b === undefined || a === b) return;
   const turnCard = entries.find((entry) => entry.isActive)?.card;
+  tradePlaces(initiative, a, b);
   for (const entry of entries) {
     if (entry.card === a) entry.card = b;
     else if (entry.card === b) entry.card = a;
   }
-  sortByCards(initiative);
   if (!initiative.isActive || turnCard === undefined || (turnCard !== a && turnCard !== b)) return;
   giveTurn(initiative, entries.findIndex((entry) => entry.card === turnCard));
 }

@@ -2,7 +2,8 @@
 import { cleanup } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MAX_DEVICES } from '../../../../src/app/online/gmScreen/gmScreenRecord.ts';
-import { KEPT_DEVICES, PRESS_BURST, PRESS_REFILL_MS, RollPresses } from '../../../../src/app/online/gmScreen/statblocks/rollPresses.ts';
+import { KEPT_DEVICES } from '../../../../src/app/online/gmScreen/statblocks/devicePresses.ts';
+import { PRESS_BURST, PRESS_REFILL_MS, RollPresses } from '../../../../src/app/online/gmScreen/statblocks/rollPresses.ts';
 import { TemplateLibrary } from '../../../../src/app/statblocks/library/TemplateLibrary';
 import { answers, answerTo, auto, diceTool, native, rollsIn, showingHag } from './statblockRollsRig.ts';
 import { heardBy, type StatblocksSession } from './statblocksSession.ts';

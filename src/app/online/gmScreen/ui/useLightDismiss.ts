@@ -4,8 +4,8 @@ import { keysAbove, pressedAbove } from './layersAbove.ts';
 import { focusAround } from './panelFocus.ts';
 import { swallowPress } from './swallowPress.ts';
 
-/** How the panel was closed: Escape and its own Close give focus back to the control, a press outside leaves it. */
-export type CloseReason = 'escape' | 'outside' | 'close';
+/** How the panel was closed: Escape gives focus back to the control, a press outside leaves it. */
+export type CloseReason = 'escape' | 'outside';
 
 /**
  * While `on`, the panel is a light popover that owns the next gesture. Escape, wherever the focus is,
