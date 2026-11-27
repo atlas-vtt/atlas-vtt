@@ -9,7 +9,7 @@ import type { AlignmentPoint, AlignmentResult } from '../../pixi/GridAlignmentCo
 import type { FitToLines } from './useGridFit';
 import type { GridType } from '../../grid/GridSystem';
 import { isHexGridType } from '../../grid/hexGeometry';
-import { setCanvasCursor, toolCursorOf } from '../../pixi/utils/canvasCursor';
+import { clearToolCursor, setToolCursor } from '../../pixi/utils/canvasCursor';
 import type { AtlasView } from '../../atlas-view';
 import { t, type MessageKey } from '../../i18n';
 
@@ -89,10 +89,8 @@ export function useCrosshairCursor(isPreviewing: boolean, view: AlignmentTabProp
     if (!canvasEl) return;
 
     if (!isPreviewing) {
-      // What a tool set, never a cursor the map showed of its own (a token under the pointer), which would then stay
-      const prev = toolCursorOf(canvasEl) ?? '';
-      setCanvasCursor(canvasEl, 'crosshair');
-      return () => { setCanvasCursor(canvasEl, prev); };
+      setToolCursor(canvasEl, 'alignment', 'crosshair');
+      return () => { clearToolCursor(canvasEl, 'alignment'); };
     }
     return undefined;
   }, [isPreviewing, view]);
