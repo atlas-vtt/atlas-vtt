@@ -3,7 +3,7 @@ import type { Message } from '../../types';
 /** The GM screen on a phone or tablet: its name, the DM screen's control for it, and its notices. */
 export const gmScreen = {
   'gmScreen.name': 'Sidekick',
-  'gmScreen.intro': 'Your phone or tablet as a second screen: command keys, sound and statblocks. {name} runs through Atlas Online and needs an Atlas account that may host online play.',
+  'gmScreen.intro': 'Your phone or tablet as a second screen: command keys, sound and statblocks. {name} runs through Atlas Online and needs a free Atlas account.',
   'gmScreen.start': 'Start {name}',
   'gmScreen.starting': 'Starting {name}…',
   'gmScreen.stop': 'Stop {name}',
@@ -33,7 +33,7 @@ export const gmScreen = {
   'gmScreen.allow': 'Allow',
   'gmScreen.refuse': 'Refuse',
   'gmScreen.moreWaiting': { one: '{count} more device waits', other: '{count} more devices wait' },
-  'gmScreen.signIn': 'Sign in to your Atlas account to start {name}. It needs an account that may host online play.',
+  'gmScreen.signIn': 'Sign in to your Atlas account to start {name}. Any free Atlas account works.',
   'gmScreen.relayTooOld': 'The server cannot run {name} yet. Try again later.',
   'gmScreen.tooMany': '{name} keeps at most 16 devices. Remove one first.',
   'gmScreen.full': 'Every seat of {name} was taken when you allowed the last device. It can ask again once another device leaves.',

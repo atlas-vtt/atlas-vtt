@@ -2,7 +2,7 @@ import type { Translation } from '../../types';
 
 export const gmScreen: Translation = {
   'gmScreen.name': 'Sidekick',
-  'gmScreen.intro': 'Seu celular ou tablet como segunda tela: teclas de comando, som e blocos de estatísticas. {name} funciona pelo Atlas Online e precisa de uma conta Atlas que possa hospedar jogos online.',
+  'gmScreen.intro': 'Seu celular ou tablet como segunda tela: teclas de comando, som e blocos de estatísticas. {name} funciona pelo Atlas Online e precisa de uma conta Atlas gratuita.',
   'gmScreen.start': 'Iniciar {name}',
   'gmScreen.starting': 'Iniciando {name}…',
   'gmScreen.stop': 'Parar {name}',
@@ -32,7 +32,7 @@ export const gmScreen: Translation = {
   'gmScreen.allow': 'Permitir',
   'gmScreen.refuse': 'Recusar',
   'gmScreen.moreWaiting': { one: 'Mais {count} dispositivo aguarda', other: 'Mais {count} dispositivos aguardam' },
-  'gmScreen.signIn': 'Entre na sua conta Atlas para iniciar o {name}. É preciso uma conta que possa hospedar jogos online.',
+  'gmScreen.signIn': 'Entre na sua conta Atlas para iniciar o {name}. Qualquer conta Atlas gratuita serve.',
   'gmScreen.relayTooOld': 'O servidor ainda não pode executar o {name}. Tente mais tarde.',
   'gmScreen.tooMany': 'O {name} guarda no máximo 16 dispositivos. Remova um primeiro.',
   'gmScreen.full': 'Todas as vagas do {name} estavam ocupadas quando você permitiu o último dispositivo. Ele pode pedir de novo quando outro sair.',

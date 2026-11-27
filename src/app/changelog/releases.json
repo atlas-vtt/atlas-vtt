@@ -2,6 +2,11 @@
   "version": "0.21.1-beta.0",
   "releases": [
     {
+      "version": "0.21.1-beta.0",
+      "title": "Coming in 0.21.1",
+      "markdown": "## Fixed\n\n- Sidekick works with any free Atlas account, no Atlas Online access needed"
+    },
+    {
       "version": "0.21.0",
       "date": "2026-11-27",
       "title": "Sidekick",
