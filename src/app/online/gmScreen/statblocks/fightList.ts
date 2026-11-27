@@ -66,6 +66,13 @@ export function fightOf(state: FrontSceneState, inputs: FightInputs): Statblocks
   const defeated = new Set(entries.filter((entry) => combatantDefeated(entryToken(tokens, entry), inputs.definitions)).map((entry) => entry.id));
   const holders = new Set(turnEntries(turn, initiative, tokens, defeated).map((entry) => entry.id));
   const known = sides.map((side) => side.id);
+  // A device drops a fight whose rows share a key: an entry whose id another entry of the tracker has already gets a key of its own.
+  const seen = new Map<string, number>();
+  const keyOf = (id: string): string => {
+    const before = seen.get(id) ?? 0;
+    seen.set(id, before + 1);
+    return inputs.keyOf(before === 0 ? id : `${id}\u0000${before}`);
+  };
 
   const combatant = (entry: InitiativeEntry): FightCombatant => {
     const token = entryToken(tokens, entry);
@@ -81,7 +88,7 @@ export function fightOf(state: FrontSceneState, inputs: FightInputs): Statblocks
       offMap: isOffMap(token),
     };
     return {
-      key: inputs.keyOf(entry.id),
+      key: keyOf(entry.id),
       name: ((token && tokenDisplayName(token)) || entry.name).trim().slice(0, MAX_NAME),
       statblock: path ? inputs.statblockOf(path) : null,
       portrait: entry.imagePath ? inputs.portraitOf(entry.imagePath) : null,

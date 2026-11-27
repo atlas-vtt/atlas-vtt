@@ -4,6 +4,7 @@ import { DEFAULT_INITIATIVE_RULES } from '../../../../src/app/gameSystems/initia
 import { cardInstanceNumber } from '../../../../src/app/initiative/cardInstanceNumber';
 import type { FrontSceneState } from '../../../../src/app/online/gmScreen/statblocks/frontScene.ts';
 import { fightArt, fightOf, type FightInputs } from '../../../../src/app/online/gmScreen/statblocks/fightList.ts';
+import { ScreenIds } from '../../../../src/app/online/gmScreen/statblocks/screenIds.ts';
 import { parseFight, type FightCombatant, type StatblocksFight } from '../../../../src/app/online/protocol/index.ts';
 import type { TokenEntity } from '../../../../src/app/types';
 import type { InitiativeEntry, InitiativeState } from '../../../../src/app/types/initiativeTypes';
@@ -113,5 +114,20 @@ describe('the fight a GM screen device is sent', () => {
   it('stays the same when a token moves', () => {
     const moved = Object.fromEntries(Object.entries(TOKENS).map(([id, each]) => [id, { ...each, x: 700, y: 140 }]));
     expect(fightOf(scene({}, moved), INPUTS)).toEqual(fightOf(scene({}), INPUTS));
+  });
+
+  it('gives every row a key of its own where the tracker holds two entries with one id, so a device still reads the fight', () => {
+    const keys = new ScreenIds('k-');
+    const inputs: FightInputs = { ...INPUTS, keyOf: (entryId) => keys.of(entryId) };
+    const sameId = scene({ entries: scene({}).initiative.entries.map((each) => ({ ...each, id: 'same' })) });
+    const twice = scene({ entries: [...scene({}).initiative.entries, ...scene({}).initiative.entries.map((each) => ({ ...each, order: each.order + 10 }))] });
+    for (const state of [sameId, twice]) {
+      const fight = fightOf(state, inputs);
+      const sent = rows(fight).map((each) => each.key);
+      expect(new Set(sent).size).toBe(sent.length);
+      expect(parseFight(JSON.parse(JSON.stringify(fight)))).toEqual(fight);
+    }
+    // The same entry keeps its key from one read to the next.
+    expect(rows(fightOf(sameId, inputs)).map((each) => each.key)).toEqual(rows(fightOf(sameId, inputs)).map((each) => each.key));
   });
 });
