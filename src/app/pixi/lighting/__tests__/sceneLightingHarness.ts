@@ -168,10 +168,3 @@ export function engineLayer(viewport: Container): Container | undefined {
 export function darkness(viewport: Container): Container | undefined {
   return viewport.children.find((child) => child.label === 'line-of-sight');
 }
-
-/** Every program link fails from now on, as on a driver that rejects the shaders. */
-export function breakLinking(renderer: WebGLRenderer): void {
-  const { gl } = renderer;
-  const original = gl.getProgramParameter.bind(gl);
-  vi.spyOn(gl, 'getProgramParameter').mockImplementation((program: WebGLProgram, name: number): unknown => (name === gl.LINK_STATUS ? false : original(program, name)));
-}

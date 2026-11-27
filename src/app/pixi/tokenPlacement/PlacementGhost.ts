@@ -3,6 +3,7 @@ import { destroyTree } from '../utils/destroyTree';
 import { Spring, type SpringFeel } from './placementSpring';
 import type { Point } from './placementLayout';
 import { facingMark } from './facingMark';
+import { textureCanvas } from '../utils/textureCanvas';
 
 /** A token as it will look once placed, holding its art until released. */
 export interface TokenPreview {
@@ -218,19 +219,16 @@ let cachedShadow: Texture | null = null;
 function shadowTexture(): Texture {
   if (cachedShadow) return cachedShadow;
   const size = 128;
-  const canvas = createEl('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const context = canvas.getContext('2d');
-  if (context) {
-    const gradient = context.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-    gradient.addColorStop(0, 'rgba(0, 0, 0, 0.75)');
-    gradient.addColorStop(0.55, 'rgba(0, 0, 0, 0.5)');
-    gradient.addColorStop(0.8, 'rgba(0, 0, 0, 0.16)');
-    gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    context.fillStyle = gradient;
-    context.fillRect(0, 0, size, size);
-  }
+  const drawn = textureCanvas(size, size);
+  if (!drawn) return Texture.EMPTY;
+  const { canvas, context } = drawn;
+  const gradient = context.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  gradient.addColorStop(0, 'rgba(0, 0, 0, 0.75)');
+  gradient.addColorStop(0.55, 'rgba(0, 0, 0, 0.5)');
+  gradient.addColorStop(0.8, 'rgba(0, 0, 0, 0.16)');
+  gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, size, size);
   cachedShadow = new Texture({ source: new CanvasSource({ resource: canvas, scaleMode: 'linear' }) });
   return cachedShadow;
 }

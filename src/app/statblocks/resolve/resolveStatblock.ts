@@ -2,10 +2,11 @@
  * The one resolver: a statblock note as every consumer reads it, with the
  * template it renders with (§4.10, §5.3, §6.1).
  *
- * - Native notes read their frontmatter from the metadata cache, never Fantasy
- *   Statblocks' bestiary copy, which lags behind Atlas' writes. Renamed keys
- *   are aliased to their current key, and the template's meanings point at
- *   unusual keys. A template the library lacks gives the auto template.
+ * - Native notes read their frontmatter from the metadata cache, or the open
+ *   editor's values a caller hands in, never Fantasy Statblocks' bestiary copy,
+ *   which lags behind Atlas' writes. Renamed keys are aliased to their current
+ *   key, and the template's meanings point at unusual keys. A template the
+ *   library lacks gives the auto template.
  * - Fantasy Statblocks' statblocks keep `linkedCreatureFor`'s order. While the
  *   plugin is loaded it renders them (no template); while it is missing,
  *   frontmatter and inline fences render with the auto template, and a fence
@@ -35,6 +36,8 @@ export type StatblockRecord = Readonly<Record<string, unknown>>;
 export interface VaultResolveContext extends ResolveContext {
   /** One bestiary lookup for many notes (`CreatureIndex` builds one per batch); read anew when absent. */
   bestiary?: BestiaryLookup;
+  /** A native note's values as an open editor holds them: the metadata cache follows an editor only once Obsidian saves it. */
+  frontmatter?: FrontmatterRecord;
 }
 
 /** A native statblock: its template from the lookup (former keys aliased, meanings read), else the auto template. */
@@ -107,7 +110,7 @@ export async function resolveStatblock(app: App, path: string, context: VaultRes
   const file = app.vault.getAbstractFileByPath(path);
   const note = file instanceof TFile ? file : null;
   const source = note ? await statblockSourceOf(app, note) : null;
-  if (note && source?.kind === 'atlas') return resolveNative(path, source, cachedFrontmatter(app, note) ?? {}, context.templates);
+  if (note && source?.kind === 'atlas') return resolveNative(path, source, context.frontmatter ?? cachedFrontmatter(app, note) ?? {}, context.templates);
 
   const bestiary = context.bestiary ?? bestiaryLookup(app);
   const loaded = bestiary.api !== null;

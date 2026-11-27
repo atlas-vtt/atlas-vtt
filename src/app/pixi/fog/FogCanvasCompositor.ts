@@ -99,6 +99,9 @@ export class FogCanvasCompositor {
     const pad = Math.ceil(blur * 3);
     const width = this.canvas.width + 2 * pad;
     const height = this.canvas.height + 2 * pad;
+    // After the GPU process died each canvas comes back on its own: one still lost would draw nothing
+    // and leave the fog cleared, so the fog is drawn through a new one.
+    if (this.spread?.getContext('2d')?.isContextLost()) this.spread = null;
     const spread = this.spread ??= getDomHost().createCanvas(undefined, { width, height });
     if (spread.width !== width) spread.width = width;
     if (spread.height !== height) spread.height = height;

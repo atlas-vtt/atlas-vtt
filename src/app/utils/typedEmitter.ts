@@ -25,6 +25,12 @@ export class EventEmitter {
     return this.add(event, listener as Listener, true);
   }
 
+  /** As `on`, but called before the listeners there are already, so none of them that throws keeps it from being called. */
+  prependListener<Args extends unknown[]>(event: string, listener: (...args: Args) => void): this {
+    this.setList(event, [{ listener: listener as Listener, once: false, fired: false }, ...(this.entries.get(event) ?? [])]);
+    return this;
+  }
+
   /** Removes the listener as it was added last, if it was added more than once. */
   off<Args extends unknown[]>(event: string, listener: (...args: Args) => void): this {
     const list = this.entries.get(event) ?? [];

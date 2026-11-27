@@ -47,16 +47,32 @@ describe('the card menu of a fight with more than two sides', () => {
 });
 
 describe('the card menu of a fight by cards', () => {
-  it('swaps the card with another combatant, and has no number to roll, edit or delay', () => {
+  it('swaps the card with another combatant, and has no number to roll or edit', () => {
     const swapCard = vi.fn();
     const menu = initiativeCardMenu(entry, wolf, mode({ cards: true, swapTargets: [{ id: 'b', name: 'Bear', card: 7 }] }), actions({ swapCard }));
     expect(labels(menu)).not.toEqual(expect.arrayContaining(['Roll Initiative']));
     expect(labels(menu)).not.toContain('Edit Initiative');
-    expect(labels(menu)).not.toContain('Delay Turn');
     const [bear] = childrenOf(menu, 'Swap Card With');
     expect(bear).toMatchObject({ label: 'Bear', detail: '7' });
     if (bear?.type === 'item') void bear.onClick();
     expect(swapCard).toHaveBeenCalledWith('b');
+  });
+
+  it('delays the turn while the fight runs, and a delayed combatant acts again from its menu', () => {
+    const delay = vi.fn();
+    const actNow = vi.fn();
+    const click = (menu: ContextMenuEntry[], label: string): void => {
+      const found = menu.find((e) => e.type === 'item' && e.label === label);
+      if (found?.type !== 'item') throw new Error(`no ${label}`);
+      void found.onClick();
+    };
+    click(initiativeCardMenu(entry, wolf, mode({ cards: true }), actions({ delay, actNow })), 'Delay Turn');
+    expect(delay).toHaveBeenCalledTimes(1);
+    const delayed = initiativeCardMenu({ ...entry, delayed: true }, wolf, mode({ cards: true }), actions({ delay, actNow }));
+    expect(labels(delayed)).not.toContain('Delay Turn');
+    click(delayed, 'Act Now');
+    expect(actNow).toHaveBeenCalledTimes(1);
+    expect(labels(initiativeCardMenu(entry, wolf, mode({ cards: true, fightRuns: false }), actions()))).not.toContain('Delay Turn');
   });
 
   it('offers no swap to a combatant without a card', () => {

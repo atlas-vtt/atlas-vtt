@@ -9,6 +9,7 @@ import { isDiceDisplay, type DiceDisplay } from '../dice3d/diceDisplay';
 import type { ExperimentalFeatureId } from '../experimental/experimentalFeatures';
 import { DEFAULT_DICE_LOOK, isDiceColour, isDiceFont, type DiceLook } from '../dice3d/diceLook';
 import { readToolbarLayout, type StoredToolbarLayout } from '../toolbar/toolbarLayout';
+import type { GmScreenKeys } from './gmScreenKeysSettings';
 import {
   DEFAULT_SETTINGS,
   defaultInputMode,
@@ -552,6 +553,17 @@ export class SettingsService {
     const read = readToolbarLayout(next);
     if (JSON.stringify(read) === JSON.stringify(this.settings.toolbar)) return;
     this.settings.toolbar = read;
+    this.commit();
+  }
+
+  /** The GM screen's grids of keys that the GM changed, by kind of device. */
+  getGmScreenKeys(): GmScreenKeys {
+    return this.settings.gmScreenKeys ?? {};
+  }
+
+  setGmScreenKeys(next: GmScreenKeys): void {
+    if (JSON.stringify(next) === JSON.stringify(this.getGmScreenKeys())) return;
+    this.settings.gmScreenKeys = next;
     this.commit();
   }
 

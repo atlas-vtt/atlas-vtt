@@ -564,8 +564,8 @@ export const CONVENTIONS = [
     selectors: ["MemberExpression[property.name='subtle']"],
     message: 'Hash bytes with sha256, and a JSON value with hashJson (src/app/utils/hashing.ts).',
     why: 'Hashes are stored in vault files and compared between devices and windows, so one module makes their bytes and their hex.',
-    // assetIds signs with a key, which is no content hash. The protocol directory is changed as a whole, never file by file.
-    owners: ['src/app/utils/hashing.ts', 'src/app/online/gm/assets/assetIds.ts'],
+    // assetIds signs with a key and the GM screen's channel seals with keys, which is no content hash. The protocol directory is changed as a whole, never file by file.
+    owners: ['src/app/utils/hashing.ts', 'src/app/online/gm/assets/assetIds.ts', 'src/app/online/gmScreen/channel/channelKeys.ts'],
     ignores: ['src/app/online/protocol/**'],
     bad: ["export const digest = (bytes: Uint8Array<ArrayBuffer>): Promise<ArrayBuffer> => crypto.subtle.digest('SHA-256', bytes);"],
     good: ["import { sha256 } from './utils/hashing';\nexport const digest = (bytes: Uint8Array<ArrayBuffer>): Promise<string> => sha256(bytes);"],

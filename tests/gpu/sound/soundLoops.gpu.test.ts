@@ -2,8 +2,6 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { commands } from 'vitest/browser';
 import { SoundImporter, type SoundImportResult } from '@/app/sound/codec/soundImporter';
 import { WHOLE_DECODE_FRAMES } from '@/app/sound/codec/seekTable';
-import { webCodecsWindowDecode, wholeFileWindowDecode, type WindowDecode } from '@/app/sound/engine/windowDecoder';
-import type { SoundContext } from '@/app/sound/engine/audioNodes';
 import { SOUND_RATE } from '@/app/sound/engine/soundMath';
 import { measurePlace, measureSpread, wrapFrameNear, type PlaceMeasure } from './loopMeasure';
 import { COPY_TAGS, layerOf, render, tableOf } from './soundHarness';
@@ -88,11 +86,11 @@ interface LoopReport {
   own: ReturnType<typeof measureSpread>;
 }
 
-async function rendered(result: SoundImportResult, options: { seconds?: number; windowDecode?: (context: SoundContext) => WindowDecode } = {}): Promise<LoopReport & { samples: Float32Array; wrapAt: number }> {
+async function rendered(result: SoundImportResult, options: { seconds?: number } = {}): Promise<LoopReport & { samples: Float32Array; wrapAt: number }> {
   const bytes = new Uint8Array(await result.bytes.arrayBuffer());
   const seconds = options.seconds ?? (2.6 * result.frames) / SOUND_RATE;
   const startAt = result.frames > WHOLE_DECODE_FRAMES ? -((result.frames / SOUND_RATE) * 1000 - 12_000) : 0;
-  const samples = await render(tableOf({ layers: [layerOf({ key: 'sound', frames: result.frames, gainDb: 0 }, { startAt })] }), { files: new Map([['sound', bytes]]) }, { seconds, ...(options.windowDecode ? { options: { windowDecode: options.windowDecode } } : {}) });
+  const samples = await render(tableOf({ layers: [layerOf({ key: 'sound', frames: result.frames, gainDb: 0 }, { startAt })] }), { files: new Map([['sound', bytes]]) }, { seconds });
   const decoded = (await new OfflineAudioContext(2, SOUND_RATE, SOUND_RATE).decodeAudioData(bytes.slice().buffer)).getChannelData(0);
   const expected = result.frames > WHOLE_DECODE_FRAMES ? 12 * SOUND_RATE : 2 * result.frames;
   const wrapAt = wrapFrameNear(samples, decoded, expected);
@@ -247,10 +245,7 @@ describe('loops, on real encoders', () => {
     });
   });
 
-  describe.each<[string, (context: SoundContext) => WindowDecode]>([
-    ['AudioDecoder', webCodecsWindowDecode],
-    ['whole-file windows', wholeFileWindowDecode],
-  ])('over 60 s, through %s', (name, windowDecode) => {
+  describe('over 60 s', () => {
     it.each([
       ['continuous', true],
       ['crossfaded', false],
@@ -261,8 +256,8 @@ describe('loops, on real encoders', () => {
       expect(result.frames).toBeGreaterThan(WHOLE_DECODE_FRAMES);
       if (wraps) expect(result.frames).toBe(62 * SOUND_RATE);
       // 12 s to the wrap, with windows every 5 s on both sides of it.
-      const loop = await rendered(result, { seconds: 24, windowDecode });
-      report(`61 s ${seam}, ${name}`, result, loop);
+      const loop = await rendered(result, { seconds: 24 });
+      report(`61 s ${seam}`, result, loop);
       expect(loop.wrap.hole).toBeLessThanOrEqual(2);
       expect(loop.wrap.stepRatio).toBeLessThanOrEqual(2);
       expect(loop.wrap.dipDb).toBeGreaterThan(-3);

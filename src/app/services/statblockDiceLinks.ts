@@ -26,11 +26,9 @@ import type { AdvantageSide } from '../types/diceSetTypes';
 import { t } from '../i18n';
 import { BONUS_ID_ATTRIBUTE } from '../statblocks/rollBonuses/armedBonuses';
 import { splitDiceSegments, toRollFormula } from './statblockDiceText';
+import { isHitDice, markOwnDiceLink } from './ownDiceLinks';
 
 const LINK_CLASS = 'atlas-dice-link';
-
-/** Set by the statblock renderer on the line that holds a creature's hit points. */
-const HIT_POINTS_SELECTOR = '[data-hit-points]';
 
 /** Elements whose text must never be rewritten. */
 const SKIPPED_TAGS = new Set(['SCRIPT', 'STYLE', 'INPUT', 'TEXTAREA', 'BUTTON']);
@@ -86,6 +84,7 @@ export function createDiceLink(text: string, formula: string): HTMLElement {
   link.setAttribute('role', 'button');
   link.setAttribute('tabindex', '0');
   link.setAttribute('aria-label', t('dice.rollFormula', { formula }));
+  markOwnDiceLink(link);
   return link;
 }
 
@@ -153,15 +152,14 @@ export function attachDiceRolling(
   getSource: () => DiceRollSource,
   { onRollHitPoints, offMap, openMenu, leaves }: DiceRollingOptions = {},
 ): () => void {
-  const hitDice = (link: HTMLElement, formula: string): boolean =>
-    onRollHitPoints !== undefined && /d\d/i.test(formula) && link.closest(HIT_POINTS_SELECTOR) !== null;
+  const hitDice = (link: HTMLElement): boolean => onRollHitPoints !== undefined && isHitDice(link);
 
   const roll = (link: HTMLElement, side: AdvantageSide | null): void => {
     const formula = link.dataset.formula;
     if (!formula) return;
 
     const abilityName = abilityNameFor(link);
-    if (hitDice(link, formula)) {
+    if (hitDice(link)) {
       onRollHitPoints?.(formula, abilityName);
       return;
     }
@@ -197,7 +195,7 @@ export function attachDiceRolling(
   const onContextMenu = (event: MouseEvent): void => {
     const link = linkOf(event);
     const formula = link?.dataset.formula;
-    if (!openMenu || !link || !formula || hitDice(link, formula)) return;
+    if (!openMenu || !link || !formula || hitDice(link)) return;
     event.preventDefault();
     event.stopPropagation();
     const rules = statblockRollingDice(app, getSource(), offMap?.());
@@ -229,6 +227,7 @@ export function diceLinkProps(matched: string): {
   role: string;
   tabIndex: number;
   'aria-label': string;
+  ref: (link: HTMLElement | null) => void;
 } {
   const formula = toRollFormula(matched);
   return {
@@ -237,5 +236,6 @@ export function diceLinkProps(matched: string): {
     role: 'button',
     tabIndex: 0,
     'aria-label': t('dice.rollFormula', { formula }),
+    ref: markOwnDiceLink,
   };
 }

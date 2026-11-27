@@ -63,6 +63,7 @@ import { migration } from './migration';
 import { names } from './names';
 import { notice } from './notice';
 import { online } from './online';
+import { gmScreen } from './gmScreen';
 import { palette } from './palette';
 import { picker } from './picker';
 import { pin } from './pin';
@@ -200,6 +201,7 @@ export const it = {
   ...names,
   ...notice,
   ...online,
+  ...gmScreen,
   ...palette,
   ...picker,
   ...pin,

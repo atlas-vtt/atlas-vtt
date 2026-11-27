@@ -1,7 +1,7 @@
 import { BufferImageSource, Texture } from 'pixi.js';
-import { getDomHost } from '../../host/dom';
 import type { MapBounds } from '../gridAlignmentMath';
 import type { InkMap } from '../spectralEngine/detectionJob';
+import { textureCanvas } from '../utils/textureCanvas';
 
 /** Longest side of the texture the grid's edges on the map's lines are drawn into. */
 const HITS_SIDE = 1536;
@@ -20,9 +20,9 @@ export function hitsTexture(hits: Float32Array, rect: MapBounds): Texture | null
   const scale = Math.min(1, HITS_SIDE / Math.max(rect.width, rect.height));
   const width = Math.max(1, Math.round(rect.width * scale));
   const height = Math.max(1, Math.round(rect.height * scale));
-  const canvas = getDomHost().createCanvas(undefined, { width, height });
-  const context = canvas.getContext('2d');
-  if (!context) return null;
+  const drawn = textureCanvas(width, height);
+  if (!drawn) return null;
+  const { canvas, context } = drawn;
   context.strokeStyle = '#fff';
   context.lineWidth = HITS_LINE_WIDTH;
   context.lineCap = 'round';

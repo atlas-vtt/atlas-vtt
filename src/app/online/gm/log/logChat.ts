@@ -1,5 +1,5 @@
 import { chatText, GM_AUTHOR, inlineMarks, replyPreview, rolledFormulas, type ChatRefusal, type ChatStyle, type LogReply, type LogSpeaker, type RollMode, type SharedRoll } from '../../protocol/index.ts';
-import { rollableFormula } from '../PlayerRolls.ts';
+import { rollableFormula } from '../../../tools/rollableFormula';
 import { seesWhole, type GmLogEntry } from './logEntries.ts';
 
 /** A message as its author wrote it: answering `reply`, in a style, as a token (`speaker`: its key for the author), whispered to `to`. */

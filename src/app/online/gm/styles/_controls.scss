@@ -129,14 +129,6 @@
     color: var(--text-normal);
   }
 
-  .atlas-online-status__dot {
-    flex: none;
-    width: 8px;
-    height: 8px;
-    border-radius: $radius-full;
-    background: var(--atlas-online-tone);
-  }
-
   // ── Sign-in ───────────────────────────────────────────────────────────────
 
   // The code the GM approves in the browser, set as the approve page sets it: large, spaced, monospaced.

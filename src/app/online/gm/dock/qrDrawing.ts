@@ -59,9 +59,12 @@ export interface QrDrawing {
   readonly icon: QrBox;
 }
 
-/** The link's matrix at level H, which lets a reader recover the modules the icon covers. */
-export function qrMatrix(text: string): QrMatrix {
-  const { size, data } = encode(text, { ecc: 'H', border: 0, boostEcc: false });
+/** How much of the code a reader can recover: H about 30 %, M about 15 %, in a smaller code. */
+export type QrRecovery = 'H' | 'M';
+
+/** The link's matrix, at level H unless told: that lets a reader recover the modules the icon covers. */
+export function qrMatrix(text: string, ecc: QrRecovery = 'H'): QrMatrix {
+  const { size, data } = encode(text, { ecc, border: 0, boostEcc: false });
   return { size, dark: (x, y) => data[y]?.[x] === true };
 }
 
@@ -101,8 +104,8 @@ function fillet(x: number, y: number, dx: number, dy: number): string {
   return `M${num(x)} ${num(y)}h${num(dx * r)}A${num(r)} ${num(r)} 0 0 ${dx * dy > 0 ? 0 : 1} ${num(x)} ${num(y + dy * r)}z`;
 }
 
-/** The link as it is drawn. */
-export function qrDrawing(matrix: QrMatrix): QrDrawing {
+/** The link as it is drawn; `iconMargin` is the light ring round the icon inside the cleared middle, in modules. */
+export function qrDrawing(matrix: QrMatrix, iconMargin = ICON_MARGIN): QrDrawing {
   const { size } = matrix;
   const plate = plateOf(size);
   const corners = finderCorners(size);
@@ -134,13 +137,13 @@ export function qrDrawing(matrix: QrMatrix): QrDrawing {
     const y = QUIET + fy;
     return roundedRect(x, y, FINDER, FINDER, all(FINDER_RADIUS)) + roundedRect(x + 1, y + 1, FINDER - 2, FINDER - 2, all(FINDER_HOLE_RADIUS)) + roundedRect(x + 2, y + 2, FINDER - 4, FINDER - 4, all(EYE_RADIUS));
   }).join('');
-  const iconSide = plate.side - 2 * ICON_MARGIN;
+  const iconSide = plate.side - 2 * iconMargin;
   return {
     side: size + 2 * QUIET,
     size,
     modules: parts.join(''),
     finders,
     plate: { x: QUIET + plate.x, y: QUIET + plate.y, side: plate.side },
-    icon: { x: QUIET + plate.x + ICON_MARGIN, y: QUIET + plate.y + ICON_MARGIN, side: iconSide },
+    icon: { x: QUIET + plate.x + iconMargin, y: QUIET + plate.y + iconMargin, side: iconSide },
   };
 }

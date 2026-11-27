@@ -2,7 +2,10 @@
 import React from 'react';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { TFile } from 'obsidian';
 import type { LootDraw } from '../../src/app/loot/lootRoller';
+import { imageDisplayChanged } from '../../src/app/services/imageDisplayChanges';
+import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { playerWindowStore, resetPlayerWindowStore } from '../../src/app/stores/playerWindowStore';
 import { tableControlsStore } from '../../src/app/stores/tableControlsStore';
@@ -10,12 +13,10 @@ import { tableControlsStore } from '../../src/app/stores/tableControlsStore';
 const context = vi.hoisted(() => ({
   settings: null as unknown,
   service: { getWindow: vi.fn<() => Window | null>(), setCurtain: vi.fn(), freezeCamera: vi.fn(), unfreezeCamera: vi.fn(), isFrozen: vi.fn(() => false), isWindowOpen: vi.fn(() => true), isTrueScale: vi.fn(() => false), destroy: vi.fn() },
-  closeImageDisplay: vi.fn(),
   fullScreen: { available: false, set: vi.fn(async () => undefined) },
   openPlayerWindow: vi.fn(async () => undefined),
 }));
 vi.mock('../../src/app/services/PlayerWindowService', () => ({ PlayerWindowService: { getInstance: () => context.service } }));
-vi.mock('../../src/app/services/ImageDisplayService', () => ({ ImageDisplayService: { getInstance: () => ({ closeImageDisplay: context.closeImageDisplay }) } }));
 vi.mock('../../src/app/services/PlayerWindowPresenter', () => ({ presentTab: vi.fn(), openPlayerWindow: context.openPlayerWindow }));
 vi.mock('../../src/app/platform/desktopOnly', () => ({ isDesktopApp: () => true, desktopOnly: <T,>(...items: T[]): T[] => items }));
 vi.mock('../../src/app/services/playerWindowDisplay', () => ({
@@ -30,6 +31,10 @@ vi.mock('../../src/app/keyboard/useMapHotkeys', () => ({ useAtlasSettings: () =>
 
 const { PlayerWindowBar } = await import('../../src/app/packages/components/player-window-bar/PlayerWindowBar');
 const { PlayerLootDisplay } = await import('../../src/app/services/PlayerLootDisplay');
+const { ImageDisplayService } = await import('../../src/app/services/ImageDisplayService');
+const { ImageTakeover } = await import('../../src/app/online/gm/image/imageTakeover');
+
+const ART = 'Art/handout.png';
 
 const ROPE: LootDraw = { id: 'rope', notePath: 'Loot.md', source: [], name: 'Rope', price: '1 sp', description: '', properties: [] };
 const takeBack = (): HTMLElement | null => screen.queryByRole('button', { name: 'Take back the handout' });
@@ -141,16 +146,73 @@ describe('the player window bar', () => {
     expect(screen.queryByRole('radiogroup', { name: 'Play mode' })).toBeNull();
   });
 
-  it('offers taking back an image only while one is shown, as its last button', () => {
+  /** Atlas's image display, over a vault that holds the handout. */
+  function imageDisplay(): { service: InstanceType<typeof ImageDisplayService>; file: TFile } {
+    const { app } = createInMemoryApp({ files: { [ART]: 'the handout' } });
+    return { service: new ImageDisplayService(app), file: app.vault.getFileByPath(ART)! };
+  }
+
+  /**
+   * The image an online table shows its players, as online play's table holds it, and what online play
+   * does on every change of its table: it looks at the image display again (`ImageTakeover.sync`).
+   */
+  function onlineTable(service: InstanceType<typeof ImageDisplayService>): { show(): void; takeover: InstanceType<typeof ImageTakeover<TFile>> } {
+    let shown = false;
+    const changed = (): void => takeover.sync();
+    const share = {
+      get isShown(): boolean { return shown; },
+      show: () => Promise.resolve('shown' as const),
+      dismiss: (): boolean => {
+        const was = shown;
+        shown = false;
+        changed();
+        return was;
+      },
+    };
+    const takeover = new ImageTakeover<TFile>(() => service, {
+      share: () => share,
+      readFile: () => Promise.resolve(null),
+      pathOf: (file) => file.path,
+      localWindowOpen: () => false,
+      notice: () => undefined,
+      changed: imageDisplayChanged,
+    });
+    takeover.sync();
+    return { takeover, show: () => ((shown = true), changed()) };
+  }
+
+  it('offers taking back an image the player window shows, as its last button, and takes it back', async () => {
+    const { service, file } = imageDisplay();
+    // The player window, a document of its own; the overlay's entrance and exit, which jsdom does not play
+    context.service.isWindowOpen.mockReturnValue(true);
+    context.service.getWindow.mockReturnValue(Object.assign(new EventTarget(), { document: document.implementation.createHTMLDocument('player') }) as unknown as Window);
+    HTMLElement.prototype.animate = vi.fn(() => ({ finished: Promise.resolve(), playState: 'finished', pause: vi.fn(), play: vi.fn(), cancel: vi.fn(), commitStyles: vi.fn() }) as unknown as Animation);
     render(<PlayerWindowBar view={null} />);
     expect(takeBack()).toBeNull();
-    act(() => playerWindowStore.setState({ imageShown: true }));
+    await act(() => service.displayImageOnPlayerView(file));
     const buttons = screen.getAllByRole('button');
     expect(buttons.at(-1)).toBe(takeBack());
-    fireEvent.click(takeBack()!);
-    expect(context.closeImageDisplay).toHaveBeenCalledWith({ quiet: true });
-    act(() => playerWindowStore.setState({ imageShown: false }));
+    act(() => fireEvent.click(takeBack()!));
+    expect(service.isImageDisplayed()).toBe(false);
     expect(takeBack()).toBeNull();
+    service.destroy();
+  });
+
+  it('offers taking back an image only players at an online table see, without a player window, at once, and drops it once pressed', () => {
+    playerWindowStore.setState({ isOpen: false });
+    context.service.isWindowOpen.mockReturnValue(false);
+    act(() => tableControlsStore.setState({ online: true }));
+    const { service } = imageDisplay();
+    const table = onlineTable(service);
+    render(<PlayerWindowBar view={null} />);
+    expect(takeBack()).toBeNull();
+    act(() => table.show());
+    expect(takeBack()).not.toBeNull();
+    act(() => fireEvent.click(takeBack()!));
+    expect(service.isImageDisplayed()).toBe(false);
+    expect(takeBack()).toBeNull();
+    table.takeover.dispose();
+    service.destroy();
   });
 
   it('offers taking back the loot window while players see it', () => {
@@ -158,7 +220,6 @@ describe('the player window bar', () => {
     act(() => PlayerLootDisplay.get().toggle(ROPE));
     fireEvent.click(takeBack()!);
     expect(PlayerLootDisplay.get().showsInWindow()).toBe(false);
-    expect(context.closeImageDisplay).not.toHaveBeenCalled();
     expect(takeBack()).toBeNull();
   });
 

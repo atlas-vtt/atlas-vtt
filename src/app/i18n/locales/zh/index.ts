@@ -110,6 +110,7 @@ import { levels } from './levels';
 import { mapFeature } from './mapFeature';
 import { measure } from './measure';
 import { online } from './online';
+import { gmScreen } from './gmScreen';
 import { openings } from './openings';
 import { playerBar } from './playerBar';
 import { quest } from './quest';
@@ -247,6 +248,7 @@ export const zh: Translation = {
   ...mapFeature,
   ...measure,
   ...online,
+  ...gmScreen,
   ...openings,
   ...playerBar,
   ...quest,

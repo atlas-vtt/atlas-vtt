@@ -6,10 +6,13 @@ export function isWithin(target: EventTarget | null, selector: string): boolean 
   return !!node && typeof node.instanceOf === 'function' && node.instanceOf(Element) && node.closest(selector) !== null;
 }
 
+/** Marks a popover over the DM screen that owns the next gesture: while it stands, the screen's keys (its pages' arrows among them) do nothing. */
+export const HOLDS_SCREEN_KEYS = { 'data-atlas-holds-screen-keys': '' } as const;
+
 /** What a key on the DM screen must leave alone: another dialog, another leaf, or a field it types in. */
 export function screenTakesKey(event: KeyboardEvent, screen: Element | null, viewId: string | undefined): boolean {
   if (event.defaultPrevented || event.isComposing || !isShortcutScopeActive(screen, viewId)) return false;
-  if ((screen?.doc ?? activeDocument).querySelector('.atlas-onboarding-overlay, .atlas-hotkey-help, .modal-container, [role="menu"], [aria-modal="true"]')) return false;
+  if ((screen?.doc ?? activeDocument).querySelector('.atlas-onboarding-overlay, .atlas-hotkey-help, .modal-container, [role="menu"], [aria-modal="true"], [data-atlas-holds-screen-keys]')) return false;
   return !isTextEntryTarget(event.target);
 }
 

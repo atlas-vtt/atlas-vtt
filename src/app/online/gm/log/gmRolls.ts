@@ -1,5 +1,6 @@
 import { MAX_FLAVOR, shownLine, type RollMode, type RollRequestAnswer } from '../../protocol/index.ts';
-import { buttonMode, rollableFormula, rollAudience } from '../PlayerRolls.ts';
+import { rollableFormula } from '../../../tools/rollableFormula';
+import { buttonMode, rollAudience } from '../PlayerRolls.ts';
 import type { RollNotes } from '../RollShare.ts';
 import type { SceneDice } from '../SceneDice.ts';
 import { tokenLabel, type SceneStore } from '../atlasView.ts';

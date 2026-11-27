@@ -1,9 +1,10 @@
-import { Texture, Graphics, type CanvasSource, type ImageSource, type Application } from 'pixi.js';
+import { Texture, type CanvasSource, type ImageSource, type Application } from 'pixi.js';
 import { App as ObsidianApp, TFile } from 'obsidian';
 import { isResourceUrl, normalizeImagePath } from '../../utils/pathUtils';
 import { loadAsset, unloadAsset } from '../utils/assetLifecycle';
 import { decodeImage, decodedSource, imageMimeType, scaledToFit, type DecodedImage } from '../decodedImage';
 import { deviceProfile } from '../../platform/deviceProfile';
+import { textureCanvas } from '../utils/textureCanvas';
 
 /**
  * Longest edge of a token texture. Tokens render at roughly one grid cell, so
@@ -224,7 +225,7 @@ export class TextureCache {
     }
   }
 
-  /** A walnut disc for tokens without art, drawn once per renderer. */
+  /** A walnut disc for tokens without art, drawn once per renderer (`textureCanvas`: a render texture comes back blank after a GPU process crash). */
   private getDefaultTokenTexture(): Texture {
     const cached = this.textures.get(DEFAULT_TOKEN_TEXTURE_KEY);
     if (cached) return cached;
@@ -233,13 +234,18 @@ export class TextureCache {
 
     const size = 100;
     const radius = size / 2;
-    const graphics = new Graphics()
-      .circle(radius, radius, radius)
-      .fill({ color: 0x8B6F47, alpha: 1 })
-      .circle(radius, radius, radius * 0.8)
-      .fill({ color: 0xA0826D, alpha: 0.5 });
-    const texture = this.pixiApp.renderer.generateTexture(graphics);
-    graphics.destroy();
+    const drawn = textureCanvas(size, size);
+    if (!drawn) return Texture.EMPTY;
+    const { canvas, context } = drawn;
+    context.fillStyle = '#8b6f47';
+    context.beginPath();
+    context.arc(radius, radius, radius, 0, Math.PI * 2);
+    context.fill();
+    context.fillStyle = 'rgba(160, 130, 109, 0.5)';
+    context.beginPath();
+    context.arc(radius, radius, radius * 0.8, 0, Math.PI * 2);
+    context.fill();
+    const texture = Texture.from(canvas);
 
     this.textures.set(DEFAULT_TOKEN_TEXTURE_KEY, texture);
     return texture;

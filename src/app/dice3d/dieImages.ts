@@ -14,7 +14,7 @@ import { dieGeometry, faceIndexForValue, lyingHeight, REST_YAW, restingQuaternio
 import { makeDie, restImmediately } from './dieMotion';
 import { activeLook, SKIN_REVISION } from './dieSkin';
 import { stagePixelRatio, type StageDie } from './DiceRenderer';
-import { borrowStage, returnStage } from './stagePool';
+import { borrowStage, returnStage, showsDice } from './stagePool';
 
 /** One die to draw: its sides, and its colour where a set gives it one. */
 export interface DieImageRequest {
@@ -65,7 +65,9 @@ export function dieImage(die: DieImageRequest): DieImage | null | undefined {
 
 /**
  * Draws every die of `dice` whose image is missing, then resolves. Dice of the
- * same sides and colour are drawn once.
+ * same sides and colour are drawn once. A die read back blank, the dice context
+ * being lost, is not kept, nor any after it: the caller asks again once the
+ * context is back (`subscribeDiceRestored`).
  */
 export async function drawDieImages(dice: readonly DieImageRequest[], doc: Document = getDomHost().activeDocument()): Promise<void> {
   await loadDiceArtwork(activeLook().font);
@@ -101,6 +103,7 @@ export async function drawDieImages(dice: readonly DieImageRequest[], doc: Docum
       });
       renderer.render(staged, 1);
       // Read back in the same task as the render: the drawing buffer is not kept.
+      if (!showsDice(lease.canvas)) return;
       keep(key, { url: lease.canvas.toDataURL('image/png'), aspect: frame.aspect });
     }
   } finally {

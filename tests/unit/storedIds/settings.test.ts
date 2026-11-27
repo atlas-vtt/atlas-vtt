@@ -9,6 +9,7 @@ import { DICE_COLOUR_OPTIONS } from '../../../src/app/dice3d/diceLook';
 import { CATALOG_CREATURE_FILTERS } from '../../../src/app/creatures/creatureFieldCatalog';
 import { EXPERIMENTAL_FEATURES } from '../../../src/app/experimental/experimentalFeatures';
 import { MAP_HOTKEYS } from '../../../src/app/keyboard/mapHotkeys';
+import { FOLDER_GLYPHS, GM_SCREEN_DEVICES, KEY_COMMANDS } from '../../../src/app/online/protocol/index.ts';
 import { SIDE_BAR_IDS, TOOLBAR_CONTROLS } from '../../../src/app/toolbar/toolbarCatalog';
 import { expectStoredIds } from './storedIdList';
 
@@ -117,6 +118,27 @@ const HOTKEY_IDS = [
   'widget5',
 ];
 
+/** The GM screen's grids of keys: by kind of device, a key's command by name, a folder's glyph. */
+const GM_SCREEN_DEVICE_IDS = ['phone', 'tablet'];
+const GM_SCREEN_KEY_COMMAND_IDS = [
+  'combat',
+  'curtain',
+  'freeze',
+  'handout',
+  'muteMusic',
+  'nextMood',
+  'nextTrack',
+  'pause',
+  'present',
+  'previousTrack',
+  'repeat',
+  'rollInitiative',
+  'shareRolls',
+  'shuffle',
+  'stopAll',
+];
+const GM_SCREEN_FOLDER_GLYPH_IDS = ['dice', 'flame', 'folder', 'map', 'moon', 'music', 'shield', 'skull', 'star', 'swords'];
+
 describe('ids that settings store choices under: a list only grows, and no id on it is renamed or removed', () => {
   it('keeps every experimental feature id, under which the GM switched the feature on', () => {
     expectStoredIds(
@@ -156,5 +178,12 @@ describe('ids that settings store choices under: a list only grows, and no id on
       MAP_HOTKEYS.map((hotkey) => hotkey.id),
       HOTKEY_IDS,
     );
+  });
+
+  it("keeps every id the GM screen's grids of keys are stored under", () => {
+    const namedBy = "Atlas' settings (`gmScreenKeys` in `data.json`)";
+    expectStoredIds({ what: 'GM screen device kinds', namedBy }, GM_SCREEN_DEVICES, GM_SCREEN_DEVICE_IDS);
+    expectStoredIds({ what: 'GM screen key commands', namedBy }, KEY_COMMANDS, GM_SCREEN_KEY_COMMAND_IDS);
+    expectStoredIds({ what: 'GM screen folder glyphs', namedBy }, FOLDER_GLYPHS, GM_SCREEN_FOLDER_GLYPH_IDS);
   });
 });

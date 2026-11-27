@@ -91,6 +91,45 @@ describe('the remote\'s player window keys', () => {
   });
 });
 
+describe('the remote\'s Freeze and Curtain keys at every table', () => {
+  const reached = [
+    { name: 'a player window alone', open: true, online: false },
+    { name: 'an online table alone', open: false, online: true },
+    { name: 'a player window and an online table', open: true, online: true },
+  ];
+  for (const { name, open, online } of reached) {
+    it(`pause and curtain ${name}, and the state says so`, () => {
+      const { table, player, window } = fakeTable();
+      Object.assign(window, { open, online });
+      expect(runTableCommand(table, { type: 'freeze' })).toBeNull();
+      expect(runTableCommand(table, { type: 'curtain' })).toBeNull();
+      expect(remotePlayer(table)).toMatchObject({ open, frozen: true, hidden: true });
+      expect(runTableCommand(table, { type: 'freeze' })).toBeNull();
+      expect(runTableCommand(table, { type: 'curtain' })).toBeNull();
+      expect(remotePlayer(table)).toMatchObject({ open, frozen: false, hidden: false });
+      expect(player.toggleFreeze).toHaveBeenCalledTimes(2);
+      expect(player.setCurtain.mock.calls).toEqual([[true], [false]]);
+    });
+  }
+
+  it('are refused with neither a player window nor a table, whose state shows nothing paused or curtained', () => {
+    const { table, player, window } = fakeTable();
+    Object.assign(window, { open: false, online: false, frozen: true, curtained: true });
+    expect(runTableCommand(table, { type: 'freeze' })).toBe('no-player-window');
+    expect(runTableCommand(table, { type: 'curtain' })).toBe('no-player-window');
+    expect(remotePlayer(table)).toMatchObject({ open: false, frozen: false, hidden: false });
+    expect(player.toggleFreeze).not.toHaveBeenCalled();
+    expect(player.setCurtain).not.toHaveBeenCalled();
+  });
+
+  it('pause online players while TrueScale pins the player window', () => {
+    const { table, window } = fakeTable();
+    Object.assign(window, { trueScale: true, online: true });
+    expect(runTableCommand(table, { type: 'freeze' })).toBeNull();
+    expect(remotePlayer(table)).toMatchObject({ trueScale: true, frozen: true });
+  });
+});
+
 describe('the remote\'s dice keys', () => {
   it('rolls a saved roll of the map in front by its id, and refuses one its collection lacks', () => {
     const { table, map } = fakeTable();

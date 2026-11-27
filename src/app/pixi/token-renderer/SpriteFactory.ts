@@ -10,6 +10,7 @@ import type { TokenGroupContainer } from './types';
 import type { TokenEntity } from '../../types';
 import type { GridSystem } from '../../grid/GridSystem';
 import { destroyTree } from '../utils/destroyTree';
+import { textureCanvas } from '../utils/textureCanvas';
 import { getTokenRingOuterDiameter } from './tokenRingMetrics';
 import { loadedTokenRingTexture, loadTokenRingTexture } from './tokenRingTexture';
 import { OVERLAYS_LABEL } from './TokenOverlays';
@@ -242,10 +243,9 @@ export class SpriteFactory {
     }
 
     const size = 512;
-    const canvas = createEl('canvas');
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext('2d')!;
+    const drawn = textureCanvas(size, size);
+    if (!drawn) return Texture.EMPTY;
+    const { canvas, context: ctx } = drawn;
 
     const centerX = size / 2;
     const centerY = size / 2;

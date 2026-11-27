@@ -192,6 +192,21 @@ describe('a fight by cards', () => {
     expect(turn(get())[1]).not.toBe('c');
   });
 
+  it('lets a delayed combatant act now, before the combatant whose turn it is, leaving its number as it was', () => {
+    const { actions, get } = setup([token('a'), token('b'), token('c')]);
+    actions.updateInitiativeEntry('a', { initiative: 17 });
+    actions.startCombat(CARDS);
+    actions.delayInitiativeTurn('a');
+    expect(turn(get())).toEqual([1, 'b']);
+    actions.actNowInInitiative('a');
+    expect(turn(get())).toEqual([1, 'a']);
+    expect(get().initiative.entries.find((e) => e.id === 'a')?.initiative).toBe(17);
+    actions.nextTurn();
+    expect(turn(get())).toEqual([1, 'b']);
+    actions.nextTurn();
+    expect(turn(get())).toEqual([1, 'c']);
+  });
+
   it('passes the turn on when the combatant with it leaves, and deals as a new round begins', () => {
     const { actions, get } = setup([token('a'), token('b')], scripted([0.999, 0.999]));
     actions.startCombat({ ...CARDS, dealEachRound: true });

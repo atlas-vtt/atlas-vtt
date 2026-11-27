@@ -33,6 +33,7 @@ import { map } from './map';
 import { menu } from './menu';
 import { notice } from './notice';
 import { online } from './online';
+import { gmScreen } from './gmScreen';
 import { palette } from './palette';
 import { picker } from './picker';
 import { settings } from './settings';
@@ -166,6 +167,7 @@ export const ru: Translation = {
   ...menu,
   ...notice,
   ...online,
+  ...gmScreen,
   ...palette,
   ...picker,
   ...settings,

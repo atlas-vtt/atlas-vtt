@@ -6,6 +6,7 @@ import type { LookService } from './lookService';
 import { customAccent, onAccentChange } from './accentColour';
 import { paintIvy, untilStylesheetAdded } from './paintedIvy';
 import { SQUARE_CORNERS_CLASS } from '../pixi/utils/squareCorners';
+import { debounce } from '../../utils/debounce';
 
 /** Atlas' two looks: the mediaeval module page and the clean sci-fi one. */
 export type AtlasLook = 'mediaeval' | 'scifi';
@@ -30,6 +31,12 @@ export const GLASS_LOOK_CLASS = 'atlas-look-glass';
 
 /** On `body` while an Atlas look is on and the GM picked an accent colour, which the look then takes instead of its own. */
 export const CUSTOM_ACCENT_CLASS = 'atlas-accent-custom';
+
+/**
+ * How long the accent rests before Atlas announces it. What repaints from it (every die's artwork, the dice colours,
+ * the lent ivy, the glass) costs several frames, which a colour picker's drag would pay on every step.
+ */
+const ACCENT_SETTLE_MS = 150;
 
 export function isAtlasLook(value: unknown): value is AtlasLook {
   return value === 'mediaeval' || value === 'scifi';
@@ -83,9 +90,11 @@ export function registerLookSync(plugin: Plugin, looks: LookService): void {
   }));
   // Obsidian writes a new accent onto `body` without announcing it (`setAccentColor` triggers no `css-change`, unlike
   // a theme or font switch), so Atlas announces it: the dice, the canvas' accent and the lent ivy re-read it then.
+  const announceAccent = debounce(() => app.workspace.trigger('css-change'), ACCENT_SETTLE_MS);
+  plugin.register(() => announceAccent.cancel());
   plugin.register(onAccentChange(app, () => {
     for (const doc of documents) apply(doc);
-    app.workspace.trigger('css-change');
+    announceAccent();
   }));
   plugin.registerEvent(app.workspace.on('css-change', () => looks.followThemeChange()));
 }

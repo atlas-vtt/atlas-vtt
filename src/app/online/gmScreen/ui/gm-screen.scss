@@ -1,0 +1,200 @@
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+// The GM screen's control stands at the start of the DM screen's header, out of its flow, so the page
+// control stays centred; its panel hangs below it.
+.atlas-gm-screen-control {
+  position: absolute;
+  inset-block: $spacing-l 0;
+  inset-inline-start: var(--atlas-dm-screen-inset);
+  display: flex;
+  align-items: center;
+  pointer-events: auto;
+}
+
+.atlas-gm-screen-control__button {
+  position: relative;
+  gap: $spacing-s;
+}
+
+// Sidekick's icon is a square tile: each place rounds it as a phone rounds an app icon, and a hairline of the
+// panel's own ink keeps the bright tile from looking pasted on, in both themes.
+.atlas-sidekick-icon {
+  display: block;
+  flex: none;
+  border-radius: 22.5%;
+  outline: $border-width-s solid rgba(255, 255, 255, 0.12);
+  outline-offset: -$border-width-s;
+
+  &:is(.theme-light *) {
+    outline-color: rgba(0, 0, 0, 0.12);
+  }
+}
+
+.atlas-gm-screen-control__icon {
+  width: 18px;
+  height: 18px;
+}
+
+.atlas-gm-screen-control__waiting {
+  position: absolute;
+  inset-block-start: $spacing-xs;
+  inset-inline-end: $spacing-xs;
+  width: 8px;
+  height: 8px;
+  border-radius: $radius-full;
+  background: var(--interactive-accent);
+}
+
+// A control of the panel that takes no press yet, since it appeared or moved a moment ago (`useArmed`): Stop, New
+// link and a Remove's confirm alike stand a step back until they do, so a press they ignore is seen to be ignored.
+.atlas-gm-screen-panel .btn[aria-disabled='true'] {
+  opacity: 0.6;
+  cursor: default;
+}
+
+// Wide enough that the code is large and the line under it stays one line in every language.
+.atlas-gm-screen-panel {
+  @include atlas-elevated-surface;
+  @include atlas-panel-radius($surface-radius);
+  position: absolute;
+  inset-block-start: calc(100% + #{$spacing-s});
+  inset-inline-start: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: min(368px, calc(100cqi - 2 * var(--atlas-dm-screen-inset)));
+  max-height: calc(100cqb - 120px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  // It grows out of its control, which stands above its start.
+  transform-origin: top left;
+}
+
+// The title starts where the body's content does.
+.atlas-gm-screen-panel__header {
+  @include atlas-close-header($spacing-m);
+  display: flex;
+  justify-content: space-between;
+  gap: $spacing-s;
+}
+
+.atlas-gm-screen-panel__title {
+  display: flex;
+  align-items: center;
+  gap: $spacing-s;
+  margin: 0;
+  font-size: $font-ui-medium;
+  font-weight: $font-weight-semibold;
+}
+
+.atlas-gm-screen-panel__icon {
+  width: 22px;
+  height: 22px;
+}
+
+.atlas-gm-screen-panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-m;
+  padding: 0 $spacing-m $spacing-m;
+}
+
+.atlas-gm-screen-help {
+  @include atlas-help-text;
+  margin: 0;
+}
+
+.atlas-gm-screen-section-label {
+  @include atlas-section-label;
+  margin: 0;
+}
+
+// The code and the line that says what to do with it, as one group.
+.atlas-gm-screen-code {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-s;
+}
+
+// Dark on white in both themes (cameras read an inverted code badly), and no padding of its own: the drawing
+// holds the quiet zone the standard asks for. In the light theme a hairline keeps the white card's edge.
+.atlas-gm-screen-qr {
+  width: 264px;
+  max-width: 100%;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: $radius-m;
+  background: #fff;
+  color: #000;
+  transition: opacity $transition-normal $transition-ease;
+
+  &:is(.theme-light *) {
+    box-shadow: 0 0 0 $border-width-s rgba(0, 0, 0, 0.1);
+  }
+
+  svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    fill: currentColor;
+  }
+}
+
+// Not to be scanned until the relay holds the room.
+.atlas-gm-screen-code[data-status='connecting'] .atlas-gm-screen-qr {
+  opacity: 0.35;
+}
+
+.atlas-gm-screen-caption {
+  @include atlas-help-text;
+  margin: 0;
+  text-align: center;
+  text-wrap: balance;
+}
+
+// While it is off, the icon stands where the code will, over what Sidekick is.
+.atlas-gm-screen-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-m;
+  padding-block-start: $spacing-s;
+  text-align: center;
+}
+
+.atlas-gm-screen-hero__icon {
+  width: 56px;
+  height: 56px;
+}
+
+.atlas-gm-screen-hero__text {
+  text-wrap: pretty;
+}
+
+.atlas-gm-screen-start {
+  width: 100%;
+}
+
+// The shared sign-in and a problem under the centred hero: centred too.
+.atlas-gm-screen-panel .atlas-sign-in {
+  text-align: center;
+}
+
+// Its dot runs with the words, so a line that wraps stays centred too.
+.atlas-gm-screen-panel .atlas-sign-in__status {
+  display: block;
+
+  &::before {
+    display: inline-block;
+    margin-inline-end: $spacing-s;
+    vertical-align: 0.1em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-gm-screen-qr {
+    transition: none;
+  }
+}

@@ -1,4 +1,4 @@
-import { MAX_PLAYERS, TABLE_CODE_PATTERN } from '../protocol/index.ts';
+import { MAX_PLAYERS, roomKind, TABLE_CODE_PATTERN, type RoomKind } from '../protocol/index.ts';
 import { accessText, SERVER_SIGNED_OUT_TEXT, UNREACHABLE_TEXT } from './account/accountView.ts';
 import { accessRefusal } from './account/relayAccount.ts';
 import { OUTDATED_TEXT } from './gmLevel.ts';
@@ -10,6 +10,8 @@ export interface CreatedTable {
   readonly secret: string;
   /** The players the table seats at once, by the GM's plan. */
   readonly maxPlayers: number;
+  /** The room's kind as the relay answered; a relay that names none made a players' table. */
+  readonly kind?: RoomKind;
 }
 
 /** The seats a relay answered with; a relay from before plans seats `MAX_PLAYERS`. */
@@ -39,5 +41,6 @@ export function readCreated(status: number, body: unknown): CreatedTable | strin
   if (status !== 201) return refusalText(status, fields.error);
   const { code, secret } = fields;
   if (typeof code !== 'string' || !TABLE_CODE_PATTERN.test(code) || typeof secret !== 'string' || secret.length < 32) return t('online.server.badAnswer');
-  return { code, secret, maxPlayers: seatsOf(fields.maxPlayers) };
+  const kind = roomKind(fields.kind);
+  return { code, secret, maxPlayers: seatsOf(fields.maxPlayers), ...(kind !== undefined && kind !== 'table' && { kind }) };
 }

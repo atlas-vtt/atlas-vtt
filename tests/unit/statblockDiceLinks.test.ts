@@ -4,7 +4,11 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../src/app/atlasViewType', () => ({ ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 
-import { attachDiceRolling, linkDiceIn } from '../../src/app/services/statblockDiceLinks';
+import { createElement } from 'react';
+import { flushSync } from 'react-dom';
+import { createRoot } from 'react-dom/client';
+import { isOwnDiceLink } from '../../src/app/services/ownDiceLinks';
+import { attachDiceRolling, diceLinkProps, linkDiceIn } from '../../src/app/services/statblockDiceLinks';
 import { splitDiceSegments, toRollFormula } from '../../src/app/services/statblockDiceText';
 import { rollStatblockDice } from '../../src/app/services/statblockRolls';
 
@@ -55,6 +59,17 @@ describe('toRollFormula', () => {
 
   it('strips an ATK label before rolling the bonus', () => {
     expect(toRollFormula('ATK: +4')).toBe('+4');
+  });
+});
+
+describe('the roll links Atlas made', () => {
+  it('are its own, linked in text or drawn by React, and markup of the same class and attributes is not', () => {
+    const el = host('<p>HP 2d8+2</p><span class="atlas-dice-link" data-formula="1d4" role="button" tabindex="0">1d4</span><div></div>');
+    linkDiceIn(el);
+    const react = el.querySelector('div')!;
+    flushSync(() => createRoot(react).render(createElement('span', diceLinkProps('+5'), '+5')));
+    const links = [...el.querySelectorAll('.atlas-dice-link')];
+    expect(links.map((link) => [link.textContent, isOwnDiceLink(link)])).toEqual([['2d8+2', true], ['1d4', false], ['+5', true]]);
   });
 });
 

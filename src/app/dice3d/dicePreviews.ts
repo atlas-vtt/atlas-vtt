@@ -11,7 +11,7 @@ import { copyCanvas, outlineRing } from './dieOutline';
 import { makeDie, restImmediately, type DieAnim } from './dieMotion';
 import { activeLook, resolveLook, setActiveLook, type ResolvedLook } from './dieSkin';
 import type { DiceRenderer } from './DiceRenderer';
-import { borrowStage, canShowDice, hasIdleStage, returnStage, type StageLease } from './stagePool';
+import { borrowStage, canShowDice, hasIdleStage, returnStage, showsDice, type StageLease } from './stagePool';
 
 /** Pixel size of a preview; shown at half that. */
 const PREVIEW_PX = 192;
@@ -151,15 +151,15 @@ async function decoded(url: string): Promise<void> {
   await image.decode().catch(() => undefined);
 }
 
-/** One die in `look`, read back as an image URL; the look every other die is drawn with is restored. */
-function paint(renderer: DiceRenderer, canvas: HTMLCanvasElement, anim: DieAnim, look: ResolvedLook): string {
+/** One die in `look`, read back as an image URL, or null where it was not drawn; the look every other die is drawn with is restored. */
+function paint(renderer: DiceRenderer, canvas: HTMLCanvasElement, anim: DieAnim, look: ResolvedLook): string | null {
   const previous = activeLook();
   try {
     setActiveLook(look);
     refreshDieArtwork(20);
     renderer.render([{ anim, sides: 20 }], 1);
     // Read back in the same task as the render: the drawing buffer is not kept.
-    return canvas.toDataURL('image/png');
+    return showsDice(canvas) ? canvas.toDataURL('image/png') : null;
   } finally {
     setActiveLook(previous);
     // Only the d20 was repainted for the preview.
@@ -196,11 +196,15 @@ async function fill(fonts: readonly DiceFont[], doc: Document, request: PreviewR
       renderer.setShadowShown(false);
       renderer.render([{ anim, sides: 20 }], 1);
       renderer.setShadowShown(true);
+      if (!showsDice(canvas)) return;
       ring = outlineRing(copyCanvas(canvas), RING_GAP, RING_WIDTH);
     }
     for (let next = pending()[0]; next; next = pending()[0]) {
       await turn(next.font);
+      // The context can be lost between two dice or during one; the panel asks again when it opens or the context is back.
+      if (!canShowDice(doc)) return;
       const url = paint(renderer, canvas, anim, next);
+      if (url === null) return;
       await decoded(url);
       images.set(keyOf(next), url);
       published();

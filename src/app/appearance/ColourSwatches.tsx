@@ -1,16 +1,22 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { presetOfAccent } from './accentColour';
 import { COLOUR_PRESETS } from './colourPresets';
 import { IvyLeaf } from './IvyLeaf';
 import { LabelTooltip } from '../packages/components/primitives/tooltip';
 import { t } from '../i18n';
+import { debounce } from '../../utils/debounce';
 import './accent-colour.scss';
 
 const BASE = 'base';
 const CUSTOM = 'custom';
 /** Every swatch in order: the colour that applies while none is picked, the presets by id, then the GM's own colour. */
 const CHOICES: readonly string[] = [BASE, ...COLOUR_PRESETS.map((preset) => preset.id), CUSTOM];
+/**
+ * How long the picker's colour rests before it is applied. One accent change restyles every Obsidian window and
+ * repaints the dice, the ivy and the glass (about 0.2 s), so a drag applied step by step froze the picker.
+ */
+const SETTLE_MS = 150;
 
 /** The first swatch: what applies while no colour is picked (the look's own accent, the ivy's own greens). */
 export interface BaseSwatch {
@@ -36,12 +42,32 @@ interface ColourSwatchesProps {
 
 /** A colour setting's swatches: the base, the presets and a colour of the GM's from the system picker, as one radio group. */
 export function ColourSwatches({ label, value, base, disabled = false, shape = 'round', onChange, pickerStart, groupRef }: ColourSwatchesProps): React.JSX.Element {
-  const chosen = value === '' ? BASE : presetOfAccent(value)?.id ?? CUSTOM;
+  // A colour dragged in the picker shows on its swatch at once and is applied once it rests.
+  const [dragged, setDragged] = useState<string | null>(null);
+  const shown = dragged ?? value;
+  const chosen = shown === '' ? BASE : presetOfAccent(shown)?.id ?? CUSTOM;
   const swatches = useRef(new Map<string, HTMLElement>());
   const picker = useRef<HTMLInputElement>(null);
   const [start, setStart] = useState('#808080');
+  const latestOnChange = useRef(onChange);
+  useLayoutEffect(() => {
+    latestOnChange.current = onChange;
+  });
+  const settle = useMemo(() => debounce((hex: string): void => {
+    setDragged(null);
+    latestOnChange.current(hex);
+  }, SETTLE_MS), []);
+  // A row closed before the colour rested still applies it.
+  useEffect(() => () => settle.flush(), [settle]);
+
+  const drag = (hex: string): void => {
+    setDragged(hex);
+    settle(hex);
+  };
 
   const pick = (choice: string): void => {
+    // A dragged colour still settling would otherwise land over this choice.
+    settle.flush();
     if (choice === BASE) onChange('');
     else if (choice !== CUSTOM) onChange(COLOUR_PRESETS.find((preset) => preset.id === choice)?.hex ?? '');
   };
@@ -108,8 +134,8 @@ export function ColourSwatches({ label, value, base, disabled = false, shape = '
           chosen={chosen === CUSTOM}
           disabled={disabled}
           className="atlas-accent-swatch--custom"
-          style={chosen === CUSTOM ? fill(value) : undefined}
-          leaf={shape === 'leaf' ? (chosen === CUSTOM ? value : 'any') : undefined}
+          style={chosen === CUSTOM ? fill(shown) : undefined}
+          leaf={shape === 'leaf' ? (chosen === CUSTOM ? shown : 'any') : undefined}
           swatchRef={swatchRef(CUSTOM)}
           onPick={openCustom}
         />
@@ -120,8 +146,8 @@ export function ColourSwatches({ label, value, base, disabled = false, shape = '
           tabIndex={-1}
           aria-hidden="true"
           disabled={disabled}
-          value={value || start}
-          onChange={(event) => onChange(event.target.value)}
+          value={shown || start}
+          onChange={(event) => drag(event.target.value)}
         />
       </span>
     </div>

@@ -1,0 +1,191 @@
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+.atlas-gm-screen-devices {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+}
+
+.atlas-gm-screen-devices__heading,
+.atlas-gm-screen-devices__title {
+  margin: 0;
+}
+
+// The whole heading folds the section. Its fill reaches past the content's edge, so the words stay in line
+// with everything above them.
+.atlas-gm-screen-devices__toggle.btn--ghost {
+  justify-content: flex-start;
+  gap: $spacing-s;
+  width: calc(100% + 2 * #{$spacing-s});
+  height: $button-height-m;
+  margin-inline: calc(-1 * #{$spacing-s});
+  padding: 0 $spacing-s;
+  color: var(--text-muted);
+}
+
+.atlas-gm-screen-devices__count {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: $radius-full;
+  background: var(--background-modifier-hover);
+  color: var(--text-muted);
+  font-size: $font-ui-smaller;
+  font-weight: $font-weight-medium;
+  font-variant-numeric: tabular-nums;
+  line-height: 18px;
+  text-align: center;
+}
+
+.atlas-gm-screen-devices__toggle .atlas-gm-screen-devices__chevron {
+  margin-inline-start: auto;
+  transition: transform $transition-normal $transition-ease-in-out;
+}
+
+.atlas-gm-screen-devices__toggle[aria-expanded='false'] .atlas-gm-screen-devices__chevron {
+  transform: rotate(-90deg);
+}
+
+// Height through the grid track, the rows clipped while it grows; opening takes the full beat, closing less.
+.atlas-gm-screen-devices__fold {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows $transition-press $transition-ease-out, opacity $transition-press $transition-ease-out;
+
+  &[data-open='true'] {
+    grid-template-rows: 1fr;
+    opacity: 1;
+    transition-duration: $transition-normal;
+  }
+}
+
+.atlas-gm-screen-devices__list {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  list-style: none;
+}
+
+.atlas-gm-screen-device {
+  display: flex;
+  align-items: center;
+  gap: $spacing-s;
+  padding: $spacing-s;
+  border-radius: $radius-m;
+  background: var(--background-secondary);
+
+  // One that arrives while the panel is open settles in; those there as it opened stand still.
+  &[data-arrived] {
+    transition: opacity $transition-normal $transition-ease-out, transform $transition-normal $transition-ease-out;
+
+    @starting-style {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+  }
+}
+
+// Away: a ring. Connected: a filled dot that breathes out a ring, the one live thing in the panel.
+.atlas-gm-screen-device__dot {
+  position: relative;
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  margin-inline: $spacing-xs;
+  border: $border-width-m solid var(--text-faint);
+  border-radius: $radius-full;
+}
+
+.atlas-gm-screen-device[data-connected='true'] .atlas-gm-screen-device__dot {
+  border-color: var(--color-green);
+  background: var(--color-green);
+
+  &::after {
+    position: absolute;
+    inset: -$border-width-m;
+    border-radius: inherit;
+    background: var(--color-green);
+    content: '';
+    animation: atlas-gm-screen-live 2.4s $transition-ease-out infinite;
+  }
+}
+
+@keyframes atlas-gm-screen-live {
+  from {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+
+  70%,
+  to {
+    opacity: 0;
+    transform: scale(2.6);
+  }
+}
+
+.atlas-gm-screen-device__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.atlas-gm-screen-device__name {
+  @include atlas-truncate;
+  font-size: $font-ui-small;
+  color: var(--text-normal);
+}
+
+.atlas-gm-screen-device__state {
+  @include atlas-truncate;
+  font-size: $font-ui-smaller;
+  color: var(--text-muted);
+}
+
+// Remove: quiet until the pointer comes, then red; on a connected device the first press turns it into a red
+// Remove that a second press confirms.
+.atlas-gm-screen-device__remove.btn--ghost {
+  @include atlas-icon-button('m');
+  color: var(--text-muted);
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
+
+  @include atlas-hover {
+    background: color-mix(in srgb, var(--background-modifier-error) 14%, transparent);
+    @include atlas-error-text;
+  }
+
+  &[data-confirming] {
+    @include atlas-danger-fill;
+    width: auto;
+    padding: 0 $spacing-m;
+    font-size: $font-ui-smaller;
+    font-weight: $font-weight-semibold;
+  }
+
+}
+
+.atlas-gm-screen-device__said {
+  @include atlas-visually-hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-gm-screen-devices__fold,
+  .atlas-gm-screen-devices__toggle .atlas-gm-screen-devices__chevron,
+  .atlas-gm-screen-device[data-arrived] {
+    transition: none;
+  }
+
+  .atlas-gm-screen-device[data-connected='true'] .atlas-gm-screen-device__dot::after {
+    animation: none;
+    opacity: 0;
+  }
+}

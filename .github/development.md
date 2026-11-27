@@ -218,7 +218,9 @@ install and update through BRAT as described in [beta-testing.md](beta-testing.m
 
 1. Branch from `beta`: `git checkout -b release/0.2.0 beta`.
 2. Move the pending notes from `changelog/Unreleased.md` into
-   `changelog/0.2.0.md`, run `npm run changelog:generate` and commit.
+   `changelog/0.2.0.md`, leaving `Unreleased.md` empty, run
+   `npm run changelog:generate` (it recreates an empty `Unreleased.md` if it
+   was deleted) and commit.
 3. `npm version 0.2.0` (this also updates `versions.json`) and push the branch.
 4. Open a pull request against `main`. CI verifies the stable version, and
    **Release Gate** fails until the release is published.

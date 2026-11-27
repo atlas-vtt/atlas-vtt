@@ -9,7 +9,7 @@ import type { InitiativeEntry } from '../../../../src/app/types/initiativeTypes'
 import type { ViewState } from '../../../../src/app/types/viewState';
 import type { WallSegment } from '../../../../src/app/types/wallTypes';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { toBase64 } from '../../../../src/app/online/gm/assetServe.ts';
+import { toBase64 } from '../../../../src/app/utils/base64';
 import { fakeLayers } from './fakeAtlasTab.ts';
 import { GENERIC_SOURCE, gmPerception, PLAYER_SETTINGS } from './gmLighting.ts';
 import { FakeLaser } from './markHarness.ts';

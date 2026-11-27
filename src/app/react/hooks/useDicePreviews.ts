@@ -4,6 +4,7 @@ import type { DiceFont } from '../../dice3d/diceLook';
 import {
   cachedDicePreviews, dicePreviewsVersion, fillDicePreviews, subscribeDicePreviews, type DicePreviews, type PreviewRequest,
 } from '../../dice3d/dicePreviews';
+import { diceRestorations, subscribeDiceRestored } from '../../dice3d/stagePool';
 import { runInBackground } from '../../utils/backgroundTask';
 import { useDiceLook } from './useDiceLook';
 
@@ -12,11 +13,13 @@ import { useDiceLook } from './useDiceLook';
  * by the dice renderer itself; null until a whole set is there. While the set
  * of a new font or accent colour renders, the last whole set stays, so the
  * strip changes in one step. Checked again when Obsidian's CSS changes, since
- * the accent die takes the accent colour.
+ * the accent die takes the accent colour, and when the dice context comes back
+ * after it was lost, since no die is drawn while it is.
  */
 export function useDicePreviews(app: App | undefined, font: DiceFont): DicePreviews | null {
   const [cssVersion, setCssVersion] = useState(0);
   const version = useSyncExternalStore(subscribeDicePreviews, dicePreviewsVersion);
+  const restored = useSyncExternalStore(subscribeDiceRestored, diceRestorations);
 
   useEffect(() => {
     if (!app) return;
@@ -26,7 +29,7 @@ export function useDicePreviews(app: App | undefined, font: DiceFont): DicePrevi
 
   useEffect(() => {
     runInBackground(fillDicePreviews(font, 'shown'), 'Rendering the dice colours');
-  }, [font, cssVersion]);
+  }, [font, cssVersion, restored]);
 
   // `version` and `cssVersion` say when the kept previews or the accent colour changed.
   const fresh = useMemo(() => cachedDicePreviews(font), [font, cssVersion, version]);

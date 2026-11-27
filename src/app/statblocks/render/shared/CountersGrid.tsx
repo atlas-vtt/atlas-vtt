@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Minus, Plus, Settings } from 'lucide-react';
 import { t } from '../../../i18n';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
-import type { CounterRow } from '../../values/counterValues';
+import type { CounterPress, CounterRow } from '../../values/counterValues';
 
 /** Above this many uses a cell shows its count with − and + instead of a pip per use. */
 export const MAX_COUNTER_PIPS = 6;
@@ -14,8 +14,8 @@ export interface ShownCounter {
 }
 
 export interface CounterControls {
-  /** Sets the row at `index` of the stored list to `used` uses. Unset: the controls are drawn inert (the template editor). */
-  use?: ((index: number, used: number) => void) | undefined;
+  /** Presses the row at `index` of the stored list. Unset: the controls are drawn inert (the template editor). */
+  use?: ((index: number, press: CounterPress) => void) | undefined;
   /** What stands under a row's uses: the statblock pane's choice of the rest that gives them back. */
   after?: ((shown: ShownCounter) => React.ReactNode) | undefined;
   /** Sets the row at `index` of the stored list to this maximum. Unset: no maximum input is drawn. */
@@ -26,12 +26,6 @@ interface CountersGridProps {
   counters: readonly ShownCounter[];
   /** Unset: the counts are only shown, without buttons. */
   controls?: CounterControls | undefined;
-}
-
-/** What a press on the pip at `position` (left ones first) leaves: down to it where it is still left, else up to it. */
-function usedAfterPip(row: CounterRow, position: number): number {
-  const left = row.max - row.used;
-  return row.max - (position < left ? position : position + 1);
 }
 
 function buttonProps(action: (() => void) | undefined): Pick<React.ButtonHTMLAttributes<HTMLButtonElement>, 'type' | 'disabled' | 'tabIndex' | 'onClick'> {
@@ -127,7 +121,7 @@ function Pips({ row, index, controls }: ShownCounter & { controls: CounterContro
       {Array.from({ length: row.max }, (_, position) => (
         <button key={position} className="atlas-sb-counter__pip-button" aria-pressed={position < left}
           aria-label={t('statblock.pip', { label: row.name, n: position + 1, max: row.max })}
-          {...buttonProps(use && (() => use(index, usedAfterPip(row, position))))}>
+          {...buttonProps(use && (() => use(index, { pip: position })))}>
           <span className={look(position)} />
         </button>
       ))}
@@ -143,13 +137,13 @@ function Count({ row, index, controls }: ShownCounter & { controls: CounterContr
   return (
     <span className="atlas-sb-counter__stepper">
       <LabelTooltip label={t('statblock.decrease', { label: row.name })}>
-        <button className="atlas-sb-counter__step" {...buttonProps(use && left > 0 ? () => use(index, row.used + 1) : undefined)}>
+        <button className="atlas-sb-counter__step" {...buttonProps(use && left > 0 ? () => use(index, { step: -1 }) : undefined)}>
           <Minus aria-hidden="true" />
         </button>
       </LabelTooltip>
       {text}
       <LabelTooltip label={t('statblock.increase', { label: row.name })}>
-        <button className="atlas-sb-counter__step" {...buttonProps(use && row.used > 0 ? () => use(index, row.used - 1) : undefined)}>
+        <button className="atlas-sb-counter__step" {...buttonProps(use && row.used > 0 ? () => use(index, { step: 1 }) : undefined)}>
           <Plus aria-hidden="true" />
         </button>
       </LabelTooltip>
@@ -160,7 +154,7 @@ function Count({ row, index, controls }: ShownCounter & { controls: CounterContr
 function CounterCell({ row, index, controls }: ShownCounter & { controls: CounterControls | undefined }): React.JSX.Element {
   const [configMode, setConfigMode] = useState(false)
 
-  const handleCommit = (index: number, max: number) => {
+  const handleCommit = (index: number, max: number): void => {
     setConfigMode(false)
     if (controls?.setMax) controls?.setMax(index, max)
   }
@@ -169,9 +163,11 @@ function CounterCell({ row, index, controls }: ShownCounter & { controls: Counte
     <span className="atlas-sb-counter">
       <div className='atlas-sb-counter__header'>
         <span className="atlas-sb-counter__name">{row.name}</span>
-        <button type="button" className="atlas-sb-counter__settings" onClick={() => setConfigMode(prev => !prev)}>
-          <Settings />
-        </button>
+        {controls?.setMax && (
+          <button type="button" className="atlas-sb-counter__settings" onClick={() => setConfigMode(prev => !prev)}>
+            <Settings />
+          </button>
+        )}
       </div>
 
       {!configMode ? (

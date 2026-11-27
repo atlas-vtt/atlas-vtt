@@ -2,11 +2,12 @@ import type { Plugin } from 'obsidian';
 import { t } from '../i18n';
 import { MoodStore } from '../soundLibrary/MoodStore';
 import type { SoundDirector } from '../soundDirector/SoundDirector';
-import { nodeHttpOf } from '../soundRemote/nodeHttp';
-import { REMOTE_PORT } from '../soundRemote/remoteProtocol';
+import { nodeHttpOf } from '../soundRemote/http/nodeHttp';
+import { REMOTE_PORT } from '../soundRemote/http/remoteHttp';
+import { RemoteSettingsStore } from '../soundRemote/http/remoteSettings';
+import { SoundRemoteServer, type PairingPrompt } from '../soundRemote/http/SoundRemoteServer';
 import { HoveredElement } from '../soundRemote/hoveredElement';
-import { RemoteSettingsStore } from '../soundRemote/remoteSettings';
-import { SoundRemoteServer, type PairingPrompt } from '../soundRemote/SoundRemoteServer';
+import { RemoteControl } from '../soundRemote/remoteControl';
 import { showNotice } from '../ui/notice';
 import { ChoiceModal } from './ChoiceModal';
 import { remoteTableOf } from './soundRemoteTable';
@@ -28,10 +29,13 @@ function askToPair(plugin: Plugin, client: string): PairingPrompt {
 export function registerSoundRemote(plugin: Plugin, director: SoundDirector): RemoteSettingsStore {
   const settings = new RemoteSettingsStore(plugin.app);
   let server: SoundRemoteServer | null = null;
+  let control: RemoteControl | null = null;
   const hovered = new HoveredElement(plugin.app.workspace);
   const stop = (): void => {
     server?.stop();
     server = null;
+    control?.dispose();
+    control = null;
     hovered.dispose();
   };
   const follow = (): void => {
@@ -41,12 +45,11 @@ export function registerSoundRemote(plugin: Plugin, director: SoundDirector): Re
       if (!http) return;
       // Only while the remote listens: nothing watches the pointer otherwise
       hovered.start();
+      control = new RemoteControl({ director, moods: MoodStore.forApp(plugin.app), table: remoteTableOf(plugin.app, hovered) });
       server = new SoundRemoteServer({
         http,
         port: REMOTE_PORT,
-        director,
-        moods: MoodStore.forApp(plugin.app),
-        table: remoteTableOf(plugin.app, hovered),
+        control,
         settings,
         askToPair: (client) => askToPair(plugin, client),
         onListenError: (error) => {

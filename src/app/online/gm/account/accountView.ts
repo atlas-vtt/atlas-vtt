@@ -15,8 +15,8 @@ export type AccountView =
   | { readonly kind: 'waiting'; readonly userCode: string | null }
   | { readonly kind: 'checking' }
   | { readonly kind: 'unreachable' }
-  /** The relay says the account may not host; `reason` is null for one this version does not know. */
-  | { readonly kind: 'no-access'; readonly account: AccountInfo; readonly reason: AccessRefusal | null }
+  /** The relay says the account may not host; `reason` is null for one this version does not know; `sidekick`: it may still start Sidekick. */
+  | { readonly kind: 'no-access'; readonly account: AccountInfo; readonly reason: AccessRefusal | null; readonly sidekick: boolean }
   | { readonly kind: 'can-host'; readonly account: AccountInfo; readonly access: HostAccess };
 
 /** What the account control knows when it decides what to show. */
@@ -35,8 +35,11 @@ export function accountView(facts: AccountFacts): AccountView {
   if (facts.me === null) return { kind: 'checking' };
   if (facts.me === 'unreachable') return { kind: 'unreachable' };
   const { account } = facts.me;
-  return facts.me.access === null ? { kind: 'no-access', account, reason: facts.me.reason } : { kind: 'can-host', account, access: facts.me.access };
+  return facts.me.access === null ? { kind: 'no-access', account, reason: facts.me.reason, sidekick: facts.me.sidekick } : { kind: 'can-host', account, access: facts.me.access };
 }
+
+/** Whether the account may start Sidekick: every account that may host, and one that may not where the relay says so. */
+export const mayStartSidekick = (view: AccountView): boolean => view.kind === 'can-host' || (view.kind === 'no-access' && view.sidekick);
 
 const ACCESS_TEXT: Readonly<Record<AccessRefusal, string>> = {
   'no-access': t('online.access.none'),

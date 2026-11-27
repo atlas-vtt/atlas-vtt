@@ -10,8 +10,8 @@ export type RemoteDirector = Pick<SoundDirector, 'isOn' | 'snapshot' | 'press' |
   desk: Pick<SoundDirector['desk'], 'toggleSilence' | 'togglePause' | 'skip' | 'back' | 'setShuffle' | 'setRepeat' | 'setMusicMuted' | 'setMusicLevel' | 'setLayerLevels'>;
 };
 
-/** Why a command did nothing. */
-export type RemoteRefusal = 'sound-off' | 'no-mood' | 'no-music' | 'no-ambience';
+/** Why a sound command did nothing. */
+export type SoundRefusal = 'sound-off' | 'no-mood' | 'no-music' | 'no-ambience';
 
 /** A dial sends a step per notch: Master's setting is written once it rests. */
 const SAVE_AFTER_MS = 600;
@@ -30,7 +30,7 @@ export class RemoteCommands {
   constructor(private readonly director: RemoteDirector, private readonly moodOf: (id: string) => Mood | null) {}
 
   /** Null where it was done. */
-  run(command: Exclude<RemoteCommand, TableCommand>): RemoteRefusal | null {
+  run(command: Exclude<RemoteCommand, TableCommand>): SoundRefusal | null {
     const { director } = this;
     if (!director.isOn) return 'sound-off';
     const { desk } = director;
@@ -73,7 +73,7 @@ export class RemoteCommands {
    * Music and Ambience move the Sound page's faders, which players hear too (`musicStrip`, an older controller's
    * "Music in mix", is Music); Master is this device's level. This device's music and ambience levels stay in Settings.
    */
-  private level(command: Extract<RemoteCommand, { type: 'level' }>): RemoteRefusal | null {
+  private level(command: Extract<RemoteCommand, { type: 'level' }>): SoundRefusal | null {
     const { director } = this;
     const { mix } = director.snapshot();
     switch (command.channel) {

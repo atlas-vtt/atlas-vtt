@@ -1,5 +1,6 @@
 import { Texture } from 'pixi.js';
 import { WIDGET_ICON_PATHS } from '../../types/widgetIcons';
+import { textureCanvas } from '../utils/textureCanvas';
 
 /** Edge length of the rasterised emblem, large enough for big tokens on high-density screens. */
 export const DOWNED_EMBLEM_TEXTURE_SIZE = 384;
@@ -19,11 +20,9 @@ const OUTLINE_COLOR = '#120c0a';
  * eye sockets. Drawn with Path2D, so no image has to load.
  */
 export function createDownedEmblemTexture(size: number = DOWNED_EMBLEM_TEXTURE_SIZE): Texture {
-  const canvas = createEl('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('[downedEmblemTexture] Could not acquire 2D context');
+  const drawn = textureCanvas(size, size);
+  if (!drawn) throw new Error('[downedEmblemTexture] Could not acquire 2D context');
+  const { canvas, context: ctx } = drawn;
 
   drawVignette(ctx, size);
   const scale = (size * SKULL_SHARE) / ICON_SPACE;

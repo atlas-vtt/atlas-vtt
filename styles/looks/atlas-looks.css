@@ -74,8 +74,9 @@ body.atlas-look.theme-light {
   --color-base-40: #a38d66;
   --color-base-50: #8d7c5f;
   --color-base-60: #7a694b;
-  --color-base-70: #6d5c40;
+  --color-base-70: #59482e; /* muted ink: a step heavier than the faint one */
   --color-base-100: #3a2c1a;
+  --text-faint: #68583c; /* 4.5:1 on a field on a sidebar */
 
   /* overlays, hover tints and hairlines are mixed from ink and paper,
      not from black and white */
@@ -112,7 +113,7 @@ body.atlas-look.theme-light:not(.atlas-look-scifi) {
 }
 
 body.atlas-look.theme-dark {
-  --atlas-theme-red: #d4756b;
+  --atlas-theme-red: #d6776c; /* 4.5:1 on a table's head */
   --atlas-theme-rule: #5c503c;
   --atlas-theme-paper: #e9dfc8;
 
@@ -127,8 +128,9 @@ body.atlas-look.theme-dark {
   --color-base-40: #716247;
   --color-base-50: #7d6f55;
   --color-base-60: #96876a;
-  --color-base-70: #a89878;
+  --color-base-70: #c0b08f; /* muted ink: a step heavier than the faint one */
   --color-base-100: #ded2b8;
+  --text-faint: #aa9b80; /* 4.5:1 on a field on a sidebar */
 
   /* ink and paper swap places */
   --mono-0: #120e09;
@@ -145,7 +147,7 @@ body.atlas-look.theme-dark {
   --code-background: #2a241c;
 
   /* links */
-  --text-accent: #d4756b;
+  --text-accent: #d6776c;
   --text-accent-hover: #e08a80;
 
   /* buttons and dropdowns: one step above the page */
@@ -364,9 +366,12 @@ body.atlas-look .markdown-rendered li > p > strong:first-child:not(.statblock *)
 /* Live Preview: inactive lines wrap widgets (list bullets etc.) in
    invisible img.cm-widgetBuffer elements that break `+` selectors,
    so a positional window stands in for "first on the line".
-   Covers plain, bullet (active and inactive) and quoted lines. */
-body.atlas-look .markdown-source-view.mod-cm6 .cm-line > .cm-strong:nth-child(-n+6),
-body.atlas-look .markdown-source-view.mod-cm6 .cm-line > .cm-formatting-quote ~ .cm-strong:nth-child(-n+8) {
+   Covers plain, bullet (active and inactive) and quoted lines.
+   Where the `**` show (source mode, the line being edited), the window
+   ends at the first closing `**`: reading view takes only the first
+   bold, and never a table cell's. */
+body.atlas-look .markdown-source-view.mod-cm6 .cm-line:not(.HyperMD-table-row) > .cm-strong:nth-child(-n+6):not(.cm-formatting-strong-end ~ *),
+body.atlas-look .markdown-source-view.mod-cm6 .cm-line > .cm-formatting-quote ~ .cm-strong:nth-child(-n+8):not(.cm-formatting-strong-end ~ *) {
   font-family: var(--atlas-theme-heading-font);
   font-weight: normal;
   color: var(--atlas-note-accent);
@@ -524,8 +529,9 @@ body.atlas-look.theme-light.atlas-look-scifi {
   --color-base-40: #9c927f;
   --color-base-50: #8f8475;
   --color-base-60: #6e6557;
-  --color-base-70: #5b5245;
+  --color-base-70: #554c3f; /* muted ink: a step heavier than the faint one */
   --color-base-100: #16130f;
+  --text-faint: #665b4d; /* 4.5:1 on a field on a sidebar */
   --mono-0: #fdfbf6;
   --mono-rgb-0: 253, 251, 246;
   --mono-100: #16130f;
@@ -537,6 +543,7 @@ body.atlas-look.theme-light.atlas-look-scifi {
   --interactive-hover: var(--color-base-25);
   --interactive-accent: #16130f;
   --interactive-accent-hover: #3a342b;
+  --text-error: #da1c3b; /* Obsidian's light red, dark enough for 4.5:1 on the page */
 
   /* the accent is the ink, as on a plate of Atlas Online: #16130f */
   --accent-h: 34;
@@ -568,6 +575,7 @@ body.atlas-look.theme-dark.atlas-look-scifi {
   --mono-rgb-0: 18, 16, 13;
   --mono-100: #e9decb;
   --mono-rgb-100: 233, 222, 203;
+  --text-faint: #aaa190; /* 4.5:1 on a field on a sidebar */
   --text-accent: #e9decb;
   --text-accent-hover: #f4ecdd;
   --text-on-accent: #12100d;
@@ -576,6 +584,8 @@ body.atlas-look.theme-dark.atlas-look-scifi {
   --interactive-accent: #e9decb;
   --interactive-accent-hover: #f4ecdd;
   --menu-background: var(--color-base-20);
+  /* selected text in a field keeps 4.5:1: Obsidian's 33 % of a chalk accent leaves 4.1:1 */
+  --text-selection: color-mix(in oklch, var(--interactive-accent) 26%, transparent);
 
   /* the accent is the ink, chalk at night: #e9decb */
   --accent-h: 38;
@@ -722,8 +732,8 @@ body.atlas-look.atlas-look-scifi .markdown-rendered br + strong:not(.statblock *
 body.atlas-look.atlas-look-scifi .markdown-rendered p > strong:first-child:not(.statblock *),
 body.atlas-look.atlas-look-scifi .markdown-rendered li > .list-bullet + strong:not(.statblock *),
 body.atlas-look.atlas-look-scifi .markdown-rendered li > p > strong:first-child:not(.statblock *),
-body.atlas-look.atlas-look-scifi .markdown-source-view.mod-cm6 .cm-line > .cm-strong:nth-child(-n+6),
-body.atlas-look.atlas-look-scifi .markdown-source-view.mod-cm6 .cm-line > .cm-formatting-quote ~ .cm-strong:nth-child(-n+8) {
+body.atlas-look.atlas-look-scifi .markdown-source-view.mod-cm6 .cm-line:not(.HyperMD-table-row) > .cm-strong:nth-child(-n+6):not(.cm-formatting-strong-end ~ *),
+body.atlas-look.atlas-look-scifi .markdown-source-view.mod-cm6 .cm-line > .cm-formatting-quote ~ .cm-strong:nth-child(-n+8):not(.cm-formatting-strong-end ~ *) {
   font-size: 1em;
   font-weight: 600;
 }

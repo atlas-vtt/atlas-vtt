@@ -49,6 +49,7 @@ import { mapFeature } from './mapFeature';
 import { menu } from './menu';
 import { notice } from './notice';
 import { online } from './online';
+import { gmScreen } from './gmScreen';
 import { palette } from './palette';
 import { picker } from './picker';
 import { settings } from './settings';
@@ -177,6 +178,7 @@ export const en = {
   ...menu,
   ...notice,
   ...online,
+  ...gmScreen,
   ...palette,
   ...picker,
   ...settings,

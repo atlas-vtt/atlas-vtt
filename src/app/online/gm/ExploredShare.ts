@@ -1,5 +1,5 @@
 import { EXPLORED_INLINE_BYTES, type AssetRef } from '../protocol/index.ts';
-import { toBase64 } from './assetServe.ts';
+import { toBase64 } from '../../utils/base64';
 import { ASSET_USES, type AssetStoring } from './assets/assetUses.ts';
 import { Feed, type FeedPorts, type FeedScene } from './feed/Feed.ts';
 import type { FeedOut } from './feed/feedOutbox.ts';

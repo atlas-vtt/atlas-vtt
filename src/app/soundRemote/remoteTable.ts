@@ -1,11 +1,13 @@
 import { startCombatByRules } from '../initiative/combatStart';
 import { listedByCards, listedBySides } from '../initiative/sides';
+import { FORMULA_LIMITS, type FormulaError } from '../tools/parseFormula';
+import { rollableFormula } from '../tools/rollableFormula';
 import type { ViewAtlasState } from '../storeFactory';
 import type { DicePreset } from '../types/dicePresetTypes';
 import type { InitiativeRules } from '../types/initiativeRulesTypes';
 import type { RemoteCombat, RemoteCommand, RemotePlayer } from './remoteProtocol';
 
-const TABLE_COMMAND_TYPES = ['combat', 'rollInitiative', 'present', 'freeze', 'curtain', 'takeBackHandout', 'showHoveredImage', 'roll', 'shareRolls'] as const;
+const TABLE_COMMAND_TYPES = ['combat', 'rollInitiative', 'present', 'freeze', 'curtain', 'takeBackHandout', 'showHoveredImage', 'roll', 'dice', 'shareRolls'] as const;
 const TABLE_COMMANDS: ReadonlySet<string> = new Set(TABLE_COMMAND_TYPES);
 
 /** The commands that act on the table (the fight and the player window), not on sound. */
@@ -15,8 +17,8 @@ export function isTableCommand(command: RemoteCommand): command is TableCommand 
   return TABLE_COMMANDS.has(command.type);
 }
 
-/** Why a table command did nothing. */
-export type TableRefusal = 'no-scene' | 'no-combatants' | 'no-rolls' | 'cards-short' | 'no-player-window' | 'true-scale' | 'no-handout' | 'no-image' | 'no-roll';
+/** Why a table command did nothing. `bad-formula`: the dice tool would not roll it (`diceKeyRolls`). */
+export type TableRefusal = 'no-scene' | 'no-combatants' | 'no-rolls' | 'cards-short' | 'no-player-window' | 'true-scale' | 'no-handout' | 'no-image' | 'no-roll' | 'bad-formula';
 
 /** The map the GM has in front (`remoteMapView`), and the tracker's and the scene tab's own actions on it. */
 export interface TableMap {
@@ -33,12 +35,19 @@ export interface TableMap {
   savedRolls(): readonly DicePreset[];
   /** Rolls one through the view's dice tool, as the tray does (`rollSavedRoll`). */
   rollSaved(preset: DicePreset): void;
+  /** Rolls a formula through the view's dice tool, as the tray's line does. */
+  rollFormula(formula: string): void;
+  /** Why the view's dice tool would refuse to roll a formula as it stands, or null where it rolls it (`DiceTool.checkRoll`). */
+  checkRoll(formula: string): FormulaError | null;
 }
 
-/** The player window as its bar reads and presses it. */
+/** The player window and the online table, as the player window's bar reads and presses them. */
 export interface TablePlayerWindow {
   isOpen(): boolean;
-  isFrozen(): boolean;
+  /** An online table runs: the curtain and the pause reach its players without a player window. */
+  isOnline(): boolean;
+  /** Play is paused for everyone at the table (`isTablePaused`). */
+  isPaused(): boolean;
   isTrueScale(): boolean;
   isCurtained(): boolean;
   handoutShown(): boolean;
@@ -83,16 +92,22 @@ export function remoteCombat(source: TableSource): RemoteCombat | null {
   return { active: initiative.isActive, round: initiative.round, combatants: initiative.entries.length, rolls: rolls(map) };
 }
 
+/** Whom the curtain and the pause reach: the player window while it is open, online players while a table runs. */
+const reachesPlayers = (player: TablePlayerWindow): boolean => player.isOpen() || player.isOnline();
+
+/** TrueScale pins the player window's camera and no table runs: the bar offers no pause then. */
+const pinnedByTrueScale = (player: TablePlayerWindow): boolean => player.isOpen() && player.isTrueScale() && !player.isOnline();
+
 export function remotePlayer(source: TableSource): RemotePlayer {
   const { player } = source;
   const open = player.isOpen();
-  const trueScale = open && player.isTrueScale();
+  const reached = reachesPlayers(player);
   return {
     open,
     presented: loadedMap(source)?.presented() ?? false,
-    frozen: open && player.isFrozen() && !trueScale,
-    trueScale,
-    hidden: open && player.isCurtained(),
+    frozen: reached && player.isPaused() && !pinnedByTrueScale(player),
+    trueScale: open && player.isTrueScale(),
+    hidden: reached && player.isCurtained(),
     handout: player.handoutShown(),
   };
 }
@@ -131,6 +146,18 @@ function runPresent(map: TableMap): null {
   return null;
 }
 
+/**
+ * Whether a dice key's formula rolls exactly as it stands: the one check its placing and its press share. It is
+ * at most the dice grammar's length as a whole, a side written last counted; it writes its dice (`rollableFormula`);
+ * and the dice tool of the map in front would roll it, which alone knows whether its dice rule a side written last.
+ * Without a map only what no map's dice change is checked; the press then finds no scene.
+ */
+export function diceKeyRolls(source: TableSource, formula: string): boolean {
+  if (formula.length > FORMULA_LIMITS.characters || !rollableFormula(formula)) return false;
+  const map = loadedMap(source);
+  return map === null || map.checkRoll(formula) === null;
+}
+
 /** Acts on the loaded map, or refuses without one. */
 function onMap(source: TableSource, act: (map: TableMap) => TableRefusal | null): TableRefusal | null {
   const map = loadedMap(source);
@@ -148,12 +175,12 @@ export function runTableCommand(source: TableSource, command: TableCommand): Tab
     case 'present':
       return onMap(source, runPresent);
     case 'freeze':
-      if (!player.isOpen()) return 'no-player-window';
-      if (player.isTrueScale()) return 'true-scale';
+      if (!reachesPlayers(player)) return 'no-player-window';
+      if (pinnedByTrueScale(player)) return 'true-scale';
       player.toggleFreeze();
       return null;
     case 'curtain':
-      if (!player.isOpen()) return 'no-player-window';
+      if (!reachesPlayers(player)) return 'no-player-window';
       player.setCurtain(!player.isCurtained());
       return null;
     case 'takeBackHandout':
@@ -164,6 +191,13 @@ export function runTableCommand(source: TableSource, command: TableCommand): Tab
       return player.showHoveredImage() ? null : 'no-image';
     case 'roll':
       return onMap(source, (map) => runRoll(map, command.id));
+    case 'dice':
+      // Checked before the roll, so a refused formula never reaches the dice tool, whose refusal is a notice for the GM.
+      if (!diceKeyRolls(source, command.formula)) return 'bad-formula';
+      return onMap(source, (map) => {
+        map.rollFormula(command.formula);
+        return null;
+      });
     case 'shareRolls':
       source.shareRolls.setShown(!source.shareRolls.shown());
       return null;

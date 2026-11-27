@@ -38,6 +38,8 @@
 
   &:hover {
     background: var(--background-modifier-hover);
+    // On the sidebar under the wash, faint text reaches 4.5:1 only as dark as muted (stylesheetSidebarRowHover.test.ts).
+    --text-faint: var(--text-muted);
   }
 }
 

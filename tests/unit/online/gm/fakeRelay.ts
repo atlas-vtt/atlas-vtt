@@ -112,8 +112,12 @@ export class RelayOutbox implements TableOutbox {
   }
 
   end(): void {
-    if (this.online) this.hear(frame({ t: 'end' }));
+    this.askEnd();
     this.stop();
+  }
+
+  askEnd(): void {
+    if (this.online) this.hear(frame({ t: 'end' }));
   }
 
   send(body: GmMessage, to: string = ALL_PLAYERS): void {
