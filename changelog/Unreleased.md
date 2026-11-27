@@ -16,7 +16,7 @@
 - Atlas' quieter text (hints, counts, placeholders, sleeping scene tabs, loot rarities, links) is easier to read and meets WCAG AA contrast with your own theme and in the Sci-fi look's dark scheme
 - Medieval and Sci-fi looks: in source mode only the bold word that opens a line takes the heading font, as in reading view
 - Initiative: taking the combatant whose turn it is out of the initiative, or deleting its token, now passes the turn by defeated combatants, as Next turn does, and when nobody else can act, the turn rests at the next combatant's place
-- Initiative: delaying the last combatant in a fight by cards now deals the next round's cards, as Next turn does
+- Initiative: in a fight by cards, a combatant's menu now offers Delay Turn and Act Now, as in turn order, and delaying the last combatant deals the next round's cards, as Next turn does
 
 ## Atlas Online
 
