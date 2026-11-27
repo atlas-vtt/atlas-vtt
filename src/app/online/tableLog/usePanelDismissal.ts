@@ -7,7 +7,7 @@ export const LOG_TOGGLE = '.atlas-online-log-button';
  * Whether a modal layer stands over the panel: an element marked `aria-modal` that is neither the
  * panel's nor around it (an image opened from the log, a dialog). Its own Escape and presses are its.
  */
-export function coveredByModal(panel: HTMLElement): boolean {
+function covered(panel: HTMLElement): boolean {
   return Array.from(panel.ownerDocument.querySelectorAll('[aria-modal="true"]')).some((layer) => !layer.contains(panel) && !panel.contains(layer));
 }
 
@@ -29,14 +29,14 @@ export function usePanelDismissal(root: RefObject<HTMLElement | null>, on: boole
     const view = doc?.defaultView;
     if (!on || panel === null || doc === undefined || view === null || view === undefined) return undefined;
     const onKey = (event: KeyboardEvent): void => {
-      if (event.key !== 'Escape' || event.isComposing || coveredByModal(panel) || !latest.current.escape()) return;
+      if (event.key !== 'Escape' || event.isComposing || covered(panel) || !latest.current.escape()) return;
       event.preventDefault();
       event.stopPropagation();
     };
     const onPress = (event: PointerEvent): void => {
       // Not `instanceof Element`: an element of a popout window is none of this window's classes.
       const target = event.target as Partial<Element> | null;
-      if (event.button !== 0 || typeof target?.closest !== 'function' || coveredByModal(panel)) return;
+      if (event.button !== 0 || typeof target?.closest !== 'function' || covered(panel)) return;
       // The host's button that opens and closes the log does that itself: closing here would open it again.
       if (target.closest(`.atlas-online-log, ${LOG_TOGGLE}`) === null) latest.current.close();
     };

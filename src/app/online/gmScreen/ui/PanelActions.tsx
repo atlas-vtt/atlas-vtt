@@ -2,24 +2,36 @@ import React, { useEffect, useId, useRef, useState } from 'react';
 import { t } from '../../../i18n';
 import { Button } from '../../../packages/components/primitives/button';
 import { useEscapeUndo } from './panelEscape.ts';
+import { useArmed } from './useArmed.ts';
 
 const NAME = t('gmScreen.name');
 
 interface PanelActionsProps {
   /** Devices allowed under the link now: a new link ends them all, so it asks first while there are any. */
   readonly devices: number;
+  /** Changes whenever the panel's content may have moved these buttons on screen. */
+  readonly layout: string;
+  /** The panel opened itself for a device that asks to join: the buttons wait before they take a press. */
+  readonly openedForKnock: boolean;
   readonly newLink: () => void;
   readonly stop: () => void;
 }
 
 /**
  * New link and Stop. Stop ends nothing for good (Start comes back with the same link and devices), so it
- * asks nothing; a new link ends every device, so it says so in place and waits for a second press.
+ * asks nothing; a new link ends every device, so it says so in place and waits for a second press. None
+ * takes a press for a moment after it appeared or moved, as Allow does, since a press meant for what
+ * stood there before would land on it.
  */
-export function PanelActions({ devices, newLink, stop }: PanelActionsProps): React.JSX.Element {
+export function PanelActions({ devices, layout, openedForKnock, newLink, stop }: PanelActionsProps): React.JSX.Element {
   const id = useId();
   const [asking, setAsking] = useState(false);
+  const armed = useArmed(asking ? 'asking' : layout, !openedForKnock);
   const cancel = useRef<HTMLButtonElement>(null);
+  const pressNewLink = (): void => {
+    if (devices > 0) setAsking(true);
+    else newLink();
+  };
   useEscapeUndo(asking, () => setAsking(false));
   useEffect(() => {
     if (asking) cancel.current?.focus();
@@ -33,7 +45,9 @@ export function PanelActions({ devices, newLink, stop }: PanelActionsProps): Rea
           <Button
             type="button"
             variant="destructive"
+            aria-disabled={!armed || undefined}
             onClick={() => {
+              if (!armed) return;
               setAsking(false);
               newLink();
             }}
@@ -46,8 +60,8 @@ export function PanelActions({ devices, newLink, stop }: PanelActionsProps): Rea
   }
   return (
     <div className="atlas-gm-screen-panel__actions">
-      <Button type="button" variant="secondary" onClick={() => (devices > 0 ? setAsking(true) : newLink())}>{t('gmScreen.newLink')}</Button>
-      <Button type="button" variant="secondary" className="atlas-gm-screen-stop" onClick={stop}>{t('gmScreen.stop', { name: NAME })}</Button>
+      <Button type="button" variant="secondary" aria-disabled={!armed || undefined} onClick={() => armed && pressNewLink()}>{t('gmScreen.newLink')}</Button>
+      <Button type="button" variant="secondary" className="atlas-gm-screen-stop" aria-disabled={!armed || undefined} onClick={() => armed && stop()}>{t('gmScreen.stop', { name: NAME })}</Button>
     </div>
   );
 }

@@ -8,7 +8,7 @@ import { gmScreenControlShown, setGmScreenHost } from '../../../../src/app/onlin
 import { noticeKnocks } from '../../../../src/app/online/gmScreen/knockNotice.ts';
 import { GmScreenControl } from '../../../../src/app/online/gmScreen/ui/GmScreenControl';
 import { shownLink } from '../../../../src/app/online/gmScreen/ui/LinkCopy';
-import { hosted, panel, shown, startedFromPanel } from './controlRig.tsx';
+import { armed, hosted, panel, shown, startedFromPanel } from './controlRig.tsx';
 import { deviceId, RelaySocket, sessionRig } from './sessionRig.ts';
 
 const PHONE = deviceId('p');
@@ -108,6 +108,7 @@ describe('the DM screen\'s control for the GM screen', () => {
     expect(screen.getByRole('button', { name: 'Sidekick runs: 1 device connected' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Remove Phone' }));
     expect(rig.socket().framesOf('kick')).toEqual([]);
+    await armed();
     fireEvent.click(screen.getByRole('button', { name: 'Press again to remove Phone' }));
     expect(rig.socket().framesOf('kick')).toEqual([{ v: 1, t: 'kick', id: PHONE }]);
     expect(screen.getByText('No device allowed yet.')).toBeTruthy();

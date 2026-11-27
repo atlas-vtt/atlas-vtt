@@ -1,9 +1,10 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { motion, useIsPresent, type Variants } from 'framer-motion';
 import { t } from '../../../i18n';
 import { Button } from '../../../packages/components/primitives/button';
 import { CloseButton } from '../../../packages/components/primitives/CloseButton';
 import { useAnchoredPopoverVariants } from '../../../packages/components/primitives/dialogMotion';
+import { HOLDS_SCREEN_KEYS } from '../../../react/components/dm-screen/screenKeys';
 import type { AccountApi } from '../../gm/account/AccountControl.ts';
 import { AccountSignIn } from '../../gm/account/AccountSignIn';
 import { signInActions, signInPrompt } from '../../gm/account/signInPrompt.ts';
@@ -52,8 +53,11 @@ function StoppedBody({ session, view, account }: Omit<GmScreenPanelProps, 'onClo
   );
 }
 
+/** What moves the panel's rows and buttons on screen: a device that asks (and how many wait), and the devices listed. */
+const layoutOf = (view: GmScreenView): string => `${view.knock?.id ?? ''} ${String(view.waiting > 1)} ${view.devices.length}`;
+
 /** While it runs: the code to scan and the link to copy, the devices, New link and Stop. */
-function RunningBody({ session, view }: { session: GmScreenSession; view: GmScreenView }): React.JSX.Element {
+function RunningBody({ session, view, openedForKnock }: { session: GmScreenSession; view: GmScreenView; openedForKnock: boolean }): React.JSX.Element {
   return (
     <>
       {view.link !== null && (
@@ -65,8 +69,8 @@ function RunningBody({ session, view }: { session: GmScreenSession; view: GmScre
           <LinkCopy key={view.link} link={view.link} />
         </>
       )}
-      <DeviceList devices={view.devices} remove={(id) => session.remove(id)} />
-      <PanelActions devices={view.devices.length} newLink={() => session.newLink()} stop={() => session.stop()} />
+      <DeviceList devices={view.devices} layout={layoutOf(view)} remove={(id) => session.remove(id)} />
+      <PanelActions devices={view.devices.length} layout={layoutOf(view)} openedForKnock={openedForKnock} newLink={() => session.newLink()} stop={() => session.stop()} />
     </>
   );
 }
@@ -78,12 +82,14 @@ function RunningBody({ session, view }: { session: GmScreenSession; view: GmScre
 export function GmScreenPanel({ session, view, account, onClose }: GmScreenPanelProps): React.JSX.Element {
   const root = useRef<HTMLDivElement>(null);
   const escapes = useMemo(() => escapeStack(), []);
+  // A device that asks to join opens the panel by itself, under wherever the pointer rests.
+  const [openedForKnock] = useState(view.knock !== null);
   const variants = leaving(useAnchoredPopoverVariants());
   useLightDismiss(root, useIsPresent(), () => escapes.undo(), onClose);
   const running = view.status === 'connecting' || view.status === 'online';
   return (
     <PanelEscape.Provider value={escapes}>
-      <motion.div ref={root} className="atlas-gm-screen-panel" role="dialog" aria-label={NAME} variants={variants} initial="hidden" animate="visible" exit="exit">
+      <motion.div ref={root} className="atlas-gm-screen-panel" role="dialog" aria-label={NAME} {...HOLDS_SCREEN_KEYS} variants={variants} initial="hidden" animate="visible" exit="exit">
         <header className="atlas-gm-screen-panel__header">
           <h2 className="atlas-gm-screen-panel__title">
             <SidekickIcon className="atlas-gm-screen-panel__icon" />
@@ -93,8 +99,8 @@ export function GmScreenPanel({ session, view, account, onClose }: GmScreenPanel
         </header>
         <div className="atlas-gm-screen-panel__body">
           {view.knock !== null && <AllowPrompt knock={view.knock} waiting={view.waiting} allow={(id) => session.allow(id)} refuse={(id) => session.refuse(id)} />}
-          {running ? <RunningBody session={session} view={view} /> : <StoppedBody session={session} view={view} account={account} />}
-          {!running && view.devices.length > 0 && <DeviceList devices={view.devices} remove={(id) => session.remove(id)} />}
+          {running ? <RunningBody session={session} view={view} openedForKnock={openedForKnock} /> : <StoppedBody session={session} view={view} account={account} />}
+          {!running && view.devices.length > 0 && <DeviceList devices={view.devices} layout={layoutOf(view)} remove={(id) => session.remove(id)} />}
         </div>
       </motion.div>
     </PanelEscape.Provider>

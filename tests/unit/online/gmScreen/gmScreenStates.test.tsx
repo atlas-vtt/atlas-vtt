@@ -6,7 +6,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { setGmScreenHost } from '../../../../src/app/online/gmScreen/gmScreenSlot.ts';
 import { GmScreenControl } from '../../../../src/app/online/gmScreen/ui/GmScreenControl';
 import { CLOSE } from '../../../../src/app/online/protocol/index.ts';
-import { connects, hosted, panel, shown, startedFromPanel } from './controlRig.tsx';
+import { armed, connects, hosted, panel, shown, startedFromPanel } from './controlRig.tsx';
 import { deviceId, RelaySocket, sessionRig } from './sessionRig.ts';
 
 const PHONE = deviceId('p');
@@ -86,13 +86,16 @@ describe('Sidekick\'s panel in each of its states', () => {
     const rig = await shown();
     await startedFromPanel(rig);
     await connects(rig, PHONE, 'Phone');
+    await armed();
     const before = rig.session.view().link;
     fireEvent.click(within(panel()).getByRole('button', { name: 'New link' }));
     const ask = within(panel()).getByRole('group', { name: CONFIRM });
     expect(document.activeElement).toBe(within(ask).getByRole('button', { name: 'Cancel' }));
     fireEvent.click(within(ask).getByRole('button', { name: 'Cancel' }));
     expect(rig.session.view().link).toBe(before);
+    await armed();
     fireEvent.click(within(panel()).getByRole('button', { name: 'New link' }));
+    await armed();
     await act(async () => {
       fireEvent.click(within(within(panel()).getByRole('group', { name: CONFIRM })).getByRole('button', { name: 'New link' }));
       await rig.settle();
@@ -105,6 +108,7 @@ describe('Sidekick\'s panel in each of its states', () => {
     const rig = await shown();
     await startedFromPanel(rig);
     await connects(rig, PHONE, 'Phone');
+    await armed();
     const link = rig.session.view().link;
     fireEvent.click(within(panel()).getByRole('button', { name: 'Stop Sidekick' }));
     expect(rig.session.view().status).toBe('stopped');

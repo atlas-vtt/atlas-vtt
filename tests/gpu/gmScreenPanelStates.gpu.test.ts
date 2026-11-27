@@ -55,7 +55,10 @@ describe.each<Theme>(['dark', 'light'])('Sidekick\'s panel in each of its states
       relay.events?.joined({ id: TABLET, name: 'iPad' });
       relay.events?.left(TABLET);
     });
+    // The rows and buttons moved as the iPad came: they take a press once they stood a moment.
+    await act(() => new Promise<void>((resolve) => setTimeout(resolve, ARM_MS + 50)));
     act(() => within(panel()).getByRole('button', { name: 'Remove iPhone Fabian' }).click());
+    await act(() => new Promise<void>((resolve) => setTimeout(resolve, ARM_MS + 50)));
     await shot(`${theme}-06-remove-asks`, panel());
     act(() => within(panel()).getByRole('button', { name: 'New link' }).click());
     await shot(`${theme}-07-new-link-asks`, panel());

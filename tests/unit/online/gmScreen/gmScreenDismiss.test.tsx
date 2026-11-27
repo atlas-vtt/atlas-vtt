@@ -4,7 +4,7 @@ import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-libra
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { handledByAnotherControl } from '../../../../src/app/keyboard/tooltipEscape.ts';
 import { setGmScreenHost } from '../../../../src/app/online/gmScreen/gmScreenSlot.ts';
-import { connects, knocks, panel, shown, startedFromPanel } from './controlRig.tsx';
+import { armed, connects, knocks, panel, shown, startedFromPanel } from './controlRig.tsx';
 import { deviceId, RelaySocket } from './sessionRig.ts';
 
 const PHONE = deviceId('p');
@@ -172,6 +172,7 @@ describe('Sidekick\'s panel as a light popover over the DM screen', () => {
     page = dmScreen();
     await startedFromPanel(rig);
     await connects(rig, PHONE, 'Phone');
+    await armed();
     fireEvent.click(within(panel()).getByRole('button', { name: 'New link' }));
     expect(within(panel()).getByText('Every device disconnects and has to scan the new code.')).toBeTruthy();
     fireEvent.keyDown(document.body, { key: 'Escape' });

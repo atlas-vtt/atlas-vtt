@@ -8,6 +8,8 @@ import { DeviceRow } from './DeviceRow';
 
 interface DeviceListProps {
   readonly devices: readonly GmScreenDeviceView[];
+  /** Changes whenever the panel's rows may have moved on screen (`DeviceRow`). */
+  readonly layout?: string;
   readonly remove: (id: string) => void;
 }
 
@@ -16,7 +18,7 @@ interface DeviceListProps {
  * while a device is connected and folded while all are away, and opens for a device that arrives. A device
  * that asks to join is never in here: the Allow prompt stands above, whatever the fold.
  */
-export function DeviceList({ devices, remove }: DeviceListProps): React.JSX.Element {
+export function DeviceList({ devices, layout = '', remove }: DeviceListProps): React.JSX.Element {
   const id = useId();
   const [fold, setFold] = useState(() => restingFold(devices));
   const next = foldAfter(fold, devices);
@@ -43,7 +45,7 @@ export function DeviceList({ devices, remove }: DeviceListProps): React.JSX.Elem
       <div id={`${id}-list`} className="atlas-gm-screen-devices__fold" data-open={next.open} inert={!next.open}>
         <ul className="atlas-gm-screen-devices__list">
           {devices.map((device) => (
-            <DeviceRow key={device.id} device={device} arrived={!first.current.has(device.id)} remove={remove} />
+            <DeviceRow key={device.id} device={device} arrived={!first.current.has(device.id)} layout={layout} remove={remove} />
           ))}
         </ul>
       </div>

@@ -54,3 +54,8 @@ export async function connects(rig: Rig, id: string, name: string): Promise<void
     await rig.settle();
   });
 }
+
+/** Waits, in real time, until the panel's buttons that appeared or moved take a press (`useArmed`). */
+export async function armed(): Promise<void> {
+  await act(() => new Promise<void>((resolve) => setTimeout(resolve, ARM_MS + 50)));
+}

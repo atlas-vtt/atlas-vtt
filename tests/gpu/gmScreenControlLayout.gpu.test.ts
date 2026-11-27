@@ -133,6 +133,8 @@ describe.each<Theme>(['dark', 'light'])('Sidekick\'s panel laid out by the real 
       element.textContent = text;
       expect(whole(element), `${selector}: ${text}`).toBe(true);
     }
+    // New link and Stop take a press once the prompt above them has stood a moment.
+    await act(() => new Promise<void>((resolve) => setTimeout(resolve, ARM_MS + 50)));
     act(() => panel.querySelector<HTMLElement>('.atlas-gm-screen-panel__actions .btn:first-child')!.click());
     const ask = panel.querySelector<HTMLElement>('.atlas-gm-screen-confirm')!;
     ask.querySelector('p')!.textContent = said(texts, 'gmScreen.newLinkConfirm');
