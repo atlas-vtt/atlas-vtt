@@ -1,4 +1,4 @@
-import type { Ticker } from 'pixi.js';
+import type { SystemRunner, Ticker } from 'pixi.js';
 import type { TFile } from 'obsidian';
 import type { TesseraReader } from './mosaicCanvasTesserae';
 import type { OpenedMap } from './TesseraDecoderClient';
@@ -40,7 +40,7 @@ export interface MosaicCanvasDeps {
   /** Runs the tessera layer's updates and the texture uploads, once per frame. */
   ticker: Ticker;
   /** The renderer that draws the tesserae; null uploads nothing ahead. */
-  renderer: (TesseraUploader & { resolution: number }) | null;
+  renderer: (TesseraUploader & { resolution: number; runners: { contextChange: SystemRunner } }) | null;
   requestRender: () => void;
   /** Read when a tessera appears: true draws it at once instead of fading it in. */
   drawAtOnce?: () => boolean;

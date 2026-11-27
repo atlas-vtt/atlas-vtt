@@ -51,6 +51,15 @@ describe('bundled changelog', () => {
     fs.writeFileSync(pending, '### Validation\n\n- 500 tests passed.');
     expect(() => readPendingNotes(root)).toThrow(/heading/i);
   });
+  it('leaves an empty pending notes file behind once a release has moved the notes out', () => {
+    const root = fixture(); note(root, '0.1.10');
+    const pending = path.join(root, 'changelog', 'Unreleased.md');
+    generateChangelog(root);
+    expect(fs.readFileSync(pending, 'utf8')).toBe('');
+    fs.writeFileSync(pending, '## New\n\n- Kept.\n');
+    generateChangelog(root);
+    expect(fs.readFileSync(pending, 'utf8')).toBe('## New\n\n- Kept.\n');
+  });
   it('bundles pending notes as the beta build itself and keeps them out of the published history', () => {
     const root = fixture(); note(root, '0.1.10');
     fs.writeFileSync(path.join(root, 'changelog', 'Unreleased.md'), '## New\n\n- Preview feature.\n');

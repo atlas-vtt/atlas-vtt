@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useReducer, useState } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useState, useSyncExternalStore } from 'react';
 import { TFile, type App } from 'obsidian';
 import { TemplateLibrary } from '../library/TemplateLibrary';
 import type { LibraryTemplate, ResolvedStatblock, StatblockSource } from '../model/resolvedTypes';
 import type { TemplateId } from '../model/templateTypes';
-import { cachedTemplateId, statblockSourceFromText, statblockSourceOf } from '../notes/statblockSource';
+import { NoteSource } from '../notes/noteSource';
+import { cachedTemplateId, statblockSourceFromText, statblockSourceOf, type FrontmatterRecord } from '../notes/statblockSource';
 import { libraryTemplates } from '../resolve/readStatblock';
 import { resolveStatblock } from '../resolve/resolveStatblock';
 import { resolveStatblockText } from '../resolve/resolveStatblockText';
@@ -36,6 +37,7 @@ interface Settled {
 }
 
 const templateIdOf = (source: StatblockSource | null): TemplateId | null => (source?.kind === 'atlas' ? source.templateId : null);
+const NO_UNSUBSCRIBE = (): void => undefined;
 
 /** Calls `onChange` whenever the metadata cache reads the note at `path` anew. */
 function useNoteChanges(app: App, path: string | null, onChange: () => void): void {
@@ -63,7 +65,19 @@ export function useNativeTemplateId(app: App, path: string, text: string | undef
   return file instanceof TFile ? cachedTemplateId(app, file) : null;
 }
 
-async function readLinked(app: App, note: LinkedNote): Promise<LinkedStatblockResult> {
+/**
+ * A note's values as an open editor holds them, read again whenever they change; null where no
+ * editor holds the note or its properties do not read. Atlas writes a pressed pip into the editor
+ * at once, and the metadata cache follows the editor only once Obsidian saves it.
+ */
+function useEditorValues(app: App, path: string | null): FrontmatterRecord | null {
+  const source = path === null ? null : NoteSource.forApp(app);
+  const subscribe = useCallback((onChange: () => void) => (source && path !== null ? source.watch(path, onChange) : NO_UNSUBSCRIBE), [source, path]);
+  const snapshot = useSyncExternalStore(subscribe, () => (source && path !== null ? source.read(path) : null));
+  return snapshot?.origin === 'buffer' ? snapshot.frontmatter : null;
+}
+
+async function readLinked(app: App, note: LinkedNote, editorValues: FrontmatterRecord | null): Promise<LinkedStatblockResult> {
   const templates = libraryTemplates(app);
   if (note.text !== undefined) {
     const context = { app, templates, ...(note.bundleTemplates ? { bundleTemplates: note.bundleTemplates } : {}) };
@@ -72,7 +86,7 @@ async function readLinked(app: App, note: LinkedNote): Promise<LinkedStatblockRe
     return { kind: 'none', fence: statblockSourceFromText(note.text)?.kind === 'fs-fence' };
   }
 
-  const statblock = await resolveStatblock(app, note.path, { templates });
+  const statblock = await resolveStatblock(app, note.path, { templates, ...(editorValues && { frontmatter: editorValues }) });
   if (statblock) return { kind: 'statblock', statblock };
   const file = app.vault.getAbstractFileByPath(note.path);
   const source = file instanceof TFile ? await statblockSourceOf(app, file) : null;
@@ -108,8 +122,8 @@ function awaitsLibrary(app: App, result: LinkedStatblockResult | null): boolean 
 /**
  * Reads a note's statblock through the one resolver and reads it again when
  * the note changes (`metadataCache` 'changed') or, for a native note, when
- * its template does. While a new note is read the previous note's statblock
- * stays, so the caller decides when a skeleton shows.
+ * its template or an open editor's values do. While a new note is read the
+ * previous note's statblock stays, so the caller decides when a skeleton shows.
  */
 export function useLinkedStatblock(app: App, note: LinkedNote, templateId: TemplateId | null): LinkedStatblockState {
   const { path, text, bundleTemplates } = note;
@@ -119,10 +133,11 @@ export function useLinkedStatblock(app: App, note: LinkedNote, templateId: Templ
 
   useNoteChanges(app, text === undefined ? path : null, refresh);
   useTemplateChanges(app, templateId, refresh);
+  const editorValues = useEditorValues(app, text === undefined && templateId !== null ? path : null);
 
   useEffect(() => {
     let cancelled = false;
-    readLinked(app, current).then(
+    readLinked(app, current, editorValues).then(
       (result) => { if (!cancelled) setSettled({ note: current, result }); },
       (error: unknown) => {
         console.error(`[Atlas] Reading the statblock of ${current.path} failed:`, error);
@@ -130,7 +145,7 @@ export function useLinkedStatblock(app: App, note: LinkedNote, templateId: Templ
       },
     );
     return () => { cancelled = true; };
-  }, [app, current, revision]);
+  }, [app, current, revision, editorValues]);
 
   const result = settled?.result ?? null;
   return { loading: settled?.note !== current || awaitsLibrary(app, result), result };

@@ -17,7 +17,7 @@ export interface SoundPlayerOptions {
   levels?: LocalLevels;
   /** Told when a sound cannot be had; it is tried again every few seconds. */
   onSoundError?: (key: string, error: unknown) => void;
-  /** Which decoder long sounds use. Unset: the best this runtime has. */
+  /** Which decoder long sounds use. Unset: `wholeFileWindowDecode`. */
   windowDecode?: (context: SoundContext) => WindowDecode;
   /** Decoded short sounds no voice uses kept for later; a phone keeps few. */
   spareDecodedBytes?: number;
@@ -50,7 +50,7 @@ export class SoundPlayer {
     this.context = options.context;
     this.levels = options.levels;
     this.graph = new MixerGraph(this.context, this.levels);
-    this.sources = new SoundSources(this.context, options.resolve, options.windowDecode ?? null, options.spareDecodedBytes);
+    this.sources = new SoundSources(this.context, options.resolve, options.windowDecode, options.spareDecodedBytes);
   }
 
   /** Takes a state, whole; giving the same one again changes nothing. */

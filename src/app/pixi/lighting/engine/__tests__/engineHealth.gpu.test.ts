@@ -11,7 +11,7 @@ import { LightingWorld } from '../LightingWorld';
 import { failedEngineShaders } from '../shaderCheck';
 import { unrenderableEngineTargets } from '../targetCheck';
 import type { EngineScene } from '../types';
-import { createTestRenderer, renderThroughEngine } from './gpuTestUtils';
+import { createTestRenderer, rejectEngineShaders, renderThroughEngine } from './gpuTestUtils';
 
 const SIZE = 256;
 const walls: WallSegment[] = [{ id: 'w', kind: 'wall', type: 'solid', p1: { x: 500, y: 100 }, p2: { x: 500, y: 500 } }];
@@ -42,12 +42,10 @@ describe('LightingEngine on a graphics device that cannot run it', () => {
     return { renderer, engine, error };
   }
 
-  /** Every program link fails from now on, as on a driver that rejects the shaders. */
+  /** No engine program links from now on, as on a driver that rejects the shaders. */
   function breakLinking(renderer: WebGLRenderer): void {
-    const { gl } = renderer;
-    const original = gl.getProgramParameter.bind(gl);
-    vi.spyOn(gl, 'getProgramParameter').mockImplementation((program: WebGLProgram, name: number): unknown => (name === gl.LINK_STATUS ? false : original(program, name)));
-    vi.spyOn(gl, 'getProgramInfoLog').mockReturnValue('C:\\fakepath(12,3): error X3511: unable to unroll loop');
+    rejectEngineShaders(renderer);
+    vi.spyOn(renderer.gl, 'getProgramInfoLog').mockReturnValue('C:\\fakepath(12,3): error X3511: unable to unroll loop');
   }
 
   function litAt(engine: LightingEngine, renderer: WebGLRenderer): number {

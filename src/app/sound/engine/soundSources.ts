@@ -2,7 +2,7 @@ import { openOggOpus, readPacketRange, type PositionedPacket } from '../codec/og
 import { isWindowedSound, type StreamHead, type WindowedSound } from '../codec/windowedSound';
 import type { SoundBytes } from '../soundTypes';
 import type { SoundBuffer, SoundContext } from './audioNodes';
-import { chooseWindowDecode, PRE_ROLL_FRAMES, type WindowDecode } from './windowDecoder';
+import { PRE_ROLL_FRAMES, wholeFileWindowDecode, type WindowDecode } from './windowDecoder';
 
 /** Decoded short sounds no voice uses are kept up to this much, so a mood coming back starts at once. */
 const SPARE_DECODED_BYTES = 128 * 1024 * 1024;
@@ -39,7 +39,7 @@ export class SoundSources {
   constructor(
     private context: SoundContext,
     private readonly resolve: ResolveBytes,
-    private readonly forcedWindowDecode: ((context: SoundContext) => WindowDecode) | null = null,
+    private readonly windowDecode: (context: SoundContext) => WindowDecode = wholeFileWindowDecode,
     private readonly spareBytes: number = SPARE_DECODED_BYTES,
   ) {}
 
@@ -115,8 +115,7 @@ export class SoundSources {
     const opened = isWindowedSound(source)
       ? { stream: source.stream, packets: (from: number, to: number) => source.packets(from, to) }
       : await openOggFile(source);
-    const decode = this.forcedWindowDecode ? this.forcedWindowDecode(this.context) : await chooseWindowDecode(this.context, opened.stream);
-    return { ...opened, decode };
+    return { ...opened, decode: this.windowDecode(this.context) };
   }
 
   private source(key: string): Promise<SoundBytes | WindowedSound> {

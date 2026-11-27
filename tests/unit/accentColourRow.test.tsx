@@ -50,9 +50,60 @@ it('marks Custom for a colour no preset has', () => {
   expect(swatch('The look’s own').getAttribute('aria-checked')).toBe('false');
   const picker = document.querySelector<HTMLInputElement>('input[type="color"]')!;
   expect(picker.value).toBe('#123456');
-  act(() => { fireEvent.input(picker, { target: { value: '#abcdef' } }); });
-  expect(app.vault.setConfig).toHaveBeenLastCalledWith('accentColor', '#abcdef');
-  expect(swatch('Custom').getAttribute('aria-checked')).toBe('true');
+  vi.useFakeTimers();
+  try {
+    act(() => { fireEvent.input(picker, { target: { value: '#abcdef' } }); });
+    act(() => { vi.runAllTimers(); });
+    expect(app.vault.setConfig).toHaveBeenLastCalledWith('accentColor', '#abcdef');
+    expect(swatch('Custom').getAttribute('aria-checked')).toBe('true');
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it('takes the colour once the picker rests, not on each step of a drag', () => {
+  const app = appWithAccent('#123456');
+  render(<AccentColourRow app={app} />);
+  const picker = document.querySelector<HTMLInputElement>('input[type="color"]')!;
+  vi.useFakeTimers();
+  try {
+    for (const value of ['#200000', '#400000', '#600000']) {
+      act(() => { fireEvent.input(picker, { target: { value } }); });
+      act(() => { vi.advanceTimersByTime(50); });
+    }
+    expect(app.vault.setConfig).not.toHaveBeenCalled();
+    expect(swatch('Custom').style.getPropertyValue('--atlas-swatch-fill')).toBe('#600000');
+    act(() => { vi.advanceTimersByTime(500); });
+    expect(app.vault.setConfig).toHaveBeenCalledTimes(1);
+    expect(app.vault.setConfig).toHaveBeenCalledWith('accentColor', '#600000');
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it('keeps a preset picked right after a drag', () => {
+  const app = appWithAccent('#123456');
+  render(<AccentColourRow app={app} />);
+  const picker = document.querySelector<HTMLInputElement>('input[type="color"]')!;
+  vi.useFakeTimers();
+  try {
+    act(() => { fireEvent.input(picker, { target: { value: '#600000' } }); });
+    act(() => { fireEvent.click(swatch('Teal')); });
+    act(() => { vi.runAllTimers(); });
+    expect(app.vault.setConfig).toHaveBeenLastCalledWith('accentColor', '#2a9d8f');
+    expect(swatch('Teal').getAttribute('aria-checked')).toBe('true');
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it('keeps a dragged colour when the row closes before it rests', () => {
+  const app = appWithAccent('#123456');
+  const { unmount } = render(<AccentColourRow app={app} />);
+  const picker = document.querySelector<HTMLInputElement>('input[type="color"]')!;
+  act(() => { fireEvent.input(picker, { target: { value: '#600000' } }); });
+  unmount();
+  expect(app.vault.setConfig).toHaveBeenLastCalledWith('accentColor', '#600000');
 });
 
 it('follows a change made in Obsidian\'s settings', () => {

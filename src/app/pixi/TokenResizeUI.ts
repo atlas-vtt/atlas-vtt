@@ -3,6 +3,7 @@ import { Viewport } from 'pixi-viewport';
 import type { ViewAtlasState } from '../storeFactory';
 import type { StoreApi } from 'zustand';
 import { getTokenRingCenterRadius } from './token-renderer/tokenRingMetrics';
+import { textureCanvas } from './utils/textureCanvas';
 import { computeTokenPixelSize, computeTokenStrokeWidth, RESIZE_HANDLE_SIZE, resizedTokenSize, TOKEN_HANDLE_LABEL, tokenUIScale } from './token-renderer/tokenSizing';
 import { toError } from '../utils/errors';
 import type { TokenHandleContainer } from './token-renderer/types';
@@ -103,12 +104,10 @@ export class TokenResizeUI {
           .replace(/height="\d+"/, `height="${canvasSize}"`);
         const key = `${icon.name}-${theme}`;
         
-        const canvas = createEl('canvas');
-        canvas.width = canvasSize;
-        canvas.height = canvasSize;
-        const ctx = canvas.getContext('2d');
-        
-        if (ctx) {
+        const drawn = textureCanvas(canvasSize, canvasSize);
+
+        if (drawn) {
+          const { canvas, context: ctx } = drawn;
           const img = new Image();
           await new Promise<void>((resolve, reject) => {
             img.onload = (): void => {

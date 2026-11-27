@@ -2,7 +2,7 @@ import type { Renderer } from 'pixi.js';
 import type { PictureChoice } from '../../../lighting/graphicsSettings';
 import { contextLost, glOf } from './gpu';
 import { shadersOfPicture } from './engineShaders';
-import { describeShaderFailures, shaderLinkFailures, startShaderLinks, type ShaderLinks } from './shaderCheck';
+import { contextAnswers, describeShaderFailures, shaderLinkFailures, startShaderLinks, type ShaderLinks } from './shaderCheck';
 import { unrenderableEngineTargets } from './targetCheck';
 
 /**
@@ -45,6 +45,10 @@ export class EngineDeviceCheck {
     const failures = shaderLinkFailures(links);
     const unrenderable = unrenderableEngineTargets(gl);
     if (contextLost(this.renderer)) return 'wait';
+    if ((failures.length > 0 || unrenderable.length > 0) && !contextAnswers(gl)) {
+      console.warn('Atlas: the graphics context was lost while the lighting checked this device; it checks again once the context is back');
+      return 'wait';
+    }
     if (failures.length > 0) {
       console.error(`Atlas: dynamic lighting cannot run on this graphics device. These shaders did not compile:\n${describeShaderFailures(failures)}`);
       return 'failed';

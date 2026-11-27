@@ -58,6 +58,9 @@ interface DocumentDice {
 }
 
 const documents = new Map<Document, DocumentDice>();
+/** Counts the contexts that came back after they were lost, in any document. */
+let restorations = 0;
+const restoredListeners = new Set<() => void>();
 
 function diceOf(doc: Document): DocumentDice {
   let dice = documents.get(doc);
@@ -78,6 +81,8 @@ function gpuOf(doc: Document, dice: DocumentDice): DiceGpu | null {
   });
   canvas.addEventListener('webglcontextrestored', (): void => {
     dice.lost = false;
+    restorations++;
+    for (const listener of restoredListeners) listener();
   });
   try {
     dice.gpu = new DiceGpu(canvas);
@@ -96,6 +101,17 @@ function gpuOf(doc: Document, dice: DocumentDice): DiceGpu | null {
 export function canShowDice(doc: Document): boolean {
   const dice = diceOf(doc);
   return gpuOf(doc, dice) !== null && !dice.lost;
+}
+
+/** Calls `listener` whenever a document's dice context came back after it was lost; returns the unsubscribe. */
+export function subscribeDiceRestored(listener: () => void): () => void {
+  restoredListeners.add(listener);
+  return (): void => { restoredListeners.delete(listener); };
+}
+
+/** How many dice contexts came back so far, so a view knows when to draw what it could not while one was lost. */
+export function diceRestorations(): number {
+  return restorations;
 }
 
 function buildStage(doc: Document, dice: DocumentDice): StageLease {

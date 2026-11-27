@@ -1,6 +1,6 @@
-import { getDomHost } from '../../host/dom';
 import { CanvasSource, Texture } from 'pixi.js';
 import { toError } from '../../utils/errors';
+import { textureCanvas } from './textureCanvas';
 
 /**
  * Rasterises Lucide icon markup (the inner `<path>`/`<circle>`/… elements of a
@@ -16,11 +16,9 @@ export async function createLucideIconTexture(
   size: number,
   mipmaps = false,
 ): Promise<Texture> {
-  const canvas = getDomHost().createCanvas();
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('[lucideIconTexture] Could not acquire 2D context');
+  const drawn = textureCanvas(size, size);
+  if (!drawn) throw new Error('[lucideIconTexture] Could not acquire 2D context');
+  const { canvas, context: ctx } = drawn;
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${innerSvg}</svg>`;
 

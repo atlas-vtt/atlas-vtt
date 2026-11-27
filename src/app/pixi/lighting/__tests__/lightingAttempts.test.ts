@@ -45,17 +45,32 @@ describe('StoredLightingAttempt', () => {
     expect(attempt.begin()).toBe(true);
   });
 
-  it('refuses its own attempt begun again without a frame in between, as after a lost context', () => {
+  it('begins its own attempt again once after a lost context cut it short, and each attempt has that once', () => {
     const storage = deviceStorage();
     const attempt = attemptOn(storage);
     expect(attempt.begin()).toBe(true);
+    expect(attempt.begin()).toBe(true);
+    expect(storage.stored()).toEqual(['maps/cave.atlasmap']);
+    attempt.finish();
+    expect(storage.stored()).toBeNull();
+
+    expect(attempt.begin()).toBe(true);
+    expect(attempt.begin()).toBe(true);
+  });
+
+  it('refuses its own attempt cut short a second time, as when the graphics process dies at every start', () => {
+    const storage = deviceStorage();
+    const attempt = attemptOn(storage);
+    attempt.begin();
+    attempt.begin();
     expect(attempt.begin()).toBe(false);
     expect(storage.stored()).toEqual(['maps/cave.atlasmap']);
   });
 
-  it('keeps refusing a map whose attempt was cut short, in this session and from any view', () => {
+  it('keeps refusing a map whose attempt was cut short twice, in this session and from any view', () => {
     const storage = deviceStorage();
     const attempt = attemptOn(storage);
+    attempt.begin();
     attempt.begin();
     attempt.begin();
 

@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
-import { fileURLToPath } from 'node:url';
-import * as sass from 'sass';
+import { compiledStylesheet as compiled, pluginStylesheets as stylesheets, repoRoot as root, stylesheetsOf, type Stylesheets } from '../helpers/pluginStylesheets';
 
 interface Compound { text: string; combinator: string }
 
@@ -16,49 +14,6 @@ interface RootHas {
 
 const { MEASURED_SELECTORS, OBSIDIAN_BODY_CLASSES, compoundsOf, rootHasProblems } =
   createRequire(import.meta.url)('../../scripts/root-has.js') as RootHas;
-
-const root = fileURLToPath(new URL('../..', import.meta.url));
-const SCRIPT = /\.tsx?$/;
-const TEST_FILE = /(\.test\.|__tests__)/;
-/** A stylesheet named by a static or dynamic import, a re-export or a `require`. */
-const STYLE_IMPORT = /(?:\bimport\b|\bfrom\b|\brequire\s*\()[\s(]*(['"])([^'"\n]+\.s?css)(?:\?[^'"\n]*)?\1/g;
-/** Any statement that brings a stylesheet in, however it is written. */
-const STYLE_STATEMENT = /\b(?:import|from|require)\b[^;\n]*?\.s?css\b[^;\n]*/g;
-
-function scripts(folder: string): string[] {
-  return fs.readdirSync(folder, { withFileTypes: true }).flatMap((entry) => {
-    const file = path.join(folder, entry.name);
-    if (entry.isDirectory()) return scripts(file);
-    return SCRIPT.test(entry.name) && !TEST_FILE.test(file) ? [file] : [];
-  });
-}
-
-interface Stylesheets { files: string[]; unread: string[] }
-
-/** The stylesheets a script brings in, and its statements that bring one in where this test cannot follow them all. */
-function stylesheetsOf(script: string, source: string): Stylesheets {
-  const imports = [...source.matchAll(STYLE_IMPORT)];
-  const relative = imports.filter(([, , specifier = '']) => specifier.startsWith('.'));
-  const statements = source.match(STYLE_STATEMENT) ?? [];
-  const unread = statements.length === relative.length ? [] : statements;
-  return {
-    files: relative.map(([, , specifier = '']) => path.resolve(path.dirname(script), specifier)),
-    unread: unread.map((statement) => `${path.relative(root, script)}: ${statement.trim()}`),
-  };
-}
-
-/** Every stylesheet the build compiles: the ones the plugin's code imports. */
-function stylesheets(): Stylesheets {
-  const perScript = [path.join(root, 'main.ts'), ...scripts(path.join(root, 'src'))]
-    .map((script) => stylesheetsOf(script, fs.readFileSync(script, 'utf8')));
-  return {
-    files: [...new Set(perScript.flatMap(({ files }) => files))],
-    unread: perScript.flatMap(({ unread }) => unread),
-  };
-}
-
-const compiled = (file: string): string =>
-  (file.endsWith('.scss') ? sass.compile(file, { logger: sass.Logger.silent }).css : fs.readFileSync(file, 'utf8'));
 
 const rule = (selector: string): string => `${selector} { z-index: 1; }`;
 const ARGUMENT = '.atlas-asset-manager-modal';

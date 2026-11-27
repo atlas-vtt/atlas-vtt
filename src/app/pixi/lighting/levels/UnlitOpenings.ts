@@ -3,7 +3,7 @@ import { NO_BELOW, type BelowPictures, type CompositeStack } from '../engine/com
 import { ENGINE_SHADERS } from '../engine/engineShaders';
 import { createPlaceholder, createShader, glOf } from '../engine/gpu';
 import type { BelowShown } from '../engine/LightingEngine';
-import { describeShaderFailures, failedEngineShaders } from '../engine/shaderCheck';
+import { contextAnswers, describeShaderFailures, failedEngineShaders } from '../engine/shaderCheck';
 
 /**
  * The openings of a view whose scene has no lighting. A lit view's composite draws the levels
@@ -58,6 +58,8 @@ export class UnlitOpenings {
     if (!gl) return (this.links = false);
     if (gl.isContextLost()) return false;
     const failures = failedEngineShaders(gl, [ENGINE_SHADERS.unlitOpenings]);
+    // A context whose graphics process just died links nothing: asked again once it is back.
+    if (failures.length > 0 && !contextAnswers(gl)) return false;
     if (failures.length > 0) console.error(`Atlas: the levels below an unlit scene cannot be drawn on this graphics device\n${describeShaderFailures(failures)}`);
     return (this.links = failures.length === 0);
   }

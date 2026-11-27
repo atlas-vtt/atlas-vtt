@@ -1,6 +1,7 @@
 import { CanvasSource, Texture } from 'pixi.js';
 import { WIDGET_ICON_PATHS } from '../../types/widgetIcons';
 import type { ConditionGlyph } from '../../utils/conditionGlyph';
+import { textureCanvas } from '../utils/textureCanvas';
 
 /** Edge length of a rasterised glyph, sharp on a badge at full zoom on high-density screens. */
 const GLYPH_TEXTURE_SIZE = 128;
@@ -21,11 +22,9 @@ export function getConditionGlyphTexture(glyph: ConditionGlyph): Texture | null 
   const cached = glyphTextures.get(key);
   if (cached) return cached;
 
-  const canvas = createEl('canvas');
-  canvas.width = GLYPH_TEXTURE_SIZE;
-  canvas.height = GLYPH_TEXTURE_SIZE;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return null;
+  const drawn = textureCanvas(GLYPH_TEXTURE_SIZE, GLYPH_TEXTURE_SIZE);
+  if (!drawn) return null;
+  const { canvas, context: ctx } = drawn;
 
   ctx.fillStyle = '#ffffff';
   if (glyph.kind === 'icon') drawIcon(ctx, WIDGET_ICON_PATHS[glyph.icon]);
