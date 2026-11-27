@@ -43,11 +43,12 @@ export class LinkedDevices {
     });
   }
 
-  /** The room is let go: nobody is connected, and nothing a device still says is heard. */
-  stop(): void {
+  /** The room is let go: nobody is connected, and nothing a device still says is heard; `forgetting`, the screens forget every device (Sidekick stops). */
+  stop(forgetting: boolean): void {
     this.away();
     this.channels?.clear();
     this.channels = null;
+    if (forgetting) this.host.router.forgotten();
   }
 
   /** Until the next welcome no device is known to be there; that welcome opens every channel anew. */
@@ -70,6 +71,7 @@ export class LinkedDevices {
     if (id === undefined) return this.fresh.clear();
     this.fresh.delete(id);
     this.left(id);
+    this.host.router.forgotten(id);
   }
 
   welcome(players: readonly PlayerInfo[]): void {

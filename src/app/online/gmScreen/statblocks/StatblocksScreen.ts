@@ -103,9 +103,12 @@ export class StatblocksScreen implements GmScreen {
 
   closed(device: string): void {
     this.leave(device);
-    this.presses.forget(device);
     this.sentList.delete(device);
     this.sentTree.delete(device);
+  }
+
+  forgotten(device?: string): void {
+    this.presses.forget(device);
   }
 
   dispose(): void {

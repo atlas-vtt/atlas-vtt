@@ -277,7 +277,7 @@ export class GmScreenSession implements GmScreenOutlet {
     connection?.stop();
     this.phase = 'stopped';
     this.comingBack = false;
-    this.linked.stop();
+    this.linked.stop(!restarting);
     this.key = null;
     this.knocks.clear();
   }

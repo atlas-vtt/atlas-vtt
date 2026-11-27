@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { PRESS_BURST, PRESS_REFILL_MS, RollPresses } from '../../../../src/app/online/gmScreen/statblocks/rollPresses.ts';
+import { KEPT_DEVICES, PRESS_BURST, PRESS_REFILL_MS, RollPresses } from '../../../../src/app/online/gmScreen/statblocks/rollPresses.ts';
 import { TemplateLibrary } from '../../../../src/app/statblocks/library/TemplateLibrary';
 import { answers, answerTo, auto, diceTool, native, rollsIn, showingHag } from './statblockRollsRig.ts';
 import { heardBy, type StatblocksSession } from './statblocksSession.ts';
@@ -90,18 +90,45 @@ describe('what a device\'s press on a statblock roll may do', { timeout: 30_000 
 });
 
 describe('the pace of a device\'s rolls', () => {
-  it(`takes ${PRESS_BURST} at once, then one more for every ${PRESS_REFILL_MS} ms, each device on its own, and forgets a device that left`, () => {
+  const pressing = (presses: RollPresses) => (device: string, id: number): string | null =>
+    presses.answer(device, id, (pace) => (pace() ? { refused: null } : { refused: 'too-fast' })).refused;
+
+  it(`takes ${PRESS_BURST} at once, then one more for every ${PRESS_REFILL_MS} ms, each device on its own, until the device is forgotten`, () => {
     let now = 0;
     const presses = new RollPresses(() => now);
-    const press = (device: string, id: number): string | null => presses.answer(device, id, (pace) => (pace() ? { refused: null } : { refused: 'too-fast' })).refused;
-    expect([1, 2, 3, 4].map((id) => press('a', id))).toEqual([null, null, null, 'too-fast']);
+    const press = pressing(presses);
+    const burst = Array.from({ length: PRESS_BURST + 1 }, (_, at) => at + 1);
+    expect(burst.map((id) => press('a', id))).toEqual([...Array<null>(PRESS_BURST).fill(null), 'too-fast']);
     expect(press('b', 1)).toBeNull();
     now += PRESS_REFILL_MS / 2;
-    expect(press('a', 5)).toBe('too-fast');
+    expect(press('a', 100)).toBe('too-fast');
     now += PRESS_REFILL_MS / 2;
-    expect(press('a', 6)).toBeNull();
-    expect(press('a', 4)).toBe('too-fast');
+    expect(press('a', 101)).toBeNull();
+    expect(press('a', PRESS_BURST + 1)).toBe('too-fast');
     presses.forget('a');
-    expect(press('a', 4)).toBeNull();
+    expect(press('a', PRESS_BURST + 1)).toBeNull();
+    presses.forget();
+    expect(press('b', 1)).toBeNull();
+  });
+
+  it('rolls a brisk multiattack: seven presses half a second apart', () => {
+    let now = 0;
+    const presses = new RollPresses(() => now);
+    const press = pressing(presses);
+    const refused = Array.from({ length: 7 }, (_, at) => {
+      now = at * 500;
+      return press('a', at + 1);
+    });
+    expect(refused).toEqual(Array<null>(7).fill(null));
+  });
+
+  it(`keeps the presses of at most ${KEPT_DEVICES} devices, the one heard from longest ago going first`, () => {
+    const presses = new RollPresses(() => 0);
+    const press = pressing(presses);
+    for (let device = 0; device <= KEPT_DEVICES; device++) press(`d${device}`, 1);
+    let rolled = 0;
+    presses.answer('d0', 1, () => ((rolled += 1), { refused: null }));
+    presses.answer(`d${KEPT_DEVICES}`, 1, () => ((rolled += 1), { refused: null }));
+    expect(rolled).toBe(1);
   });
 });

@@ -16,6 +16,8 @@ export interface GmScreen {
   message(device: string, message: DeviceMessage): void;
   /** The device left, or was removed: nothing more goes to it. */
   closed?(device: string): void;
+  /** The device is no longer one Atlas lets in: it was removed, or Sidekick stopped (`device` undefined: every device). */
+  forgotten?(device?: string): void;
 }
 
 /** What a screen sends through: sealed for each device under its own keys, only while its channel is open. */
@@ -52,6 +54,10 @@ export class ScreenRouter {
 
   closed(device: string): void {
     for (const screen of [...this.screens]) guarded(screen, 'letting a device go', () => screen.closed?.(device));
+  }
+
+  forgotten(device?: string): void {
+    for (const screen of [...this.screens]) guarded(screen, 'forgetting a device', () => screen.forgotten?.(device));
   }
 }
 
