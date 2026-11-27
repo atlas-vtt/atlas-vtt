@@ -3,7 +3,7 @@ import type { Viewport } from 'pixi-viewport';
 import type { SceneSource } from '../host/sceneSource';
 import type { ViewState } from '../types/viewState';
 import { LASER_FADE_TIME, type LaserPointerSettings } from '../tools/laserPointerSettings';
-import { setCanvasCursor } from './utils/canvasCursor';
+import { clearToolCursor, setToolCursor } from './utils/canvasCursor';
 import { destroyTree } from './utils/destroyTree';
 import { isPrimaryPress } from './utils/pointerButtons';
 import { MAX_TRAIL_SAMPLES, type BeamPoint } from './laser/laserBeamGeometry';
@@ -115,10 +115,10 @@ export class LaserPointerRenderer {
     const wasActive = this.isToolActive;
     this.isToolActive = tool === 'laser-pointer';
     if (this.isToolActive && !wasActive) {
-      setCanvasCursor(this.canvasEl, 'none');
+      setToolCursor(this.canvasEl, 'laser', 'none');
       this.redraw();
     } else if (!this.isToolActive && wasActive) {
-      setCanvasCursor(this.canvasEl, 'auto');
+      if (!this.isQuickMode) clearToolCursor(this.canvasEl, 'laser');
       this.isPointing = false;
       this.redraw();
     }
@@ -154,7 +154,7 @@ export class LaserPointerRenderer {
 
     if (quick) {
       this.isQuickMode = true;
-      setCanvasCursor(this.canvasEl, 'none');
+      setToolCursor(this.canvasEl, 'laser', 'none');
     }
     this.isPointing = true;
     this.trackPointer(world);
@@ -221,7 +221,7 @@ export class LaserPointerRenderer {
     this.isQuickMode = false;
     this.isPointing = false;
     if (!this.isToolActive) {
-      setCanvasCursor(this.canvasEl, 'auto');
+      clearToolCursor(this.canvasEl, 'laser');
     }
     this.redraw();
   }
@@ -308,6 +308,7 @@ export class LaserPointerRenderer {
     this.viewport.off('pointercancel', this.onPointerUpOutside);
     this.viewport.off('moved', this.onViewportMoved);
     this.canvasEl.removeEventListener('pointerleave', this.onCanvasLeave);
+    clearToolCursor(this.canvasEl, 'laser');
 
     this.trailPoints = [];
     destroyTree(this.container);
