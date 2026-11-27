@@ -1,9 +1,10 @@
-import type { GmMessage, SharedInitiative } from '../../../../src/app/online/protocol/index.ts';
+import type { GmMessage } from '../../../../src/app/online/protocol/index.ts';
 import type { InitiativeEntry } from '../../../../src/app/types/initiativeTypes';
 import type { ViewState } from '../../../../src/app/types/viewState';
 import { describe, expect, it } from 'vitest';
 import { MAP_LAYER_INTERVAL_MS } from '../../../../src/app/online/gm/MapLayerShare.ts';
 import { TOKEN_INTERVAL_MS } from '../../../../src/app/online/gm/TokenShare.ts';
+import { parseInitiative } from '../../../../src/app/online/protocol/initiative.ts';
 import { boundOwnership } from './fakeSeats.ts';
 import { fakeLayers } from './fakeAtlasTab.ts';
 import { GENERIC_SOURCE } from './gmLighting.ts';
@@ -66,7 +67,8 @@ describe('a player\'s own combatant kept beside the map', () => {
     await table.set(state);
     await table.advance(TOKEN_INTERVAL_MS);
     await table.advance(MAP_LAYER_INTERVAL_MS);
-    const [hero, scout, ogre] = (last(table.sent, 'initiative')?.list as SharedInitiative).combatants;
+    // As a page reads it
+    const [hero, scout, ogre] = parseInitiative(last(table.sent, 'initiative')?.list)?.combatants ?? [];
     const mine = table.pages.of(ANA).last('mine')?.tokens ?? [];
     expect(hero?.token).toBeDefined();
     expect(scout?.token).toBeUndefined();
