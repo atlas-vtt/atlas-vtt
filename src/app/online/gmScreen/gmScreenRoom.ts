@@ -16,11 +16,17 @@ export interface RoomAccount {
   refresh(force: boolean): Promise<void>;
 }
 
-/** The room the relay made, or the sentence that says why there is none; `later` where asking again may get one (not reached, or busy). */
-export type RoomAnswer = { readonly room: CreatedTable } | { readonly refused: string; readonly later?: true };
+/**
+ * The room the relay made, or the sentence that says why there is none; `later` where asking again may
+ * get one (not reached, or busy), `live` where it was asked for only if none was live and one is.
+ */
+export type RoomAnswer = { readonly room: CreatedTable } | { readonly refused: string; readonly later?: true; readonly live?: true };
 
-/** Asks the relay for the GM screen's room at the lasting `code`. */
-export type CreateRoom = (code: string) => Promise<RoomAnswer>;
+/**
+ * Asks the relay for the GM screen's room at the lasting `code`. The relay keeps one such room an
+ * account and ends the older one, unless asked for it `unlessLive`: then it makes none while one is live.
+ */
+export type CreateRoom = (code: string, unlessLive?: boolean) => Promise<RoomAnswer>;
 
 export const SIGN_IN_TEXT = t('gmScreen.signIn', { name: t('gmScreen.name') });
 
@@ -30,10 +36,10 @@ export const SIGN_IN_TEXT = t('gmScreen.signIn', { name: t('gmScreen.name') });
  * and never run, since devices would find nothing at the link.
  */
 export function relayRooms(http: Http, origin: string, account: RoomAccount, open: OpenOutbox, timers: Timers): CreateRoom {
-  return async (code) => {
+  return async (code, unlessLive = false) => {
     const token = account.token();
     if (token === null) return { refused: SIGN_IN_TEXT };
-    const created = await createTable(http, origin, token, code, 'gm-screen');
+    const created = await createTable(http, origin, token, code, 'gm-screen', unlessLive);
     if (!('message' in created)) {
       if (created.kind === 'gm-screen' && created.code === code) return { room: created };
       endStrayTable(open, created, timers);
@@ -43,6 +49,7 @@ export function relayRooms(http: Http, origin: string, account: RoomAccount, ope
       account.signedOutByServer();
       return { refused: SIGN_IN_TEXT };
     }
+    if (created.live === true) return { refused: t('gmScreen.end.elsewhere', { name: t('gmScreen.name') }), live: true };
     if (created.status === 403) void account.refresh(true);
     return created.status === 0 || created.status >= 500 ? { refused: created.message, later: true } : { refused: created.message };
   };

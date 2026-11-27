@@ -33,8 +33,6 @@ export interface GmScreenRecord {
   readonly secret: string | null;
   readonly devices: readonly GmScreenDevice[];
   readonly ending: readonly GmScreenRoom[];
-  /** The last time Atlas knew the relay held its room for it, by this computer's clock; unset before it ever did. */
-  readonly heldAt?: number;
 }
 
 /** A new link with no devices and nothing running; the rooms still to be ended are kept. */
@@ -59,7 +57,7 @@ function readRoom(value: unknown): GmScreenRoom | null {
 /** The record from online play's data, each field checked; null where there is none or its link cannot be read. */
 export function readGmScreenRecord(data: unknown): GmScreenRecord | null {
   if (typeof data !== 'object' || data === null) return null;
-  const { link, secret, devices, ending, heldAt } = data as Record<string, unknown>;
+  const { link, secret, devices, ending } = data as Record<string, unknown>;
   const { code, key } = typeof link === 'object' && link !== null ? (link as Record<string, unknown>) : {};
   if (typeof code !== 'string' || !TABLE_CODE_PATTERN.test(code) || typeof key !== 'string' || !LINK_KEY_PATTERN.test(key)) return null;
   const kept: GmScreenDevice[] = [];
@@ -68,8 +66,7 @@ export function readGmScreenRecord(data: unknown): GmScreenRecord | null {
     if (device !== null && kept.length < MAX_DEVICES && !kept.some((other) => other.id === device.id || other.code === device.code)) kept.push(device);
   }
   const rooms = (Array.isArray(ending) ? ending : []).map(readRoom).filter((room) => room !== null);
-  const held = typeof heldAt === 'number' && Number.isFinite(heldAt) ? { heldAt } : {};
-  return { link: { code, key }, secret: typeof secret === 'string' && SECRET_PATTERN.test(secret) ? secret : null, devices: kept, ending: rooms.slice(-MAX_ENDING), ...held };
+  return { link: { code, key }, secret: typeof secret === 'string' && SECRET_PATTERN.test(secret) ? secret : null, devices: kept, ending: rooms.slice(-MAX_ENDING) };
 }
 
 /** The record with `room` among the rooms to be ended. */

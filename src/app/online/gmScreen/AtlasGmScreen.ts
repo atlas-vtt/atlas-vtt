@@ -7,12 +7,16 @@ import { RELAY_ORIGIN } from '../gm/servers.ts';
 import { relayOutbox } from '../gm/tableOutbox.ts';
 import { channelCryptoOf } from './channel/index.ts';
 import type { GmScreenRecord } from './gmScreenRecord.ts';
+import { readHeldMark } from './heldMarks.ts';
 import { relayRooms, type RoomAccount } from './gmScreenRoom.ts';
 import { GmScreenSession } from './GmScreenSession.ts';
 import { gmScreenControlShown, setGmScreenHost } from './gmScreenSlot.ts';
 import { plugKeysScreen } from './keys/atlasKeys.ts';
 import { noticeKnocks } from './knockNotice.ts';
 import { plugAtlasStatblocks } from './statblocks/atlasStatblocks.ts';
+
+/** Where the vault's local storage on this device keeps when the relay last held Sidekick's room. */
+const HELD_KEY = 'atlas-vtt:gm-screen-held';
 
 /**
  * The GM screen inside Atlas: the session on Atlas's relay, with the account's token and Obsidian's
@@ -38,6 +42,10 @@ export class AtlasGmScreen {
       save: (record) => {
         this.saved = record;
         save();
+      },
+      held: {
+        read: () => readHeldMark(app.loadLocalStorage(HELD_KEY)),
+        write: (mark) => app.saveLocalStorage(HELD_KEY, mark),
       },
       notice: (text) => showNotice(text),
       now: () => Date.now(),

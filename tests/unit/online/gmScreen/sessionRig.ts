@@ -1,6 +1,6 @@
 import { vi } from 'vitest';
 import { checkNumber, DeviceChannel, linkKey } from '../../../../src/app/online/gmScreen/channel/index.ts';
-import { GmScreenSession, readGmScreenRecord, type CreateRoom, type GmScreenRecord } from '../../../../src/app/online/gmScreen/index.ts';
+import { GmScreenSession, readGmScreenRecord, readHeldMark, type CreateRoom, type GmScreenRecord, type HeldMark, type HeldStore } from '../../../../src/app/online/gmScreen/index.ts';
 import { BATCH_MS } from '../../../../src/app/online/gm/sendQueue.ts';
 import { TableConnection } from '../../../../src/app/online/gm/TableConnection.ts';
 import { CLOSE, KEEPALIVE_PING, KEEPALIVE_PONG, type DeviceMessage, type GmScreenMessage } from '../../../../src/app/online/protocol/index.ts';
@@ -88,6 +88,8 @@ export interface Rig {
   /** Room codes Atlas asked the relay for. */
   readonly created: string[];
   readonly saved: GmScreenRecord[];
+  /** This computer's own storage of when the relay last held the room, and every mark written to it. */
+  readonly held: HeldStore & { readonly written: (HeldMark | null)[] };
   readonly notices: string[];
   /** The last socket Atlas opened to the room at `room` (by default any room's). */
   socket(room?: string): RelaySocket;
@@ -97,8 +99,22 @@ export interface Rig {
   settle(): Promise<void>;
 }
 
-/** A session as Atlas runs it, with the relay played by the rig; `saved` is the record it starts from. */
-export function sessionRig(saved: GmScreenRecord | null = null, create?: CreateRoom): Rig {
+/** This computer's local storage of the held mark, as JSON as local storage keeps it. */
+export function heldStore(): Rig['held'] {
+  const written: (HeldMark | null)[] = [];
+  let kept = 'null';
+  return {
+    written,
+    read: () => readHeldMark(JSON.parse(kept)),
+    write: (mark) => {
+      kept = JSON.stringify(mark);
+      written.push(mark);
+    },
+  };
+}
+
+/** A session as Atlas runs it, with the relay played by the rig; `saved` is the record it starts from, `held` this computer's storage. */
+export function sessionRig(saved: GmScreenRecord | null = null, create?: CreateRoom, held: Rig['held'] = heldStore()): Rig {
   vi.stubGlobal('WebSocket', RelaySocket);
   const timers = fakeTimers();
   const created: string[] = [];
@@ -117,6 +133,7 @@ export function sessionRig(saved: GmScreenRecord | null = null, create?: CreateR
     }),
     open: (room, events, gate) => new TableConnection(RELAY, room.code, room.secret, events, gate, timers),
     save: (record) => void records.push(readGmScreenRecord(JSON.parse(JSON.stringify(record))) ?? record),
+    held,
     notice: (text) => void notices.push(text),
     now: () => timers.now(),
   }, saved);
@@ -153,7 +170,7 @@ export function sessionRig(saved: GmScreenRecord | null = null, create?: CreateR
     return moved;
   };
   return {
-    session, timers, created, saved: records, notices, socket,
+    session, timers, created, saved: records, held, notices, socket,
     device: async (id, key) => {
       const crypto = nodeCrypto();
       const link = await linkKey(crypto, key ?? records.at(-1)?.link.key ?? '');

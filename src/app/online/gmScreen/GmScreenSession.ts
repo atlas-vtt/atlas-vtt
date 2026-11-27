@@ -9,8 +9,9 @@ import { RoomEnds } from './gmScreenEnds.ts';
 import { GmScreenKnocks } from './gmScreenKnocks.ts';
 import { newGmScreenRecord, seatsOf, withDevice, withEnding, withoutDevice, withoutEnding, withRoomEnding, type GmScreenRecord } from './gmScreenRecord.ts';
 import type { GmScreenPorts } from './gmScreenPorts.ts';
-import { expiredWhileAway, HeldClock, Restarts } from './gmScreenRestart.ts';
+import { Comeback } from './gmScreenComeback.ts';
 import type { RoomAnswer } from './gmScreenRoom.ts';
+import { roomPrint } from './heldMarks.ts';
 import { LinkedDevices } from './linkedDevices.ts';
 import { ScreenRouter, type GmScreen, type GmScreenOutlet } from './screens.ts';
 import { gmScreenView, type GmScreenView } from './gmScreenView.ts';
@@ -37,8 +38,7 @@ export class GmScreenSession implements GmScreenOutlet {
   /** Rooms stopped and not yet seen ended: each is ended, or found ended, once the relay can be reached. */
   private readonly ends: RoomEnds;
   private readonly router = new ScreenRouter();
-  private readonly restarts: Restarts;
-  private readonly held: HeldClock;
+  private readonly comeback: Comeback;
   private problem: string | null = null;
   /** The room came back with Atlas (`resume`) and the relay has not welcomed it yet. */
   private comingBack = false;
@@ -50,8 +50,7 @@ export class GmScreenSession implements GmScreenOutlet {
   constructor(private readonly ports: GmScreenPorts, saved: GmScreenRecord | null) {
     this.record = saved;
     this.linked = new LinkedDevices({ crypto: ports.crypto, timers: ports.timers, router: this.router, record: () => this.record, keep: (record) => this.keep(record), connection: () => this.connection, now: () => ports.now() });
-    this.restarts = new Restarts(ports.timers);
-    this.held = new HeldClock(ports.timers, () => ports.now(), (heldAt) => this.record !== null && this.keep({ ...this.record, heldAt }));
+    this.comeback = new Comeback(ports.timers, ports.held, () => ports.now());
     this.knocks = new GmScreenKnocks(ports.timers, (id) => (this.key === null ? Promise.resolve('') : checkNumber(ports.crypto, this.key, id)), () => this.changed());
     this.ends = new RoomEnds(ports.open, ports.timers, (room) => this.record !== null && this.keep(withEnding(this.record, room)), (ended) => {
       if (this.record !== null) this.keep(withoutEnding(this.record, (room) => room.secret === ended.secret));
@@ -90,7 +89,7 @@ export class GmScreenSession implements GmScreenOutlet {
     this.keep(record);
     this.problem = null;
     this.phase = 'starting';
-    this.restarts.held();
+    this.comeback.forget();
     this.changed();
     await this.make((this.run += 1), (refused) => this.halt(refused.refused));
   }
@@ -115,12 +114,12 @@ export class GmScreenSession implements GmScreenOutlet {
     if (this.phase === 'running' && this.connectionStatus === 'online') this.connection?.end();
     if (this.record !== null) this.keep(withRoomEnding(this.record));
     this.halt(null);
+    this.comeback.forget();
     this.ends.end(this.record?.ending ?? []);
   }
 
   /** Lets go of the connections, leaving the room on the relay for `resume` (Atlas unloads). */
   close(): void {
-    if (this.phase === 'running' && this.connectionStatus === 'online') this.held.hold();
     this.letGo();
     this.ends.close();
   }
@@ -170,10 +169,10 @@ export class GmScreenSession implements GmScreenOutlet {
   }
 
   /** Asks the relay for the room at the link's code and connects to it, unless a stop, close or new link came first. */
-  private async make(run: number, refused: (answer: Extract<RoomAnswer, { refused: string }>) => void): Promise<void> {
+  private async make(run: number, refused: (answer: Extract<RoomAnswer, { refused: string }>) => void, unlessLive = false): Promise<void> {
     const code = this.record?.link.code;
     if (code === undefined) return;
-    const answer = await this.ports.create(code);
+    const answer = await this.ports.create(code, unlessLive);
     if (run !== this.run || this.record === null) {
       if ('room' in answer) this.ends.overtaken(answer.room);
       return;
@@ -187,24 +186,35 @@ export class GmScreenSession implements GmScreenOutlet {
 
   /**
    * The room the GM left running expired while Atlas was away: a new one at the same link, with the same
-   * devices, which come back by their own codes, and not a word to the GM. The old secret stays in the record
-   * until the new room is made, so an unload meanwhile comes back here on the next load.
+   * devices, which come back by their own codes, and not a word to the GM. It is asked for only where the
+   * account has no room of its kind live, so a Sidekick started meanwhile on another computer or in another
+   * vault is never ended by it: then this one ends as a start elsewhere ends it, silently where Atlas came
+   * back to it (`quiet`). The old secret stays in the record until the new room is made, so an unload
+   * meanwhile comes back here on the next load.
    */
-  private restart(): void {
-    this.letGo();
+  private restart(heldAt: number, quiet: boolean): void {
+    this.letGo(true);
     const run = this.run;
-    const again = (): void => void this.make(run, (answer) => (answer.later ? this.restarts.retry(again) : this.halt(answer.refused, true)));
-    if (!this.restarts.restart(again)) return this.halt(t('gmScreen.end.refused', { name: NAME }), true);
+    const refused = (answer: Extract<RoomAnswer, { refused: string }>): void => {
+      if (answer.later === true) return this.comeback.retry(again);
+      this.halt(answer.live === true && quiet ? null : answer.refused, true);
+    };
+    const again = (): void => void this.make(run, refused, true);
+    if (!this.comeback.restart(again, heldAt)) return this.halt(t('gmScreen.end.refused', { name: NAME }), true);
     this.phase = 'restarting';
     this.changed();
   }
 
   private async connect(run: number): Promise<void> {
-    const record = this.record;
-    const key = record === null ? null : await linkKey(this.ports.crypto, record.link.key);
+    const asked = this.record;
+    const key = asked === null ? null : await linkKey(this.ports.crypto, asked.link.key);
+    const print = asked?.secret == null ? null : await roomPrint(asked.secret);
     if (run !== this.run) return;
-    if (record?.secret == null || key === null) return this.halt(t('gmScreen.end.refused', { name: NAME }));
+    // Read again after the waits: a device removed meanwhile is not seated.
+    const record = this.record;
+    if (record?.secret == null || record.secret !== asked?.secret || key === null || print === null) return this.halt(t('gmScreen.end.refused', { name: NAME }));
     this.key = key;
+    this.comeback.opened(print);
     this.linked.start(key);
     this.phase = 'running';
     this.connectionStatus = 'connecting';
@@ -226,6 +236,7 @@ export class GmScreenSession implements GmScreenOutlet {
       left: (id) => live() && (this.linked.left(id), this.changed()),
       message: (from, body) => live() && this.linked.receive(from, body),
       access: () => undefined,
+      heard: () => live() && this.comeback.heard(),
     };
   }
 
@@ -239,15 +250,11 @@ export class GmScreenSession implements GmScreenOutlet {
   private statusChanged(status: TableStatus): void {
     const whileOnline = this.connectionStatus === 'online';
     this.connectionStatus = status;
-    if (status === 'online') this.held.hold();
-    else this.held.release();
     const closeCode = this.connection?.closeCode ?? null;
-    if (status === 'refused' && expiredWhileAway({ closeCode, whileOnline, heldAt: this.record?.heldAt, now: this.ports.now() })) return this.restart();
+    const expiredAt = this.comeback.status(status, closeCode, whileOnline, this.ports.now());
+    if (expiredAt !== null) return this.restart(expiredAt, this.comingBack);
     if (status === 'refused') return this.halt(gmScreenEndText(closeCode, this.comingBack), true);
-    if (status === 'online') {
-      this.comingBack = false;
-      this.restarts.held();
-    }
+    if (status === 'online') this.comingBack = false;
     if (status === 'connecting') this.linked.away();
     this.changed();
   }
@@ -262,10 +269,9 @@ export class GmScreenSession implements GmScreenOutlet {
   }
 
   /** Lets go of the connection and forgets who is connected and waits: nothing more goes to anyone, and nothing it still says is heard. */
-  private letGo(): void {
+  private letGo(restarting = false): void {
     this.run += 1;
-    this.restarts.cancel();
-    this.held.release();
+    this.comeback.letGo(restarting);
     const { connection } = this;
     this.connection = null;
     connection?.stop();

@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ARM_MS } from '../../../../src/app/online/gm/armedCards.ts';
 import type { CreateRoom, GmScreenRecord, RoomAnswer } from '../../../../src/app/online/gmScreen/index.ts';
-import { expiredWhileAway, HELD_MS, MAX_RESTARTS, ROOM_IDLE_MS } from '../../../../src/app/online/gmScreen/gmScreenRestart.ts';
+import { expiredWhileAway, MAX_RESTARTS, ROOM_IDLE_MS } from '../../../../src/app/online/gmScreen/gmScreenRestart.ts';
+import { HELD_MS } from '../../../../src/app/online/gmScreen/heldMarks.ts';
 import { SIGN_IN_TEXT } from '../../../../src/app/online/gmScreen/gmScreenRoom.ts';
-import { CLOSE } from '../../../../src/app/online/protocol/index.ts';
+import { CLOSE, KEEPALIVE_MS } from '../../../../src/app/online/protocol/index.ts';
 import { deviceId, RelaySocket, sessionRig, type Rig } from './sessionRig.ts';
 
 const PHONE = deviceId('p');
@@ -106,13 +107,16 @@ describe('Sidekick\'s room, which the relay let expire while Atlas was away', ()
 
   it('runs again when Obsidian was quit without Stop and opened a day later, with its devices and without a word', async () => {
     const first = await running(sessionRig());
+    const closedAt = first.timers.now();
     first.session.close();
     const kept: GmScreenRecord | null = first.saved.at(-1) ?? null;
-    expect(kept?.heldAt).toBe(first.timers.now());
+    // The relay's last frame came within the keep-alive's time before Obsidian was quit.
+    const heldAt = first.held.read()?.at ?? -1;
+    expect(closedAt - heldAt).toBeLessThanOrEqual(KEEPALIVE_MS);
     RelaySocket.all = [];
     const { create, created } = relay();
-    const rig = sessionRig(kept, create);
-    rig.timers.sleep(kept!.heldAt! + DAY_AND_A_BIT);
+    const rig = sessionRig(kept, create, first.held);
+    rig.timers.sleep(heldAt + DAY_AND_A_BIT);
     await rig.session.resume();
     closesOnArrival(rig.socket(), CLOSE.ended);
     await rig.settle();
@@ -133,14 +137,14 @@ describe('Sidekick\'s room, which the relay let expire while Atlas was away', ()
     expect(rig.notices).toEqual(['The server ended Sidekick.']);
   });
 
-  it('marks nothing on a late timer at the wake, which would make a long sleep look short', async () => {
+  it('marks only what the relay said, so the timers that run late at the wake cannot make a long sleep look short', async () => {
     const rig = await running(sessionRig());
-    const held = rig.saved.at(-1)?.heldAt ?? -1;
-    await passes(rig, HELD_MS + 1000);
-    const marked = rig.saved.at(-1)?.heldAt ?? -1;
-    expect(marked).toBe(held + HELD_MS);
+    const welcomed = rig.held.read()?.at ?? -1;
+    await passes(rig, HELD_MS + KEEPALIVE_MS);
+    const marked = rig.held.read()?.at ?? -1;
+    expect(marked - welcomed).toBeGreaterThanOrEqual(HELD_MS);
     rig.timers.sleep(DAY_AND_A_BIT);
-    expect(rig.saved.at(-1)?.heldAt).toBe(marked);
+    expect(rig.held.read()?.at).toBe(marked);
   });
 
   it('is not started again after Stop, after New link, or when started on another computer', async () => {
