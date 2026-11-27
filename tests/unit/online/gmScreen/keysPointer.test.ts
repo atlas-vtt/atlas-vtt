@@ -152,21 +152,19 @@ describe('Sidekick\'s handout key shows the image under this computer\'s pointer
 });
 
 describe('the pointer is followed for Sidekick', () => {
-  it('only while a device is connected: not before, not after the last one leaves, the session stops or Atlas lets it go', async () => {
+  it('for as long as Sidekick runs, whatever its devices do, and no longer: not before Start, not after Stop or once Atlas lets it go', async () => {
     const watchers = pointerWatchers();
     const rig = sessionRig();
-    plugKeysScreen(app, rig.session, fakeTimers());
+    const unplug = plugKeysScreen(app, rig.session, fakeTimers());
+    expect(watchers()).toBe(0);
     await rig.session.start();
     rig.socket().welcome();
     await rig.settle();
-    expect(watchers()).toBe(0);
+    expect(watchers()).toBe(1);
 
     await allowedDevice(rig, PHONE);
-    expect(watchers()).toBe(1);
     rig.socket().receive({ t: 'player-left', id: PHONE });
     await rig.settle();
-    expect(watchers()).toBe(0);
-
     rig.socket().receive({ t: 'player-joined', id: PHONE, name: 'Phone' });
     await rig.settle();
     expect(watchers()).toBe(1);
@@ -177,8 +175,33 @@ describe('the pointer is followed for Sidekick', () => {
     rig.socket().welcome([{ id: PHONE, name: 'Phone' }]);
     await rig.settle();
     expect(watchers()).toBe(1);
+    // Atlas unloads: the session lets go of its room, and the screens are unplugged.
     rig.session.close();
+    unplug();
     expect(watchers()).toBe(0);
+  });
+
+  it('where the pointer came to rest before the phone connected', async () => {
+    const rig = sessionRig();
+    plugKeysScreen(app, rig.session, fakeTimers());
+    await rig.session.start();
+    rig.socket().welcome();
+    await rig.settle();
+    hover(`<div class="markdown-preview-view markdown-rendered"><p><img alt="" src="${SRC}"></p></div>`, 'img');
+    const phone = await allowedDevice(rig, PHONE);
+    expect(await pressHandout(rig, phone)).toBeNull();
+    expect(await shownInPlayerWindow(rig)).toBe(BYTES);
+  });
+
+  it('where the pointer came to rest while the phone was away: it locked, the GM pointed at the art, it woke and joined again', async () => {
+    const { rig, phone } = await sidekick();
+    rig.socket().receive({ t: 'player-left', id: PHONE });
+    await rig.settle();
+    hover(`<div class="markdown-preview-view markdown-rendered"><p><img alt="" src="${SRC}"></p></div>`, 'img');
+    rig.socket().receive({ t: 'player-joined', id: PHONE, name: 'Phone' });
+    await settleUntil(rig, () => heardOf(phone, 'keys').length >= 2);
+    expect(await pressHandout(rig, phone)).toBeNull();
+    expect(await shownInPlayerWindow(rig)).toBe(BYTES);
   });
 
   it('beside the Stream Deck\'s own follower: either one stopping leaves the other hearing the pointer', async () => {
