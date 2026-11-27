@@ -35,10 +35,10 @@ $thin: 5px;
 $wide: 8px;
 
 // The area. Its anchor and scroll timelines are what its overlay, a shadow part, is placed and moved by; it isolates
-// its stacking, so the overlay lies over everything in the area and under whatever lies over the area.
+// its stacking, so the overlay lies over everything in the area and under whatever lies over the area. The anchor's
+// name is the area's own (`OverlayScrollbar` sets it); a timeline's name is found from the nearest area up.
 [data-atlas-scrollbar] {
-  anchor-name: --atlas-scrollbar;
-  anchor-scope: --atlas-scrollbar;
+  anchor-name: var(--atlas-scrollbar-anchor);
   scroll-timeline: --atlas-scrollbar-y y, --atlas-scrollbar-x x;
   isolation: isolate;
 }
@@ -47,7 +47,7 @@ $wide: 8px;
 // the containing block of its positioned content), anchored to the area, and never moves.
 [data-atlas-scrollbar]::part(frame) {
   position: absolute;
-  position-anchor: --atlas-scrollbar;
+  position-anchor: var(--atlas-scrollbar-anchor);
   top: calc(anchor(top) + var(--atlas-scrollbar-border-top));
   bottom: calc(anchor(bottom) + var(--atlas-scrollbar-border-bottom));
   left: calc(anchor(left) + var(--atlas-scrollbar-border-left));

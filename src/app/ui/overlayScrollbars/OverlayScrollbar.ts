@@ -9,6 +9,12 @@ export const HIDE_AFTER_MS = 1000;
 /** Thickness of a thumb's grab band (`$band` in `_overlay-scrollbars.scss`): a corner both thumbs would share is left free. */
 const BAND_PX = 12;
 const WHEEL_LINE_PX = 16;
+/**
+ * The area's anchor name, which its frame is placed by: one of its own, since Chromium 130 (Electron 33) has no
+ * `anchor-scope` and there a name several areas share is the last one's for every frame.
+ */
+const ANCHOR_PROP = '--atlas-scrollbar-anchor';
+let anchorsMade = 0;
 /** Marks the slot of a shadow root Atlas made, so a reloaded Atlas finds its own roots again. */
 const SLOT_MARK = 'data-atlas-scrollbar-slot';
 /** Presses on the thumbs stay with them: the area under them (a grid's marquee, a list's click) never sees them. */
@@ -63,6 +69,7 @@ export class OverlayScrollbar {
       thumb.addEventListener('pointerenter', () => { this.hovered = true; this.arm(); });
       thumb.addEventListener('pointerleave', () => { this.hovered = false; this.arm(); });
     }
+    area.setCssProps({ [ANCHOR_PROP]: `--atlas-scrollbar-${++anchorsMade}` });
     area.setAttribute('data-atlas-scrollbar', '');
   }
 
@@ -131,6 +138,7 @@ export class OverlayScrollbar {
     this.motion.remove();
     this.frame.remove();
     this.area.removeAttribute('data-atlas-scrollbar');
+    this.area.setCssProps({ [ANCHOR_PROP]: '' });
   }
 
   private arm(): void {

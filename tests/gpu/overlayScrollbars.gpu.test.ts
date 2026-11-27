@@ -192,3 +192,52 @@ it('leaves an area that scrolls bare alone, and Obsidian\'s own areas their nati
   expect(native.shadowRoot).toBeNull();
   expect(native.offsetWidth - native.clientWidth).toBeGreaterThan(0);
 });
+
+describe('with more scroll areas on the page', () => {
+  /** Chromium 130 (Electron 33, Obsidian 1.15's installer) has no `anchor-scope`. */
+  const withoutAnchorScope = document.createElement('style');
+  withoutAnchorScope.textContent = '[data-atlas-scrollbar] { anchor-scope: none !important; }';
+
+  afterEach(() => withoutAnchorScope.remove());
+
+  function rows(area: HTMLElement): HTMLElement {
+    for (let index = 0; index < 30; index++) area.createDiv({ cls: 'atlas-test-row' });
+    return area;
+  }
+
+  /** The Sound page: the music list beside the moods. */
+  function sideBySide(): HTMLElement[] {
+    const row = host.createDiv();
+    row.setCssProps({ display: 'flex', gap: '16px' });
+    return [rows(row.createDiv({ cls: 'atlas-test-area' })), rows(row.createDiv({ cls: 'atlas-test-area' }))];
+  }
+
+  /** A list in a scrolling page. */
+  function nested(): HTMLElement[] {
+    const outer = host.createDiv({ cls: 'atlas-test-area' });
+    outer.setCssProps({ height: '300px' });
+    for (let index = 0; index < 2; index++) outer.createDiv({ cls: 'atlas-test-row' });
+    const inner = rows(outer.createDiv({ cls: 'atlas-test-area' }));
+    inner.setCssProps({ width: '200px' });
+    return [rows(outer), inner];
+  }
+
+  it.each([
+    ['side by side', sideBySide, false],
+    ['side by side, in an engine without anchor-scope', sideBySide, true],
+    ['one inside the other', nested, false],
+    ['one inside the other, in an engine without anchor-scope', nested, true],
+  ])('draws each area\'s thumb in that area, where it can be pressed: %s', async (_name, mount, unscoped) => {
+    if (unscoped) document.head.append(withoutAnchorScope);
+    for (const area of mount()) {
+      await scrollTo(area, 50);
+      const thumb = part(area, 'thumb-y');
+      const drawn = thumb.getBoundingClientRect();
+      const box = paddingBox(area);
+      expect(drawn.right).toBeCloseTo(box.right, 0);
+      expect(drawn.top).toBeGreaterThanOrEqual(box.top - SLACK);
+      expect(drawn.bottom).toBeLessThanOrEqual(box.bottom + SLACK);
+      expect(area.shadowRoot!.elementFromPoint(drawn.right - 3, drawn.top + drawn.height / 2)).toBe(thumb);
+    }
+  });
+});
