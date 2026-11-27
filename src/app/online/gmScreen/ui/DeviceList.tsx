@@ -1,41 +1,52 @@
-import React from 'react';
-import { X } from 'lucide-react';
+import React, { useId, useRef, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { t } from '../../../i18n';
 import { Button } from '../../../packages/components/primitives/button';
-import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
-import { formatRelativeTime } from '../../../react/components/dashboard/relativeTime';
 import type { GmScreenDeviceView } from '../gmScreenView.ts';
+import { foldAfter, restingFold } from './deviceFold.ts';
+import { DeviceRow } from './DeviceRow';
 
 interface DeviceListProps {
   readonly devices: readonly GmScreenDeviceView[];
   readonly remove: (id: string) => void;
 }
 
-/** The devices allowed under this link: whether each is connected or when it was last seen, and Remove. */
+/**
+ * The devices allowed under this link, as a section that folds, its count in its heading. It rests open
+ * while a device is connected and folded while all are away, and opens for a device that arrives. A device
+ * that asks to join is never in here: the Allow prompt stands above, whatever the fold.
+ */
 export function DeviceList({ devices, remove }: DeviceListProps): React.JSX.Element {
-  return (
-    <section className="atlas-gm-screen-devices" aria-labelledby="atlas-gm-screen-devices-title">
-      <h3 id="atlas-gm-screen-devices-title" className="atlas-gm-screen-section-label">{t('gmScreen.devices')}</h3>
-      {devices.length === 0 ? (
+  const id = useId();
+  const [fold, setFold] = useState(() => restingFold(devices));
+  const next = foldAfter(fold, devices);
+  if (next !== fold) setFold(next);
+  // Rows already there as the panel opened stand still; only one that arrives fades in.
+  const first = useRef(new Set(devices.map((device) => device.id)));
+  if (devices.length === 0) {
+    return (
+      <section className="atlas-gm-screen-devices" aria-labelledby={`${id}-title`}>
+        <h3 id={`${id}-title`} className="atlas-gm-screen-devices__title atlas-gm-screen-section-label">{t('gmScreen.devices')}</h3>
         <p className="atlas-gm-screen-help">{t('gmScreen.noDevices')}</p>
-      ) : (
+      </section>
+    );
+  }
+  return (
+    <section className="atlas-gm-screen-devices" aria-labelledby={`${id}-title`}>
+      <h3 className="atlas-gm-screen-devices__heading">
+        <Button type="button" variant="ghost" id={`${id}-title`} className="atlas-gm-screen-devices__toggle" aria-expanded={next.open} aria-controls={`${id}-list`} onClick={() => setFold({ ...next, open: !next.open })}>
+          <span className="atlas-gm-screen-section-label">{t('gmScreen.devices')}</span>
+          <span className="atlas-gm-screen-devices__count">{devices.length}</span>
+          <ChevronDown className="atlas-gm-screen-devices__chevron" aria-hidden="true" />
+        </Button>
+      </h3>
+      <div id={`${id}-list`} className="atlas-gm-screen-devices__fold" data-open={next.open} inert={!next.open}>
         <ul className="atlas-gm-screen-devices__list">
           {devices.map((device) => (
-            <li key={device.id} className="atlas-gm-screen-device" data-connected={device.connected}>
-              <span className="atlas-gm-screen-device__dot" aria-hidden="true" />
-              <span className="atlas-gm-screen-device__text">
-                <span className="atlas-gm-screen-device__name">{device.name}</span>
-                <span className="atlas-gm-screen-device__state">{device.connected ? t('gmScreen.connected') : t('gmScreen.lastSeen', { when: formatRelativeTime(device.lastSeen) })}</span>
-              </span>
-              <LabelTooltip label={t('gmScreen.removeDevice', { device: device.name })}>
-                <Button variant="ghost" size="icon" className="atlas-gm-screen-device__remove" onClick={() => remove(device.id)}>
-                  <X />
-                </Button>
-              </LabelTooltip>
-            </li>
+            <DeviceRow key={device.id} device={device} arrived={!first.current.has(device.id)} remove={remove} />
           ))}
         </ul>
-      )}
+      </div>
     </section>
   );
 }

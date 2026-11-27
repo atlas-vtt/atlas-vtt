@@ -1,0 +1,100 @@
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+// A device asking to join: in the accent, at the top of the panel, whatever else it shows.
+.atlas-gm-screen-allow {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-m;
+  padding: $spacing-m;
+  border: $border-width-m solid color-mix(in oklch, var(--interactive-accent) 50%, transparent);
+  border-radius: $radius-m;
+  background: color-mix(in srgb, var(--interactive-accent) 8%, var(--background-primary));
+  transition: opacity $transition-normal $transition-ease-out, transform $transition-normal $transition-ease-out;
+
+  @starting-style {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+
+.atlas-gm-screen-allow__words {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+}
+
+.atlas-gm-screen-allow__title {
+  margin: 0;
+  font-size: $font-ui-small;
+  font-weight: $font-weight-semibold;
+}
+
+.atlas-gm-screen-allow__body,
+.atlas-gm-screen-allow__more {
+  @include atlas-help-text;
+  margin: 0;
+}
+
+// The number beside the answers, so the prompt stays short enough to leave the code in view.
+.atlas-gm-screen-allow__answer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-m;
+}
+
+.atlas-gm-screen-allow__check {
+  font-size: 28px;
+  line-height: 1;
+  font-weight: $font-weight-semibold;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.2em;
+}
+
+.atlas-gm-screen-allow__actions,
+.atlas-gm-screen-panel__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: $spacing-s;
+}
+
+// Stop ends the one thing the panel runs: it says so in red words, and fills red only under the pointer.
+.atlas-gm-screen-stop.btn--secondary {
+  @include atlas-error-text;
+
+  @include atlas-hover {
+    background: color-mix(in srgb, var(--background-modifier-error) 18%, var(--interactive-normal));
+  }
+}
+
+// A new link's consequence, said where its button stood, until it is confirmed or let go.
+.atlas-gm-screen-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-m;
+  padding: $spacing-m;
+  border-radius: $radius-m;
+  background: var(--background-secondary);
+  transition: opacity $transition-normal $transition-ease-out, transform $transition-normal $transition-ease-out;
+
+  @starting-style {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+.atlas-gm-screen-confirm__text {
+  margin: 0;
+  font-size: $font-ui-small;
+  line-height: var(--line-height-normal);
+  color: var(--text-normal);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-gm-screen-allow,
+  .atlas-gm-screen-confirm {
+    transition: none;
+  }
+}

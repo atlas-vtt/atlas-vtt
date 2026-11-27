@@ -1,0 +1,112 @@
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+// The link as one control: its host and path on a field's ground, the copy glyph at its end. A press says
+// "Copied" in place: the words and the glyph cross over, blurred in passing so they read as one change.
+.atlas-gm-screen-link-row {
+  display: flex;
+  flex-direction: column;
+}
+
+.atlas-gm-screen-link.btn--ghost {
+  justify-content: space-between;
+  gap: $spacing-s;
+  width: 100%;
+  height: $button-height-l;
+  padding: 0 $spacing-m;
+  border-radius: $radius-m;
+  background: var(--background-secondary);
+  color: var(--text-muted);
+  font-weight: $font-weight-normal;
+  cursor: pointer;
+  user-select: none;
+
+  // No ring (Atlas shows no keyboard highlights): the focused control takes the hovered look.
+  @include atlas-hover {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+  }
+
+  &:focus-visible {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+  }
+
+  &:active .atlas-gm-screen-link__glyph {
+    transform: scale(0.88);
+  }
+}
+
+.atlas-gm-screen-link__face {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  text-align: start;
+}
+
+.atlas-gm-screen-link__url,
+.atlas-gm-screen-link__note {
+  @include atlas-truncate;
+  grid-area: 1 / 1;
+  min-width: 0;
+  transition: opacity $transition-press $transition-ease-out, transform $transition-press $transition-ease-out, filter $transition-press $transition-ease-out;
+}
+
+.atlas-gm-screen-link__host {
+  color: var(--text-normal);
+}
+
+.atlas-gm-screen-link__url[data-shown='false'] {
+  opacity: 0;
+  transform: translateY(-4px);
+  filter: blur(2px);
+}
+
+.atlas-gm-screen-link__note {
+  color: var(--text-normal);
+  font-weight: $font-weight-medium;
+
+  &[data-shown='false'] {
+    opacity: 0;
+    transform: translateY(4px);
+    filter: blur(2px);
+  }
+}
+
+.atlas-gm-screen-link[data-state='failed'] .atlas-gm-screen-link__note {
+  @include atlas-error-text;
+}
+
+.atlas-gm-screen-link__glyph {
+  display: grid;
+  flex: none;
+  width: $icon-s;
+  height: $icon-s;
+  transition: transform $transition-press $transition-ease-out;
+
+  svg {
+    grid-area: 1 / 1;
+    width: 100%;
+    height: 100%;
+    transition: opacity $transition-press $transition-ease-out, transform $transition-press $transition-ease-out, filter $transition-press $transition-ease-out;
+  }
+
+  svg[data-shown='false'] {
+    opacity: 0;
+    transform: scale(0.25);
+    filter: blur(4px);
+  }
+}
+
+.atlas-gm-screen-link__said {
+  @include atlas-visually-hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-gm-screen-link__url,
+  .atlas-gm-screen-link__note,
+  .atlas-gm-screen-link__glyph,
+  .atlas-gm-screen-link__glyph svg {
+    transition: none;
+  }
+}

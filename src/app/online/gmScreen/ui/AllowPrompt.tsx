@@ -21,12 +21,16 @@ export function AllowPrompt({ knock, waiting, allow, refuse }: AllowPromptProps)
   const ready = knock.armed && knock.check !== null;
   return (
     <section className="atlas-gm-screen-allow" role="alertdialog" aria-labelledby="atlas-gm-screen-allow-title" aria-describedby="atlas-gm-screen-allow-body">
-      <h3 id="atlas-gm-screen-allow-title" className="atlas-gm-screen-allow__title">{t('gmScreen.allowTitle')}</h3>
-      <p id="atlas-gm-screen-allow-body" className="atlas-gm-screen-allow__body">{t('gmScreen.allowBody', { device: knock.name, name: NAME })}</p>
-      <output className="atlas-gm-screen-allow__check" aria-live="polite">{knock.check ?? '····'}</output>
-      <div className="atlas-gm-screen-allow__actions">
-        <Button variant="secondary" disabled={!ready} onClick={() => refuse(knock.id)}>{t('gmScreen.refuse')}</Button>
-        <Button disabled={!ready} onClick={() => allow(knock.id)}>{t('gmScreen.allow')}</Button>
+      <div className="atlas-gm-screen-allow__words">
+        <h3 id="atlas-gm-screen-allow-title" className="atlas-gm-screen-allow__title">{t('gmScreen.allowTitle')}</h3>
+        <p id="atlas-gm-screen-allow-body" className="atlas-gm-screen-allow__body">{t('gmScreen.allowBody', { device: knock.name, name: NAME })}</p>
+      </div>
+      <div className="atlas-gm-screen-allow__answer">
+        <output className="atlas-gm-screen-allow__check" aria-live="polite">{knock.check ?? '····'}</output>
+        <div className="atlas-gm-screen-allow__actions">
+          <Button type="button" variant="secondary" disabled={!ready} onClick={() => refuse(knock.id)}>{t('gmScreen.refuse')}</Button>
+          <Button type="button" disabled={!ready} onClick={() => allow(knock.id)}>{t('gmScreen.allow')}</Button>
+        </div>
       </div>
       {waiting > 1 && <p className="atlas-gm-screen-allow__more">{t('gmScreen.moreWaiting', { count: waiting - 1 })}</p>}
     </section>

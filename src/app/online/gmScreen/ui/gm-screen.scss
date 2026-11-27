@@ -15,11 +15,25 @@
 .atlas-gm-screen-control__button {
   position: relative;
   gap: $spacing-s;
+}
 
-  svg {
-    width: $icon-s;
-    height: $icon-s;
+// Sidekick's icon is a square tile: each place rounds it as a phone rounds an app icon, and a hairline of the
+// panel's own ink keeps the bright tile from looking pasted on, in both themes.
+.atlas-sidekick-icon {
+  display: block;
+  flex: none;
+  border-radius: 22.5%;
+  outline: $border-width-s solid rgba(255, 255, 255, 0.12);
+  outline-offset: -$border-width-s;
+
+  &:is(.theme-light *) {
+    outline-color: rgba(0, 0, 0, 0.12);
   }
+}
+
+.atlas-gm-screen-control__icon {
+  width: 18px;
+  height: 18px;
 }
 
 .atlas-gm-screen-control__count {
@@ -43,6 +57,7 @@
   background: var(--interactive-accent);
 }
 
+// Wide enough that the code is large and the line under it stays one line in every language.
 .atlas-gm-screen-panel {
   @include atlas-elevated-surface;
   @include atlas-panel-radius($surface-radius);
@@ -52,23 +67,34 @@
   z-index: 1;
   display: flex;
   flex-direction: column;
-  width: min(340px, calc(100cqi - 2 * var(--atlas-dm-screen-inset)));
+  width: min(368px, calc(100cqi - 2 * var(--atlas-dm-screen-inset)));
   max-height: calc(100cqb - 120px);
   overflow-y: auto;
   overscroll-behavior: contain;
+  // It grows out of its control, which stands above its start.
+  transform-origin: top left;
 }
 
+// The title starts where the body's content does.
 .atlas-gm-screen-panel__header {
-  @include atlas-close-header;
+  @include atlas-close-header($spacing-m);
   display: flex;
   justify-content: space-between;
   gap: $spacing-s;
 }
 
 .atlas-gm-screen-panel__title {
+  display: flex;
+  align-items: center;
+  gap: $spacing-s;
   margin: 0;
   font-size: $font-ui-medium;
   font-weight: $font-weight-semibold;
+}
+
+.atlas-gm-screen-panel__icon {
+  width: 22px;
+  height: 22px;
 }
 
 .atlas-gm-screen-panel__body {
@@ -83,137 +109,96 @@
   margin: 0;
 }
 
-.atlas-gm-screen-problem {
-  @include atlas-error-text;
-  margin: 0;
-  font-size: $font-ui-small;
-}
-
 .atlas-gm-screen-section-label {
   @include atlas-section-label;
   margin: 0;
 }
 
-// Dark on white in both themes: cameras read an inverted code badly.
+// The code and the line that says what to do with it, as one group.
+.atlas-gm-screen-code {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-s;
+}
+
+// Dark on white in both themes (cameras read an inverted code badly), and no padding of its own: the drawing
+// holds the quiet zone the standard asks for. In the light theme a hairline keeps the white card's edge.
 .atlas-gm-screen-qr {
-  align-self: center;
-  width: 220px;
+  width: 264px;
   max-width: 100%;
-  padding: $spacing-s;
+  aspect-ratio: 1;
+  overflow: hidden;
   border-radius: $radius-m;
   background: #fff;
   color: #000;
+  transition: opacity $transition-normal $transition-ease;
+
+  &:is(.theme-light *) {
+    box-shadow: 0 0 0 $border-width-s rgba(0, 0, 0, 0.1);
+  }
 
   svg {
     display: block;
     width: 100%;
-    height: auto;
+    height: 100%;
     fill: currentColor;
   }
 }
 
-.atlas-gm-screen-link {
-  display: flex;
-  gap: $spacing-s;
+// Not to be scanned until the relay holds the room.
+.atlas-gm-screen-code[data-status='connecting'] .atlas-gm-screen-qr {
+  opacity: 0.35;
 }
 
-.atlas-gm-screen-link__field {
-  @include atlas-text-input;
-  flex: 1;
-  min-width: 0;
-}
-
-.atlas-gm-screen-devices {
-  display: flex;
-  flex-direction: column;
-  gap: $spacing-s;
-}
-
-.atlas-gm-screen-devices__list {
-  display: flex;
-  flex-direction: column;
-  gap: $spacing-xs;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.atlas-gm-screen-device {
-  display: flex;
-  align-items: center;
-  gap: $spacing-s;
-  padding: $spacing-s;
-  border-radius: $radius-m;
-  background: var(--background-secondary);
-}
-
-.atlas-gm-screen-device__dot {
-  flex-shrink: 0;
-  width: 8px;
-  height: 8px;
-  border-radius: $radius-full;
-  background: var(--text-faint);
-}
-
-.atlas-gm-screen-device[data-connected='true'] .atlas-gm-screen-device__dot {
-  background: var(--color-green);
-}
-
-.atlas-gm-screen-device__text {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.atlas-gm-screen-device__name {
-  @include atlas-truncate;
-  font-size: $font-ui-small;
-}
-
-.atlas-gm-screen-device__state {
-  font-size: $font-ui-smaller;
-  color: var(--text-muted);
-}
-
-.atlas-gm-screen-panel__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: $spacing-s;
-}
-
-.atlas-gm-screen-allow {
-  display: flex;
-  flex-direction: column;
-  gap: $spacing-s;
-  padding: $spacing-m;
-  border: $border-width-m solid color-mix(in oklch, var(--interactive-accent) 50%, transparent);
-  border-radius: $radius-m;
-  background: color-mix(in srgb, var(--interactive-accent) 8%, var(--background-primary));
-}
-
-.atlas-gm-screen-allow__title {
-  margin: 0;
-  font-size: $font-ui-small;
-  font-weight: $font-weight-semibold;
-}
-
-.atlas-gm-screen-allow__body,
-.atlas-gm-screen-allow__more {
+.atlas-gm-screen-caption {
   @include atlas-help-text;
   margin: 0;
+  text-align: center;
+  text-wrap: balance;
 }
 
-.atlas-gm-screen-allow__check {
-  align-self: center;
-  font-size: 32px;
-  font-weight: $font-weight-semibold;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.2em;
-}
-
-.atlas-gm-screen-allow__actions {
+// While it is off, the icon stands where the code will, over what Sidekick is.
+.atlas-gm-screen-hero {
   display: flex;
-  justify-content: flex-end;
-  gap: $spacing-s;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-m;
+  padding-block-start: $spacing-s;
+  text-align: center;
+}
+
+.atlas-gm-screen-hero__icon {
+  width: 56px;
+  height: 56px;
+}
+
+.atlas-gm-screen-hero__text {
+  text-wrap: pretty;
+}
+
+.atlas-gm-screen-start {
+  width: 100%;
+}
+
+// The shared sign-in and a problem under the centred hero: centred too.
+.atlas-gm-screen-panel .atlas-sign-in {
+  text-align: center;
+}
+
+// Its dot runs with the words, so a line that wraps stays centred too.
+.atlas-gm-screen-panel .atlas-sign-in__status {
+  display: block;
+
+  &::before {
+    display: inline-block;
+    margin-inline-end: $spacing-s;
+    vertical-align: 0.1em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-gm-screen-qr {
+    transition: none;
+  }
 }

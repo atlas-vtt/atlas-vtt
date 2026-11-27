@@ -15,6 +15,11 @@ describe('the invite link as a QR code', () => {
     expect(qrMatrix('https://t.example/#4f1c9a2e7b6d3c58a0e1f2b3c4d5e6f7').size).toBe(41);
   });
 
+  it('is encoded at level M when asked, in a smaller code whose modules are larger at the same width', () => {
+    expect(qrMatrix(LINK, 'M').size).toBe(37);
+    expect(qrMatrix(LINK, 'M').size).toBeLessThan(qrMatrix(LINK).size);
+  });
+
   it('is the same matrix every time, false outside its side', () => {
     const a = qrMatrix(LINK);
     const b = qrMatrix(LINK);
@@ -44,6 +49,14 @@ describe('the invite link as a QR code', () => {
       expect(icon).toEqual({ x: plate.x + 1, y: plate.y + 1, side: plate.side - 2 });
     }
     expect(qrDrawing(qrMatrix(LINK)).plate.side).toBe(9);
+  });
+
+  it('leaves the ring it is asked for round the icon, inside the same cleared middle', () => {
+    const matrix = qrMatrix(LINK);
+    const narrow = qrDrawing(matrix);
+    const wide = qrDrawing(matrix, 2);
+    expect(wide.plate).toEqual(narrow.plate);
+    expect(wide.icon).toEqual({ x: narrow.plate.x + 2, y: narrow.plate.y + 2, side: narrow.plate.side - 4 });
   });
 
   it('draws no module under the icon or in a finder pattern, and joins the rest in runs', () => {

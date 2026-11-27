@@ -1,185 +1,150 @@
 import '../setup/obsidianDom';
-import { createElement } from 'react';
-import { act, render, screen } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { page } from 'vitest/browser';
-import css from '../../styles/main.scss?inline';
+import { act, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
 import { ARM_MS } from '../../src/app/online/gm/armedCards.ts';
-import type { Timers } from '../../src/app/online/gm/companionTimers.ts';
-import type { GateEvents, TableEvents } from '../../src/app/online/gm/TableConnection.ts';
-import type { TableOutbox } from '../../src/app/online/gm/tableOutbox.ts';
-import { channelCryptoOf } from '../../src/app/online/gmScreen/channel/index.ts';
-import { GmScreenSession } from '../../src/app/online/gmScreen/index.ts';
-import { setGmScreenHost } from '../../src/app/online/gmScreen/gmScreenSlot.ts';
-import { GmScreenControl } from '../../src/app/online/gmScreen/ui/GmScreenControl';
-import { accountRig, APPROVED, type AccountRig } from '../unit/online/gm/accountRig.ts';
+import { common as commonDe } from '../../src/app/i18n/locales/de/common';
+import { common as commonEn } from '../../src/app/i18n/locales/en/common';
+import { common as commonEs } from '../../src/app/i18n/locales/es/common';
+import { common as commonFr } from '../../src/app/i18n/locales/fr/common';
+import { common as commonIt } from '../../src/app/i18n/locales/it/common';
+import { common as commonPt } from '../../src/app/i18n/locales/pt/common';
+import { common as commonRu } from '../../src/app/i18n/locales/ru/common';
+import { common as commonZh } from '../../src/app/i18n/locales/zh/common';
+import { gmScreen as de } from '../../src/app/i18n/locales/de/gmScreen';
+import { gmScreen as en } from '../../src/app/i18n/locales/en/gmScreen';
+import { gmScreen as es } from '../../src/app/i18n/locales/es/gmScreen';
+import { gmScreen as fr } from '../../src/app/i18n/locales/fr/gmScreen';
+import { gmScreen as it_ } from '../../src/app/i18n/locales/it/gmScreen';
+import { gmScreen as pt } from '../../src/app/i18n/locales/pt/gmScreen';
+import { gmScreen as ru } from '../../src/app/i18n/locales/ru/gmScreen';
+import { gmScreen as zh } from '../../src/app/i18n/locales/zh/gmScreen';
+import { QUIET } from '../../src/app/online/gm/dock/qrDrawing.ts';
+import { accountRig } from '../unit/online/gm/accountRig.ts';
+import { control, dmScreen, handTimers, scriptedSession, type Theme } from './gmScreenRig.ts';
 
-/** Obsidian's theme as far as the panel reads it. */
-const THEME = `
-  body { margin: 0; font: 13px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; --background-primary: #1e1e1e; --background-secondary: #262626; --background-modifier-border: #363636;
-    --background-modifier-success: #2f6b3a; --text-normal: #dadada; --text-muted: #b3b3b3; --text-faint: #666; --text-error: #fb464c; --interactive-accent: #7f6df2; --interactive-normal: #2a2a2a;
-    --color-green: #44cf6e; --text-on-accent: #fff; --radius-s: 4px; --radius-m: 8px; --radius-l: 12px; --radius-xl: 16px; --font-ui-smaller: 12px; --font-ui-small: 13px; --font-ui-medium: 15px;
-    --font-semibold: 600; --input-height: 30px; --line-height-normal: 1.5; background: #111; }
-  button, input { font: inherit; }
-  button { height: 30px; }
-`;
-
-const DM_SCREEN = `
-  <div class="atlas-vtt-plugin atlas-react-ui-container" style="position: absolute; inset: 0">
-    <div class="atlas-ui" style="position: relative; width: 100%; height: 100%">
-      <div class="atlas-dm-screen-wrapper">
-        <div class="atlas-dm-screen-backdrop"></div>
-        <div class="atlas-dm-screen atlas-dm-screen--pages is-visible" style="animation: none">
-          <div class="atlas-dm-screen-header"><div class="atlas-segmented" style="height: 38px; width: 200px"></div></div>
-        </div>
-      </div>
-    </div>
-  </div>
-`;
-
-const SHOTS = '__screenshots__/gm-screen';
+type Texts = Readonly<Record<string, unknown>>;
+const LANGUAGES: readonly (readonly [string, Texts, Texts])[] = [['en', en, commonEn], ['de', de, commonDe], ['es', es, commonEs], ['fr', fr, commonFr], ['it', it_, commonIt], ['pt', pt, commonPt], ['ru', ru, commonRu], ['zh', zh, commonZh]];
 const PHONE = 'p'.repeat(20);
 
-/** A screenshot once every entrance has run. */
-async function shot(name: string, element: HTMLElement): Promise<void> {
-  await Promise.all(document.getAnimations().map((animation) => animation.finished));
-  await page.screenshot({ path: `${SHOTS}/${name}.png`, element });
-}
+/** A text of the language, its `{name}` filled in, its plural taken as `other`. */
+const said = (texts: Texts, key: string): string => {
+  const value = texts[key];
+  const text = typeof value === 'string' ? value : (value as { other: string }).other;
+  return text.replace('{name}', 'Sidekick').replace('{count}', '12').replace('{device}', 'iPhone');
+};
 
-/** Timers the test runs by hand. */
-function handTimers(): Timers & { advance(ms: number): void } {
-  let now = 0;
-  let timers: { at: number; run: () => void; id: number }[] = [];
-  let ids = 0;
-  return {
-    now: () => now,
-    setTimer: (run, ms) => (timers.push({ at: now + ms, run, id: (ids += 1) }), ids),
-    clearTimer: (id) => void (timers = timers.filter((timer) => timer.id !== id)),
-    advance: (ms) => {
-      now += ms;
-      const due = timers.filter((timer) => timer.at <= now);
-      timers = timers.filter((timer) => timer.at > now);
-      for (const timer of due) timer.run();
-    },
-  };
-}
+let teardown = (): void => undefined;
+afterEach(() => teardown());
 
-/** A session whose relay is scripted: the room is made at once and welcomes Atlas; what Atlas sends is dropped. */
-function scriptedSession(timers: Timers): { session: GmScreenSession; relay: { events: TableEvents | null; gate: GateEvents | null } } {
-  const relay: { events: TableEvents | null; gate: GateEvents | null } = { events: null, gate: null };
-  const ignore = (): void => undefined;
-  const session = new GmScreenSession({
-    crypto: channelCryptoOf(crypto),
-    timers,
-    origin: 'https://play.atlas-vtt.dev',
-    create: (code) => Promise.resolve({ room: { code, secret: 'room-secret-0123456789abcdef', maxPlayers: 4, kind: 'gm-screen' } }),
-    open: (_room, events, gate) => {
-      relay.events = events;
-      relay.gate = gate;
-      return { start: () => (events.status('online'), events.welcome([])), stop: ignore, end: ignore, askEnd: ignore, send: ignore, sendLive: ignore, sendTime: () => false, sendGate: ignore, answer: ignore, kick: ignore, setPlayers: ignore, sendCode: ignore, connected: new Set(), batches: true, minLevel: null, closeCode: null, onSent: null, stats: () => ({ status: 'online', reconnects: 0, lastClose: null, latencyMs: null, players: 0 }) } as unknown as TableOutbox;
-    },
-    save: ignore,
-    notice: ignore,
-    now: () => Date.now(),
-  }, null);
-  return { session, relay };
-}
+const px = (value: string): number => Number.parseFloat(value);
+const rect = (element: Element): DOMRect => element.getBoundingClientRect();
 
-describe('the GM screen\'s control on the DM screen', () => {
-  const style = document.createElement('style');
-  const leaf = document.createElement('div');
+/** Whether `element` shows all its words: nothing cut and nothing run past its box. */
+const whole = (element: HTMLElement): boolean => element.scrollWidth <= element.clientWidth + 0.5 && element.scrollHeight <= element.clientHeight + 0.5;
 
-  beforeEach(async () => {
-    await page.viewport(1280, 800);
-    style.textContent = `${THEME}\n${css}`;
-    document.head.append(style);
-    leaf.style.cssText = 'position: absolute; inset: 0; contain: strict';
-    leaf.innerHTML = DM_SCREEN;
-    document.body.append(leaf);
-  });
-
-  afterEach(() => {
-    setGmScreenHost(null);
-    leaf.remove();
-    style.remove();
-  });
-
-  /** The control in the DM screen's header, as DMScreen renders it: the header's own child, out of its flow. */
-  function control(session: GmScreenSession, account: AccountRig): void {
-    setGmScreenHost({ session, account: account.control });
-    const header = leaf.querySelector<HTMLElement>('.atlas-dm-screen-header')!;
-    const host = header.appendChild(document.createElement('div'));
-    host.style.display = 'contents';
-    render(createElement(GmScreenControl), { container: host });
-  }
-
-  it('stands at the header\'s start beside the centred page control, and its panel opens below it inside the view', async () => {
-    const timers = handTimers();
-    const { session, relay } = scriptedSession(timers);
-    const account = accountRig('bearer-token');
-    await account.control.refresh();
-    control(session, account);
-    const button = screen.getByRole('button', { name: 'Start Sidekick' });
-    const pages = leaf.querySelector('.atlas-segmented')!.getBoundingClientRect();
-    expect(button.getBoundingClientRect().right).toBeLessThan(pages.left);
-    expect(Math.abs((pages.left + pages.right) / 2 - 640)).toBeLessThan(2);
-    await shot('1-dm-screen-button', leaf.querySelector<HTMLElement>('.atlas-dm-screen')!);
-
-    act(() => button.click());
-    const start = [...document.querySelectorAll<HTMLButtonElement>('.atlas-gm-screen-start')][0]!;
-    await act(async () => start.click());
-    await expect.poll(() => document.querySelector('.atlas-gm-screen-qr')).not.toBeNull();
-    const panel = document.querySelector<HTMLElement>('.atlas-gm-screen-panel')!;
-    const box = panel.getBoundingClientRect();
-    expect(box.top).toBeGreaterThan(button.getBoundingClientRect().bottom);
-    expect(box.bottom).toBeLessThanOrEqual(800);
-    expect(panel.scrollWidth).toBeLessThanOrEqual(panel.clientWidth);
-    await shot('2-start-panel-qr', panel);
-
+/** The panel running, with one device connected and one asking. */
+async function running(theme: Theme): Promise<HTMLElement> {
+  const view = await dmScreen(theme);
+  teardown = view.remove;
+  const timers = handTimers();
+  const { session, relay } = scriptedSession(timers, 'https://play-staging.atlas-vtt.dev');
+  const account = accountRig('bearer-token');
+  await account.control.refresh();
+  control(view.leaf, session, account);
+  act(() => screen.getByRole('button', { name: 'Start Sidekick' }).click());
+  await act(async () => document.querySelector<HTMLButtonElement>('.atlas-gm-screen-start')!.click());
+  await expect.poll(() => document.querySelector('.atlas-gm-screen-code[data-status="online"]')).not.toBeNull();
+  for (const [id, name] of [[PHONE, 'iPhone Fabian'], ['t'.repeat(20), 'iPad']] as const) {
     await act(async () => {
-      relay.gate?.knocked({ id: PHONE, name: 'Mira\'s phone' });
+      relay.gate?.knocked({ id, name });
       await expect.poll(() => session.view().knock?.check).not.toBeNull();
       timers.advance(ARM_MS);
     });
-    const prompt = await screen.findByRole('alertdialog', { name: 'Allow this device?' });
-    expect(prompt.textContent).toContain(session.view().knock?.check ?? 'no number');
-    await shot('3-allow-prompt', panel);
-
+    if (id !== PHONE) break;
     await act(async () => {
-      session.allow(PHONE);
-      relay.events?.joined({ id: PHONE, name: 'Mira\'s phone' });
-      await Promise.resolve();
+      session.allow(id);
+      relay.events?.joined({ id, name });
     });
-    await expect.poll(() => document.querySelector('.atlas-gm-screen-device[data-connected="true"]')).not.toBeNull();
-    expect(screen.getByRole('button', { name: 'Sidekick runs: 1 device connected' })).toBeTruthy();
-    await shot('4-device-list', leaf.querySelector<HTMLElement>('.atlas-dm-screen')!);
+  }
+  await Promise.all(document.getAnimations().filter((animation) => animation.effect?.getTiming().iterations !== Infinity).map((animation) => animation.finished));
+  return document.querySelector<HTMLElement>('.atlas-gm-screen-panel')!;
+}
+
+describe.each<Theme>(['dark', 'light'])('Sidekick\'s panel laid out by the real stylesheet, %s', (theme) => {
+  it('stands its content at one inset with one gap, rounds the surface and what is inside it on the scale, and clips nothing', async () => {
+    const panel = await running(theme);
+    const body = panel.querySelector<HTMLElement>('.atlas-gm-screen-panel__body')!;
+    const style = getComputedStyle(body);
+    expect(rect(panel).width).toBe(368);
+    expect([style.paddingLeft, style.paddingRight, style.paddingBottom, style.rowGap].map(px)).toEqual([12, 12, 12, 12]);
+    expect(px(getComputedStyle(panel).borderTopLeftRadius)).toBe(15.5);
+    const title = panel.querySelector<HTMLElement>('.atlas-gm-screen-panel__title')!;
+    expect(rect(title).left - rect(panel).left).toBeCloseTo(rect(body).left + 12 - rect(panel).left, 0);
+    const children = [...body.children].map(rect);
+    for (let index = 1; index < children.length; index++) expect(children[index]!.top - children[index - 1]!.bottom).toBeCloseTo(12, 0);
+    for (const inner of ['.atlas-gm-screen-allow', '.atlas-gm-screen-qr', '.atlas-gm-screen-link', '.atlas-gm-screen-device']) {
+      expect(px(getComputedStyle(panel.querySelector(inner)!).borderTopLeftRadius), inner).toBe(10);
+    }
+    const row = getComputedStyle(panel.querySelector('.atlas-gm-screen-device')!);
+    expect([row.paddingTop, row.paddingLeft, row.columnGap].map(px)).toEqual([8, 8, 8]);
+    expect(panel.scrollWidth).toBeLessThanOrEqual(panel.clientWidth);
+    for (const text of panel.querySelectorAll<HTMLElement>('.atlas-gm-screen-device__name, .atlas-gm-screen-device__state, .atlas-gm-screen-link__url, .btn')) expect(whole(text), text.textContent ?? '').toBe(true);
   });
 
-  it('signed out, opens on the sign-in, shows the code while the browser approval waits, and Start once signed in', async () => {
-    const { session } = scriptedSession(handTimers());
-    const account = accountRig();
-    control(session, account);
-    act(() => screen.getByRole('button', { name: 'Start Sidekick' }).click());
-    await act(() => account.settle());
-    const panel = document.querySelector<HTMLElement>('.atlas-gm-screen-panel')!;
-    expect(panel.querySelector('.atlas-gm-screen-start')).toBeNull();
+  it('draws the code 264 px wide with its quiet zone, on white, its icon rounded in the middle', async () => {
+    const panel = await running(theme);
+    const card = panel.querySelector<HTMLElement>('.atlas-gm-screen-qr')!;
+    const svg = card.querySelector('svg')!;
+    expect([rect(card).width, rect(card).height]).toEqual([264, 264]);
+    expect(rect(svg).width).toBe(264);
+    expect(getComputedStyle(card).backgroundColor).toBe('rgb(255, 255, 255)');
+    const side = svg.viewBox.baseVal.width;
+    const module = 264 / side;
+    // A phone held at arm's length reads modules of 4 px and more on a laptop screen; level M keeps them near 5. The quiet zone is 4 of them.
+    expect(module).toBeGreaterThanOrEqual(4.5);
+    const finder = rect(svg.querySelectorAll('path')[1]!);
+    expect(finder.left - rect(card).left).toBeCloseTo(QUIET * module, 0);
+    expect(finder.top - rect(card).top).toBeCloseTo(QUIET * module, 0);
+    // The icon stands in a light ring of two modules, and is drawn from 128 px, sharp at a screen's twice and three times.
+    const icon = rect(svg.querySelector('image')!);
+    expect(icon.width).toBeGreaterThanOrEqual(24);
+    expect(icon.width * 3).toBeLessThanOrEqual(128);
+    expect(svg.querySelector('clipPath rect')?.getAttribute('rx')).not.toBe('0');
+  });
+
+  it.each(LANGUAGES)('keeps the line under the code to one line and every label whole in %s', async (_, texts, common) => {
+    const panel = await running(theme);
+    const caption = panel.querySelector<HTMLElement>('.atlas-gm-screen-caption')!;
+    const line = caption.getBoundingClientRect().height;
+    caption.textContent = said(texts, 'gmScreen.scan');
+    expect(caption.getBoundingClientRect().height, caption.textContent).toBe(line);
+    expect(caption.scrollWidth).toBeLessThanOrEqual(caption.clientWidth);
+    const labels: readonly (readonly [string, string])[] = [
+      ['.atlas-gm-screen-panel__actions .btn:first-child', said(texts, 'gmScreen.newLink')],
+      ['.atlas-gm-screen-stop', said(texts, 'gmScreen.stop')],
+      ['.atlas-gm-screen-allow__actions .btn:first-child', said(texts, 'gmScreen.refuse')],
+      ['.atlas-gm-screen-allow__actions .btn:last-child', said(texts, 'gmScreen.allow')],
+      ['.atlas-gm-screen-link__note', said(texts, 'gmScreen.copyFailed')],
+      ['.atlas-gm-screen-device__state', said(texts, 'gmScreen.seenMinutes')],
+      ['.atlas-gm-screen-devices__toggle .atlas-gm-screen-section-label', said(texts, 'gmScreen.devices')],
+    ];
+    for (const [selector, text] of labels) {
+      const element = panel.querySelector<HTMLElement>(selector)!;
+      element.textContent = text;
+      expect(whole(element), `${selector}: ${text}`).toBe(true);
+    }
+    act(() => panel.querySelector<HTMLElement>('.atlas-gm-screen-panel__actions .btn:first-child')!.click());
+    const ask = panel.querySelector<HTMLElement>('.atlas-gm-screen-confirm')!;
+    ask.querySelector('p')!.textContent = said(texts, 'gmScreen.newLinkConfirm');
+    const [cancel, confirmNew] = [...ask.querySelectorAll<HTMLElement>('.btn')];
+    cancel!.textContent = said(common, 'common.cancel');
+    confirmNew!.textContent = said(texts, 'gmScreen.newLink');
+    for (const element of [cancel!, confirmNew!]) expect(whole(element), element.textContent ?? '').toBe(true);
+    expect(ask.scrollWidth).toBeLessThanOrEqual(ask.clientWidth);
+    act(() => panel.querySelector<HTMLElement>('.atlas-gm-screen-device__remove')!.click());
+    const confirm = panel.querySelector<HTMLElement>('.atlas-gm-screen-device__remove')!;
+    confirm.textContent = said(texts, 'gmScreen.confirmRemove');
+    expect(whole(confirm)).toBe(true);
     expect(panel.scrollWidth).toBeLessThanOrEqual(panel.clientWidth);
-    await shot('5-signed-out', panel);
-
-    await act(async () => {
-      screen.getByRole('button', { name: 'Sign in to host' }).click();
-      await account.settle();
-    });
-    const code = screen.getByLabelText('Code A B C D E F G H');
-    expect(code.getBoundingClientRect().width).toBeLessThan(panel.clientWidth);
-    await shot('6-waiting-for-approval', panel);
-
-    account.poll = APPROVED;
-    await act(async () => {
-      account.timers.advance(5000);
-      await account.settle();
-    });
-    expect(panel.querySelector('.atlas-gm-screen-start')?.textContent).toBe('Start Sidekick');
-    await shot('7-signed-in', panel);
   });
 });
