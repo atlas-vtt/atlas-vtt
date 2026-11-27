@@ -41,6 +41,8 @@ export interface MapLayerSharePorts extends FeedPorts {
   badgeOf?(tokenId: string): number | null;
   /** The id players know a token by in their token list (`TokenShare.listedAlias`); none for a token they are not sent. */
   tokenAlias?(tokenId: string): string | undefined;
+  /** The id players know a combatant beside the map by (`TokenShare.besideAlias`); none for any other. */
+  besideAlias?(tokenId: string): string | undefined;
   /**
    * Which of the drawings and texts players are told are each player's own (`PlayerDrawings.mine`), for
    * every player who is told so now; none while players may not draw. Without it nobody is told.
@@ -157,6 +159,7 @@ export class MapLayerShare {
       bannerOff: settings.turnBanner === false, movesOnTurn: settings.movesOnTurn === true, dock: settings.initiativeDock ?? 'right',
       badge: (tokenId) => this.ports.badgeOf?.(tokenId) ?? null,
       tokenAlias: (tokenId) => this.ports.tokenAlias?.(tokenId),
+      besideAlias: (tokenId) => this.ports.besideAlias?.(tokenId),
       art: (path) => this.art.get(path),
     });
     out.send({ t: 'initiative', scene: scene.id, list });

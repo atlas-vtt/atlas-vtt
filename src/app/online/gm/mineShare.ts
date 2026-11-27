@@ -12,22 +12,27 @@ export interface MineSource {
   diceOf?(tokenId: string): SharedRollDice | undefined;
 }
 
-/** The token list players were last sent: its scene, and the random id players know each token by, by GM id. */
+/**
+ * The token list players were last sent: its scene, and the random id players know each token by, by GM id; and
+ * likewise the combatants beside the map their initiative list shows (`SharedCombatant.beside`).
+ */
 export interface ListedTokens {
   readonly scene: string;
   readonly aliases: ReadonlyMap<string, string>;
+  readonly beside: ReadonlyMap<string, string>;
 }
 
-/** The listed tokens that are the player's, as GM id and the id players know it by, sorted by the latter. */
+/** The listed tokens and combatants beside the map that are the player's, as GM id and the id players know it by, sorted by the latter. */
 function ownedBy(player: string, listed: ListedTokens, ownerOf: (tokenId: string) => string | undefined): [string, string][] {
-  return [...listed.aliases].filter(([tokenId]) => ownerOf(tokenId) === player).sort(([, a], [, b]) => (a < b ? -1 : a > b ? 1 : 0));
+  return [...listed.aliases, ...listed.beside].filter(([tokenId]) => ownerOf(tokenId) === player).sort(([, a], [, b]) => (a < b ? -1 : a > b ? 1 : 0));
 }
 
 /**
  * Tells each connected player which tokens of the last list are theirs, and the dice of those that
  * roll with a set of their own: a `mine` message to that player alone, whenever their share changes.
- * Only tokens in the list are named, so a hidden token a player owns stays unknown to them. Its scene is
- * the list's; sent again, each player's share is worked out afresh.
+ * Only tokens in the list and the combatants beside the map the players' initiative list shows are named,
+ * so a hidden token a player owns stays unknown to them. Its scene is the list's; sent again, each
+ * player's share is worked out afresh.
  */
 export class MineShare {
   readonly feed: Feed;
