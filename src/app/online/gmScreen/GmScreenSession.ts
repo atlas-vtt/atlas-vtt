@@ -40,7 +40,7 @@ export class GmScreenSession implements GmScreenOutlet {
   private readonly router = new ScreenRouter();
   private readonly comeback: Comeback;
   private problem: string | null = null;
-  /** The room came back with Atlas (`resume`) and the relay has not welcomed it yet. */
+  /** The room came back with Atlas (`resume`) and the relay has not welcomed it yet: kept through its restarts, each try as silent as the first. */
   private comingBack = false;
   /** Counts starts, stops and closes, so an answer that comes after one of them changes nothing. */
   private run = 0;
@@ -276,7 +276,7 @@ export class GmScreenSession implements GmScreenOutlet {
     this.connection = null;
     connection?.stop();
     this.phase = 'stopped';
-    this.comingBack = false;
+    if (!restarting) this.comingBack = false;
     this.linked.stop(!restarting);
     this.key = null;
     this.knocks.clear();

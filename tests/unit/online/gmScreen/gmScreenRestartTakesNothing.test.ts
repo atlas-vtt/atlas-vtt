@@ -162,6 +162,29 @@ describe('Sidekick coming back to a room another Sidekick of the account took ov
     expect(RelaySocket.all.filter((socket) => socket.closedByGm === false && socket.readyState === RelaySocket.OPEN)).toEqual([]);
   });
 
+  it('stays silent through every try of a return on load, the room it made gone to another vault\'s Start before its welcome', async () => {
+    const first = await running(sessionRig());
+    first.session.close();
+    const kept: GmScreenRecord | null = first.saved.at(-1) ?? null;
+    RelaySocket.all = [];
+    // Vault B's Start lands just after this vault's restart was answered: the second try finds B's room live.
+    let elsewhere = false;
+    const { create, asked } = relay(() => elsewhere);
+    const rig = sessionRig(kept, create, first.held);
+    rig.timers.sleep((first.held.read()?.at ?? 0) + DAY_AND_A_BIT);
+    await rig.session.resume();
+    closesOnArrival(rig.socket(), CLOSE.ended);
+    await rig.settle();
+    elsewhere = true;
+    closesOnArrival(rig.socket(), CLOSE.ended);
+    await rig.settle();
+    rig.timers.advance(5 * 60_000);
+    await rig.settle();
+    expect(asked.map((json) => json.unlessLive === true)).toEqual([true, true]);
+    expect(rig.session.view()).toMatchObject({ status: 'stopped', problem: null });
+    expect(rig.notices).toEqual([]);
+  });
+
   it('says it was started elsewhere when it wakes after a long sleep to a room another vault holds', async () => {
     let elsewhere = false;
     const { create, asked } = relay(() => elsewhere);
