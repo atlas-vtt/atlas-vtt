@@ -18,6 +18,7 @@ import { LinkCopy } from './LinkCopy';
 import { PanelActions } from './PanelActions';
 import { escapeStack, PanelEscape } from './panelEscape.ts';
 import { SidekickIcon } from './SidekickIcon';
+import { useArmed } from './useArmed.ts';
 import { useLightDismiss, type CloseReason } from './useLightDismiss.ts';
 
 const NAME = t('gmScreen.name');
@@ -61,7 +62,7 @@ function StoppedBody({ session, view, account }: Omit<GmScreenPanelProps, 'onClo
 const layoutOf = (view: GmScreenView, fold: DeviceFoldState): string => `${view.knock?.id ?? ''} ${String(view.waiting > 1)} ${view.devices.length} ${String(fold.open)} ${view.status}`;
 
 /** While it runs: the code to scan and the link to copy, the devices, New link and Stop. */
-function RunningBody({ session, view, fold, openedForKnock }: { session: GmScreenSession; view: GmScreenView; fold: DeviceFoldState; openedForKnock: boolean }): React.JSX.Element {
+function RunningBody({ session, view, fold, locked }: { session: GmScreenSession; view: GmScreenView; fold: DeviceFoldState; locked: boolean }): React.JSX.Element {
   return (
     <>
       {view.link !== null && (
@@ -74,7 +75,7 @@ function RunningBody({ session, view, fold, openedForKnock }: { session: GmScree
         </>
       )}
       <DeviceList devices={view.devices} fold={fold} layout={layoutOf(view, fold)} remove={(id) => session.remove(id)} />
-      <PanelActions devices={view.devices.length} openedForKnock={openedForKnock} newLink={() => session.newLink()} stop={() => session.stop()} />
+      <PanelActions devices={view.devices.length} locked={locked} newLink={() => session.newLink()} stop={() => session.stop()} />
     </>
   );
 }
@@ -86,8 +87,10 @@ function RunningBody({ session, view, fold, openedForKnock }: { session: GmScree
 export function GmScreenPanel({ session, view, account, onClose }: GmScreenPanelProps): React.JSX.Element {
   const root = useRef<HTMLDivElement>(null);
   const escapes = useMemo(() => escapeStack(), []);
-  // A device that asks to join opens the panel by itself, under wherever the pointer rests.
+  // A device that asks to join opens the panel by itself, under wherever the pointer rests: its buttons wait a moment, once in
+  // this opening, however often they come and go (Stop and Start) meanwhile.
   const [openedForKnock] = useState(view.knock !== null);
+  const settled = useArmed('opened', !openedForKnock);
   const fold = useDeviceFold(view.devices);
   const variants = leaving(useAnchoredPopoverVariants());
   useLightDismiss(root, useIsPresent(), () => escapes.undo(), onClose);
@@ -104,7 +107,7 @@ export function GmScreenPanel({ session, view, account, onClose }: GmScreenPanel
         </header>
         <div className="atlas-gm-screen-panel__body">
           {view.knock !== null && <AllowPrompt knock={view.knock} waiting={view.waiting} allow={(id) => session.allow(id)} refuse={(id) => session.refuse(id)} />}
-          {running ? <RunningBody session={session} view={view} fold={fold} openedForKnock={openedForKnock} /> : <StoppedBody session={session} view={view} account={account} />}
+          {running ? <RunningBody session={session} view={view} fold={fold} locked={!settled} /> : <StoppedBody session={session} view={view} account={account} />}
           {!running && view.devices.length > 0 && <DeviceList devices={view.devices} fold={fold} layout={layoutOf(view, fold)} remove={(id) => session.remove(id)} />}
         </div>
       </motion.div>
