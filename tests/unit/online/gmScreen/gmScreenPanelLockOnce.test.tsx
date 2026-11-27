@@ -68,7 +68,7 @@ describe('the panel\'s Stop and New link after the New link question or a Stop',
   it('take a press at once after Stop and Start in a panel that opened itself for a device that asks, once its moment ran out', async () => {
     const rig = await shown();
     await startedFromPanel(rig);
-    fireEvent.click(within(panel()).getByRole('button', { name: 'Close' }));
+    fireEvent.keyDown(document.body, { key: 'Escape' });
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     await knocks(rig, PHONE, 'Phone');
     await armed();

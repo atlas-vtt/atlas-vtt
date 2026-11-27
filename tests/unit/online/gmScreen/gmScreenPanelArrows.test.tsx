@@ -52,16 +52,16 @@ describe('the DM screen\'s pages while Sidekick\'s panel is open', () => {
     await hosted(sessionRig().session);
     render(<DMScreen isOpen onClose={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: 'Start Sidekick' }));
-    const close = within(screen.getByRole('dialog', { name: 'Sidekick' })).getByRole('button', { name: 'Close' });
+    const [inside] = within(screen.getByRole('dialog', { name: 'Sidekick' })).getAllByRole('button');
     // Wherever the focus is: in the panel, or on the screen behind it.
-    close.focus();
-    fireEvent.keyDown(close, { key: 'ArrowRight' });
+    inside!.focus();
+    fireEvent.keyDown(inside!, { key: 'ArrowRight' });
     const wrapper = document.querySelector<HTMLElement>('.atlas-dm-screen-wrapper')!;
     wrapper.focus();
     fireEvent.keyDown(wrapper, { key: 'ArrowLeft' });
     expect(state.setDMScreenPage).not.toHaveBeenCalled();
 
-    fireEvent.click(close);
+    fireEvent.keyDown(document.body, { key: 'Escape' });
     await act(() => new Promise<void>((resolve) => setTimeout(resolve, 50)));
     expect(screen.queryByRole('dialog', { name: 'Sidekick' })).toBeNull();
     wrapper.focus();

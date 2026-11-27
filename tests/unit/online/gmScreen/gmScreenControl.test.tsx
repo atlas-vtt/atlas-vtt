@@ -68,7 +68,7 @@ describe('the DM screen\'s control for the GM screen', () => {
   it('asks about a device with its name and number, opening the panel, and takes the answer only once the prompt stood', async () => {
     const rig = await shown();
     await startedFromPanel(rig);
-    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    fireEvent.keyDown(document.body, { key: 'Escape' });
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     const device = await rig.device(PHONE);
     await act(async () => {

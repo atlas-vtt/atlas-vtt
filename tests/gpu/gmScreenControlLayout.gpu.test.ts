@@ -76,10 +76,10 @@ describe.each<Theme>(['dark', 'light'])('Sidekick\'s panel laid out by the real 
     const body = panel.querySelector<HTMLElement>('.atlas-gm-screen-panel__body')!;
     const style = getComputedStyle(body);
     expect(rect(panel).width).toBe(368);
-    expect([style.paddingLeft, style.paddingRight, style.paddingBottom, style.rowGap].map(px)).toEqual([12, 12, 12, 12]);
+    expect([style.paddingTop, style.paddingLeft, style.paddingRight, style.paddingBottom, style.rowGap].map(px)).toEqual([12, 12, 12, 12, 12]);
     expect(px(getComputedStyle(panel).borderTopLeftRadius)).toBe(15.5);
-    const title = panel.querySelector<HTMLElement>('.atlas-gm-screen-panel__title')!;
-    expect(rect(title).left - rect(panel).left).toBeCloseTo(rect(body).left + 12 - rect(panel).left, 0);
+    // No title and no cross: its control names it right above, and a press outside or Escape closes it
+    expect(panel.querySelector('header, .atlas-close-button, [aria-label="Close"]')).toBeNull();
     const children = [...body.children].map(rect);
     for (let index = 1; index < children.length; index++) expect(children[index]!.top - children[index - 1]!.bottom).toBeCloseTo(12, 0);
     for (const inner of ['.atlas-gm-screen-allow', '.atlas-gm-screen-qr', '.atlas-gm-screen-link', '.atlas-gm-screen-device']) {
@@ -91,15 +91,24 @@ describe.each<Theme>(['dark', 'light'])('Sidekick\'s panel laid out by the real 
     for (const text of panel.querySelectorAll<HTMLElement>('.atlas-gm-screen-device__name, .atlas-gm-screen-device__state, .atlas-gm-screen-link__url, .btn')) expect(whole(text), text.textContent ?? '').toBe(true);
   });
 
-  it('draws the code 264 px wide with its quiet zone, on white, its icon rounded in the middle', async () => {
+  it('draws the code as wide as the panel\'s content, at its buttons\' inset, with its quiet zone, on white, its icon rounded in the middle', async () => {
     const panel = await running(theme);
     const card = panel.querySelector<HTMLElement>('.atlas-gm-screen-qr')!;
     const svg = card.querySelector('svg')!;
-    expect([rect(card).width, rect(card).height]).toEqual([264, 264]);
-    expect(rect(svg).width).toBe(264);
+    // The panel's content box: its width less its border and the inset its buttons stand at, on either side
+    const body = panel.querySelector<HTMLElement>('.atlas-gm-screen-panel__body')!;
+    const inner = body.clientWidth - 2 * 12;
+    expect(inner).toBeGreaterThan(330);
+    expect(rect(card).width).toBeCloseTo(inner, 0);
+    expect(rect(card).height).toBeCloseTo(rect(card).width, 0);
+    expect(rect(card).left - rect(body).left).toBeCloseTo(12, 0);
+    // New link and Stop stand at the end of the panel: their outer edge is as far in as the code's
+    const buttons = [...panel.querySelectorAll<HTMLElement>('.atlas-gm-screen-panel .btn')];
+    expect(rect(body).right - rect(buttons.at(-1)!).right, 'the buttons\' inset').toBeCloseTo(rect(body).right - rect(card).right, 0);
+    expect(rect(svg).width).toBeCloseTo(inner, 0);
     expect(getComputedStyle(card).backgroundColor).toBe('rgb(255, 255, 255)');
     const side = svg.viewBox.baseVal.width;
-    const module = 264 / side;
+    const module = rect(svg).width / side;
     // A phone held at arm's length reads modules of 4 px and more on a laptop screen; level M keeps them near 5. The quiet zone is 4 of them.
     expect(module).toBeGreaterThanOrEqual(4.5);
     const finder = rect(svg.querySelectorAll('path')[1]!);

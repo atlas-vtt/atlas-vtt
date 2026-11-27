@@ -2,7 +2,6 @@ import React, { useMemo, useRef, useState } from 'react';
 import { motion, useIsPresent, type Variants } from 'framer-motion';
 import { t } from '../../../i18n';
 import { Button } from '../../../packages/components/primitives/button';
-import { CloseButton } from '../../../packages/components/primitives/CloseButton';
 import { useAnchoredPopoverVariants } from '../../../packages/components/primitives/dialogMotion';
 import { HOLDS_SCREEN_KEYS } from '../../../react/components/dm-screen/screenKeys';
 import type { AccountApi } from '../../gm/account/AccountControl.ts';
@@ -84,7 +83,8 @@ function RunningBody({ session, view, fold, locked }: { session: GmScreenSession
 
 /**
  * Sidekick's panel on the DM screen, a light popover under its control: a press outside or Escape closes
- * it before anything else hears of it. A device that asks to join comes first, whatever else it shows.
+ * it before anything else hears of it, so it has no cross, and no title either, since its control names it right
+ * above. A device that asks to join comes first, whatever else it shows.
  */
 export function GmScreenPanel({ session, view, account, onClose }: GmScreenPanelProps): React.JSX.Element {
   const root = useRef<HTMLDivElement>(null);
@@ -100,13 +100,6 @@ export function GmScreenPanel({ session, view, account, onClose }: GmScreenPanel
   return (
     <PanelEscape.Provider value={escapes}>
       <motion.div ref={root} className="atlas-gm-screen-panel" role="dialog" aria-label={NAME} {...HOLDS_SCREEN_KEYS} variants={variants} initial="hidden" animate="visible" exit="exit">
-        <header className="atlas-gm-screen-panel__header">
-          <h2 className="atlas-gm-screen-panel__title">
-            <SidekickIcon className="atlas-gm-screen-panel__icon" />
-            {NAME}
-          </h2>
-          <CloseButton onClick={() => onClose('close')} />
-        </header>
         <div className="atlas-gm-screen-panel__body">
           {view.knock !== null && <AllowPrompt knock={view.knock} waiting={view.waiting} allow={(id) => session.allow(id)} refuse={(id) => session.refuse(id)} />}
           {running ? <RunningBody session={session} view={view} fold={fold} locked={!settled} /> : <StoppedBody session={session} view={view} account={account} />}

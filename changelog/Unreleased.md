@@ -5,6 +5,7 @@
 - Change a creature's hit points and find its token on the map right from its statblock in Sidekick
 - While a campaign is played, its world map shows faintly behind Sidekick's screens
 - Statblocks slide in, a key's options move from step to step, and panels look like your phone's own
+- Sidekick's panel in Atlas shows a bigger QR code, easier to scan from across the table
 
 ## Fixed
 
