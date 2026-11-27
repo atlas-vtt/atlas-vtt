@@ -28,8 +28,8 @@ export function renderPopover(open = true): Rendered {
   store.getState().setPersistenceEnabled(false);
   store.getState().setMapPath('maps/popover.atlasmap');
   store.getState().setSceneLighting({ enabled: true });
-  const torch = store.getState().addLight({ x: 400, y: 300, emission: { ...genericLight('torch'), kind: 'torch' } });
-  const lantern = store.getState().addLight({ x: 600, y: 300, emission: { ...genericLight('lantern'), kind: 'lantern' } });
+  const torch = store.getState().addObject('lights', { x: 400, y: 300, emission: { ...genericLight('torch'), kind: 'torch' } });
+  const lantern = store.getState().addObject('lights', { x: 600, y: 300, emission: { ...genericLight('lantern'), kind: 'lantern' } });
   const history = getHistoryStore(store)!;
   history.getState().clear();
   const ui: AtlasUIContextValue = { app, view: null, pixiApp: null, renderer: null };

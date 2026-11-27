@@ -68,7 +68,7 @@ describe('the GM\'s measurements players see', () => {
       harness.onSend = (body: MarksMessage) => {
         for (const entry of body.measures.filter((measures) => measures.who === 'gm')) [...(entry.live === null ? [] : [entry.live]), ...entry.kept].forEach(check);
       };
-      harness.share.setScene('s1');
+      harness.share.feed.setScene({ id: 's1', lit: false });
       const point = (): { x: number; y: number } => {
         const ids = Object.keys(tokens);
         const on = tokens[ids[int(ids.length)] ?? ''];

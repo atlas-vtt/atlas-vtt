@@ -2,6 +2,7 @@ import { MAX_LOG_ENTRIES, parseGmMessage, type GmMessage, type LogEntry, type Sh
 import { describe, expect, it } from 'vitest';
 import { entriesWithin, type GmLogEntry } from '../../../../src/app/online/gm/log/logEntries.ts';
 import { CHAT_BURST, LEAVE_GRACE_MS, LOG_SNAPSHOT_BYTES, REACT_BURST, REFUSAL_BURST, TableLog } from '../../../../src/app/online/gm/log/TableLog.ts';
+import { PlayerPages } from './playerPages.ts';
 
 const MIRA = 'a'.repeat(20);
 const TOM = 'b'.repeat(20);
@@ -14,15 +15,20 @@ interface Sent {
 }
 
 /** A log with a fake clock, timers that run when `advance` passes them, and everything it sent. */
-function harness(saved?: unknown): { log: TableLog; sent: Sent[]; advance: (ms: number) => void; changes: () => number } {
+function harness(saved?: unknown): { log: TableLog; sent: Sent[]; pages: PlayerPages; advance: (ms: number) => void; changes: () => number } {
   const sent: Sent[] = [];
+  const pages = new PlayerPages();
+  pages.join(MIRA, TOM);
   const timers = new Map<number, { at: number; run: () => void }>();
   let now = 0;
   let nextId = 0;
   let nextTimer = 1;
   let changes = 0;
   const log = new TableLog({
-    send: (body, to) => void sent.push({ body, to }),
+    send: (body, to) => {
+      sent.push({ body, to });
+      pages.deliver(body, to);
+    },
     clock: () => 1_700_000_000_000 + now,
     now: () => now,
     randomId: () => (nextId++).toString(16).padStart(24, '0'),
@@ -42,7 +48,7 @@ function harness(saved?: unknown): { log: TableLog; sent: Sent[]; advance: (ms: 
       timer.run();
     }
   };
-  return { log, sent, advance, changes: () => changes };
+  return { log, sent, pages, advance, changes: () => changes };
 }
 
 const kinds = (log: TableLog): string[] => log.entries().map((entry) => `${entry.kind}:${entry.name}`);
@@ -250,13 +256,14 @@ describe('what a player can cost the table', () => {
   });
 
   it('is at most a refusal a second, however fast they write', () => {
-    const { log, sent } = seated();
+    const { log, sent, pages } = seated();
     for (let index = 0; index < 200; index += 1) log.receive(MIRA, { t: 'chat', text: `flood ${index}` });
     expect(texts(log)).toHaveLength(CHAT_BURST);
     expect(sent.filter((item) => item.body.t === 'chat-refused')).toHaveLength(REFUSAL_BURST);
     // Another player's refusal is their own.
+    const before = pages.mark();
     log.receive(TOM, { t: 'chat', text: '' });
-    expect(sent.filter((item) => item.body.t === 'chat-refused' && item.to === TOM)).toHaveLength(1);
+    expect(pages.since(before, 'chat-refused')).toEqual({ [TOM]: [{ t: 'chat-refused', reason: expect.any(String) as string }] });
   });
 
   it('is nothing for taking back a reaction nobody gave', () => {

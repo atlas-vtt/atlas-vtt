@@ -145,7 +145,7 @@ describe('hiding every room of walls round rooms, in the store', () => {
     const { app } = createInMemoryApp({ files: {} });
     const store = createViewAtlasStore(app, `fog-keyhole-${Math.random()}`);
     store.getState().setPersistenceEnabled(false);
-    for (const wall of WALLS) store.getState().addWall(wall);
+    for (const wall of WALLS) store.getState().addObject('walls', wall);
     return { store, undo: () => getHistoryStore(store)!.getState().undo() };
   }
   const covered = (store: ViewAtlasStore, places: readonly Point[]): boolean[] => {

@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { OnlineControl } from '../../../../src/app/online/gm/OnlineControl.ts';
 import { boundOwnership, FAKE_LINK, fakeCampaigns } from './fakeSeats.ts';
-import { app, atlasTab, FakeSocket, workspace } from './fakeTable.ts';
+import { app, atlasTab, workspace } from './fakeTable.ts';
 import { sceneState } from './shareHarness.ts';
 import { advanceSettled as advance } from './settled.ts';
+import { FakeRelay } from './fakeRelay.ts';
 
 const seen = vi.hoisted(() => ({ notices: [] as string[], asked: [] as string[] }));
 
@@ -40,8 +41,6 @@ const signedIn = { token: (): string | null => 'account-token', signedOutByServe
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'performance', 'Date'] });
   vi.stubGlobal('window', globalThis);
-  vi.stubGlobal('WebSocket', FakeSocket);
-  FakeSocket.all = [];
   seen.notices.length = 0;
   seen.asked.length = 0;
 });
@@ -56,7 +55,7 @@ describe('a new link', () => {
     const tab = atlasTab(sceneState({ mapPath: 'Scenes/Cave.atlasmap' }));
     workspace.leaves = [tab.leaf];
     const campaigns = fakeCampaigns();
-    const online = new OnlineControl(app, boundOwnership([]), campaigns, () => undefined, signedIn);
+    const online = new OnlineControl(app, boundOwnership([]), campaigns, () => undefined, signedIn, undefined, undefined, new FakeRelay().open);
     await online.start(tab.leaf, 'c1');
     await online.newLink();
     // The players file's write lands.
@@ -80,7 +79,7 @@ describe('the campaign a table starts on', () => {
     workspace.leaves = [tab.leaf];
     const play = vi.fn();
     const campaigns = { ...fakeCampaigns(), playing: (): string | null => null, play };
-    const online = new OnlineControl(app, boundOwnership([]), campaigns, () => undefined, signedIn);
+    const online = new OnlineControl(app, boundOwnership([]), campaigns, () => undefined, signedIn, undefined, undefined, new FakeRelay().open);
     await online.start(tab.leaf, 'c2');
     expect(play).toHaveBeenCalledWith('c2');
     expect(online.campaignId()).toBe('c2');
@@ -93,7 +92,7 @@ describe('the campaign a table starts on', () => {
     workspace.leaves = [tab.leaf];
     const play = vi.fn();
     const signedOut = { ...signedIn, token: (): string | null => null };
-    const online = new OnlineControl(app, boundOwnership([]), { ...fakeCampaigns(), play }, () => undefined, signedOut);
+    const online = new OnlineControl(app, boundOwnership([]), { ...fakeCampaigns(), play }, () => undefined, signedOut, undefined, undefined, new FakeRelay().open);
     expect(await online.start(tab.leaf, 'c2')).toBeNull();
     expect(play).not.toHaveBeenCalled();
   });

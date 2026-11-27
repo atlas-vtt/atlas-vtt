@@ -161,17 +161,17 @@ describe('when the line-of-sight fallback composes its black', () => {
     const { fallback, store, covers } = open({ hero, prey });
     fallback.modeLayer.visible = true;
     // A darkness 28 px around, inside the hero's 140 px of sight and away from the hero.
-    const shade = store.getState().addLight({ x: 100, y: 190, emission: { bright: 0, dim: 2, color: '#000000', intensity: 1, animation: 'none', darkness: true } });
+    const shade = store.getState().addObject('lights', { x: 100, y: 190, emission: { bright: 0, dim: 2, color: '#000000', intensity: 1, animation: 'none', darkness: true } });
     const covered = (): boolean[] => [190, 20].map((y) => covers(100, y));
     expect(covered()).toEqual([true, false]);
     const sight = fallback.currentSight();
     masks.reset();
-    store.getState().updateLight(shade, { y: 10 });
+    store.getState().patchObject('lights', shade, { y: 10 });
     expect(fallback.currentSight()).toBe(sight);
     expect(masks.composed()).toBe(1);
     expect(covered()).toEqual([false, true]);
     masks.reset();
-    store.getState().deleteLight(shade);
+    store.getState().removeObjects([shade]);
     expect(fallback.currentSight()).toBe(sight);
     expect(masks.composed()).toBe(1);
     expect(covered()).toEqual([false, false]);

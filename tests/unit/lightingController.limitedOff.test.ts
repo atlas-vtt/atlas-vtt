@@ -12,8 +12,8 @@ describe('limited walls switched off', () => {
   it('offers no Limited switch in the wall menu, for a plain wall or for one whose file says it is limited', () => {
     const { store, contextMenu } = setup();
     store.getState().setActiveTool('wall');
-    store.getState().addWall({ type: 'solid', p1: { x: 100, y: 100 }, p2: { x: 300, y: 100 } });
-    store.getState().addWall({ type: 'solid', p1: { x: 100, y: 500 }, p2: { x: 300, y: 500 }, limited: true });
+    store.getState().addObject('walls', { type: 'solid', p1: { x: 100, y: 100 }, p2: { x: 300, y: 100 } });
+    store.getState().addObject('walls', { type: 'solid', p1: { x: 100, y: 500 }, p2: { x: 300, y: 500 }, limited: true });
     for (const y of [100, 500]) {
       contextMenuOpened.mockClear();
       contextMenu(200, y, 10, 10);

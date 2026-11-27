@@ -1,6 +1,5 @@
 import { Texture, type CanvasSource, type ImageSource, type Application } from 'pixi.js';
 import { App as ObsidianApp, TFile } from 'obsidian';
-import type { ITextureCache } from './types';
 import { isResourceUrl, normalizeImagePath } from '../../utils/pathUtils';
 import { loadAsset, unloadAsset } from '../utils/assetLifecycle';
 import { decodeImage, decodedSource, imageMimeType, scaledToFit, type DecodedImage } from '../decodedImage';
@@ -38,7 +37,7 @@ const URL_PREFIXES = ['data:', 'blob:', 'http://', 'https://'];
  * token the players' view leaves out, a scene switched away from), so that showing it again
  * uploads it and builds its mipmaps anew in the frame that draws it.
  */
-export class TextureCache implements ITextureCache {
+export class TextureCache {
   private readonly textures = new Map<string, Texture>();
   private readonly holds = new Map<string, number>();
   // Textures loaded through Assets are owned by its cache and must be unloaded by URL

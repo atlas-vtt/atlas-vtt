@@ -51,11 +51,11 @@ describe('kept measurements in the store', () => {
     expect(store.getState().objects.measures![id]).toEqual({ id, kind: 'measure', ...CIRCLE });
     expect(steps()).toBe(1);
 
-    store.getState().updateMeasure(id, { hidden: true, points: [{ x: 0, y: 0 }, { x: 70, y: 0 }] });
+    store.getState().patchObject('measures', id, { hidden: true, points: [{ x: 0, y: 0 }, { x: 70, y: 0 }] });
     expect(store.getState().objects.measures![id]).toMatchObject({ hidden: true, points: [{ x: 0, y: 0 }, { x: 70, y: 0 }] });
     expect(steps()).toBe(2);
 
-    store.getState().deleteMeasure(id);
+    store.getState().removeObjects([id]);
     expect(ids()).toEqual([]);
     expect(steps()).toBe(3);
 
@@ -72,7 +72,7 @@ describe('kept measurements in the store', () => {
   it('removes a field changed to undefined', () => {
     const { store } = setup();
     const id = store.getState().addMeasure({ ...CIRCLE, hidden: true, by: 'player-1' })!;
-    store.getState().updateMeasure(id, { color: undefined, hidden: undefined });
+    store.getState().patchObject('measures', id, { color: undefined, hidden: undefined });
     expect(store.getState().objects.measures![id]).toEqual({ id, kind: 'measure', shape: 'circle', points: CIRCLE.points, by: 'player-1' });
   });
 
@@ -168,9 +168,9 @@ describe('the measure tool\'s choices and popover', () => {
     const kept = store.getState().addMeasure(RULER)!;
     const other = store.getState().addMeasure(CIRCLE)!;
     store.getState().openMeasurePopover(kept);
-    store.getState().deleteMeasure(other);
+    store.getState().removeObjects([other]);
     expect(store.getState().measurePopover).toBe(kept);
-    store.getState().deleteMeasure(kept);
+    store.getState().removeObjects([kept]);
     expect(store.getState().measurePopover).toBeNull();
 
     const again = store.getState().addMeasure(RULER)!;
@@ -246,7 +246,7 @@ describe('kept measurements with the rest of the scene', () => {
     const { store } = setup();
     const foreign = { ...kept('a'), follows: 't1' };
     store.setState({ objects: { ...store.getState().objects, measures: { a: foreign, odd: { id: 'odd', shape: 'spiral' } as never } } });
-    store.getState().updateMeasure('a', { color: '#112233' });
+    store.getState().patchObject('measures', 'a', { color: '#112233' });
     expect(store.getState().objects.measures).toEqual({ a: { ...foreign, color: '#112233' }, odd: { id: 'odd', shape: 'spiral' } });
   });
 });

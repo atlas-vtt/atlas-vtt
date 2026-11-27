@@ -133,7 +133,7 @@ describe('the fog tool\'s bars above the toolbar', () => {
     expect(button('Room').getAttribute('aria-disabled')).toBe('true');
     act(() => {
       for (const [x1, y1, x2, y2] of [[70, 70, 350, 70], [350, 70, 350, 350], [350, 350, 70, 350], [70, 350, 70, 70]] as const) {
-        store.getState().addWall({ type: 'solid', p1: { x: x1, y: y1 }, p2: { x: x2, y: y2 } });
+        store.getState().addObject('walls', { type: 'solid', p1: { x: x1, y: y1 }, p2: { x: x2, y: y2 } });
       }
     });
     same();

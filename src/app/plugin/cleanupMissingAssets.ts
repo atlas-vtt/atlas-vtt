@@ -48,7 +48,7 @@ export async function cleanupMissingAssets(app: App, view: AtlasView): Promise<v
 
   runHistoryTransaction(store, () => {
     const actions = store.getState();
-    if (missingTokenIds.length > 0) actions.deleteTokens(missingTokenIds);
+    if (missingTokenIds.length > 0) actions.removeObjects(missingTokenIds);
     for (const level of missingMaps) {
       if (level === SCENE_BACKGROUND) actions.setBackground(null);
       else changeLevelBackground(store, level, null);

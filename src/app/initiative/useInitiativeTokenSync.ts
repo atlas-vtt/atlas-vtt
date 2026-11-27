@@ -8,24 +8,14 @@ import { offMapWithoutEntry } from './offMapCombatants';
 
 /**
  * Keeps the tracker's entries in step with their tokens while the tracker is mounted. A token on
- * the map is never given an entry here: the GM chooses the combatants.
+ * the map is never given an entry here: the GM chooses the combatants. The entry of a deleted token
+ * goes with it in the store itself (`stores/combatantTokens.ts`).
  */
 export function useInitiativeTokenSync(tokens: Record<string, TokenEntity>, entries: InitiativeEntry[]): void {
-  const removeFromInitiative = useAtlasStore((s) => s.removeFromInitiative);
   const updateInitiativeEntry = useAtlasStore((s) => s.updateInitiativeEntry);
   const addToInitiative = useAtlasStore((s) => s.addToInitiative);
   const store = useViewStoreHook();
   const isMapLoading = useAtlasStore((s) => s.isMapLoading);
-
-  // The entry of a deleted token goes with it; a party member's has none
-  useEffect(() => {
-    entries.forEach((entry) => {
-      if (entry.tokenId !== undefined && !tokens[entry.tokenId]) {
-        removeFromInitiative(entry.id);
-      }
-    });
-  // Deliberately not keyed on the entries: checked only when map tokens change, not on entry edits.
-  }, [tokens, removeFromInitiative]);
 
   // A combatant kept beside the map is shown by its entry alone: one an undo brought back without it is listed again
   useEffect(() => {

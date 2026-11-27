@@ -101,12 +101,10 @@ describe('the canvas in the players\' picture and the drawings', () => {
     expect(shown()).toMatchObject({ shown: true, floor: true, sign: true, secret: false, trap: false, note: false });
     s.store.getState().setGMView(true);
     expect(shown()).toMatchObject({ secret: true, trap: true, note: true });
-    // A peek is the lighting's to say: whoever knows of it tells, and the drawings follow.
-    s.players.shown = true;
-    s.renderer.refreshVisibility();
+    // A peek is the lighting's to say: the view's audience tells, and the drawings follow.
+    s.peek(true);
     expect(shown()).toMatchObject({ shown: true, secret: false, trap: false, note: false });
-    s.players.shown = false;
-    s.renderer.refreshVisibility();
+    s.peek(false);
     expect(shown()).toMatchObject({ secret: true, trap: true, note: true });
   });
 
@@ -156,27 +154,6 @@ describe('the canvas in the players\' picture and the drawings', () => {
       expect(placing(kind)()).toBe(false);
       s.store.getState().setGMView(true);
     }
-  });
-
-  it('follows the tokens\' word of what the canvas shows, once it is wired to them', () => {
-    const { renderer, s, shown } = harness();
-    const listeners: Array<() => void> = [];
-    let peeking = false;
-    Object.assign(renderer, {
-      tokenRenderer: {
-        onPlayersViewChange: (listener: () => void) => { listeners.push(listener); return () => undefined; },
-        playersSeeOnCanvas: () => (peeking ? () => true : null),
-      },
-    });
-    s.players.shown = null;
-    (renderer as unknown as { wireAnnotations(): void }).wireAnnotations();
-    expect(listeners).toHaveLength(1);
-    expect(shown().secret).toBe(true);
-    // The scene's renderer asks the tokens in the app; here the scene's own answer stands in for theirs.
-    peeking = true;
-    s.players.shown = true;
-    listeners[0]!();
-    expect(shown()).toMatchObject({ shown: true, secret: false, trap: false, note: false });
   });
 
   it('takes no press on a drawing the canvas hides, and none on any while it shows the players\' picture', () => {

@@ -68,10 +68,21 @@ export function lightingSourceOf(renderer: unknown): LightingSource | null {
   return { rules: () => (rules as () => SightRules)(), measurement: () => (measurement as () => MeasurementSettings)() };
 }
 
+/** Atlas's settings service (`settingsService` of its plugin instance), unchecked. */
+const settingsServiceOf = (app: App): unknown => field(field(field(field(app, 'plugins'), 'plugins'), ATLAS_PLUGIN_ID), 'settingsService');
+
+/** Calls `listener` whenever Atlas's settings change; a settings service without `onChange` tells nothing. Returns what stops it. */
+export function followAtlasSettings(app: App, listener: () => void): () => void {
+  const settings = settingsServiceOf(app);
+  const follow = field(settings, 'onChange');
+  const stop: unknown = typeof follow === 'function' ? (follow as (listener: () => void) => unknown).call(settings, listener) : undefined;
+  return typeof stop === 'function' ? () => void (stop as () => unknown)() : () => undefined;
+}
+
 /** Atlas's own settings as its plugin instance holds them (`settingsService`). */
 export function atlasPlayerSettings(app: App): AtlasPlayerSettings {
   // Obsidian keeps the loaded plugins by id in `app.plugins.plugins`.
-  const settings = field(field(field(field(app, 'plugins'), 'plugins'), ATLAS_PLUGIN_ID), 'settingsService');
+  const settings = settingsServiceOf(app);
   const playerView = field(settings, 'getLocalPlayerViewSettings');
   const view: unknown = typeof playerView === 'function' ? (playerView as () => unknown).call(settings) : undefined;
   const readLayout = field(settings, 'initiativeLayout');
@@ -99,7 +110,7 @@ export function atlasPlayerSettings(app: App): AtlasPlayerSettings {
 
 /** The GM's laser colour and size from Atlas's settings, as Atlas reads them (its default when they cannot be read). */
 export function atlasLaserLook(app: App): LaserPointerSettings {
-  const settings = field(field(field(field(app, 'plugins'), 'plugins'), ATLAS_PLUGIN_ID), 'settingsService');
+  const settings = settingsServiceOf(app);
   const read = field(settings, 'getLaserPointerSettings');
   const raw: unknown = typeof read === 'function' ? (read as () => unknown).call(settings) : undefined;
   return resolveLaserPointerSettings(typeof raw === 'object' && raw !== null ? raw : undefined);

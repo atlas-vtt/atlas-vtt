@@ -1,5 +1,4 @@
 import { crc32, deflateSync } from 'node:zlib';
-import { KEEPALIVE_PING } from '../../../../src/app/online/protocol/index.ts';
 import type { App, WorkspaceLeaf } from 'obsidian';
 import type { SceneState, SceneStore } from '../../../../src/app/online/gm/atlasView.ts';
 import type { Presented, TabSource } from '../../../../src/app/online/gm/presentedScene.ts';
@@ -7,58 +6,9 @@ import type { HostAccount } from '../../../../src/app/online/gm/tableStart.ts';
 import { fakeTokenSource } from './fakeTokenSource.ts';
 
 /*
- * An Obsidian with Atlas map tabs, the scene Atlas presents and a relay socket, for tests of the running
- * table (`OnlineControl`, `OnlineTable`). Each test file mocks `obsidian` itself.
+ * An Obsidian with Atlas map tabs and the scene Atlas presents, for tests of the running table
+ * (`OnlineControl`, `OnlineTable`), whose relay is `FakeRelay`. Each test file mocks `obsidian` itself.
  */
-
-/** A socket that records what the companion sends and lets a test play the relay. */
-export class FakeSocket {
-  static readonly OPEN = 1;
-  static all: FakeSocket[] = [];
-  readyState = FakeSocket.OPEN;
-  bufferedAmount = 0;
-  readonly sent: string[] = [];
-  private readonly listeners = new Map<string, ((event: { data?: unknown; code?: number }) => void)[]>();
-
-  constructor(readonly url: string) {
-    FakeSocket.all.push(this);
-    queueMicrotask(() => this.emit('open', {}));
-  }
-
-  addEventListener(type: string, listener: (event: { data?: unknown; code?: number }) => void): void {
-    this.listeners.set(type, [...(this.listeners.get(type) ?? []), listener]);
-  }
-
-  send(text: string): void {
-    this.sent.push(text);
-  }
-
-  close(): void {
-    this.readyState = 3;
-  }
-
-  relay(frame: object): void {
-    this.emit('message', { data: JSON.stringify({ v: 1, ...frame }) });
-  }
-
-  /** The relay closes the socket. */
-  closeWith(code: number): void {
-    this.readyState = 3;
-    this.emit('close', { code });
-  }
-
-  frames(): { readonly t: string; readonly to?: string; readonly secret?: string; readonly body?: { readonly t: string; readonly scene?: unknown; readonly tokens?: readonly unknown[] } }[] {
-    return this.sent.filter((text) => text !== KEEPALIVE_PING).map((text) => JSON.parse(text) as ReturnType<FakeSocket['frames']>[number]);
-  }
-
-  bodies(): NonNullable<ReturnType<FakeSocket['frames']>[number]['body']>[] {
-    return this.frames().flatMap((frame) => (frame.t === 'send' && frame.body !== undefined ? [frame.body] : []));
-  }
-
-  private emit(type: string, event: { data?: unknown; code?: number }): void {
-    for (const listener of this.listeners.get(type) ?? []) listener(event);
-  }
-}
 
 export function png(width: number, height: number): Uint8Array {
   const chunk = (type: string, data: Buffer): Buffer => {
@@ -214,7 +164,11 @@ export const app = {
     },
     offref: (ref: { name: string; listener: (...args: unknown[]) => void }) => void workspaceListeners.get(ref.name)?.delete(ref.listener),
   },
+  // The vault and the metadata cache tell of no change in these tests.
+  metadataCache: { on: () => ({}), offref: () => undefined },
   vault: {
+    on: () => ({}),
+    offref: () => undefined,
     getFileByPath: (path: string) => {
       const bytes = workspace.files.get(path);
       return bytes === undefined ? null : { path, stat: { mtime: 0, size: bytes.length } };

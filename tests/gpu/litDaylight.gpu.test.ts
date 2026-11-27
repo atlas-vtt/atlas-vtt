@@ -44,8 +44,8 @@ describe('a map in daylight, lit', () => {
     views.push(view);
     const { store } = view;
     store.setState({ mapLoaded: true, isMapLoading: false, levels, viewedLevel: 'ground' });
-    store.getState().addLight({ x: 100, y: 100, emission: CANDLE });
-    store.getState().addLight({ x: 400, y: 400, emission: CANDLE });
+    store.getState().addObject('lights', { x: 100, y: 100, emission: CANDLE });
+    store.getState().addObject('lights', { x: 400, y: 400, emission: CANDLE });
     store.getState().setSceneLighting({ enabled: true, ambient: 1, ambientColor: '#ffffff' });
     await view.settle();
     const lit = mean(view.gmCanvas(PANE / MAP, 0, 0), 150, 20, 16);

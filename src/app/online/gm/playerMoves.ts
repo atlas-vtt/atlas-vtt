@@ -13,7 +13,6 @@ export interface MoveStore {
   getState(): MoveState;
   /** A write as the GM's own: Atlas's history records it as one undo step. */
   setState(recipe: (draft: MoveState) => void): void;
-  subscribe(listener: (state: MoveState) => void): () => void;
 }
 
 export interface PlayerMovePorts {
@@ -51,7 +50,6 @@ export class PlayerMoves {
   private readonly waiting = new Map<string, Waiting>();
   private readonly drags: PlayerDrags;
   private timer: number | undefined;
-  private unsubscribe: (() => void) | null = null;
 
   constructor(store: MoveStore, ports: PlayerMovePorts) {
     this.store = store;
@@ -59,11 +57,10 @@ export class PlayerMoves {
     this.drags = new PlayerDrags(store, { ...ports, context: (state, from) => this.context(state, from) });
   }
 
-  start(): void {
-    this.unsubscribe ??= this.store.subscribe((state) => {
-      this.drags.storeChanged(state);
-      if (this.waiting.size > 0 && !this.drags.gmHolds(state)) this.schedule();
-    });
+  /** The store changed: drags the GM's own hold took over end, and moves held for the GM's drag are taken once it closed. */
+  storeChanged(state: MoveState): void {
+    this.drags.storeChanged(state);
+    if (this.waiting.size > 0 && !this.drags.gmHolds(state)) this.schedule();
   }
 
   /** A drag message: the token follows the player's pointer on the GM's map. */
@@ -98,8 +95,6 @@ export class PlayerMoves {
 
   stop(): void {
     this.drags.stop();
-    this.unsubscribe?.();
-    this.unsubscribe = null;
     if (this.timer !== undefined) this.ports.clearTimer(this.timer);
     this.timer = undefined;
     this.waiting.clear();

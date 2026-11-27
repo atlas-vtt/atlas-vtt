@@ -24,7 +24,6 @@ import { FogEdgeMesh } from './fogEdgeMesh';
 import { FogFade } from './FogFade';
 import { fogBoundsChanged, fogCanvasBounds } from './fogBounds';
 import { changedCanvasRect, changedFogBox, MAX_FADED_PIXELS, unitedCanvasRect, type CanvasRect } from './fogChangedRect';
-import { resolveFogPreviewAlpha } from './fogVisibilityPolicy';
 
 const EMPTY_FOG: Readonly<Record<string, FogOperation>> = Object.freeze({});
 /** Canvas pixels per world pixel. */
@@ -44,8 +43,8 @@ export interface FogPictureDeps {
   readonly mapRect: () => MapRect | null;
   /** The committed shapes, shared with whoever asks what the fog covers. */
   readonly coverage: FogCoverageCache;
-  /** Whether the canvas shows the players' view where the store's view switches do not say so (a peek); unset or null, they alone say it. */
-  readonly showsPlayers?: () => boolean | null;
+  /** Whether the canvas shows the players' picture now (`CanvasAudience.showsPlayers`). */
+  readonly showsPlayers: () => boolean;
   /** A fade ended: fog that faded away no longer needs showing. */
   readonly onFadeEnd?: () => void;
 }
@@ -221,8 +220,7 @@ export class FogPicture {
    * peek: for a picture of the scene, which shows the fog as a fade will leave it.
    */
   gmLayers(): LayerVisibility[] {
-    const alpha = resolveFogPreviewAlpha({ isPlayerView: false, isGMView: true, gmOpacity: this.gmOpacity });
-    return [{ layer: this.sprite, visible: this.sprite.visible, alpha }, ...(this.fade.running ? [{ layer: this.fade, visible: false }] : [])];
+    return [{ layer: this.sprite, visible: this.sprite.visible, alpha: this.gmOpacity }, ...(this.fade.running ? [{ layer: this.fade, visible: false }] : [])];
   }
 
   destroy(): void {
@@ -236,8 +234,7 @@ export class FogPicture {
 
   /** How opaque the fog is drawn on this canvas now: as the players see it while it shows their view, a peek included. */
   private alpha(): number {
-    const { isPlayerView, isGMView } = this.deps.store.getState();
-    return resolveFogPreviewAlpha({ isPlayerView, isGMView: isGMView && this.deps.showsPlayers?.() !== true, gmOpacity: this.gmOpacity });
+    return this.deps.showsPlayers() ? 1 : this.gmOpacity;
   }
 
   /** Two pictures are mixed by the mesh's shader, which needs WebGL: elsewhere a change shows at once. */

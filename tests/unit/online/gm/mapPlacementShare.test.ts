@@ -36,6 +36,7 @@ const unsnapped = (state: SceneState): SceneState => ({ ...state, grid: state.gr
 
 async function table(initial: SceneState, presented?: string): Promise<ShareHarness> {
   const share = shareHarness(initial, IMAGES, seats);
+  share.pages.join(ANA, BEN);
   share.presented = presented;
   share.share.start();
   await share.set(initial);
@@ -43,9 +44,9 @@ async function table(initial: SceneState, presented?: string): Promise<ShareHarn
   return share;
 }
 
-const toPlayer = (sent: readonly Sent[], player: string): Sent[] => sent.filter(({ to }) => to === player || to === undefined);
 const scenesOf = (sent: readonly Sent[]): (SharedScene | null)[] => sent.flatMap(({ body }) => (body.t === 'scene' ? [body.scene] : []));
 const lastScene = (sent: readonly Sent[]): SharedScene | null => scenesOf(sent).at(-1) ?? null;
+const sceneOf = (share: ShareHarness, player: string): SharedScene | null => share.pages.of(player).scene ?? null;
 const sceneIdOf = (body: GmMessage): string | null => ('scene' in body && typeof body.scene === 'string' ? body.scene : null);
 const refused = (sent: readonly Sent[]): number => sent.filter(({ body }) => body.t === 'move-refused').length;
 /** What a page reads of a scene as it comes off the wire. */
@@ -56,7 +57,7 @@ const wire = (shared: SharedScene | null): SharedScene | null => {
 
 /** Moves `player`'s token `alias` of the last list they were sent. */
 function move(share: ShareHarness, player: string, x: number, y: number): void {
-  const list = tokenLists(toPlayer(share.sent, player)).at(-1);
+  const list = share.pages.of(player).last('tokens');
   share.share.receive(player, { t: 'move', scene: list?.scene ?? '', id: list?.tokens.find((listed) => listed.id !== '')?.id ?? '', x, y });
 }
 
@@ -104,8 +105,8 @@ describe("the size of a shared map's image", () => {
     const tokens: Record<string, TokenEntity> = { ana: token('ana', START), ben: token('ben', { ...START, level: 'tower' }) };
     const fitted: LevelAlignment = { scale: 2, offset: { x: 100, y: 0 }, stretch: NO_STRETCH };
     const share = await table({ ...state, levels, viewedLevel: 'ground', levelAlignments: { tower: fitted }, objects: { ...state.objects, tokens } }, 'ground');
-    expect(lastScene(toPlayer(share.sent, ANA))?.size).toEqual(IMAGE);
-    expect(lastScene(toPlayer(share.sent, BEN))).toMatchObject({ size: { width: 500, height: 400 }, fit: { scale: 2 } });
+    expect(sceneOf(share, ANA)?.size).toEqual(IMAGE);
+    expect(sceneOf(share, BEN)).toMatchObject({ size: { width: 500, height: 400 }, fit: { scale: 2 } });
   });
 
   it('is left out where players get no map, and where the image\'s header names no size', async () => {
@@ -213,17 +214,17 @@ describe('the floors of a scene with a stretched map', () => {
 
   it('sends each floor drawn in the scene\'s frame the scene\'s stretch', async () => {
     const share = await table(floors(WIDE), 'ground');
-    expect(lastScene(toPlayer(share.sent, ANA))).toMatchObject({ stretch: WIDE, floor: { level: 0 } });
-    expect(lastScene(toPlayer(share.sent, BEN))).toMatchObject({ stretch: WIDE, floor: { level: 1 } });
-    expect(lastScene(toPlayer(share.sent, BEN))?.fit).toBeUndefined();
+    expect(sceneOf(share, ANA)).toMatchObject({ stretch: WIDE, floor: { level: 0 } });
+    expect(sceneOf(share, BEN)).toMatchObject({ stretch: WIDE, floor: { level: 1 } });
+    expect(sceneOf(share, BEN)?.fit).toBeUndefined();
   });
 
   it('sends a fitted floor its own stretch and fit, from which the page draws it exactly as Atlas does', async () => {
     const state = floors(WIDE, TOWER);
     const share = await table(state, 'ground');
-    const tower = wire(lastScene(toPlayer(share.sent, BEN)));
+    const tower = wire(sceneOf(share, BEN));
     expect(tower).toMatchObject({ stretch: TOWER.stretch, fit: { scale: TOWER.scale, offset: TOWER.offset }, floor: { level: 1 } });
-    expect(lastScene(toPlayer(share.sent, ANA))).toMatchObject({ stretch: WIDE });
+    expect(sceneOf(share, ANA)).toMatchObject({ stretch: WIDE });
     // What the page puts together of the fields is Atlas's own placement of that floor.
     const placed = alignmentPlacement({ scale: tower?.fit?.scale ?? 0, offset: tower?.fit?.offset ?? { x: 0, y: 0 }, stretch: tower?.stretch ?? NO_STRETCH });
     expect(placed).toEqual(levelImagePlacement(state, 'tower'));
@@ -231,22 +232,22 @@ describe('the floors of a scene with a stretched map', () => {
 
   it('sends a fitted floor its fit also where its own image is drawn unstretched, so the scene\'s stretch never reaches it', async () => {
     const share = await table(floors(WIDE, { scale: 1, offset: { x: 0, y: 0 }, stretch: NO_STRETCH }), 'ground');
-    const tower = lastScene(toPlayer(share.sent, BEN));
+    const tower = sceneOf(share, BEN);
     expect(tower?.fit).toEqual({ scale: 1, offset: { x: 0, y: 0 } });
     expect(tower?.stretch).toBeUndefined();
   });
 
   it('starts another scene for the floor fitted anew alone: the other floor keeps its own', async () => {
     const share = await table(floors(WIDE, TOWER), 'ground');
-    const ground = lastScene(toPlayer(share.sent, ANA));
-    const tower = lastScene(toPlayer(share.sent, BEN));
-    const mark = share.sent.length;
+    const ground = sceneOf(share, ANA);
+    const tower = sceneOf(share, BEN);
+    const mark = share.pages.mark();
     await share.set(floors(WIDE, { ...TOWER, scale: 1.5 }));
     await share.advance(TOKEN_INTERVAL_MS);
-    const after = share.sent.slice(mark);
-    expect(scenesOf(toPlayer(after, ANA))).toEqual([]);
-    expect(lastScene(toPlayer(share.sent, ANA))).toEqual(ground);
-    const refitted = lastScene(toPlayer(after, BEN));
+    const after = share.pages.since(mark, 'scene');
+    expect(after[ANA]).toBeUndefined();
+    expect(sceneOf(share, ANA)).toEqual(ground);
+    const refitted = after[BEN]?.at(-1)?.scene;
     expect(refitted?.id).not.toBe(tower?.id);
     expect(refitted?.fit?.scale).toBe(1.5);
   });

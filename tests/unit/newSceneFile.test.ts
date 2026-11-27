@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { migrateMapFile, parseSceneFile } from '../../src/app/services/MapPersistence';
 import { newSceneTokenSettings } from '../../src/app/resources/sceneVisibility';
 import { newSceneFile } from '../../src/app/services/newSceneFile';
-import { DEFAULT_TOKEN_SETTINGS } from '../../src/app/storeFactory';
+import { DEFAULT_TOKEN_SETTINGS } from '../../src/app/types/viewState';
 import type { CollectionSettings } from '../../src/app/types/collectionSettingsTypes';
 
 const GRID = {

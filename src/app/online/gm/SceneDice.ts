@@ -46,7 +46,7 @@ export class SceneDice {
     const seats = ports.seats;
     this.share = new RollShare({
       send: (body, to) => ports.send(body, to),
-      showGmRolls: () => ports.atlasSettings().showDiceRolls,
+      showGmRolls: () => ports.atlas().settings.showDiceRolls,
       named: (origin) => parts.namedToken(origin.mapPath, origin.tokenId),
       players: () => seats?.onlinePlayers() ?? [],
       alias: (id) => parts.alias(id),
@@ -60,11 +60,11 @@ export class SceneDice {
         ownerOf: ownerIn(seats, store),
         tokens: store.getState().objects.tokens,
       }),
-      dice: () => ports.dice?.() ?? null,
+      dice: () => ports.tab().dice(),
       rollAs: (who, run, notes) => this.share.rollAs(who, run, notes),
       quietRoll: (formula, set, setAppearance, advantage) => this.quietRoll(formula, set, setAppearance, advantage),
       request: (from, answer) => ports.rollRequest?.(from, answer) ?? null,
-      pinnedRoll: (id) => pinnedDesignedRoll(sceneDiceShelf(ports, store), id),
+      pinnedRoll: (id) => pinnedDesignedRoll(sceneDiceShelf(ports.tab().mapLayers(), store), id),
       logged: (roll) => ports.logRoll?.(roll),
       alias: (id) => parts.alias(id),
       send: (body, to) => ports.send(body, to),
@@ -74,7 +74,7 @@ export class SceneDice {
   }
 
   start(): void {
-    this.share.start(this.ports.dice?.() ?? null);
+    this.share.start(this.ports.tab().dice());
   }
 
   stop(): void {
@@ -104,7 +104,7 @@ export class SceneDice {
 
   /** A formula rolled by the shared map's rules without a throw; null where it does not roll or the tab has no dice now. */
   quietRoll(formula: string, set?: DiceSet, setAppearance?: true, advantage?: AdvantageSide): SharedRoll | null {
-    const dice = this.ports.dice?.() ?? null;
+    const dice = this.ports.tab().dice();
     return dice === null ? null : quietRoll(formula, set ?? dice.rules(), this.ports.randomId(), Date.now(), undefined, setAppearance, advantage);
   }
 
@@ -114,7 +114,7 @@ export class SceneDice {
    * player view's "show dice rolls" setting says.
    */
   rollAsGm(run: (dice: DiceSource) => boolean, notes: RollNotes): boolean {
-    const dice = this.ports.dice?.() ?? null;
+    const dice = this.ports.tab().dice();
     if (dice === null) return false;
     let rolled = false;
     this.share.rollAs('gm', () => {

@@ -8,7 +8,7 @@ describe('the life of the explored memory\'s undo steps', () => {
   it('leaves the memory\'s steps behind when the scene unloads: the history keeps the map\'s own', async () => {
     const { lighting, store, history } = await scene();
     lighting.editExplored(reveal(RIGHT_ROOM));
-    store.getState().addWall({ type: 'solid', p1: { x: 10, y: 10 }, p2: { x: 40, y: 10 }, closed: true });
+    store.getState().addObject('walls', { type: 'solid', p1: { x: 10, y: 10 }, p2: { x: 40, y: 10 }, closed: true });
     lighting.editExplored(forget({ type: 'brush', brushRadius: 20, points: [{ x: 200, y: 128 }] }));
     expect(history().pastStates).toHaveLength(3);
 
@@ -22,7 +22,7 @@ describe('the life of the explored memory\'s undo steps', () => {
   it('takes its steps out of the history when the lighting view goes, as when line of sight takes the engine\'s place', async () => {
     const { lighting, store, history, destroyLighting } = await scene();
     lighting.editExplored(reveal(RIGHT_ROOM));
-    store.getState().addWall({ type: 'solid', p1: { x: 10, y: 10 }, p2: { x: 40, y: 10 }, closed: true });
+    store.getState().addObject('walls', { type: 'solid', p1: { x: 10, y: 10 }, p2: { x: 40, y: 10 }, closed: true });
     lighting.editExplored(forget({ type: 'brush', brushRadius: 20, points: [{ x: 200, y: 128 }] }));
     history().undo();
     expect(history().pastStates).toHaveLength(2);
@@ -69,7 +69,7 @@ describe('the life of the explored memory\'s undo steps', () => {
     let bounds = { width: SIZE, height: SIZE };
     const { lighting, store, history, overlayTextures } = await scene({ bounds: () => bounds });
     lighting.editExplored(reveal(RIGHT_ROOM));
-    store.getState().addWall(WALL);
+    store.getState().addObject('walls', WALL);
     expect(history().pastStates).toHaveLength(2);
     expect(overlayTextures).toHaveLength(1);
 
@@ -100,7 +100,7 @@ describe('the life of the explored memory\'s undo steps', () => {
   it('drops its steps when a restored context draws the memory anew from the saved mask', async () => {
     const { renderer, lighting, store, history } = await scene();
     lighting.editExplored(reveal(RIGHT_ROOM));
-    store.getState().addWall({ type: 'solid', p1: { x: 10, y: 10 }, p2: { x: 40, y: 10 }, closed: true });
+    store.getState().addObject('walls', { type: 'solid', p1: { x: 10, y: 10 }, p2: { x: 40, y: 10 }, closed: true });
     lighting.editExplored(forget({ type: 'brush', brushRadius: 20, points: [{ x: 200, y: 128 }] }));
     unwatch();
     await resetContext(renderer, () => {
@@ -119,7 +119,7 @@ describe('the life of the explored memory\'s undo steps', () => {
   it('leaves no step that does nothing when an undo is the first to notice a restored context', async () => {
     const { renderer, lighting, store, history, travels } = await scene();
     lighting.editExplored(reveal(RIGHT_ROOM));
-    store.getState().addWall({ type: 'solid', p1: { x: 10, y: 10 }, p2: { x: 40, y: 10 }, closed: true });
+    store.getState().addObject('walls', { type: 'solid', p1: { x: 10, y: 10 }, p2: { x: 40, y: 10 }, closed: true });
     lighting.editExplored(forget({ type: 'brush', brushRadius: 20, points: [{ x: 200, y: 128 }] }));
     lighting.editExplored(reveal({ type: 'brush', brushRadius: 20, points: [{ x: 200, y: 128 }] }));
     vi.advanceTimersByTime(SAVE_DELAY);

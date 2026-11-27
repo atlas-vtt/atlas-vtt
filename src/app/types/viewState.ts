@@ -174,6 +174,14 @@ export interface ViewState extends ViewUIState {
   diceLog: DiceRollResult[];
 }
 
+/** Token display settings of a map that never set its own. */
+export const DEFAULT_TOKEN_SETTINGS: Readonly<ViewState['tokenSettings']> = {
+  showNameplates: false,
+  hiddenResources: [],
+  showInstanceBadges: true,
+  tokenRingSize: 1,
+};
+
 /** Data for a new token; the store assigns the id (unless given), kind default and instance number. */
 export type TokenInput = Omit<TokenEntity, 'id' | 'kind'> & { kind?: 'token' | 'character'; id?: string };
 

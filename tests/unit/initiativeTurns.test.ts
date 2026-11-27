@@ -91,7 +91,7 @@ describe('clearing the initiative', () => {
     store.getState().startCombat(SIDES);
     store.getState().nextTurn();
     store.getState().resetInitiative();
-    expect(store.getState().initiative).toMatchObject({ entries: [], isActive: false, round: 0, currentIndex: -1 });
+    expect(store.getState().initiative).toMatchObject({ entries: [], isActive: false, round: 0 });
     expect(store.getState().initiative).not.toHaveProperty('sides');
   });
 

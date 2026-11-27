@@ -3,7 +3,7 @@ import { computeTokenPixelSize } from '../../../../src/app/pixi/token-renderer/t
 import { describe, expect, it } from 'vitest';
 import { sha256Hex } from '../../../../src/app/online/gm/assetServe.ts';
 import { ringColour } from '../../../../src/app/online/gm/scenePicture.ts';
-import { TOKEN_INTERVAL_MS, TOKEN_POLL_MS } from '../../../../src/app/online/gm/TokenShare.ts';
+import { TOKEN_INTERVAL_MS } from '../../../../src/app/online/gm/TokenShare.ts';
 import { fakeStoring, storedRef } from './fakeStoring.ts';
 import { GRID_SIZE, sceneState, shareHarness, token, tokenLists, type ShareHarness } from './shareHarness.ts';
 
@@ -46,20 +46,9 @@ describe('the tokens players see', () => {
     await table.advance(TOKEN_INTERVAL_MS);
     expect(lastList(table)?.tokens).toHaveLength(1);
     table.perception = (id) => (id === 'b' ? 'sensed' : 'seen');
-    await table.advance(TOKEN_POLL_MS);
+    table.sightChanged();
+    await table.advance(TOKEN_INTERVAL_MS);
     expect(lastList(table)?.tokens).toEqual([]);
-  });
-
-  it('follow the players\' sight as the GM\'s view tells of each change, long before the next poll', async () => {
-    const table = await started();
-    table.perception = (id) => (id === 'b' ? 'unseen' : 'seen');
-    table.sightChanged();
-    await table.advance(TOKEN_INTERVAL_MS);
-    expect(lastList(table)?.tokens).toHaveLength(1);
-    table.perception = undefined;
-    table.sightChanged();
-    await table.advance(TOKEN_INTERVAL_MS);
-    expect(lastList(table)?.tokens).toHaveLength(2);
   });
 
   it('follow a drag at most every interval, and the last place always goes out', async () => {
@@ -95,11 +84,12 @@ describe('the tokens players see', () => {
     await table.advance(TOKEN_INTERVAL_MS);
     expect(tokenLists(table.sent)).toEqual([]);
     table.rendered = true;
-    await table.advance(TOKEN_POLL_MS);
+    table.sightChanged();
+    await table.advance(TOKEN_INTERVAL_MS);
     expect(lastList(table)?.tokens).toHaveLength(1);
     const count = table.sent.length;
     await table.set({ ...withTokens(token('a', { x: 500 })), isMapLoading: true });
-    await table.advance(TOKEN_POLL_MS * 2);
+    await table.advance(2000);
     expect(table.sent.length).toBe(count);
   });
 

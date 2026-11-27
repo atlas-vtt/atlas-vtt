@@ -26,6 +26,7 @@ describe("the online players' list of a fight", () => {
     shown: true,
     showNames: false,
     rules: {} as RulesLookup,
+    presets: [],
     art: () => null,
   });
 

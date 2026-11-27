@@ -5,7 +5,7 @@ import { useAtlasUI } from '../../root/AtlasUIContext';
 import { openPlayerWindow } from '../../../services/PlayerWindowPresenter';
 import type { AtlasSettings, SettingsService } from '../../../services/SettingsService';
 import { DEFAULT_SETTINGS } from '../../../services/atlasSettings';
-import { initiativeMaxCardsOf, initiativeScaleOf, MAX_INITIATIVE_CARDS, MAX_INITIATIVE_SCALE } from '../../../services/playerInitiativeList';
+import { initiativeMaxCardsOf, initiativeScaleOf, MAX_INITIATIVE_CARDS, MAX_INITIATIVE_SCALE } from '../../../services/playerInitiativeView';
 import { SettingRow, SettingSliderRow, SettingToggleRow } from './SettingRows';
 import { usePlayerViewSwitches, type PlayerViewSwitch, type ResourceAudienceChoice } from './playerViewSwitches';
 import { PlayerAudienceControl } from './PlayerAudienceControl';

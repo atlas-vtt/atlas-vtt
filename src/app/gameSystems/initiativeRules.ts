@@ -6,6 +6,7 @@
 import type { InitiativeMode, InitiativeRules, InitiativeSide } from '../types/initiativeRulesTypes';
 import type { SystemPreset } from '../types/systemPresetTypes';
 import { isValidDefaultRoll } from './diceRules';
+import { rulesForMap, type RulesLookup } from './mapRules';
 import { modifierSources, sameModifierSources } from './initiativeModifierSources';
 import { BUILT_IN_SIDES, areSidesValid, sameSideParts, savedSideParts, sideParts, sideRollParts } from './initiativeSideRules';
 import { cardParts, isCardPartValid, sameCardParts } from './initiativeCardRules';
@@ -82,6 +83,15 @@ export function collectionInitiativeRules(
   return parseInitiativeRules(settings.initiative)
     ?? presets.find((preset) => preset.id === settings.systemPresetId)?.rules.initiative
     ?? { ...DEFAULT_INITIATIVE_RULES };
+}
+
+/**
+ * The initiative rules the map at `mapPath` plays by (`rulesForMap`): those of its rules, read with the
+ * `presets` they may name; the default where it has none or `lookup` cannot be read.
+ */
+export function initiativeRulesForMap(lookup: RulesLookup | null, presets: readonly SystemPreset[], mapPath: string | null | undefined): InitiativeRules {
+  const settings = lookup === null ? null : rulesForMap(lookup, mapPath).settings;
+  return settings === null ? { ...DEFAULT_INITIATIVE_RULES } : collectionInitiativeRules(settings, presets);
 }
 
 export function sameInitiativeRules(a: InitiativeRules | undefined, b: InitiativeRules | undefined): boolean {

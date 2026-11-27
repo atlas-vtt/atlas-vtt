@@ -61,7 +61,7 @@ describe('table sight through the lighting renderer', () => {
     const noVision = h.pixels('player');
     expect(rgb(noVision, 190, 128)).toEqual([86, 144, 198]);
     h.store.getState().setSceneLighting({ tokenVision: false });
-    h.store.getState().addToken(visionToken('hidden', 190, true));
+    h.store.getState().addTokens([visionToken('hidden', 190, true)]);
     expect(byteDifferences(noVision, h.pixels('player'))).toBe(0);
     expect(playerTokenSight(h.lighting, h.store.getState().objects.tokens)?.('hidden')).toBe('unseen');
   });

@@ -28,8 +28,7 @@ export function selectedWithOthers(state: Pick<ViewAtlasState, 'selectedIds'>, i
 export function deleteWholeSelection(store: StoreApi<ViewAtlasState>, tokenId: string, targets: string[]): void {
   const state = store.getState();
   const group = groupOf(state, tokenId);
-  if (group.length === targets.length) state.deleteTokens(targets);
-  else state.removeMapObjects(withoutOffMap(state.objects, group));
+  state.removeObjects(group.length === targets.length ? targets : withoutOffMap(state.objects, group));
 }
 
 /** Pastes what was copied in the middle of what the view shows, as one undo step. */
@@ -45,7 +44,7 @@ export function pasteAtViewCentre(store: StoreApi<ViewAtlasState>, viewport: Par
 export function annotationExtras(store: StoreApi<ViewAtlasState>, viewport: Parameters<typeof viewCentre>[0], ids: readonly string[], touch: boolean): AnnotationActionExtras {
   const state = store.getState();
   const whole = selectedWithOthers(state, ids)
-    ? { ids: state.selectedIds, remove: (): void => store.getState().removeMapObjects(withoutOffMap(store.getState().objects, state.selectedIds)) }
+    ? { ids: state.selectedIds, remove: (): void => store.getState().removeObjects(withoutOffMap(store.getState().objects, state.selectedIds)) }
     : undefined;
   return {
     whole,

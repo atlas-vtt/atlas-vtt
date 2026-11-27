@@ -50,7 +50,7 @@ describe('a ruler drawn from a token the players do not see', () => {
   it('leaves out a ruler whose token was deleted', async () => {
     const s = await build([GOBLIN, HERO]);
     s.measureFrom(60, 60, 60, 220, true);
-    s.store.getState().deleteToken('goblin');
+    s.store.getState().removeObjects(['goblin']);
     const reference = await build([HERO]);
     expect(samePixels(s.frame(), reference.frame())).toBe(true);
   });

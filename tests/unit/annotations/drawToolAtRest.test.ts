@@ -174,7 +174,7 @@ describe('the cursor after a drag of a drawing', () => {
   it('is left to the tokens\' drag where the drawing moves with tokens', () => {
     s = drawScene();
     const id = s.store.getState().addDrawing(box(100, 100));
-    const token = s.store.getState().addToken({ x: 600, y: 100, imagePath: 'art/a.png' });
+    const token = s.store.getState().addTokens([{ x: 600, y: 100, imagePath: 'art/a.png' }])[0]!;
     s.store.getState().setActiveTool('move');
     s.store.getState().setSelection([id, token]);
     s.hover(170, 170);

@@ -6,7 +6,6 @@ import type { GridState } from '../../../../src/app/types/gridTypes';
 import type { SceneLightingChanges } from '../../../../src/app/types/lightingTypes';
 import type { TokenUpdates } from '../../../../src/app/types/viewState';
 import { describe, expect, it } from 'vitest';
-import { TOKEN_POLL_MS } from '../../../../src/app/online/gm/TokenShare.ts';
 import { CONDITIONS, creature, gm, type ControlStoreFactory, GRID, RESOURCES } from './controlHarness.ts';
 import { STORE_FACTORY } from './realStore.ts';
 import { sequenced, tokenLists, type ShareHarness } from './shareHarness.ts';
@@ -39,10 +38,10 @@ describe("the grid: Atlas's player window shows it as the GM sets it", () => {
     const shown = grid();
     expect(shown).toMatchObject({ type: 'square', size: 70, alpha: 0.7 });
     store.getState().setGridVisible(false);
-    await settle(TOKEN_POLL_MS);
+    await settle(1000);
     expect(grid()).toBeNull();
     store.getState().setGridVisible(true);
-    await settle(TOKEN_POLL_MS);
+    await settle(1000);
     expect(grid()).toEqual(shown);
   });
 
@@ -63,19 +62,19 @@ describe("token nameplates: Atlas's player window shows the names the GM's map s
     const { store, table, settle, tokens } = await gm(createViewAtlasStore);
     expect(tokens().get('ogre')).toMatchObject({ name: null, ui: { nameplate: false } });
     table.settings = { ...table.settings, showNames: true };
-    await settle(TOKEN_POLL_MS);
+    await settle(1000);
     for (const id of ['ogre', 'bear']) expect(tokens().get(id)).toMatchObject({ name: null, ui: { nameplate: false } });
     const before = table.sent.length;
     store.getState().updateTokens([{ id: 'ogre', changes: { showNameplate: true } }]);
-    await settle(TOKEN_POLL_MS);
+    await settle(1000);
     expect(tokens().get('ogre')).toMatchObject({ name: 'Name-of-ogre', ui: { nameplate: true } });
     expect(tokens().get('bear')).toMatchObject({ name: null, ui: { nameplate: false } });
     expect(sentSince(table, before)).not.toContain('Name-of-bear');
     store.getState().setTokenSettings({ ...store.getState().tokenSettings, showNameplates: true });
-    await settle(TOKEN_POLL_MS);
+    await settle(1000);
     for (const id of ['ogre', 'bear']) expect(tokens().get(id)).toMatchObject({ name: `Name-of-${id}`, ui: { nameplate: true } });
     table.settings = { ...table.settings, showNames: false };
-    await settle(TOKEN_POLL_MS);
+    await settle(1000);
     for (const id of ['ogre', 'bear']) expect(tokens().get(id)).toMatchObject({ name: null, ui: { nameplate: false } });
   });
 });
@@ -92,13 +91,14 @@ describe("token bars and wheels: Atlas's player window shows the resources playe
     expect(bars()).toEqual(atlasBars(RESOURCES));
     const before = table.sent.length;
     store.getState().setTokenSettings({ ...store.getState().tokenSettings, hiddenResources: ['hp'] });
-    await settle(TOKEN_POLL_MS);
+    await settle(1000);
     expect(bars()).toEqual(atlasBars(RESOURCES));
     expect(sentSince(table, before)).not.toContain('47');
-    // The player view's switches write `visibleToPlayers` into the collection's settings.
+    // The player view's switches write `visibleToPlayers` into the collection's settings, which Atlas tells of.
     const flipped = RESOURCES.map((definition) => ({ ...definition, visibleToPlayers: !definition.visibleToPlayers }));
     table.rules = { resources: flipped, conditions: CONDITIONS };
-    await settle(TOKEN_POLL_MS);
+    table.atlasChanged();
+    await settle();
     expect(bars()).toEqual([['#0ea5e9', 41, 47]]);
     expect(bars()).toEqual(atlasBars(flipped));
   });
@@ -123,7 +123,7 @@ describe('the rest of a token, as the scene holds it', () => {
     expect(tokens().get('ogre1')?.ring).toBeNull();
     const before = table.sent.length;
     store.getState().updateTokens([{ id: 'ogre2', changes: { isHidden: true, name: 'Secret-twin' } }]);
-    await settle(TOKEN_POLL_MS);
+    await settle(1000);
     expect(tokens().has('ogre2')).toBe(false);
     expect(sentSince(table, before)).not.toContain('Secret-twin');
   });
@@ -134,7 +134,7 @@ describe('scene lighting options', () => {
     const { store, table, settle } = await gm(createViewAtlasStore, [creature('hero', 105, { vision: { enabled: true } })]);
     const changes: SceneLightingChanges = { enabled: true, ambient: 0.2, exploredColor: '#336699', unexploredColor: '#101010', darkSightLook: 'grey', litThreshold: 0.3, tokenVision: true, exploredMemory: false };
     store.getState().setSceneLighting(changes);
-    await settle(TOKEN_POLL_MS);
+    await settle(1000);
     const sight = sequenced(table.sent, 'sight').at(-1);
     expect(sight?.lighting).toEqual(store.getState().lighting);
     expect(sight?.lighting).toMatchObject(changes);

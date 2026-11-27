@@ -5,9 +5,10 @@ import { OnlineControl } from '../../../../src/app/online/gm/OnlineControl.ts';
 import type { SavedTable } from '../../../../src/app/online/gm/savedTable.ts';
 import { tableEndOf } from '../../../../src/app/online/gm/tableEnd.ts';
 import { boundOwnership, fakeCampaigns } from './fakeSeats.ts';
-import { app, atlasTab, FakeSocket, localStorage, workspace } from './fakeTable.ts';
+import { app, atlasTab, localStorage, workspace } from './fakeTable.ts';
 import { sceneState } from './shareHarness.ts';
 import { advanceSettled as advance } from './settled.ts';
+import { FakeRelay } from './fakeRelay.ts';
 
 const seen = vi.hoisted(() => ({ notices: [] as string[], created: { status: 201, json: null as unknown } }));
 
@@ -20,7 +21,7 @@ vi.mock('obsidian', () => ({
   normalizePath: (path: string) => path,
   requestUrl: () => Promise.resolve(seen.created),
   PluginSettingTab: class {},
-  Setting: class {},
+  Setting: class {}, Platform: { isMacOS: false },
 }));
 
 const SAVED: SavedTable = { code: 'a'.repeat(26), secret: 's'.repeat(43), maxPlayers: 12, campaignId: 'c1', mapPath: null, gate: { code: '483912', requireCode: true, askToJoin: true } };
@@ -28,13 +29,13 @@ const SAVED: SavedTable = { code: 'a'.repeat(26), secret: 's'.repeat(43), maxPla
 describe('a GM whose Atlas is older than the player page needs', () => {
   let saves: (SavedTable | null)[] = [];
   const signedIn = { token: (): string | null => 'account-token', signedOutByServer: vi.fn(), refresh: vi.fn(() => Promise.resolve()) };
-  const control = (): OnlineControl => new OnlineControl(app, boundOwnership([]), fakeCampaigns(), (table) => saves.push(table), signedIn);
+  let relay = new FakeRelay();
+  const control = (): OnlineControl => new OnlineControl(app, boundOwnership([]), fakeCampaigns(), (table) => saves.push(table), signedIn, undefined, undefined, relay.open);
 
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'performance', 'Date'] });
     vi.stubGlobal('window', globalThis);
-    vi.stubGlobal('WebSocket', FakeSocket);
-    FakeSocket.all = [];
+    relay = new FakeRelay();
     seen.notices.length = 0;
     localStorage.clear();
     saves = [];
@@ -63,14 +64,14 @@ describe('a GM whose Atlas is older than the player page needs', () => {
     const online = control();
     void online.resume(SAVED);
     await advance(0);
-    FakeSocket.all[0]?.closeWith(CLOSE.version);
+    relay.outbox.close(CLOSE.version);
     expect(online.table).toBeNull();
     expect(online.lost()).toBeNull();
     expect(saves).not.toContain(null);
     expect(online.outdated()).toBe(true);
     expect(seen.notices).toEqual([OUTDATED_TEXT]);
     await advance(40_000);
-    expect(FakeSocket.all).toHaveLength(1);
+    expect(relay.opened).toHaveLength(1);
   });
 
   it('is let in where players sit, asked to update after the session, and forgets it once a welcome needs no more', async () => {
@@ -78,14 +79,12 @@ describe('a GM whose Atlas is older than the player page needs', () => {
     const online = control();
     void online.resume(SAVED);
     await advance(0);
-    const socket = FakeSocket.all[0];
-    if (socket === undefined) throw new Error('no socket');
-    socket.relay({ t: 'welcome', role: 'gm', players: [], minLevel: GM_LEVEL + 1 });
+    relay.outbox.welcome([], { minLevel: GM_LEVEL + 1 });
     expect(online.updateAfterSession()).toBe(true);
     expect(online.outdated()).toBe(true);
-    socket.closeWith(1006);
+    relay.outbox.close(1006);
     await advance(40_000);
-    FakeSocket.all.at(-1)?.relay({ t: 'welcome', role: 'gm', players: [], minLevel: GM_LEVEL });
+    relay.outbox.welcome([], { minLevel: GM_LEVEL });
     expect(online.updateAfterSession()).toBe(false);
     expect(online.outdated()).toBe(false);
     online.close();

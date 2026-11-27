@@ -10,11 +10,11 @@ import { createDefaultInitiativeState } from '../types/initiativeTypes';
 import { DEFAULT_INITIATIVE_RULES } from '../gameSystems/initiativeRules';
 import { combatantModifier, ownModifier } from '../initiative/initiativeModifier';
 import { rollInitiativeDice } from '../initiative/initiativeDice';
-import { removeCombatant, renumber } from '../initiative/turnOrder';
+import { renumber } from '../initiative/turnOrder';
 import { sortCombatants } from '../initiative/sortCombatants';
 import { clearSittingOut } from '../initiative/rounds';
 import { createInitiativeTurnActions, type InitiativeTurnActions } from './initiativeTurnActions';
-import { fightDraws, roundChangesOf } from './initiativeFightStart';
+import type { FightBinding } from './initiativeFightStart';
 import { setInitiative } from '../initiative/awaitingInitiative';
 import { newId } from '../utils/ids';
 
@@ -30,8 +30,6 @@ export interface InitiativeSlice extends InitiativeTurnActions {
   // Actions
   setInitiativeTrackerOpen: (open: boolean) => void;
   addToInitiative: (entry: Omit<InitiativeEntry, 'id' | 'order' | 'isActive'>) => string;
-  /** Removes a combatant; had it the turn in a fight in turn order, the turn passes on, past the `defeated`. */
-  removeFromInitiative: (id: string, defeated?: ReadonlySet<string>) => void;
   updateInitiativeEntry: (id: string, updates: Partial<InitiativeEntry>) => void;
   /**
    * Rolls `roll` (the collection's initiative dice; a d20 when left out) for every combatant, adding
@@ -59,6 +57,7 @@ interface InitiativeStoreState {
   objects: {
     tokens: Record<string, TokenEntity>;
   };
+  mapPath?: string | null | undefined;
 }
 
 /**
@@ -93,16 +92,15 @@ const DEFAULT_ROLL = DEFAULT_INITIATIVE_RULES.roll;
  * Creates the initiative actions for the store
  * These are spread into the main store's immer state creator
  * @param set - The immer set function from the store
- * @param viewId - The view ID for logging purposes
  */
 export function createInitiativeActions(
   set: ImmerSet,
-  viewId: string,
   get: () => InitiativeStoreState,
-  random: () => number,
+  binding: FightBinding,
 ): Omit<InitiativeSlice, 'initiative' | 'initiativeTrackerOpen'> {
+  const { random } = binding;
   return {
-    ...createInitiativeTurnActions(set, get, random),
+    ...createInitiativeTurnActions(set, get, binding),
 
     setInitiativeTrackerOpen: (open) => set((draft) => {
       draft.initiativeTrackerOpen = open;
@@ -116,18 +114,12 @@ export function createInitiativeActions(
           ...entry,
           id,
           order,
-          isActive: draft.initiative.entries.length === 0,
+          // The first combatant carries the turn; by sides the turn is a side's
+          isActive: draft.initiative.entries.length === 0 && !draft.initiative.sides,
         };
         draft.initiative.entries.push(newEntry);
       });
       return id;
-    },
-
-    removeFromInitiative: (id, defeated = new Set()) => {
-      const { deck } = fightDraws(get().initiative, random);
-      set((draft) => {
-        removeCombatant(draft.initiative, id, defeated, roundChangesOf(draft, deck));
-      });
     },
 
     updateInitiativeEntry: (id, updates) => set((draft) => {
@@ -184,11 +176,6 @@ export function createInitiativeActions(
 
       entries.splice(toIndex, 0, movedEntry);
       renumber(entries);
-
-      // Update currentIndex if the moved entry was active
-      if (movedEntry.isActive) {
-        draft.initiative.currentIndex = toIndex;
-      }
     }),
 
     moveToFront: (id) => set((draft) => {
@@ -200,10 +187,6 @@ export function createInitiativeActions(
 
       draft.initiative.entries.unshift(entry);
       renumber(draft.initiative.entries);
-
-      if (entry.isActive) {
-        draft.initiative.currentIndex = 0;
-      }
     }),
 
     moveToBack: (id) => set((draft) => {
@@ -216,10 +199,6 @@ export function createInitiativeActions(
 
       entries.push(entry);
       renumber(entries);
-
-      if (entry.isActive) {
-        draft.initiative.currentIndex = entries.length - 1;
-      }
     }),
 
     setSideOrder: (order) => set((draft) => {
@@ -230,7 +209,6 @@ export function createInitiativeActions(
       draft.initiative.entries = [];
       draft.initiative.isActive = false;
       draft.initiative.round = 0;
-      draft.initiative.currentIndex = -1;
       delete draft.initiative.sides;
       delete draft.initiative.cards;
       clearSittingOut(draft.initiative);

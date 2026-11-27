@@ -1,3 +1,7 @@
+## Improved
+
+- Atlas Online: players see your changes at once instead of up to a second later, such as Shared vision, remote mode, letting players draw, a character's dice and what your lighting shows them
+
 ## Fixed
 
 - Sound: music no longer drops out for seconds at a time while the Sound page is open
@@ -11,8 +15,10 @@
 - Dice: after a graphics driver crash the 3D dice roll with their numbers, colours and light again, instead of an empty panel
 - Atlas' quieter text (hints, counts, placeholders, sleeping scene tabs, loot rarities, links) is easier to read and meets WCAG AA contrast with your own theme and in the Sci-fi look's dark scheme
 - Medieval and Sci-fi looks: in source mode only the bold word that opens a line takes the heading font, as in reading view
+- Initiative: taking the combatant whose turn it is out of the initiative, or deleting its token, now passes the turn by defeated combatants, as Next turn does, and when nobody else can act, the turn rests at the next combatant's place
+- Initiative: delaying the last combatant in a fight by cards now deals the next round's cards, as Next turn does
 
 ## Atlas Online
 
-- With dynamic lighting, tokens appear the moment your sight reaches them and vanish the moment it leaves them, instead of up to a second later
+- On a map that plays by a game system preset you made, players see initiative grouped by that preset's sides, as on your tracker and the player window
 - On a phone, a sheet's tab group whose other tabs moved to Abilities shows the remaining tab under its own name, so Bonus Actions no longer looks like an empty Actions section

@@ -451,23 +451,6 @@ export class SelectionManager {
     this.shown = box && lift > 0 ? { x: box.x, y: box.y - lift, width: box.width, height: box.height + lift } : box;
   }
 
-  /** Re-registers viewport event listeners, pushing them to the end of the listener queue.
-   *  Call after adding other viewport pointerdown handlers to ensure correct firing order. */
-  public reorderViewportListeners(): void {
-    if (drawsMarquee(marqueeScope(this.store.getState()))) {
-      this.viewport.off('pointerdown', this.marqueeDownHandler);
-      this.viewport.off('pointermove', this.marqueeMoveHandler);
-      this.viewport.off('pointerup', this.marqueeUpHandler);
-      this.viewport.off('pointerupoutside', this.marqueeUpHandler);
-      this.viewport.off('pointercancel', this.dropMarquee);
-      this.viewport.on('pointerdown', this.marqueeDownHandler);
-      this.viewport.on('pointermove', this.marqueeMoveHandler);
-      this.viewport.on('pointerup', this.marqueeUpHandler);
-      this.viewport.on('pointerupoutside', this.marqueeUpHandler);
-      this.viewport.on('pointercancel', this.dropMarquee);
-    }
-  }
-
   public destroy(): void {
     // Unsubscribe from store changes first to prevent any updates during destruction
     this._unsubscribeFromSelectionChanges?.();

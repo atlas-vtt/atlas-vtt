@@ -43,13 +43,17 @@ describe('the lighting tool\'s Snap switch under a finger', () => {
   async function zoneCorners(snap: boolean): Promise<{ corners: readonly Point[]; m: TouchMap }> {
     const m = await map();
     const controller = new LightingController({
-      viewport: m.viewport, app: m.app, store: m.store, eventBus: new EventEmitter(), obsApp: m.obsidian, viewId: 'touch-homes',
+      viewport: m.viewport, app: m.app, store: m.store, eventBus: new EventEmitter(), obsApp: m.obsidian, viewId: 'touch-homes', audience: m.audience,
       bounds: () => ({ x: 0, y: 0, width: VIEW.width, height: VIEW.height }), albedo: () => null,
     });
     controller.wire(m.tokens);
+    const { lights, walls, doors } = controller.pointerLayers();
+    m.pointer.attach('lights', lights);
+    m.pointer.attach('walls', walls);
+    m.pointer.attach('doors', doors);
     m.taps.lighting = () => controller.tapPlacing();
     const end = worldAt(m, WALL_END);
-    m.store.getState().addWall({ type: 'solid', p1: end, p2: { x: end.x + 200, y: end.y } });
+    m.store.getState().addObject('walls', { type: 'solid', p1: end, p2: { x: end.x + 200, y: end.y } });
     m.store.getState().setActiveTool('wall');
     m.store.getState().setLightingTool({ mode: 'light-zone' });
     m.store.getState().setToolSwitch('lightingSnap', snap);

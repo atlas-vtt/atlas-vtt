@@ -1,5 +1,5 @@
 import { App } from 'obsidian';
-import { initiativeScaleOf } from './playerInitiativeList';
+import { initiativeScaleOf } from './playerInitiativeView';
 import { turnBannerScaleFor } from '../initiative/banner/turnBannerElement';
 import type { ViewAtlasState } from '../storeFactory';
 import type { StoreApi } from 'zustand';

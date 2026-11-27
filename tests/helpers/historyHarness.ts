@@ -7,6 +7,7 @@ import { temporal as oracleTemporal } from '../oracles/historyBaseline/zundo';
 import { createHistoryOptions, getHistoryStore as oracleHistoryStore } from '../oracles/historyBaseline/history';
 import { forgetExploredEdits as oracleForget } from '../oracles/historyBaseline/exploredEditHistory';
 import { getHistoryStore, withHistory } from '../../src/app/stores/history';
+import { UNDO_DEPTHS } from '../../src/app/stores/stateBranches';
 import { forgetExploredEdits } from '../../src/app/stores/exploredEditHistory';
 import type { Collection, HistoryOp, ListenerKind, WriteOp } from '../oracles/historyBaseline/traceGenerator';
 
@@ -126,7 +127,7 @@ export function createParityRun(implementation: Implementation, temporal: Oracle
     history = () => temporalStore.getState();
     forget = () => oracleForget(store);
   } else {
-    store = create<ParityState>()(withHistory(inner(payloads)));
+    store = create<ParityState>()(withHistory(UNDO_DEPTHS)(inner(payloads)));
     const temporalStore = getHistoryStore(store)!;
     history = () => temporalStore.getState();
     forget = () => forgetExploredEdits(store);

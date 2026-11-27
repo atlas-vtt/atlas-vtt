@@ -130,19 +130,19 @@ describe('a source of magical darkness added and deleted again', () => {
     // The players' picture, as the player page shows it
     store.getState().setGMView(false);
     store.setState((s) => ({ objects: { ...s.objects, tokens: { ada: token('ada', 128, 128) } } }));
-    store.getState().addLight({ x: TORCH.x, y: TORCH.y, emission: TORCH.emission });
+    store.getState().addObject('lights', { x: TORCH.x, y: TORCH.y, emission: TORCH.emission });
     displayFrames(20);
     const before = canvasPixels(view.app);
     expect(brightest(before)).toBeGreaterThan(60);
 
     for (let round = 0; round < 3; round++) {
-      const id = store.getState().addLight({ x: DARKNESS.x, y: DARKNESS.y, emission: DARKNESS.emission });
+      const id = store.getState().addObject('lights', { x: DARKNESS.x, y: DARKNESS.y, emission: DARKNESS.emission });
       displayFrames(20);
       const dark = canvasPixels(view.app);
       // Below the token, past its footprint: it sees nothing while it stands in the darkness
       const below = ((MAP + 90) * MAP * 2 + MAP) * 4;
       expect(dark[below]! + dark[below + 1]! + dark[below + 2]!).toBeLessThan(before[below]! + before[below + 1]! + before[below + 2]! - 30);
-      store.getState().deleteLight(id);
+      store.getState().removeObjects([id]);
       displayFrames(20);
     }
 
@@ -166,18 +166,18 @@ describe('a source of magical darkness added and deleted again', () => {
     const state = store.getState();
     state.setSceneLighting({ enabled: true, ambient: 0.1 });
     state.setGMView(false);
-    state.addWall({ type: 'solid', p1: { x: 40, y: 100 }, p2: { x: 220, y: 100 } });
-    state.addWall({ type: 'solid', p1: { x: 220, y: 100 }, p2: { x: 220, y: 220 } });
-    state.addWall({ type: 'door', closed: false, p1: { x: 120, y: 100 }, p2: { x: 150, y: 100 } });
-    state.addLight({ x: TORCH.x, y: TORCH.y, emission: { ...TORCH.emission, animation: 'torch' } });
+    state.addObject('walls', { type: 'solid', p1: { x: 40, y: 100 }, p2: { x: 220, y: 100 } });
+    state.addObject('walls', { type: 'solid', p1: { x: 220, y: 100 }, p2: { x: 220, y: 220 } });
+    state.addObject('walls', { type: 'door', closed: false, p1: { x: 120, y: 100 }, p2: { x: 150, y: 100 } });
+    state.addObject('lights', { x: TORCH.x, y: TORCH.y, emission: { ...TORCH.emission, animation: 'torch' } });
     store.setState((s) => ({ objects: { ...s.objects, tokens: { ada: token('ada', 50, 120) } } }));
     displayFrames(10);
     const levels = [...LIGHTING_QUALITY_LEVELS];
     for (let step = 0; step < 24; step++) {
       if (step % 4 === 0) {
-        const id = store.getState().addLight({ x: 50 + step * 6, y: 120, emission: { ...DARKNESS.emission, dim: 2 } });
+        const id = store.getState().addObject('lights', { x: 50 + step * 6, y: 120, emission: { ...DARKNESS.emission, dim: 2 } });
         displayFrames(3);
-        if (step % 8 === 0) store.getState().deleteLight(id);
+        if (step % 8 === 0) store.getState().removeObjects([id]);
       }
       store.getState().updateToken('ada', { x: 50 + step * 7, y: 112 });
       if (step % 3 === 0) view.setQuality(LIGHTING_QUALITY[levels[(step / 3) % levels.length]!]);
@@ -185,7 +185,7 @@ describe('a source of magical darkness added and deleted again', () => {
       displayFrames(3);
       canvasPixels(view.app);
     }
-    for (const id of Object.keys(store.getState().objects.lights ?? {})) store.getState().deleteLight(id);
+    for (const id of Object.keys(store.getState().objects.lights ?? {})) store.getState().removeObjects([id]);
     displayFrames(10);
     expect(watch.findings).toEqual([]);
     expectNothingSaid(said);

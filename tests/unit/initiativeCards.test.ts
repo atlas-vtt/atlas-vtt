@@ -1,6 +1,7 @@
 import { produce } from 'immer';
 import { describe, expect, it } from 'vitest';
 import { createInitiativeActions } from '../../src/app/stores/initiativeSlice';
+import { NO_RULES } from '../mocks/rulesLookup';
 import { shuffledDeck } from '../../src/app/initiative/initiativeDice';
 import { cardsShort } from '../../src/app/initiative/cardGroups';
 import { createDefaultInitiativeState, type InitiativeEntry } from '../../src/app/types/initiativeTypes';
@@ -27,7 +28,7 @@ function setup(tokens: TokenEntity[], random: () => number = inOrder) {
     initiativeTrackerOpen: true,
     objects: { tokens: Object.fromEntries(tokens.map((t) => [t.id, t])) as Record<string, TokenEntity> },
   };
-  const actions = createInitiativeActions((recipe) => { state = produce(state, recipe); }, 'cards', () => state, random);
+  const actions = createInitiativeActions((recipe) => { state = produce(state, recipe); }, () => state, { rules: NO_RULES, random });
   const get = (): typeof state => state;
   return { actions, get };
 }
@@ -175,6 +176,20 @@ describe('a fight by cards', () => {
     actions.endCombat();
     expect(get().initiative.cards).toBeUndefined();
     expect(cards(get())).toEqual([['a', undefined], ['b', undefined]]);
+  });
+
+  it('deals as a new round begins when the last combatant delays its turn', () => {
+    // Round 1 deals 1, 2, 3 in order; every later deck is shuffled
+    const { actions, get } = setup([token('a'), token('b'), token('c')], shufflesAfter(9));
+    actions.startCombat({ ...CARDS, dealEachRound: true });
+    const first = cards(get());
+    actions.nextTurn();
+    actions.nextTurn();
+    actions.delayInitiativeTurn('c');
+    expect(get().initiative.round).toBe(2);
+    expect(get().initiative.cards?.kept?.[1]).toEqual({ a: 1, b: 2, c: 3 });
+    expect(cards(get())).not.toEqual(first);
+    expect(turn(get())[1]).not.toBe('c');
   });
 
   it('passes the turn on when the combatant with it leaves, and deals as a new round begins', () => {

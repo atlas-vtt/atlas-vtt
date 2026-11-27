@@ -71,7 +71,7 @@ async function show({ names, dock, cards }: View): Promise<HTMLElement> {
     initiativeTrackerOpen: true,
     objects: { ...store.getState().objects, tokens },
     initiative: {
-      ...createDefaultInitiativeState(), isActive: true, round: 1, currentIndex: 0,
+      ...createDefaultInitiativeState(), isActive: true, round: 1,
       entries: [entryOf('g1', 0, cards ? 3 : undefined), entryOf('hero', 1, cards ? 7 : undefined), entryOf('g2', 2, cards ? 12 : undefined)],
       ...(cards ? { cards: { deck: 20 } } : {}),
     },

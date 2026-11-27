@@ -2,11 +2,10 @@ import type { ViewState } from '../../types/viewState';
 import { mapTokens } from '../../tokens/offMap';
 import { levelObjects } from '../../levels/levelObjects';
 
-/** State used to synchronize token sprites and their movement controls. */
+/** State used to synchronize token sprites. */
 export interface TokenSyncState {
   tokens: ViewState['objects']['tokens'];
   isMapLoading: ViewState['isMapLoading'];
-  selectedIds: ViewState['selectedIds'];
 }
 
 /**
@@ -14,6 +13,6 @@ export interface TokenSyncState {
  * it shows (`levelObjects`), so a combatant kept beside it gets no sprite, and with it no hit area,
  * controls, badge or place in a picture of the scene (canvas, players' frame, thumbnail).
  */
-export function tokenSyncState(state: Pick<ViewState, 'objects' | 'levels' | 'viewedLevel' | 'isMapLoading' | 'selectedIds'>): TokenSyncState {
-  return { tokens: mapTokens(levelObjects(state)), isMapLoading: state.isMapLoading, selectedIds: state.selectedIds };
+export function tokenSyncState(state: Pick<ViewState, 'objects' | 'levels' | 'viewedLevel' | 'isMapLoading'>): TokenSyncState {
+  return { tokens: mapTokens(levelObjects(state)), isMapLoading: state.isMapLoading };
 }

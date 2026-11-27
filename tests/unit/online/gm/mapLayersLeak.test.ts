@@ -137,7 +137,7 @@ describe("what players are sent of the map's layers", () => {
             lighting: { enabled: lit, ambient: random() * 0.6 },
             objects: { ...sceneState().objects, fog: FOG, walls: sceneWalls, pins, drawings, texts, tokens: entities },
           }),
-          initiative: { entries, currentIndex: 0, round: 1, isActive: true, config: { autoSort: true } },
+          initiative: { entries, round: 1, isActive: true, config: { autoSort: true } },
           initiativeTrackerOpen: true,
         } as ReturnType<typeof sceneState>;
       };

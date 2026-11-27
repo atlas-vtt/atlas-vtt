@@ -68,7 +68,7 @@ describe('copies of drawings and texts on a level that is nearly full', () => {
 
   it('copies the tokens of an Alt-drag and leaves the drawings selected with them, saying why', () => {
     const store = holding(MAX_DRAWINGS, 0);
-    const token = store.getState().addToken({ kind: 'character', x: 100, y: 100, imagePath: 'goblin.png', name: 'Goblin' } as never);
+    const token = store.getState().addTokens([{ kind: 'character', x: 100, y: 100, imagePath: 'goblin.png', name: 'Goblin' } as never])[0]!;
     store.getState().setSelection([token, 'd0']);
     const copies = copyDragSelection(store, [token], { [token]: { x: 100, y: 100 } });
     expect(copies?.ids).toHaveLength(1);
@@ -120,7 +120,7 @@ describe('a level that holds more drawings or texts than are shown', () => {
     // Nothing is removed, and no later change tells again.
     expect(scene.drawings()).toHaveLength(MAX_DRAWINGS + 5);
     scene.store.getState().setSelection(['d0']);
-    scene.store.getState().deleteAnnotations(['d1']);
+    scene.store.getState().removeObjects(['d1']);
     expect(scene.full).toHaveBeenCalledTimes(1);
     load(scene, 3, MAX_TEXTS + 1);
     expect(scene.full.mock.calls).toEqual([['drawingsLeftOut'], ['textsLeftOut']]);

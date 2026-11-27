@@ -32,7 +32,7 @@ function openMap(dungeon: CollectionSettings, held: Record<string, ResourceValue
   const store = createViewAtlasStore(world.app, 'campaign-resource-rules-test');
   store.getState().setPersistenceEnabled(false);
   store.getState().setMapPath(DUNGEON_MAP);
-  store.getState().addToken(character({ resources: held }));
+  store.getState().addTokens([character({ resources: held })]);
   const rules = new TokenCollectionSync(world.app, store.getState, {
     refreshRules: () => statblock.followRules(),
     refreshArt: async () => undefined,

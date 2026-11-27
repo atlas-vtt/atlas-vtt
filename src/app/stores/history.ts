@@ -1,7 +1,7 @@
 import type { StoreApi } from 'zustand';
 import type { HistoryState } from './history/historyStore';
 
-export { HISTORY_LIMIT, type HistorySnapshot, type HistoryStep } from './history/trackedSlice';
+export { HISTORY_LIMIT, type HistorySnapshot, type HistoryStep, type UndoDepths } from './history/trackedSlice';
 export type { HistoryState } from './history/historyStore';
 export { withHistory } from './history/historyMiddleware';
 

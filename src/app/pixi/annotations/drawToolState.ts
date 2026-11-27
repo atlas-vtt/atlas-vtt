@@ -54,7 +54,7 @@ export interface TypingState extends SelectionState, Pick<ViewState, 'grid' | 'm
   setSelection(ids: string[]): void;
   addText(data: TextInput): string;
   updateText(id: string, changes: TextChanges): void;
-  deleteAnnotations(ids: readonly string[]): void;
+  removeObjects(ids: readonly string[]): void;
 }
 
 /** A store as typing uses it. */

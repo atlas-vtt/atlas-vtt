@@ -1,5 +1,5 @@
 import { newSceneTokenSettings } from '../resources/sceneVisibility';
-import { DEFAULT_TOKEN_SETTINGS } from '../storeFactory';
+import { DEFAULT_TOKEN_SETTINGS } from '../types/viewState';
 import type { CollectionSettings, GridUnitType } from '../types/collectionSettingsTypes';
 import type { SceneLighting } from '../types/lightingTypes';
 import { ATLAS_SCHEMA, ATLAS_VERSION, type MapFile } from './MapPersistence';

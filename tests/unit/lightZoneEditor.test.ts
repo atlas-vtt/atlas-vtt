@@ -97,7 +97,7 @@ describe('the light zone tool', () => {
 
   it('snaps a corner to a wall\'s end close by, and places it freely with Alt', () => {
     const made = setup();
-    made.store.getState().addWall({ type: 'solid', p1: { x: 100, y: 100 }, p2: { x: 300, y: 100 }, closed: true });
+    made.store.getState().addObject('walls', { type: 'solid', p1: { x: 100, y: 100 }, p2: { x: 300, y: 100 }, closed: true });
     made.click(104, 97);
     made.click(296, 105, { alt: true });
     made.click(200, 300);
@@ -108,7 +108,7 @@ describe('the light zone tool', () => {
 
   it(`begins no zone on a map that holds ${MAX_LIGHT_ZONES}, and says so`, () => {
     const made = setup();
-    for (let i = 0; i < MAX_LIGHT_ZONES - 1; i++) made.store.getState().addLightZone({ polygon: [{ x: 1000 + i * 30, y: 1000 }, { x: 1020 + i * 30, y: 1000 }, { x: 1020 + i * 30, y: 1020 }], ambient: 0 });
+    for (let i = 0; i < MAX_LIGHT_ZONES - 1; i++) made.store.getState().addObject('lightZones', { polygon: [{ x: 1000 + i * 30, y: 1000 }, { x: 1020 + i * 30, y: 1000 }, { x: 1020 + i * 30, y: 1020 }], ambient: 0 });
     // The last one that fits is drawn as ever.
     corners(made);
     made.editor.handleEnter();

@@ -1,4 +1,4 @@
-/** What the annotation actions write into a draft of the view store: one drawing made, changed, moved or removed. */
+/** What the annotation actions write into a draft of the view store: one drawing made, changed or moved. */
 
 import type { DrawingInput } from '../annotations/annotationTypes';
 import { placedOnViewedLevel, type LevelView } from '../levels/sceneLevels';
@@ -85,17 +85,4 @@ export function shiftDrawing(drawing: DrawingStroke, dx: number, dy: number): vo
   shift(drawing.points, dx, dy);
   shift(drawing.anchors, dx, dy);
   if (Array.isArray(drawing.holes)) for (const ring of drawing.holes) shift(ring, dx, dy);
-}
-
-/** Removes drawings and texts by id and takes them out of the selection. */
-export function removeAnnotations(draft: AnnotationsDraft, ids: Iterable<string>): void {
-  const { drawings, texts } = draft.objects;
-  const gone = new Set<string>();
-  for (const id of ids) {
-    if (!drawings[id] && !texts[id]) continue;
-    delete drawings[id];
-    delete texts[id];
-    gone.add(id);
-  }
-  if (gone.size > 0) draft.selectedIds = draft.selectedIds.filter((id) => !gone.has(id));
 }
