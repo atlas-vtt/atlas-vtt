@@ -30,6 +30,8 @@ export interface ImageTakeoverPorts<File> {
   /** Whether Atlas's own player window is open: only then is Atlas asked to show the image there. */
   localWindowOpen(): boolean;
   notice(text: string): void;
+  /** Whether players online see an image changed, and with it what Atlas's image display answers. */
+  changed?(): void;
 }
 
 /** A takeover under way. */
@@ -104,19 +106,23 @@ export class ImageTakeover<File> {
   private readonly service: () => unknown;
   private readonly ports: ImageTakeoverPorts<File>;
   private taken: { readonly service: unknown; readonly takeover: ImageDisplayTakeover } | null = null;
+  /** Whether players online were shown an image at the last look. */
+  private shownOnline = false;
 
   constructor(service: () => unknown, ports: ImageTakeoverPorts<File>) {
     this.service = service;
     this.ports = ports;
   }
 
-  /** Looks again: takes the service over while a table runs, and gives it back otherwise. */
+  /** Looks again: takes the service over while a table runs, and gives it back otherwise; says when players online were shown an image or no longer are. */
   sync(): void {
     const service = this.ports.share() === null ? null : this.service() ?? null;
     if (this.taken !== null && this.taken.service !== service) this.dispose();
-    if (service === null || this.taken !== null) return;
-    const takeover = takeOverImageDisplay(service, this.ports);
-    if (takeover !== null) this.taken = { service, takeover };
+    if (service !== null && this.taken === null) {
+      const takeover = takeOverImageDisplay(service, this.ports);
+      if (takeover !== null) this.taken = { service, takeover };
+    }
+    this.shown(this.ports.share()?.isShown === true);
   }
 
   /** Takes the shown image away from the players online, and from Atlas's own window where that shows it too. */
@@ -129,5 +135,12 @@ export class ImageTakeover<File> {
   dispose(): void {
     this.taken?.takeover.end();
     this.taken = null;
+    this.shown(false);
+  }
+
+  private shown(online: boolean): void {
+    if (online === this.shownOnline) return;
+    this.shownOnline = online;
+    this.ports.changed?.();
   }
 }
