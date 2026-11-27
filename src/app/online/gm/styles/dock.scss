@@ -135,6 +135,15 @@ $dock-inner: calc(#{$button-height-l} + 2 * #{$surface-inset});
 .atlas-online-tone--red { --atlas-online-tone: var(--color-red); }
 .atlas-online-tone--muted { --atlas-online-tone: var(--text-faint); }
 
+// The status as a dot in its tone: in the online control's status line, and on the DM screen's Sidekick control.
+.atlas-online-status__dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: $radius-full;
+  background: var(--atlas-online-tone);
+}
+
 // Where it sat on the toolbar-sized button: over that button's top-right corner, $spacing-xs out.
 .atlas-online-badge {
   position: absolute;

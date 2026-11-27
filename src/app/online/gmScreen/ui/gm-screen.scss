@@ -36,17 +36,6 @@
   height: 18px;
 }
 
-.atlas-gm-screen-control__count {
-  min-width: 20px;
-  padding: 0 $spacing-xs;
-  border-radius: $radius-full;
-  background: var(--background-modifier-success);
-  color: var(--text-normal);
-  font-size: $font-ui-smaller;
-  font-variant-numeric: tabular-nums;
-  text-align: center;
-}
-
 .atlas-gm-screen-control__waiting {
   position: absolute;
   inset-block-start: $spacing-xs;

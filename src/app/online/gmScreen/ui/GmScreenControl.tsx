@@ -12,9 +12,9 @@ import type { CloseReason } from './useLightDismiss.ts';
 const NAME = t('gmScreen.name');
 
 /**
- * The DM screen's control for Sidekick on a phone or tablet: a button that says whether it runs and how
- * many devices are connected, and its panel. A device that asks to join opens the panel. Shown only
- * while online play is loaded.
+ * The DM screen's control for Sidekick on a phone or tablet: a button that says whether it runs, by the online
+ * control's status dot (green while it runs, grey while not), and its panel, which lists the devices. A device that
+ * asks to join opens the panel. Shown only while online play is loaded.
  */
 export function GmScreenControl(): React.JSX.Element | null {
   const handle = useGmScreen();
@@ -32,9 +32,7 @@ export function GmScreenControl(): React.JSX.Element | null {
   }
   if (handle === null) return null;
   const { view, session, account } = handle;
-  const running = view.status === 'connecting' || view.status === 'online';
-  const connected = view.devices.filter((device) => device.connected).length;
-  const label = running ? t('gmScreen.controlRunning', { name: NAME, devices: t('gmScreen.deviceCount', { count: connected }) }) : t('gmScreen.start', { name: NAME });
+  const label = view.status === 'online' ? t('gmScreen.controlRunning', { name: NAME }) : view.status === 'stopped' ? t('gmScreen.start', { name: NAME }) : t('gmScreen.starting', { name: NAME });
   const close = (reason: CloseReason): void => {
     setOpen(false);
     // A press outside leaves the focus where it landed; closed from the keyboard or its own Close, it comes back here.
@@ -46,7 +44,7 @@ export function GmScreenControl(): React.JSX.Element | null {
         <Button ref={button} type="button" variant="ghost" className="atlas-gm-screen-control__button" aria-expanded={open} onClick={() => setOpen(!open)}>
           <SidekickIcon className="atlas-gm-screen-control__icon" />
           <span>{NAME}</span>
-          {running && <span className="atlas-gm-screen-control__count" aria-hidden="true">{connected}</span>}
+          <span className={`atlas-online-status__dot atlas-online-tone--${view.status === 'online' ? 'green' : 'muted'}`} aria-hidden="true" />
           {view.waiting > 0 && <span className="atlas-gm-screen-control__waiting" aria-hidden="true" />}
         </Button>
       </LabelTooltip>

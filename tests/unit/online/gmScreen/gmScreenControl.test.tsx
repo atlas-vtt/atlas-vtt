@@ -8,7 +8,7 @@ import { gmScreenControlShown, setGmScreenHost } from '../../../../src/app/onlin
 import { noticeKnocks } from '../../../../src/app/online/gmScreen/knockNotice.ts';
 import { GmScreenControl } from '../../../../src/app/online/gmScreen/ui/GmScreenControl';
 import { shownLink } from '../../../../src/app/online/gmScreen/ui/LinkCopy';
-import { armed, hosted, panel, shown, startedFromPanel } from './controlRig.tsx';
+import { armed, connects, hosted, panel, shown, startedFromPanel } from './controlRig.tsx';
 import { deviceId, RelaySocket, sessionRig } from './sessionRig.ts';
 
 const PHONE = deviceId('p');
@@ -47,7 +47,22 @@ describe('the DM screen\'s control for the GM screen', () => {
     expect(rest).toMatch(/#…$/);
     expect(copy.textContent).not.toContain(rig.saved.at(-1)?.link.key ?? 'no key');
     expect(screen.getByText('No device allowed yet.')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Sidekick runs: 0 devices connected' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Sidekick runs' })).toBeTruthy();
+  });
+
+  it('says whether Sidekick runs by one dot of the online control\'s, green while it runs and grey while not, and counts no device', async () => {
+    const rig = await shown();
+    const control = (): HTMLElement => document.querySelector<HTMLElement>('.atlas-gm-screen-control__button')!;
+    const dot = (): string[] => [...control().querySelectorAll('.atlas-online-status__dot')].map((each) => each.className);
+    expect(dot()).toEqual(['atlas-online-status__dot atlas-online-tone--muted']);
+    await startedFromPanel(rig);
+    await connects(rig, PHONE, 'Phone');
+    expect(dot()).toEqual(['atlas-online-status__dot atlas-online-tone--green']);
+    expect(control().textContent).toBe('Sidekick');
+    expect(control().getAttribute('aria-label') ?? '').not.toMatch(/\d/);
+    rig.session.stop();
+    await waitFor(() => expect(dot()).toEqual(['atlas-online-status__dot atlas-online-tone--muted']));
+    expect(control().textContent).toBe('Sidekick');
   });
 
   it('asks about a device with its name and number, opening the panel, and takes the answer only once the prompt stood', async () => {
@@ -105,7 +120,7 @@ describe('the DM screen\'s control for the GM screen', () => {
       await rig.settle();
     });
     expect(screen.getByText('Connected')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Sidekick runs: 1 device connected' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Sidekick runs' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Remove Phone' }));
     expect(rig.socket().framesOf('kick')).toEqual([]);
     await armed();
