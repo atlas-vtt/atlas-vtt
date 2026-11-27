@@ -38,7 +38,10 @@ export interface FrontScene {
   rules(): InitiativeRules;
   updateToken(id: string, updates: TokenUpdates): void;
   locateToken(id: string): void;
-  /** Calls `listener` with every roll its map's dice tool makes, as it is made (`dice-rolled`); returns what stops it. */
+  /**
+   * Calls `listener` with every roll its map's dice tool makes, as it is made (`dice-rolled`), before the map's other dice
+   * listeners, so one of them that throws cannot hide a roll that was made; returns what stops it.
+   */
   watchRolls(listener: (result: DiceRollResult) => void): () => void;
 }
 
@@ -66,7 +69,7 @@ function frontSceneOf(app: App, view: AtlasView): FrontScene {
     watchRolls: (listener) => {
       const bus = view.serviceManager.getEventBus();
       const rolled = (result: DiceRollResult): void => listener(result);
-      bus.on('dice-rolled', rolled);
+      bus.prependListener('dice-rolled', rolled);
       return () => void bus.off('dice-rolled', rolled);
     },
   };
