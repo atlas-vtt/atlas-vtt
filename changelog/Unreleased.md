@@ -18,7 +18,7 @@
 - Table log: roll totals are written in the text colour instead of your accent colour, so they read well with a red or pale accent; critical rolls keep their colour
 - Appearance settings and the welcome wizard: dragging in the colour picker for the accent or ivy colour is smooth again; Atlas takes the colour once you stop moving
 - Initiative: taking the combatant whose turn it is out of the initiative, or deleting its token, now passes the turn by defeated combatants, as Next turn does, and when nobody else can act, the turn rests at the next combatant's place
-- Initiative: delaying the last combatant in a fight by cards now deals the next round's cards, as Next turn does
+- Initiative: in a fight by cards, a combatant's menu now offers Delay Turn and Act Now, as in turn order, and delaying the last combatant deals the next round's cards, as Next turn does
 
 ## Atlas Online
 

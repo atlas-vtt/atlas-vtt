@@ -119,8 +119,9 @@ export function delayTurn(initiative: InitiativeState, id: string, turns: OrderT
 /**
  * A delayed combatant acts now: it takes its place right before the combatant whose turn it is,
  * with that combatant's number and tie-break (`tieBreak`), so a later sort keeps it there, and
- * takes the turn. With nobody else's turn it acts from where it is. By sides the turn is a
- * side's: it only stops waiting.
+ * takes the turn. By cards the order follows the cards, not the numbers: its own number stays.
+ * With nobody else's turn it acts from where it is. By sides the turn is a side's: it only
+ * stops waiting.
  */
 export function actNow(initiative: InitiativeState, id: string): void {
   const { entries } = initiative;
@@ -133,8 +134,10 @@ export function actNow(initiative: InitiativeState, id: string): void {
   if (current) {
     entries.splice(from, 1);
     entries.splice(entries.indexOf(current), 0, entry);
-    setInitiative(entry, current.initiative);
-    entry.tieBreak = tieBreakModifier(current);
+    if (!initiative.cards) {
+      setInitiative(entry, current.initiative);
+      entry.tieBreak = tieBreakModifier(current);
+    }
     renumber(entries);
   }
   giveTurn(initiative, entries.indexOf(entry));
