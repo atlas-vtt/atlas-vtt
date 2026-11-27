@@ -38,7 +38,7 @@ export interface InitiativeTurnActions {
   resetInitiativeNumbers: () => void;
   /** Whether a combatant sits the running round out. */
   setInitiativeSitsOut: (id: string, sitsOut: boolean) => void;
-  /** The combatant delays its turn and waits outside the order (turn order); had it the turn, the turn passes on as Next turn would. */
+  /** The combatant delays its turn and waits outside the order (turn order or by cards); had it the turn, the turn passes on as Next turn would. */
   delayInitiativeTurn: (id: string) => void;
   /** The delayed combatant acts now, before the combatant whose turn it is. */
   actNowInInitiative: (id: string) => void;
