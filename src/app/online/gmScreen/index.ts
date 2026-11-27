@@ -8,4 +8,5 @@ export { gmScreenView, type GmScreenDeviceView, type GmScreenStatus, type GmScre
 export { MAX_DEVICES, newGmScreenRecord, readGmScreenRecord, type GmScreenDevice, type GmScreenRecord, type GmScreenRoom } from './gmScreenRecord.ts';
 export { relayRooms, type CreateRoom, type RoomAccount, type RoomAnswer } from './gmScreenRoom.ts';
 export type { Knock } from './gmScreenKnocks.ts';
+export { readHeldMark, type HeldMark, type HeldStore } from './heldMarks.ts';
 export type { DeviceMessageType, GmScreen, GmScreenOutlet } from './screens.ts';

@@ -22,6 +22,7 @@ import { atlasImageDisplay, localPlayerWindowOpen, readShownFile } from './image
 import { LogMounts } from './log/LogMounts.ts';
 import { TableChat } from './tableChat.ts';
 import { lootCardOf } from './log/lootCard.ts';
+import { imageDisplayChanged } from '../../services/imageDisplayChanges';
 import { PlayerLootDisplay } from '../../services/PlayerLootDisplay';
 import { copyText } from './dock/dockDom.ts';
 import { onlineApi } from './dock/panelModel.ts';
@@ -203,6 +204,7 @@ export class OnlineFeature extends Component {
       pathOf: (file) => file.path,
       localWindowOpen: () => localPlayerWindowOpen(this.app),
       notice: (text) => showNotice(text),
+      changed: imageDisplayChanged,
     });
     this.register(() => images.dispose());
     // Loot handed out from the roller goes into the table's log while a table runs.

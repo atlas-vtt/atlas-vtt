@@ -21,6 +21,8 @@ export interface TableEvents {
   access(closesAt: number | null): void;
   /** The table's answer to a time exchange. */
   time?(t1: number, t2: number): void;
+  /** A frame of the relay came, the keep-alive's answer among them: the relay holds the connection now. */
+  heard?(): void;
 }
 
 /** The table's gates as the connection needs them: what the relay is told, and what it says back. */
@@ -283,6 +285,7 @@ export class TableConnection {
   private receive(socket: WebSocket, text: string): void {
     const pong = text === KEEPALIVE_PONG;
     this.pulse.heard(pong);
+    this.events.heard?.();
     if (pong) return;
     const frame = parseRelayFrame(text);
     if (frame === null) return;

@@ -20,10 +20,12 @@ export type KeysRefusal =
 
 /** The sound remote's commands and state, and the moods its keys draw: made while a device is connected. */
 export interface KeysSource {
-  readonly control: Pick<RemoteControl, 'run' | 'state' | 'watch' | 'dispose'>;
+  readonly control: Pick<RemoteControl, 'run' | 'state' | 'watch'>;
   moods(): readonly Mood[];
   /** Whether an online table runs, which the pause and the curtain reach without the player window. */
   readonly online: OnlineTable;
+  /** Lets go of the control and of everything made with it. */
+  close(): void;
 }
 
 export interface OnlineTable {
@@ -110,7 +112,7 @@ export class KeysScreen implements GmScreen {
     this.live = null;
     live?.watch.stop();
     live?.stopOnline();
-    live?.source.control.dispose();
+    live?.source.close();
   }
 
   /** Never at once: a burst of changes goes as one, at most every `KEYS_GAP_MS`. */

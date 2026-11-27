@@ -80,9 +80,7 @@ export async function keysRig(world: SoundWorld = soundWorld(), table?: TableSou
   rig.session.plug(new KeysScreen({
     open: () => {
       const control = world.control(table);
-      const source: KeysSource = { control, moods: () => world.moods, online: tableOnline };
-      const dispose = control.dispose.bind(control);
-      vi.spyOn(control, 'dispose').mockImplementation(() => (disposed.push(source), dispose()));
+      const source: KeysSource = { control, moods: () => world.moods, online: tableOnline, close: () => (disposed.push(source), control.dispose()) };
       opened.push(source);
       return source;
     },

@@ -43,4 +43,11 @@ describe('asking the relay for the GM screen\'s room', () => {
     await expired.rooms(CODE);
     expect(expired.signedOut).toEqual([1]);
   });
+
+  it('says a refusal may pass where the relay was busy or not reached, and never where the account is the reason', async () => {
+    expect(await rig({ status: 503, json: { error: 'try again' } }).rooms(CODE)).toMatchObject({ later: true });
+    const unreachable = relayRooms(() => Promise.reject(new Error('offline')), 'https://relay.example', { token: () => 'account-token', signedOutByServer: () => undefined, refresh: () => Promise.resolve() }, (() => undefined) as never, fakeTimers());
+    expect(await unreachable(CODE)).toMatchObject({ later: true });
+    for (const status of [401, 403, 426]) expect(await rig({ status, json: null }).rooms(CODE)).not.toHaveProperty('later');
+  });
 });

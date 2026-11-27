@@ -11,17 +11,29 @@ import { tableOnline } from './tableOnline.ts';
 
 /**
  * Plugs the Keys and Sound screens into the session, on a sound remote control of their own: the Stream
- * Deck's switch and its life do not touch it. A device never presses the image under this computer's
- * pointer, so the pointer is never followed for it. Returns what unplugs them.
+ * Deck's switch and its life do not touch it. The handout key shows the image under this computer's
+ * pointer, which is followed for as long as Sidekick runs, whatever its devices do: a phone that locks
+ * leaves and joins again, and the pointer it finds must be the one that came to rest meanwhile. The
+ * follower is Sidekick's own, so the Stream Deck stopping its follower leaves this one listening, and the
+ * other way round. Returns what unplugs them and stops the follower.
  */
 export function plugKeysScreen(app: App, session: GmScreenSession, timers: Timers): () => void {
-  return session.plug(new KeysScreen({
+  const hovered = new HoveredElement(app.workspace);
+  const follow = (): void => (session.view().status === 'stopped' ? hovered.dispose() : hovered.start());
+  follow();
+  const stopFollowing = session.onChange(follow);
+  const unplug = session.plug(new KeysScreen({
     open: () => {
       const moods = MoodStore.forApp(app);
-      const control = new RemoteControl({ director: SoundDirector.forApp(app), moods, table: remoteTableOf(app, new HoveredElement(app.workspace)) });
-      return { control, moods: () => moods.moods(), online: tableOnline };
+      const control = new RemoteControl({ director: SoundDirector.forApp(app), moods, table: remoteTableOf(app, hovered) });
+      return { control, moods: () => moods.moods(), online: tableOnline, close: () => control.dispose() };
     },
     outlet: session,
     timers,
   }));
+  return () => {
+    unplug();
+    stopFollowing();
+    hovered.dispose();
+  };
 }

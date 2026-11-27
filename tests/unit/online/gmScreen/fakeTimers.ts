@@ -1,7 +1,7 @@
 import type { Timers } from '../../../../src/app/online/gm/companionTimers.ts';
 
 /** The companion's timers under the test's hand. */
-export function fakeTimers(): Timers & { advance(ms: number): void } {
+export function fakeTimers(): Timers & { advance(ms: number): void; sleep(ms: number): void } {
   let now = 0;
   let ids = 0;
   let timers: { at: number; run: () => void; id: number }[] = [];
@@ -19,6 +19,16 @@ export function fakeTimers(): Timers & { advance(ms: number): void } {
         next.run();
       }
       now = end;
+    },
+    // The computer sleeps: the clock moves on and nothing runs; on waking, every timer that came due runs at once, late.
+    sleep: (ms) => {
+      now += ms;
+      for (;;) {
+        const next = timers.filter((timer) => timer.at <= now).sort((a, b) => a.at - b.at)[0];
+        if (next === undefined) break;
+        timers = timers.filter((timer) => timer !== next);
+        next.run();
+      }
     },
   };
 }
