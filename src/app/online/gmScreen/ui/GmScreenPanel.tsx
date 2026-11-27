@@ -55,8 +55,8 @@ function StoppedBody({ session, view, account }: Omit<GmScreenPanelProps, 'onClo
 }
 
 /**
- * What moves the panel's rows and buttons on screen: a device that asks (and how many wait), the devices listed, the
- * devices section folding or opening, and the line under the code, which may take another number of lines.
+ * What moves the devices' rows on screen, which a Remove's second press waits out: a device that asks (and how many
+ * wait), the devices listed, the devices section folding or opening, and the line under the code.
  */
 const layoutOf = (view: GmScreenView, fold: DeviceFoldState): string => `${view.knock?.id ?? ''} ${String(view.waiting > 1)} ${view.devices.length} ${String(fold.open)} ${view.status}`;
 
@@ -74,7 +74,7 @@ function RunningBody({ session, view, fold, openedForKnock }: { session: GmScree
         </>
       )}
       <DeviceList devices={view.devices} fold={fold} layout={layoutOf(view, fold)} remove={(id) => session.remove(id)} />
-      <PanelActions devices={view.devices.length} layout={layoutOf(view, fold)} openedForKnock={openedForKnock} newLink={() => session.newLink()} stop={() => session.stop()} />
+      <PanelActions devices={view.devices.length} openedForKnock={openedForKnock} newLink={() => session.newLink()} stop={() => session.stop()} />
     </>
   );
 }

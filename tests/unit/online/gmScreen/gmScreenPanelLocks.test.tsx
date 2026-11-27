@@ -10,6 +10,7 @@ const PHONE = deviceId('p');
 
 const stop = (): HTMLElement => within(panel()).getByRole('button', { name: 'Stop Sidekick' });
 const devices = (): HTMLElement => within(panel()).getByRole('button', { name: /Devices/ });
+const newLink = (): HTMLElement => within(panel()).getByRole('button', { name: 'New link' });
 
 beforeAll(() => {
   MotionGlobalConfig.skipAnimations = true;
@@ -25,37 +26,37 @@ afterEach(() => {
   setGmScreenHost(null);
 });
 
-describe('the panel\'s controls in the moment something moved them', () => {
-  it('Stop takes no press, and says so, as the devices fold opens for a known device that connects again', async () => {
+describe('the panel\'s controls when something moved them', () => {
+  it('Stop and New link take a press at once as the devices fold opens for a known device that connects again', async () => {
     const rig = await shown();
     await startedFromPanel(rig);
     await connects(rig, PHONE, 'Phone');
     act(() => rig.socket().receive({ t: 'player-left', id: PHONE }));
     fireEvent.click(devices());
     await armed();
-    expect(stop().getAttribute('aria-disabled')).toBeNull();
     await act(async () => {
       rig.socket().receive({ t: 'player-joined', id: PHONE, name: 'Phone' });
       await rig.settle();
     });
     expect(devices().getAttribute('aria-expanded')).toBe('true');
-    expect(stop().getAttribute('aria-disabled')).toBe('true');
-    fireEvent.click(stop());
-    expect(rig.session.view().status).toBe('online');
-    await armed();
+    expect([stop(), newLink()].map((button) => button.getAttribute('aria-disabled'))).toEqual([null, null]);
     fireEvent.click(stop());
     expect(rig.session.view().status).toBe('stopped');
   });
 
-  it('Stop takes no press as the line under the code changes between scanning and connecting', async () => {
+  it('Stop takes a press at once as the line under the code changes, again and again, between scanning and connecting', async () => {
     const rig = await shown();
     await startedFromPanel(rig);
     await armed();
+    for (let flap = 0; flap < 3; flap++) {
+      act(() => rig.socket().drop());
+      await act(async () => {
+        await rig.settle();
+      });
+    }
     act(() => rig.socket().drop());
     expect(within(panel()).getByText(/Connecting/)).toBeTruthy();
-    fireEvent.click(stop());
-    expect(rig.session.view().status).toBe('connecting');
-    await armed();
+    expect(stop().getAttribute('aria-disabled')).toBeNull();
     fireEvent.click(stop());
     expect(rig.session.view().status).toBe('stopped');
   });

@@ -9,8 +9,6 @@ const NAME = t('gmScreen.name');
 interface PanelActionsProps {
   /** Devices allowed under the link now: a new link ends them all, so it asks first while there are any. */
   readonly devices: number;
-  /** Changes whenever the panel's content may have moved these buttons on screen. */
-  readonly layout: string;
   /** The panel opened itself for a device that asks to join: the buttons wait before they take a press. */
   readonly openedForKnock: boolean;
   readonly newLink: () => void;
@@ -19,14 +17,16 @@ interface PanelActionsProps {
 
 /**
  * New link and Stop. Stop ends nothing for good (Start comes back with the same link and devices), so it
- * asks nothing; a new link ends every device, so it says so in place and waits for a second press. None
- * takes a press for a moment after it appeared or moved, as Allow does, since a press meant for what
- * stood there before would land on it.
+ * asks nothing; a new link ends every device, so it says so in place and waits for a second press. Where the
+ * panel opened itself under the pointer for a device that asks to join, neither takes a press for a moment, once:
+ * a click meant for what stood there before would land on them. Nothing else locks them; the line under the
+ * code is one line in every language, so a connection that comes and goes moves nothing.
  */
-export function PanelActions({ devices, layout, openedForKnock, newLink, stop }: PanelActionsProps): React.JSX.Element {
+export function PanelActions({ devices, openedForKnock, newLink, stop }: PanelActionsProps): React.JSX.Element {
   const id = useId();
   const [asking, setAsking] = useState(false);
-  const armed = useArmed(asking ? 'asking' : layout, !openedForKnock);
+  // The confirm's New link waits too, as its own second press: a double-click on New link never makes a new link.
+  const armed = useArmed(asking ? 'asking' : 'opened', !openedForKnock);
   const cancel = useRef<HTMLButtonElement>(null);
   const pressNewLink = (): void => {
     if (devices > 0) setAsking(true);

@@ -42,20 +42,35 @@ describe('the panel\'s Stop and New link under a resting pointer', () => {
     expect(rig.session.view().status).toBe('stopped');
   });
 
-  it('take no press in the moment another device\'s prompt moved them, nor as the list of devices grows', async () => {
+  it('take a press at once while the panel stands open, as another device\'s prompt comes and the list of devices grows', async () => {
     const rig = await shown();
     await startedFromPanel(rig);
     await armed();
     await knocks(rig, PHONE, 'Phone');
-    fireEvent.click(stop());
-    expect(rig.session.view().status).toBe('online');
+    expect(stop().getAttribute('aria-disabled')).toBeNull();
     fireEvent.click(within(panel()).getByRole('button', { name: 'Allow' }));
     await act(async () => {
       rig.socket().receive({ t: 'player-joined', id: PHONE, name: 'Phone' });
       await rig.settle();
     });
+    expect(stop().getAttribute('aria-disabled')).toBeNull();
     fireEvent.click(stop());
-    expect(rig.session.view().status).toBe('online');
+    expect(rig.session.view().status).toBe('stopped');
+  });
+
+  it('wait only once in an opening for a device that asks: a connection that comes and goes then locks nothing', async () => {
+    const rig = await shown();
+    await startedFromPanel(rig);
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Close' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await knocks(rig, PHONE, 'Phone');
+    expect(stop().getAttribute('aria-disabled')).toBe('true');
+    await armed();
+    act(() => rig.socket().drop());
+    expect(within(panel()).getByText(/Connecting/)).toBeTruthy();
+    expect([stop(), newLink()].map((button) => button.getAttribute('aria-disabled'))).toEqual([null, null]);
+    fireEvent.click(stop());
+    expect(rig.session.view().status).toBe('stopped');
   });
 
   it('make no new link from a double-click: the confirm\'s New link waits before it takes a press', async () => {
