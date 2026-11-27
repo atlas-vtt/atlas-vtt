@@ -69,8 +69,9 @@ export type GmMessage =
    */
   | { readonly t: 'tokens'; readonly scene: string; readonly seq?: number; readonly tokens: readonly SharedToken[]; readonly cell: number; readonly snap: SnapGrid | null }
   /**
-   * Sent to one player: the ids of the tokens in scene `scene`'s list that are theirs, and by id the
-   * dice a roll for one of them is made with where they are not the scene's (`SharedRules.dice`: its
+   * Sent to one player: the ids of the tokens in scene `scene`'s list that are theirs, and of their
+   * combatants beside the map (`SharedCombatant.beside`; an older GM names none), and by id the dice a
+   * roll for one of them is made with where they are not the scene's (`SharedRules.dice`: its
    * character's template names a set of its own). Added later: an older GM names no dice.
    */
   | { readonly t: 'mine'; readonly scene: string; readonly tokens: readonly string[]; readonly dice?: Readonly<Record<string, SharedRollDice>> }
