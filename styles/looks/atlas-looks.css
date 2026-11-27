@@ -74,8 +74,9 @@ body.atlas-look.theme-light {
   --color-base-40: #a38d66;
   --color-base-50: #8d7c5f;
   --color-base-60: #7a694b;
-  --color-base-70: #67563b; /* muted ink: 4.5:1 on a button and the Sound page's keys */
+  --color-base-70: #59482e; /* muted ink: a step heavier than the faint one */
   --color-base-100: #3a2c1a;
+  --text-faint: #68583c; /* 4.5:1 on a field on a sidebar */
 
   /* overlays, hover tints and hairlines are mixed from ink and paper,
      not from black and white */
@@ -127,8 +128,9 @@ body.atlas-look.theme-dark {
   --color-base-40: #716247;
   --color-base-50: #7d6f55;
   --color-base-60: #96876a;
-  --color-base-70: #a89878;
+  --color-base-70: #c0b08f; /* muted ink: a step heavier than the faint one */
   --color-base-100: #ded2b8;
+  --text-faint: #aa9b80; /* 4.5:1 on a field on a sidebar */
 
   /* ink and paper swap places */
   --mono-0: #120e09;
@@ -527,8 +529,9 @@ body.atlas-look.theme-light.atlas-look-scifi {
   --color-base-40: #9c927f;
   --color-base-50: #8f8475;
   --color-base-60: #6e6557;
-  --color-base-70: #5b5245;
+  --color-base-70: #554c3f; /* muted ink: a step heavier than the faint one */
   --color-base-100: #16130f;
+  --text-faint: #665b4d; /* 4.5:1 on a field on a sidebar */
   --mono-0: #fdfbf6;
   --mono-rgb-0: 253, 251, 246;
   --mono-100: #16130f;

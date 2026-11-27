@@ -113,30 +113,45 @@ const GROUNDS: { name: string; ground: (c: (v: string) => Rgba) => Rgba; inks: s
   { name: 'a field', ground: (c) => over(c('var(--background-modifier-form-field)'), c('var(--background-primary)')), inks: [NORMAL, FAINT] },
   { name: 'a field on a sidebar', ground: (c) => over(c('var(--background-modifier-form-field)'), c('var(--background-secondary)')), inks: [NORMAL, FAINT] },
   { name: 'a hovered row', ground: (c) => over(c('var(--background-modifier-hover)'), c('var(--background-primary)')), inks: [NORMAL, MUTED, FAINT] },
+  // A hovered row's faint text takes the muted ink there (the loot roller's table tree), as faint reaches 4.5:1 on that
+  // ground only by merging into muted.
+  { name: 'a hovered row on a sidebar', ground: (c) => over(c('var(--background-modifier-hover)'), c('var(--background-secondary)')), inks: [NORMAL, MUTED] },
   { name: 'a button', ground: (c) => over(c('var(--interactive-normal)'), c('var(--background-primary)')), inks: [NORMAL, MUTED] },
   { name: 'a table head', ground: (c) => over(c('var(--table-header-background)'), c('var(--background-primary)')), inks: ['--table-header-color'] },
 ];
 
-/** Looks whose faint ink reaches 4.5:1 only as dark as their muted one, so the two would read as one. */
-const FAINT_AS_MUTED = new Set(['Medieval, light', 'Medieval, dark', 'Sci-fi, light']);
+/** How far apart the muted and the faint ink stand (their own contrast), so the quieter tiers still read as two. */
+const TIER_STEP = 1.2;
 
-function shortfalls(scheme: { mode: Mode; classes: string[] }, inks: (ink: string) => boolean): string[] {
+function shortfalls(scheme: { mode: Mode; classes: string[] }): string[] {
   const vars = variables(scheme);
   const c = (value: string): Rgba => colourOf(value, vars);
-  return GROUNDS.flatMap(({ name, ground, inks: set }) => {
+  return GROUNDS.flatMap(({ name, ground, inks }) => {
     const g = ground(c);
-    return set.filter(inks).map((ink) => ({ ink, name, ratio: contrast(over(c(`var(${ink})`), g), g) }))
+    return inks.map((ink) => ({ ink, name, ratio: contrast(over(c(`var(${ink})`), g), g) }))
       .filter((pair) => pair.ratio < 4.5)
       .map((pair) => `${pair.ink} on ${pair.name}: ${pair.ratio.toFixed(2)}:1`);
   });
 }
 
+/** The muted ink stands further from the page than the faint one, by `TIER_STEP` at least. */
+function tierStep(scheme: { mode: Mode; classes: string[] }): { further: boolean; step: number } {
+  const vars = variables(scheme);
+  const c = (value: string): Rgba => colourOf(value, vars);
+  const page = c('var(--background-primary)');
+  const [muted, faint] = [over(c(`var(${MUTED})`), page), over(c(`var(${FAINT})`), page)];
+  return { further: contrast(muted, page) > contrast(faint, page), step: Number(contrast(muted, faint).toFixed(2)) };
+}
+
 describe("contrast of Atlas' text (WCAG 2.1 AA, 4.5:1)", () => {
   for (const [name, scheme] of Object.entries(SCHEMES)) {
-    const faint = !FAINT_AS_MUTED.has(name);
     it(`reaches 4.5:1 in ${name}`, () => {
-      expect(shortfalls(scheme, (ink) => faint || ink !== FAINT)).toEqual([]);
+      expect(shortfalls(scheme)).toEqual([]);
     });
-    if (!faint) it.todo(`reaches 4.5:1 with the faint ink in ${name}, once its faint and muted inks are settled`);
+    it(`keeps the muted ink a step heavier than the faint one in ${name}`, () => {
+      const { further, step } = tierStep(scheme);
+      expect(further).toBe(true);
+      expect(step).toBeGreaterThanOrEqual(TIER_STEP);
+    });
   }
 });
