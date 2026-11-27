@@ -47,7 +47,7 @@ async function running(theme: Theme): Promise<HTMLElement> {
   const view = await dmScreen(theme);
   teardown = view.remove;
   const timers = handTimers();
-  const { session, relay } = scriptedSession(timers, 'https://play-staging.atlas-vtt.dev');
+  const { session, relay } = scriptedSession(timers, 'https://play.long-name.example.com');
   const account = accountRig('bearer-token');
   await account.control.refresh();
   control(view.leaf, session, account);
