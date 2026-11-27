@@ -79,17 +79,20 @@ function gpuOf(doc: Document, dice: DocumentDice): DiceGpu | null {
   canvas.addEventListener('webglcontextlost', (): void => {
     dice.lost = true;
   });
-  canvas.addEventListener('webglcontextrestored', (): void => {
-    dice.lost = false;
-    restorations++;
-    for (const listener of restoredListeners) listener();
-  });
   try {
     dice.gpu = new DiceGpu(canvas);
   } catch {
     // No WebGL (jsdom, a blocked or broken GPU): the math runs, the picture is missing.
     dice.gpu = null;
+    return null;
   }
+  // After the context's own owners, three.js and `DiceGpu`, which make what lived in it anew on
+  // this event: a view told of it may draw at once, between two listeners.
+  canvas.addEventListener('webglcontextrestored', (): void => {
+    dice.lost = false;
+    restorations++;
+    for (const listener of restoredListeners) listener();
+  });
   return dice.gpu;
 }
 
@@ -112,6 +115,17 @@ export function subscribeDiceRestored(listener: () => void): () => void {
 /** How many dice contexts came back so far, so a view knows when to draw what it could not while one was lost. */
 export function diceRestorations(): number {
   return restorations;
+}
+
+/**
+ * Whether a stage's frame shows its dice, which lie along its middle row. The
+ * GPU process can die in the middle of a frame, before the page hears that the
+ * context is lost: that frame reads back empty.
+ */
+export function showsDice(canvas: HTMLCanvasElement): boolean {
+  const row = canvas.getContext('2d')?.getImageData(0, Math.floor(canvas.height / 2), canvas.width, 1).data ?? [];
+  for (let i = 3; i < row.length; i += 4) if (row[i]! > 0) return true;
+  return false;
 }
 
 function buildStage(doc: Document, dice: DocumentDice): StageLease {
