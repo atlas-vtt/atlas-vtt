@@ -41,8 +41,8 @@ function silence(context: Context2D): () => void {
   };
 }
 
-/** Loses `gl` and restores it, calling `whileLost` in between; resolves once the restore was handled. */
-async function loseAndRestore(gl: WebGLRenderingContext | WebGL2RenderingContext, whileLost: () => void): Promise<void> {
+/** Loses `gl` and restores it `downForMs` later, calling `whileLost` in between; resolves once the restore was handled. */
+async function loseAndRestore(gl: WebGLRenderingContext | WebGL2RenderingContext, whileLost: () => void, downForMs: number): Promise<void> {
   const canvas = gl.canvas;
   const ext = gl.getExtension('WEBGL_lose_context')!;
   const lost = new Promise<void>((resolve) => canvas.addEventListener('webglcontextlost', () => resolve(), { once: true }));
@@ -50,6 +50,7 @@ async function loseAndRestore(gl: WebGLRenderingContext | WebGL2RenderingContext
   await lost;
   whileLost();
   await nextFrame();
+  await new Promise((resolve) => setTimeout(resolve, downForMs));
   const restored = new Promise<void>((resolve) => canvas.addEventListener('webglcontextrestored', () => resolve(), { once: true }));
   ext.restoreContext();
   await restored;
@@ -81,8 +82,11 @@ function skipDrawsOf(skipped: (source: unknown) => boolean): () => void {
 }
 
 export interface GpuProcess {
-  /** Kills the GPU process as Chromium tells the page of it, and resolves once the owner of `gl` handled the restored context. */
-  die(gl: WebGLRenderingContext | WebGL2RenderingContext): Promise<void>;
+  /**
+   * Kills the GPU process as Chromium tells the page of it, and resolves once the owner of `gl` handled the restored context.
+   * The context comes back after a frame, or `downForMs` later: in Obsidian it took about a second.
+   */
+  die(gl: WebGLRenderingContext | WebGL2RenderingContext, downForMs?: number): Promise<void>;
   stop(): void;
 }
 
@@ -130,7 +134,7 @@ export function watchGpuProcess(): GpuProcess {
     skipDrawsOf((source) => typeof source === 'object' && source !== null && unshared.has(source)),
   ];
   return {
-    async die(gl) {
+    async die(gl, downForMs = 0) {
       const lost = [...contexts].filter(([, inGpu]) => inGpu).map(([context]) => context);
       for (const bitmap of heldBitmaps) lostBitmaps.add(bitmap);
       heldBitmaps.clear();
@@ -146,7 +150,7 @@ export function watchGpuProcess(): GpuProcess {
           restores[index]!();
           context.canvas.dispatchEvent(new Event('contextrestored'));
         });
-      });
+      }, downForMs);
     },
     stop() {
       for (const stop of stops) stop();
