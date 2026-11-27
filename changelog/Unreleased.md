@@ -5,7 +5,7 @@
 ## Fixed
 
 - Sound: music no longer drops out for seconds at a time while the Sound page is open
-- Scroll bars in Atlas (the music list, the library and the asset manager) follow the list again on Obsidian installs with an older Electron
+- Scroll bars in Atlas (the music list, the library and the asset manager) follow the list again on Obsidian installs with an older Electron, and on the Sound page the music list's bar stays in the list and can be dragged
 - Statblocks: a counter pressed on the DM screen or a token's hover card shows the change at once while its note is open
 - Statblocks: quick presses on a counter all count
 - Lighting: when the graphics driver crashes while a lit map loads, Atlas no longer says your graphics card cannot run the lighting, and the lighting comes back by itself once the driver is back
