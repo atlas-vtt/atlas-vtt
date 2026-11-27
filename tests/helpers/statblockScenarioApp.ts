@@ -63,6 +63,8 @@ export function scenarioApp(scenarios: readonly StatblockScenario[], art: ArrayB
   Object.assign(app.vault.adapter, { getFullPath: (path: string) => `${VAULT_FOLDER}/${path}` });
   vi.mocked(app.vault.getResourcePath).mockImplementation((file: TFile) => `app://0b1f5e/${encodeURI(`${VAULT_FOLDER}/${file.path}`.slice(1))}?1700000000000`);
   const listeners = new Map<string, Set<Listener>>();
+  // Obsidian hands out the same cache object until the note changes, and readers compare it by identity.
+  const caches = new Map<string, { text: string; cache: { frontmatter: Record<string, unknown> } | null }>();
   Object.assign(app.metadataCache, {
     on: (name: string, callback: Listener) => {
       if (!listeners.has(name)) listeners.set(name, new Set());
@@ -71,8 +73,13 @@ export function scenarioApp(scenarios: readonly StatblockScenario[], art: ArrayB
     },
     offref: (ref: { name: string; callback: Listener }) => void listeners.get(ref.name)?.delete(ref.callback),
     getFileCache: (file: TFile) => {
-      const frontmatter = frontmatterOfText(files.get(file.path) ?? '');
-      return frontmatter ? { frontmatter } : null;
+      const text = files.get(file.path) ?? '';
+      const kept = caches.get(file.path);
+      if (kept?.text === text) return kept.cache;
+      const frontmatter = frontmatterOfText(text);
+      const cache = frontmatter ? { frontmatter } : null;
+      caches.set(file.path, { text, cache });
+      return cache;
     },
   });
   const workspace = new Map<string, Set<Listener>>();
