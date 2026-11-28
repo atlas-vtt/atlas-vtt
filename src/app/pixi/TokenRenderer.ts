@@ -1472,6 +1472,11 @@ export class TokenRenderer {
     return [...gmTokenLayers(mapTokens(levelObjects(this.store.getState())), this.tokenSprites), ...this.uiManager.getGmViewLayers(), ...this.playerSight.gmLayers(), ...this.turnMarkers.pictureLayers(), ...this.hiddenTurnLayers()];
   }
 
+  /** The resource and condition definitions of the map's collection the tokens are drawn by. */
+  public collectionRules(): Pick<TokenCollectionSync, 'resources' | 'conditions'> {
+    return this.collectionSync;
+  }
+
   /** Get all token sprites for external systems like SelectionManager. */
   public getTokenSprites(): Record<string, TokenGroupContainer> {
     return this.tokenSprites as Record<string, TokenGroupContainer>;

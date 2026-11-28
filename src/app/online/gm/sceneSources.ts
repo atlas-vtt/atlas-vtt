@@ -3,7 +3,8 @@ import { PlayedRules } from '../../campaigns/playedRules';
 import { CreatureIndex } from '../../creatures/CreatureIndex';
 import { SystemPresetFiles } from '../../services/systemPresets/SystemPresetFiles';
 import { atlasPlayerSettings, followAtlasSettings } from './atlasLighting.ts';
-import { followPlayerSight, type ObservedStore } from './atlasView.ts';
+import type { ObservedStore } from './atlasView.ts';
+import type { MapCanvas } from './mapView.ts';
 import { gatedStatblocks } from './book/statblockGate.ts';
 import type { Follow, SceneSources } from './sceneSignal.ts';
 
@@ -36,10 +37,10 @@ function onWorkspace(app: App, name: 'atlas-vtt:collection-settings-changed' | '
  * sets), the creature index (speeds read from statblocks), the asset index (which statblock a library
  * token links) and the theme (`accent`, which only reads it). A new input is one more entry here.
  */
-export function sceneSources(app: App, store: ObservedStore, renderer: unknown, accent: () => string | null): SceneSources {
+export function sceneSources(app: App, store: ObservedStore, renderer: MapCanvas, accent: () => string | null): SceneSources {
   return {
     store,
-    sight: (listener) => followPlayerSight(renderer, listener),
+    sight: (listener) => renderer.getCanvasAudience().onSightChange(listener),
     settings: { read: () => atlasPlayerSettings(app), follow: whenRead(() => JSON.stringify(atlasPlayerSettings(app)), (listener) => followAtlasSettings(app, listener)) },
     accent,
     atlas: [

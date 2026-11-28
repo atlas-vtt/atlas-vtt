@@ -1208,6 +1208,8 @@ export class PixiRendererOrchestrator { // Renamed class
   getCanvasElement(): HTMLCanvasElement { return this.pixiAppManager.getCanvasElement(); }
   getGridSystem(): GridSystem | null { return this.gridSystem || null; }
   getTokenRenderer(): TokenRenderer | null { return this.tokenRenderer || null; }
+  getLightingController(): LightingController | null { return this.lighting ?? null; }
+  getMeasureRenderer(): MeasureRenderer | null { return this.measureRenderer ?? null; }
   /** Whom this view's canvas is drawn for now, and what the players see of its tokens. */
   getCanvasAudience(): CanvasAudience { return this.audience; }
 

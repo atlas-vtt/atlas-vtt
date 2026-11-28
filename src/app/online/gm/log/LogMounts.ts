@@ -1,7 +1,7 @@
 import { LogState, type LogActions, type Portrait, type RollFace } from '../../tableLog/index.ts';
 import { GM_AUTHOR, type ChatRefusal, type LogSpeaker, type RollEntry } from '../../protocol/index.ts';
 import type { WorkspaceLeaf } from 'obsidian';
-import { sceneStoreOf } from '../atlasView.ts';
+import { sceneStoreOf } from '../mapViewOf.ts';
 import type { OnlineTable } from '../OnlineTable.ts';
 import { faceOf, seesWhole, viewOf, type GmLogEntry } from './logEntries.ts';
 import { gmSpeakerList } from './gmSpeakers.ts';

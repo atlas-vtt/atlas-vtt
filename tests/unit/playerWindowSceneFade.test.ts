@@ -8,6 +8,7 @@ import { PLAYER_CURTAIN_CLASS } from '../../src/app/services/playerCurtain';
 import { PlayerSceneFade, SCENE_DIP_MS, SCENE_FADE_LIMIT_MS } from '../../src/app/services/playerSceneFade';
 import { PlayerWindowService } from '../../src/app/services/PlayerWindowService';
 import { SettingsService } from '../../src/app/services/SettingsService';
+import { toggleTablePause } from '../../src/app/services/tableControls';
 import { playerWindowStore } from '../../src/app/stores/playerWindowStore';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { MIRRORED, mirroring } from '../mocks/mirrorHarness';
@@ -149,7 +150,7 @@ describe('letting frozen players follow the GM again', () => {
     at(0);
     service.freezeCamera({ centerX: 500, centerY: 300, scale: 2 });
     at(100);
-    service.toggleCameraFreeze();
+    toggleTablePause();
     expect(service.isFrozen()).toBe(false);
     expect(sheetDown()).toBe(true);
     at(100 + SCENE_DIP_MS - 1);

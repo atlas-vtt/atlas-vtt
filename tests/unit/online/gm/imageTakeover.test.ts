@@ -202,18 +202,11 @@ describe('the takeover of Atlas\'s image display', () => {
     expect(held(atlas, 'displayImageOnPlayerView')).toBeUndefined();
   });
 
-  it('takes nothing of an Atlas whose service has no such calls', () => {
-    const { ports } = setup();
-    for (const service of [undefined, null, 'service', {}, { displayImageOnPlayerView: (): void => undefined, closeImageDisplay: (): void => undefined }]) {
-      expect(takeOverImageDisplay(service, ports)).toBeNull();
-    }
-  });
-
   it('holds only while a table runs, and takes the service of a reloaded Atlas', async () => {
     const { atlas, table, notices, ports } = setup();
     const share = table.share;
     table.share = null;
-    let service: unknown = atlas;
+    let service: AtlasDisplay | null = atlas;
     const takeover = new ImageTakeover(() => service, ports);
     takeover.sync();
     expect(isAtlasOwn(atlas)).toBe(true);
@@ -231,7 +224,7 @@ describe('the takeover of Atlas\'s image display', () => {
     await reloaded.displayImageOnPlayerView('handout.png');
     expect(share?.shows).toHaveLength(2);
     // Atlas is switched off, then the table stops: nothing is held and nothing breaks.
-    service = undefined;
+    service = null;
     takeover.sync();
     expect(isAtlasOwn(reloaded)).toBe(true);
     service = reloaded;

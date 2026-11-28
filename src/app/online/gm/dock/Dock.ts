@@ -1,6 +1,7 @@
 import type { WorkspaceLeaf } from 'obsidian';
 import { handledByAnotherControl } from '../../../keyboard/tooltipEscape';
-import { sceneStoreOf, selectedTokenIds, type ObservedStore } from '../atlasView.ts';
+import { selectedTokenIds, type ObservedStore } from '../atlasView.ts';
+import { sceneStoreOf } from '../mapViewOf.ts';
 import { accountActions, MENU_WIDTH, renderMenu, type MenuActions } from './ConnectionMenu.ts';
 import { campaignPick, type CampaignPick } from './campaignPicker.ts';
 import { DockButton } from './dockButton.ts';

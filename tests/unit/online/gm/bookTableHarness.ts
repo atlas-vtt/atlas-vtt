@@ -12,6 +12,7 @@ import { FakeRelay } from './fakeRelay.ts';
 import { app, atlasTab, png, present, workspace, type FakeTab, storedAccount } from './fakeTable.ts';
 import type { PageMessage, PlayerPages } from './playerPages.ts';
 import { fakeTokenSource } from './fakeTokenSource.ts';
+import { fakeCanvas, fakeTokens } from './fakeAtlasTab.ts';
 import { advanceSettled } from './settled.ts';
 import { sceneState } from './shareHarness.ts';
 import { setWorldMapGate, type WorldMapTree } from '../../../../src/app/online/gm/book/worldMapGate.ts';
@@ -165,10 +166,10 @@ export async function openTable(shelf: BookShelf, players: readonly PlayerInfo[]
     getCollectionSettings: () => ({ conditions: [] }),
   };
   const tab = atlasTab(cave(heroes));
-  tab.view.renderer = {
+  tab.view.renderer = fakeCanvas({
     ...fakeTokenSource(() => tab.store.getState(), () => undefined, () => 70),
-    getTokenRenderer: () => ({ collectionSync: { resources: () => RESOURCES, conditions: () => [] } }),
-  };
+    getTokenRenderer: () => fakeTokens({ collectionRules: () => ({ resources: () => RESOURCES, conditions: () => [] }) }),
+  });
   workspace.leaves = [tab.leaf];
   present(tab);
   const ownership = boundOwnership(campaign, { owners, playerTokens: {} });

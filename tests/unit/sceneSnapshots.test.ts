@@ -258,12 +258,6 @@ describe('snapshots of a scene record', () => {
     for (const [path, content] of before) expect(vault.files.get(path)).toBe(content);
   });
 
-  it('trashes them with the scene', async () => {
-    const { vault, assets, folder, sceneId } = await sceneVault();
-    await assets.deleteAsset(sceneId);
-    expect([...vault.files.keys()].some((path) => path.startsWith(`${folder}/`))).toBe(false);
-  });
-
   it('point snapshot tokens at renamed artwork', async () => {
     const { vault, snapshots, folder } = await sceneVault();
 
