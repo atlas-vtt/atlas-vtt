@@ -23,7 +23,7 @@ interface Expected {
   stores: Record<string, unknown>;
   /** Writing the change again once it is stored: whether the store is written, and how often listeners hear of it. */
   again: { saves: boolean; notifies: number };
-  /** For a preference stored as one record: whether a field a newer Atlas put into it survives the change. */
+  /** For a preference stored as one record: whether a field a newer Atlas put into it, beside none of this version's, survives the change. */
   newerField?: boolean;
 }
 
@@ -261,9 +261,8 @@ describe('every preference in its store', () => {
 
   it.each(CASES.filter(({ expected }) => expected.newerField !== undefined))('$name and a field a newer Atlas stored in it', async ({ access, expected }) => {
     const [key] = access.keys;
-    const stored = expected.stores[key];
-    const encoded = typeof stored === 'string' ? JSON.stringify({ ...JSON.parse(stored), fromNewer: 'kept' }) : { ...(stored as object), fromNewer: 'kept' };
-    const held = await rigHolding(access, { [key]: encoded });
+    const newer = { fromNewer: 'kept' };
+    const held = await rigHolding(access, { [key]: typeof expected.stores[key] === 'string' ? JSON.stringify(newer) : newer });
     access.write(held, expected.change as never);
     await held.settings.saveSettingsNow();
     const after = storedUnder(access, held)[key];
