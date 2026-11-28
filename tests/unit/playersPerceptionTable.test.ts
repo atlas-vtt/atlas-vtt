@@ -6,14 +6,14 @@ import type { SceneLightingView } from '../../src/app/pixi/lighting/sceneLightin
 import { PinRenderer } from '../../src/app/pixi/PinRenderer';
 import type { PlayerPointSight } from '../../src/app/pixi/playerPins';
 import { gmTabOf } from '../../src/app/online/gm/gmTab';
-import type { SceneState } from '../../src/app/online/gm/atlasView';
+import type { ObservedStore, SceneState } from '../../src/app/online/gm/atlasView';
 import type { SeatSource } from '../../src/app/online/gm/seatSource';
 import type { FogOperation } from '../../src/app/types/fogTypes';
 import type { SceneLevel } from '../../src/app/types/sceneLevelTypes';
 import type { WallSegment } from '../../src/app/types/wallTypes';
 import type { NotePin, TokenEntity } from '../../src/app/types';
 import { SceneModelBuilder } from '../../src/app/vision/sceneModel';
-import { Sprite } from 'pixi.js';
+import { Sprite, type Container } from 'pixi.js';
 import { doorMiddle } from '../../src/app/vision/doorSight';
 import { bareMapView, type BareMapView } from '../helpers/bareMapView';
 import { PLAYER_SETTINGS } from './online/gm/gmLighting';
@@ -74,7 +74,7 @@ const LEVELS: SceneLevel[] = [
   { id: 'upper', name: 'Upper', elevation: { bottom: 10, top: 20 }, background: 'art/upper.webp', foreground: 'art/roof.webp' },
 ];
 /** Sight, and a sense that reaches through walls. */
-const VISION = { enabled: true, senses: [{ id: 'tremorsense', range: 30 }] } as TokenEntity['vision'];
+const VISION = { enabled: true, senses: [{ id: 'tremorsense', range: 30 }] } as NonNullable<TokenEntity['vision']>;
 const DOOR = { id: 'door', kind: 'wall', type: 'door', closed: true, p1: { x: 400, y: 220 }, p2: { x: 400, y: 380 } } as WallSegment;
 const WALLS: Record<string, WallSegment> = {
   north: { id: 'north', kind: 'wall', type: 'solid', p1: { x: 400, y: 0 }, p2: { x: 400, y: 220 } } as WallSegment,
@@ -120,9 +120,11 @@ async function open(): Promise<Rig> {
   store.setState((state) => ({ ...base, objects: { ...state.objects, ...base.objects } }));
   await expect.poll(() => ['ana', 'ogre', 'ghost', 'goblin', 'rat'].every((id) => renderer.getTokenRenderer()?.getTokenSprites()[id])).toBeTruthy();
   const places = placesSpy.mock.lastCall![0];
-  const harness = shareHarness(store.getState(), IMAGES, SEATS, store);
+  // Atlas's own view store, which the table reads as it reads any tab's.
+  const tabStore = store as unknown as ObservedStore;
+  const harness = shareHarness(store.getState() as SceneState, IMAGES, SEATS, tabStore);
   const tabView = { app: view.obsidian, serviceManager: { getAssetService: () => null, getToolController: () => null, getEventBus: () => view.events } };
-  harness.gmTab = gmTabOf({ leaf: { view: tabView } as unknown as WorkspaceLeaf, view: tabView as never, store, renderer }, NO_MARKS);
+  harness.gmTab = gmTabOf({ leaf: { view: tabView } as unknown as WorkspaceLeaf, view: tabView as never, store: tabStore, renderer }, NO_MARKS);
   harness.pages.join(ANA, BEN);
   harness.settings = { ...PLAYER_SETTINGS, sharedVision: false };
   harness.presented = 'ground';
@@ -151,7 +153,7 @@ function shown({ view: { renderer, store }, harness, places }: Rig): Record<stri
   const ground = Object.fromEntries(Object.entries(tokens).filter(([, token]) => token.level === undefined));
   const pinPoints = Object.values(PINS);
   const seenPins = places(pinPoints.map(({ x, y }) => ({ x, y })));
-  const badges = renderer.getLightingController()?.playerOnlyLayers()[0]?.children ?? [];
+  const badges = (renderer.getLightingController()?.playerOnlyLayers()[0] as Container | undefined)?.children ?? [];
   const doorAt = (x: number, y: number): string => {
     const door = Object.values(state.objects.walls).find((wall) => wall.type === 'door' && Math.hypot(doorMiddle(wall).x - x, doorMiddle(wall).y - y) < 1);
     return door === undefined ? `? ${x},${y}` : `${door.id}${door.closed === false ? ' (open)' : ''}`;

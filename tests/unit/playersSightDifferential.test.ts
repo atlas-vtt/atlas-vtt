@@ -5,7 +5,7 @@ import { fogCoverage } from '../../src/app/fog/fogCoverage';
 import { levelObjects } from '../../src/app/levels/levelObjects';
 import type { SceneLightingDeps } from '../../src/app/pixi/lighting/createSceneLighting';
 import type { SceneLightingView } from '../../src/app/pixi/lighting/sceneLightingView';
-import type { SceneState } from '../../src/app/online/gm/atlasView';
+import type { ObservedStore, SceneState } from '../../src/app/online/gm/atlasView';
 import { floorPorts } from '../../src/app/online/gm/floorPorts';
 import type { FloorRoutes } from '../../src/app/online/gm/floorRoutes';
 import { gmTabOf } from '../../src/app/online/gm/gmTab';
@@ -90,8 +90,8 @@ vi.mock('../../src/app/MapController', async (original) => {
 const MAP = { width: 1000, height: 600 };
 const SCENES = 40;
 const LEVELS: SceneLevel[] = [
-  { id: 'ground', name: 'Ground', elevation: { bottom: 0, top: 10 } },
-  { id: 'upper', name: 'Upper', elevation: { bottom: 10, top: 20 }, foreground: 'art/roof.webp' },
+  { id: 'ground', name: 'Ground', elevation: { bottom: 0, top: 10 }, background: null },
+  { id: 'upper', name: 'Upper', elevation: { bottom: 10, top: 20 }, background: null, foreground: 'art/roof.webp' },
 ];
 const SENSES = [[], [{ id: 'darkvision', range: 30 }], [{ id: 'tremorsense', range: 20 }]] as const;
 const NO_MARKS = { source: () => null, showPlayers: () => undefined, showPlayerDrags: () => undefined, showPlayerCursors: () => undefined, showPlayerStrokes: () => undefined };
@@ -140,7 +140,7 @@ interface Answers { readonly tokens: string[]; readonly sensed: string[]; readon
 function answersOf(view: BareMapView, floor: string): Answers {
   const { renderer, store } = view;
   const tabView = { app: view.obsidian, serviceManager: { getAssetService: () => null, getToolController: () => null, getEventBus: () => view.events } };
-  const gm = gmTabOf({ leaf: { view: tabView } as unknown as WorkspaceLeaf, view: tabView as never, store, renderer }, NO_MARKS);
+  const gm = gmTabOf({ leaf: { view: tabView } as unknown as WorkspaceLeaf, view: tabView as never, store: store as unknown as ObservedStore, renderer }, NO_MARKS);
   const state = (): SceneState => store.getState() as SceneState;
   const ports = floorPorts({ tab: () => gm } as unknown as SceneSharePorts, {
     floor, state, map: () => MAP, cell: () => 70, aliases: new Map(), routes: {} as FloorRoutes, notice: () => undefined, describe: () => undefined,
