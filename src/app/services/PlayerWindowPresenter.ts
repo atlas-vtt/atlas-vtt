@@ -288,6 +288,8 @@ function watchPresentedTab(view: AtlasView, service: PlayerWindowService, resume
   const tracker = trackPresentedScene({ ...sceneOf(view), level: levelOf(view) }, shownTab, ({ now, before, tabChanged, levelChanged, levelLoaded }) => {
     const moved = now !== before;
     if ((now === 'away' && (moved || tabChanged)) || (now === 'other-level' && (levelChanged || (moved && before !== 'shown')))) service.holdCurrentFrame();
+    // A held window whose tab stands `shown` exists only while a resume is pending, so the image's load needs no flag
+    // of its own: `resume` hands the source only to a window that does not show this view live.
     else if (now === 'shown' && (before === 'loading' || levelChanged || levelLoaded)) resume();
   });
   function resume(): void {
