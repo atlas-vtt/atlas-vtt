@@ -5,6 +5,7 @@ import { DEFAULT_MAP_HOTKEYS } from '../../src/app/keyboard/mapHotkeys';
 import { INPUT_MODE_STORAGE_KEY } from '../../src/app/services/deviceSettings';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { memoryPluginData } from '../mocks/pluginData';
+import { withListed } from '../../src/app/services/preferences/syncedPreferences';
 
 async function loaded(stored: unknown = null, app = new App()): Promise<{ settings: SettingsService; data: ReturnType<typeof memoryPluginData>; app: App }> {
   const data = memoryPluginData(stored);
@@ -132,6 +133,15 @@ describe('Atlas settings in the plugin data', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('leaves a list of hidden offers as it is when the offer asked to hide already is, telling no one', async () => {
+    const { settings } = await loaded({ hiddenStarterOffers: ['winter', 'summer'] });
+    const heard = vi.fn();
+    settings.onChange(heard);
+    settings.set('hiddenStarterOffers', withListed(settings.get('hiddenStarterOffers'), 'winter', true));
+    expect(settings.get('hiddenStarterOffers')).toEqual(['winter', 'summer']);
+    expect(heard).not.toHaveBeenCalled();
   });
 
   /** Another device's file lands while this device's save waits; what reads then, and what the save writes. */

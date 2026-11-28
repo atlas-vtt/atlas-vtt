@@ -26,8 +26,9 @@ const idList = (key: 'hiddenStarterOffers' | 'hiddenSoundOffers'): PreferenceRow
     encode: (ids) => ((ids as readonly string[]).length > 0 ? ids : undefined),
   });
 
-/** `list` with `id` in it or not, the others in their order. */
+/** `list` with `id` in it or not, the others in their order; `list` itself where it already is as asked. */
 export function withListed(list: readonly string[], id: string, listed: boolean): readonly string[] {
+  if (list.includes(id) === listed) return list;
   const others = list.filter((other) => other !== id);
   return listed ? [...others, id] : others;
 }
