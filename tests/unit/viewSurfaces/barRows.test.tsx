@@ -56,7 +56,7 @@ const SHOWN_IN: Readonly<Record<keyof typeof BARS, readonly StateName[]>> = {
   lighting: ['gmView', 'sessionView', 'measureKeyHeld'],
   draw: ['gmView', 'sessionView', 'measureKeyHeld'],
   measure: ['gmView', 'playerView', 'sessionView'],
-  floorPosition: ['gmView', 'sessionView', 'tableMode', 'measureKeyHeld'],
+  floorPosition: ['gmView', 'sessionView', 'measureKeyHeld'],
 };
 
 const CASES = Object.keys(BARS).flatMap((bar) => (Object.keys(STATES) as StateName[]).map((state) => [bar, state] as const));
