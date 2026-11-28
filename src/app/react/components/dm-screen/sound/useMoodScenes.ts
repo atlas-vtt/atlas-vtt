@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import type { App } from 'obsidian';
 import type { SceneSound } from '../../../../sound/soundTypes';
-import { sceneThumbnailPath } from '../../../../services/collectionBundle/collectionReferences';
+import { sceneThumbnailPath } from '../../../../services/assetBelongings';
 import { SceneMoodLinks, sceneOfMood } from '../../../../soundLibrary/SceneMoodLinks';
 
 /** The open scene, whose links count before its file is saved. */
