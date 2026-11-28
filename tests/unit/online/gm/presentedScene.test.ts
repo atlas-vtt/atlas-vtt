@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ATLAS_VIEW_TYPE, type SceneState } from '../../../../src/app/online/gm/atlasView.ts';
 import { OnlineControl } from '../../../../src/app/online/gm/OnlineControl.ts';
 import { boundOwnership, fakeCampaigns } from './fakeSeats.ts';
-import { findPresentedTab, PRESENT_COMMAND, showsPresented } from '../../../../src/app/online/gm/presentedScene.ts';
+import { findPresentedTab, PRESENT_COMMAND, presentedStanding } from '../../../../src/app/online/gm/presentedScene.ts';
 import type { SavedTable } from '../../../../src/app/online/gm/savedTable.ts';
 import { app, atlasTab, FakeTabs, png, present, switchScene, workspace, storedAccount } from './fakeTable.ts';
 import { sceneState } from './shareHarness.ts';
@@ -222,30 +222,26 @@ describe('the scene players see', () => {
 describe('what Atlas presents', () => {
   const tabsLeaf = (tabs: FakeTabs, isPlayerView = false): WorkspaceLeaf => ({ view: { getViewType: () => ATLAS_VIEW_TYPE, tabMetaStore: tabs, atlasStore: { getState: () => ({ isPlayerView }) } } }) as unknown as WorkspaceLeaf;
 
-  it('is found in the open map views by tab id, else by file, never in a player view', () => {
-    const caveTabs = new FakeTabs(CAVE);
+  it('is found among the open map views as Atlas finds it, and named with its level; deferred and other leaves are no views', () => {
     const both = new FakeTabs(HALL);
     both.activate(CAVE);
-    const leaves = [tabsLeaf(new FakeTabs(CAVE), true), tabsLeaf(caveTabs), tabsLeaf(both)];
-    expect(findPresentedTab(leaves, { tabId: FakeTabs.idOf(HALL), filePath: HALL })?.leaf).toBe(leaves[2]);
-    // Tab ids made anew: the first view with the file, never a player view.
-    expect(findPresentedTab(leaves, { tabId: 'gone', filePath: CAVE })).toMatchObject({ leaf: leaves[1], tabId: FakeTabs.idOf(CAVE) });
+    const deferred = { view: { getViewType: () => ATLAS_VIEW_TYPE } } as unknown as WorkspaceLeaf;
+    const note = { view: { getViewType: () => 'markdown' } } as unknown as WorkspaceLeaf;
+    const leaves = [deferred, note, tabsLeaf(new FakeTabs(CAVE), true), tabsLeaf(both)];
+    expect(findPresentedTab(leaves, { tabId: 'gone', filePath: CAVE, levelId: 'upper' })).toEqual({ leaf: leaves[3], tabs: both, tabId: FakeTabs.idOf(CAVE), filePath: CAVE, name: 'Cave', levelId: 'upper' });
     expect(findPresentedTab(leaves, null)).toBeNull();
-    expect(findPresentedTab(leaves, { tabId: 'gone', filePath: 'Scenes/None.atlasmap' })).toBeNull();
   });
 
-  it('names the presented level of a scene with several, and shows the scene whichever level the GM looks at: players see their own floors', () => {
+  it('shows the scene whichever level the GM looks at: players see their own floors', () => {
     const levels = [
       { id: 'ground', name: 'Ground', elevation: { bottom: 0, top: 10 }, background: 'maps/cave.png' },
       { id: 'upper', name: 'Upper', elevation: { bottom: 10, top: 20 }, background: 'maps/hall.png' },
     ];
-    const leaves = [tabsLeaf(new FakeTabs(CAVE))];
-    const tab = findPresentedTab(leaves, { tabId: FakeTabs.idOf(CAVE), filePath: CAVE, levelId: 'upper' });
+    const tab = findPresentedTab([tabsLeaf(new FakeTabs(CAVE))], { tabId: FakeTabs.idOf(CAVE), filePath: CAVE, levelId: 'upper' });
     if (tab === null) throw new Error('no tab');
-    expect(tab.levelId).toBe('upper');
-    expect(showsPresented(cave(), tab)).toBe(true);
-    expect(showsPresented({ ...cave(), levels, viewedLevel: 'upper' }, tab)).toBe(true);
-    expect(showsPresented({ ...cave(), levels, viewedLevel: 'ground' }, tab)).toBe(true);
+    const store = (state: SceneState): { getState(): SceneState } => ({ getState: () => state });
+    expect(presentedStanding(store({ ...cave(), levels, viewedLevel: 'ground' }), tab)).toBe('shown');
+    expect(presentedStanding(store({ ...cave(), levels, viewedLevel: 'upper' }), tab)).toBe('shown');
   });
 
   it('is named as Atlas names its accessor and its command', () => {

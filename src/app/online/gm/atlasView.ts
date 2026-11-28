@@ -7,9 +7,17 @@ export const ATLAS_VIEW_TYPE = 'atlas-vtt';
 /** The view type of Atlas's local player window; a test holds it to the vendor's `LOCAL_PLAYER_VIEW_TYPE`. */
 export const LOCAL_PLAYER_VIEW_TYPE = 'atlas-vtt-local-player';
 
+/** A scene's load, and whether the shared store holds players on the last state of it they saw (`PresentedStore`). */
+export type SceneLoad = Pick<ViewState, 'mapLoaded' | 'isMapLoading'> & { readonly held?: true };
+
 /** The part of an Atlas map tab's store the companion reads. */
-export type SceneState = Pick<ViewState, 'mapPath' | 'mapLoaded' | 'isMapLoading' | 'background' | 'lighting' | 'objects' | 'grid' | 'heldTokens' | 'exploredMask' | 'exploredEdits' | 'isDragging' | '_audioDirty'>
-  & Partial<Pick<ViewState, 'tokenSettings' | 'levels' | 'viewedLevel' | 'exploredMasks' | 'exploredForgotten' | 'levelAlignments' | 'isPlayerView'>>;
+export type SceneState = Pick<ViewState, 'mapPath' | 'background' | 'lighting' | 'objects' | 'grid' | 'heldTokens' | 'exploredMask' | 'exploredEdits' | 'isDragging' | '_audioDirty'>
+  & Partial<Pick<ViewState, 'tokenSettings' | 'levels' | 'viewedLevel' | 'exploredMasks' | 'exploredForgotten' | 'levelAlignments' | 'isPlayerView'>> & SceneLoad;
+
+/** Whether players may be shown `state`: its scene loaded, and players not held on the last state of it they saw. */
+export function playable(state: SceneLoad): boolean {
+  return state.mapLoaded && !state.isMapLoading && state.held !== true;
+}
 
 /**
  * What the companion asks of an Atlas tab's renderer (`PixiRendererOrchestrator`): the tokens the

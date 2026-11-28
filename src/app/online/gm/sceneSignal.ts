@@ -1,6 +1,6 @@
 import { tableControlsStore } from '../../stores/tableControlsStore';
 import type { AtlasPlayerSettings } from './atlasLighting.ts';
-import type { ObservedStore, SceneState } from './atlasView.ts';
+import { playable, type ObservedStore, type SceneState } from './atlasView.ts';
 
 /** Calls `listener` at each change of what it follows; returns what stops it. */
 export type Follow = (listener: () => void) => () => void;
@@ -50,7 +50,7 @@ const followTableControls: Follow = (listener) => tableControlsStore.subscribe((
 });
 
 /** Whether `state` is no scene players may be shown: one loading, or held on the last frame they saw. */
-const loading = (state: SceneState): boolean => !state.mapLoaded || state.isMapLoading;
+const loading = (state: SceneState): boolean => !playable(state);
 
 /**
  * The one signal for what players see: the scene's store, the GM's renderer's sight and Atlas beside them

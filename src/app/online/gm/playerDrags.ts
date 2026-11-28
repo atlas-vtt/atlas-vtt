@@ -8,6 +8,7 @@ import type { Point } from '../movement/index.ts';
 import { checkMove, dropPlace, landing, MoveRate, refusalReason, type MoveContext } from './moveCheck.ts';
 import type { MoveState, MoveStore } from './playerMoves.ts';
 import { mapTokens, sceneTokens } from '../../tokens/offMap';
+import { playable } from './atlasView.ts';
 
 /** Drag messages a player may send: a burst of 40, then 40 a second (the browser sends about 30). */
 export const DRAG_BURST = 40;
@@ -33,7 +34,7 @@ interface LiveDrag {
 }
 
 const key = (from: string, tokenId: string): string => `${from}\n${tokenId}`;
-const loaded = (state: MoveState): boolean => state.mapLoaded && !state.isMapLoading;
+const loaded = (state: MoveState): boolean => playable(state);
 
 /**
  * Players' drags of their own tokens, followed live on the GM's map as Atlas's own drag runs: the

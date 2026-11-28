@@ -3,6 +3,7 @@ import { resourceUpdate, withCurrent } from '../../../resources/resourceValues';
 import type { ViewState } from '../../../types/viewState';
 import type { Timers } from '../companionTimers.ts';
 import { editableValue, withMaxValue, type ResourceEdit } from './resourceEdit.ts';
+import { playable, type SceneLoad } from '../atlasView.ts';
 
 /** An edit of a token in the shared scene. */
 export type TokenResourceEdit = Extract<ResourceEdit, { readonly kind: 'token' }>;
@@ -10,7 +11,7 @@ export type TokenResourceEdit = Extract<ResourceEdit, { readonly kind: 'token' }
 export type ResourceAnswer = (taken: number | null, max?: number) => void;
 
 /** What resource writes read and write of an Atlas tab's store. */
-export type ResourceWriteState = Pick<ViewState, 'objects' | 'mapLoaded' | 'isMapLoading' | 'isDragging' | 'heldTokens'>;
+export type ResourceWriteState = Pick<ViewState, 'objects' | 'isDragging' | 'heldTokens'> & SceneLoad;
 
 export interface ResourceWriteStore {
   getState(): ResourceWriteState;
@@ -31,7 +32,7 @@ interface Waiting {
 }
 
 const holds = (state: ResourceWriteState): boolean => state.isDragging || Object.keys(state.heldTokens).length > 0;
-const loaded = (state: ResourceWriteState): boolean => state.mapLoaded && !state.isMapLoading;
+const loaded = (state: ResourceWriteState): boolean => playable(state);
 
 /**
  * Players' edits of their characters' resources on the shared scene, written as the GM's own: one

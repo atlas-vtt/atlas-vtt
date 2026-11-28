@@ -1,7 +1,7 @@
 import { GM_MARKS, parseImageSize, type PlayerMessage, type SharedScene } from '../protocol/index.ts';
 import type { ShownRollToken } from '../../services/playerRollSource';
 import { isLit, LIGHTING_REFUSAL, type AtlasPlayerSettings } from './atlasLighting.ts';
-import type { SceneState } from './atlasView.ts';
+import { playable, type SceneState } from './atlasView.ts';
 import { dragRulerPaths, PlayerDragRulers, type RulerPaths } from './dragRulers.ts';
 import { readFloorImages } from './floorImages.ts';
 import { readFloorVideo } from './floorVideo.ts';
@@ -185,7 +185,7 @@ export class FloorShare {
   changed(change: SceneChange, scene: SceneState): void {
     const state = this.store.onFloor(scene);
     if (change === 'sight') {
-      if (!this.ports.source().followsSight || !state.mapLoaded || state.isMapLoading) return;
+      if (!this.ports.source().followsSight || !playable(state)) return;
       this.marks.seenChanged();
       return this.pictures.follow(change);
     }
@@ -296,7 +296,7 @@ export class FloorShare {
   }
 
   private async update(state: SceneState, change: SceneChange): Promise<void> {
-    if (!state.mapLoaded || state.isMapLoading) return this.pictures.mapLoading();
+    if (!playable(state)) return this.pictures.mapLoading();
     const cleared = this.cleared.look(state);
     // Not what a player's own request removed, and not what an undo took back.
     if (cleared.size > 0 && !this.dealing && !isHistoryTravelling(this.store)) this.marks.dropStrokes(cleared);

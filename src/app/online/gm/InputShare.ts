@@ -1,6 +1,6 @@
 import type { SharedFog, SharedFogEdge, SharedLightingScene } from '../protocol/index.ts';
 import type { LightingSource } from './atlasLighting.ts';
-import type { SceneState, SceneStore } from './atlasView.ts';
+import { playable, type SceneState, type SceneStore } from './atlasView.ts';
 import { Feed, type FeedPorts, type FeedScene } from './feed/Feed.ts';
 import type { FeedOut } from './feed/feedOutbox.ts';
 import { sharedLightingScene, sharedSight } from './sceneInputs.ts';
@@ -76,7 +76,7 @@ export class InputShare {
 
   private build(scene: FeedScene, out: FeedOut): void {
     const state = this.store.getState();
-    if (!state.mapLoaded || state.isMapLoading) return;
+    if (!playable(state)) return;
     const fog = levelObjects(state).fog;
     const edge = this.ports.fogEdge?.();
     const edgeChanged = edge?.style !== this.fogEdge?.style || edge?.width !== this.fogEdge?.width;

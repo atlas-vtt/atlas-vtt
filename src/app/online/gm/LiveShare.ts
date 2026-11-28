@@ -1,6 +1,6 @@
 import { LIVE_INTERVAL_MS, MAX_COORDINATE, MAX_LIVE_PATH, MAX_LIVE_TOKENS, type LivePlace, type MarkPoint } from '../protocol/index.ts';
 import { sightOnDropOn } from '../../lighting/sceneLightingOptions';
-import type { PlayerTokenSource, SceneStore } from './atlasView.ts';
+import { playable, type PlayerTokenSource, type SceneStore } from './atlasView.ts';
 import type { RulerPaths } from './dragRulers.ts';
 import { Feed, type FeedPorts, type FeedScene } from './feed/Feed.ts';
 import type { FeedOut } from './feed/feedOutbox.ts';
@@ -108,7 +108,7 @@ export class LiveShare {
     const state = this.store.getState();
     const listed = this.listed();
     const source = this.ports.tokenSource();
-    if (listed.scene !== scene || source === null || !state.mapLoaded || state.isMapLoading || state.mapPath === null) return;
+    if (listed.scene !== scene || source === null || !playable(state) || state.mapPath === null) return;
     // At most half a message's room, so the ends that follow always fit.
     const held = Object.keys(state.heldTokens).slice(0, MAX_LIVE_TOKENS / 2);
     const shown = held.length === 0 ? new Map<string, never>() : source.playerRollTokens(state.mapPath, held);
