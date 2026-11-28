@@ -1,5 +1,5 @@
 import type { Viewport } from 'pixi-viewport';
-import { firstLinkTarget, flightOnLevel, levelLinkList, linkHeading, MAX_LEVEL_LINKS, MAX_LINK_CORNERS } from '../../levels/levelLinks';
+import { firstLinkTarget, flightOnLevel, levelLinkList, linkHeading, MAX_LEVEL_LINKS, MAX_LINK_CORNERS, stairsShown } from '../../levels/levelLinks';
 import { flightRows, type FlightEnds } from '../../levels/stairFlights';
 import { everyLevelObjects, levelObjects } from '../../levels/levelObjects';
 import { hasLevels, viewedLevelId } from '../../levels/sceneLevels';
@@ -23,16 +23,6 @@ export interface LevelLinkEditorDeps {
 /** The stairs of the level a view shows. */
 function shownLinks(state: ViewAtlasState): LevelLink[] {
   return levelLinkList(levelObjects(state).levelLinks);
-}
-
-/** Whether the GM sees stairs at all: in the GM's view of a loaded scene with several levels. */
-function stairsShown(state: ViewAtlasState): boolean {
-  return hasLevels(state.levels) && state.isGMView && !state.isPlayerView && !state.isMapLoading;
-}
-
-/** Stairs' popover needs the stairs on the level shown and the stairs tool in the GM's view of a loaded scene. */
-export function mayEditLevelLink(state: ViewAtlasState, linkId: string): boolean {
-  return stairsShown(state) && state.activeTool === 'stairs' && shownLinks(state).some((link) => link.id === linkId);
 }
 
 /**
@@ -100,7 +90,7 @@ export class LevelLinkEditor extends PolygonAreaEditor<LevelLink> {
     this.themeWatch.observe(canvas.ownerDocument.body, { attributes: true, attributeFilter: ['class'] });
   }
 
-  /** The tool, the view and the scene decide whether the stairs show and are edited; a popover that can no longer be used closes. */
+  /** The tool, the view and the scene decide whether the stairs show and are edited. */
   private follow(state: ViewAtlasState, previous: ViewAtlasState | null): void {
     const shown = stairsShown(state);
     if (state.activeTool === 'stairs' && !hasLevels(state.levels)) {
@@ -110,7 +100,6 @@ export class LevelLinkEditor extends PolygonAreaEditor<LevelLink> {
     const wasShown = previous ? this.view.visible : !shown;
     this.view.visible = shown;
     const activeChanged = this.setActive(shown && state.activeTool === 'stairs');
-    if (state.levelLinkPopover && !mayEditLevelLink(state, state.levelLinkPopover)) state.closeLevelLinkPopover();
     if (!activeChanged && wasShown !== shown) this.afterVisibilityChange();
     else if (!activeChanged && previous && (state.viewedLevel !== previous.viewedLevel || state.isGMView !== previous.isGMView)) this.draw();
   }

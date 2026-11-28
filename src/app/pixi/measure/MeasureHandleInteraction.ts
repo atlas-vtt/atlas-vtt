@@ -13,7 +13,7 @@ import { settleDragStep } from './dragStep';
 import { measureTurnHandlePoint, type MeasureHandlePlacer, type MeasureHandleRef, type MeasurePointerHandlers } from './measureHandle';
 import { handleDrag, sameDragChanges, type AuraDragSetting } from './measureHandleDrag';
 import { MeasureHandles } from './MeasureHandles';
-import { closeStaleMeasurePopover, keptMeasure, mayEditMeasure, type MeasureEditState } from './measurePopoverGuard';
+import { keptMeasure, mayEditMeasure, type MeasureEditState } from '../../measure/keptMeasures';
 import { trackPointer } from './pointerTrack';
 import { PopoverPressWatch } from './PopoverPressWatch';
 import { placesFreely, type ToolSwitchState } from '../../types/toolSwitches';
@@ -159,12 +159,8 @@ export class MeasureHandleInteraction {
     return true;
   }
 
-  /**
-   * The view's state changed: a popover whose measurement can no longer be edited closes, and a
-   * measurement that is being moved and can no longer be is let go.
-   */
+  /** The view's state changed: a measurement that is being moved and can no longer be edited is let go. */
   follow(state: HandleState): void {
-    closeStaleMeasurePopover(state);
     if (this.gesture && !mayEditMeasure(state, this.gesture.id)) this.gesture.end(false, true);
     // Both may have written to the store: what is open is read as it is now.
     const open = this.deps.store.getState().measurePopover ?? null;

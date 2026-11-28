@@ -1,7 +1,7 @@
 import type { GmMessage, SharedWidget, SharedWidgetBar } from '../protocol/index.ts';
 import type { ViewState } from '../../types/viewState';
 import { timerDeadline } from '../../utils/timerWidget';
-import type { SceneState, SceneStore } from './atlasView.ts';
+import { playable, type SceneState, type SceneStore } from './atlasView.ts';
 import { Feed, type FeedPorts, type FeedScene } from './feed/Feed.ts';
 import type { FeedOut } from './feed/feedOutbox.ts';
 import { listedWidgets, type ListedBar } from './widgetInputs.ts';
@@ -53,7 +53,7 @@ export class WidgetShare {
   private build(scene: FeedScene, out: FeedOut): void {
     const state: WidgetState = this.store.getState();
     if (!state.mapLoaded) return;
-    if (!state.isMapLoading) this.bar = listedWidgets(state, this.ports.showWidgets());
+    if (playable(state)) this.bar = listedWidgets(state, this.ports.showWidgets());
     const { body, key } = this.message(scene.id, Date.now());
     if (key !== NONE || out.has('widgets')) out.send(body, key);
   }

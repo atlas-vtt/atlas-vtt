@@ -35,7 +35,7 @@ describe("Atlas's markup the control relies on", () => {
   it('has the store flags the control gives way to', () => {
     const slice = read('src/app/stores/uiSlice.ts');
     expect(slice).toContain('setDiceLogOpen: (open) =>');
-    expect(slice).toContain('isToolbarEditing: false');
+    expect(read('src/app/stores/viewSurfaces.ts')).toContain("isToolbarEditing: flag('isToolbarEditing'");
     expect(read('src/app/storeFactory.ts')).toContain('setSelection: (ids) =>');
   });
 });

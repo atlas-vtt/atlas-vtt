@@ -74,7 +74,7 @@ describe('the shared store while the GM works on another scene tab', () => {
     vi.useRealTimers();
   });
 
-  it('holds the presented scene as last shown, marked loading, takes no writes and tells nothing until the scene is shown again', () => {
+  it('holds the presented scene as last shown, marked held and not loading, takes no writes and tells nothing until the scene is shown again', () => {
     const v = view();
     const gate = new PresentedStore(v.store as unknown as ObservedStore, v.presented, () => undefined);
     const heard: SceneState[] = [];
@@ -84,8 +84,8 @@ describe('the shared store while the GM works on another scene tab', () => {
     expect(gate.held).toBe(true);
     // One word as the hold begins, then nothing of the Hall.
     expect(heard).toHaveLength(1);
-    expect(heard[0]).toMatchObject({ mapPath: CAVE, isMapLoading: true });
-    expect(gate.getState()).toMatchObject({ mapPath: CAVE, isMapLoading: true });
+    expect(heard[0]).toMatchObject({ mapPath: CAVE, held: true, isMapLoading: false });
+    expect(gate.getState()).toMatchObject({ mapPath: CAVE, held: true, isMapLoading: false });
     expect(Object.keys(gate.getState().objects.tokens)).toEqual(['ogre']);
     gate.setState((draft) => {
       draft.objects.tokens = {};
@@ -95,6 +95,7 @@ describe('the shared store while the GM works on another scene tab', () => {
     // The presented tab is back and loaded: live again.
     switchToCave(v);
     expect(gate.held).toBe(false);
+    expect(heard.at(-1)).not.toHaveProperty('held');
     expect(heard.at(-1)).toMatchObject({ mapPath: CAVE, isMapLoading: false });
     expect(gate.getState()).toBe(v.store.getState());
     gate.dispose();
@@ -110,7 +111,7 @@ describe('the shared store while the GM works on another scene tab', () => {
     expect(gate.getState().mapPath).toBe(HALL);
     gate.present(null);
     expect(gate.held).toBe(true);
-    expect(gate.getState()).toMatchObject({ mapPath: HALL, isMapLoading: true });
+    expect(gate.getState()).toMatchObject({ mapPath: HALL, held: true });
     gate.dispose();
   });
 

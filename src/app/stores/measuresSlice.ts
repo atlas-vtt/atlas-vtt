@@ -32,7 +32,7 @@ export interface MeasuresSlice {
   setTokenAuras: (auras: readonly TokenAura[], look?: Pick<MeasureInput, 'color' | 'hidden'>) => boolean;
 }
 
-type MeasuresDraft = Pick<ViewState, 'levels' | 'viewedLevel' | 'objects' | 'measurePopover'>;
+type MeasuresDraft = Pick<ViewState, 'levels' | 'viewedLevel' | 'objects'>;
 
 type ImmerSet = (fn: (draft: MeasuresDraft) => void) => void;
 

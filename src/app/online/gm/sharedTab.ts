@@ -3,7 +3,7 @@ import { type ObservedStore } from './atlasView.ts';
 import { mapViewOf } from './mapViewOf.ts';
 import type { MapCanvas, MapView } from './mapView.ts';
 import type { PresentedScene } from '../../services/presentedScene';
-import { findPresentedTab, showsPresented, type PresentedTab } from './presentedScene.ts';
+import { findPresentedTab, presentedStanding, type PresentedTab } from './presentedScene.ts';
 
 /**
  * An Atlas map tab as it was when found: its leaf, view, store and renderer. Atlas may build any of
@@ -151,7 +151,7 @@ export class TabWatch<B extends TabBinding> {
   /** Binds the presented tab's view once it shows the presented scene, in place of any other. */
   private bindShowing(target: PresentedTab): void {
     const tab = atlasTabOf(target.leaf);
-    if (tab === null || !isGmTab(tab) || !showsPresented(tab.store.getState(), target)) return;
+    if (tab === null || !isGmTab(tab) || presentedStanding(tab.store, target) !== 'shown') return;
     this.unbind();
     this.tab = tab;
     const binding = this.ports.bind(tab, target);

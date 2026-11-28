@@ -1,5 +1,5 @@
 import { levelExploredMask } from '../../levels/sceneLevels';
-import type { SceneState } from './atlasView.ts';
+import { playable, type SceneState } from './atlasView.ts';
 import { maskBytes } from './exploredMaskAlpha.ts';
 import type { SavedMemory } from './ExploredShare.ts';
 
@@ -9,7 +9,7 @@ import type { SavedMemory } from './ExploredShare.ts';
  * before it reads the scene's: what it ends with goes once it is done.
  */
 export function partyMemory(state: SceneState, serial: number): SavedMemory | undefined {
-  if (!state.mapLoaded || state.isMapLoading) return undefined;
+  if (!playable(state)) return undefined;
   const source = levelExploredMask(state);
   return { key: source, serial, png: () => maskBytes(source) };
 }

@@ -14,7 +14,7 @@ import { styleWrites, type StyleWrite } from '../../packages/components/toolbar/
 import { changeDrawing, changeText, newAnnotationId, newDrawing } from '../../stores/annotationWrites';
 import { removeObjectsIn } from '../../stores/sceneObjectWrites';
 import type { DrawingStroke, TextElement } from '../../types';
-import type { SceneStore } from './atlasView.ts';
+import { playable, type SceneStore } from './atlasView.ts';
 import { seeThroughWeight } from './drawCost.ts';
 import { allNearEdge, drawingPoints, drawRate, maxWrap, nearEdge, playerDrawing, playerUse, pointsOf, styleChoice, textChoices, transformOf, withinUse, writeRate } from './drawCheck.ts';
 import { JoinedSteps } from './joinedSteps.ts';
@@ -150,7 +150,7 @@ export class PlayerDrawings {
     if (!this.ports.allowed()) return 'off';
     if (this.scene === null || scene !== this.scene || !this.ports.seated(from)) return 'scene';
     const state = this.store.getState();
-    return !state.mapLoaded || state.isMapLoading ? 'busy' : null;
+    return !playable(state) ? 'busy' : null;
   }
 
   private deal(from: string, message: Request): Verdict {

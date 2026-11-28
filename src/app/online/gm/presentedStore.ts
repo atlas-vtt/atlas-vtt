@@ -1,11 +1,12 @@
+import { trackPresentedScene, type PresentedSceneTracker, type StandingChange } from '../../services/presentedSceneTracker';
 import type { ObservedStore, SceneState } from './atlasView.ts';
-import { showsPresented, type PresentedTab } from './presentedScene.ts';
+import type { PresentedTab } from './presentedScene.ts';
 
 /**
  * The shared view's store as players may see it. All scene tabs of an Atlas view share one store, so
  * while the GM works on another tab it holds another scene. While the view shows the scene Atlas presents
  * to its player view this is the store itself; otherwise it holds, as Atlas's player window holds its last
- * frame: it reads as the last state it showed of the presented scene, marked loading (so nothing is sent
+ * frame: it reads as the last state it showed of the presented scene, marked `held` (so nothing is sent
  * and players' moves are refused), takes no writes and tells its listeners nothing until the presented
  * scene is shown again. Atlas switches the active tab before it loads the next scene, so the hold begins
  * while the store still holds the presented one.
@@ -18,7 +19,7 @@ export class PresentedStore implements ObservedStore {
   private holding = false;
   private readonly onHold: () => void;
   private readonly listeners = new Set<(state: SceneState) => void>();
-  private readonly stops: (() => void)[];
+  private readonly tracker: PresentedSceneTracker;
 
   /** `real` shows the presented tab now; `onHold` runs as the hold begins, while writes still reach `real`. */
   constructor(real: ObservedStore, presented: PresentedTab, onHold: () => void) {
@@ -26,7 +27,8 @@ export class PresentedStore implements ObservedStore {
     this.presented = presented;
     this.onHold = onHold;
     this.last = real.getState();
-    this.stops = [real.subscribe((state) => this.check(state, true)), presented.tabs.subscribe(() => this.check(real.getState(), false))];
+    const tab = (): { id: string; filePath: string } | null => this.presented && { id: this.presented.tabId, filePath: this.presented.filePath };
+    this.tracker = trackPresentedScene({ tabs: presented.tabs, store: real }, tab, (change) => this.follow(change));
   }
 
   /** Atlas's history of the store, so that player drags stay one undo step. */
@@ -54,7 +56,7 @@ export class PresentedStore implements ObservedStore {
     // Another level of the same scene changes nothing in the store, yet the floor players without a token are shown.
     const anotherLevel = presented?.levelId !== this.presented?.levelId;
     this.presented = presented;
-    this.check(this.real.getState(), anotherLevel);
+    this.tracker.check(anotherLevel);
   }
 
   getState(): SceneState {
@@ -71,12 +73,14 @@ export class PresentedStore implements ObservedStore {
   }
 
   dispose(): void {
-    for (const stop of this.stops) stop();
+    this.tracker.stop();
     this.listeners.clear();
   }
 
-  private check(state: SceneState, changed: boolean): void {
-    if (this.presented !== null && showsPresented(state, this.presented)) {
+  /** Players see the presented scene while the view shows it loaded, on whichever level; anything else holds them. */
+  private follow({ now, changed }: StandingChange): void {
+    if (now === 'shown') {
+      const state = this.real.getState();
       this.last = state;
       if (this.frozen === null && !changed) return;
       this.frozen = null;
@@ -89,7 +93,7 @@ export class PresentedStore implements ObservedStore {
     if (this.holding) return;
     this.holding = true;
     try {
-      const frozen: SceneState = { ...this.last, isMapLoading: true };
+      const frozen: SceneState = { ...this.last, held: true };
       this.onHold();
       this.notify(frozen);
       this.frozen = frozen;

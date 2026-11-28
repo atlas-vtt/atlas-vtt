@@ -2,8 +2,9 @@ import { lightList } from '../../lighting/lightingObjects';
 import { Container, Graphics, Sprite, type Texture } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import { LIGHT_GLYPH_PATHS, type LightGlyph } from '../../lighting/lightGlyphs';
+import { lightMarkersShown } from '../../lighting/lightingTool';
 import { lightZoneList, withZones } from '../../lighting/lightZones';
-import type { ViewAtlasState, ViewAtlasStore } from '../../storeFactory';
+import type { ViewAtlasStore } from '../../storeFactory';
 import type { LightSource } from '../../types/lightingTypes';
 import { MOTION_NORMAL_MS, prefersReducedMotion } from '../../utils/motion';
 import { ambientAt } from '../../vision/lightLevels';
@@ -32,13 +33,6 @@ const POINTER_LENGTH = 9;
 const POINTER_SPREAD = 0.45;
 
 const MOON_RADIUS = 5.5;
-
-type MarkerState = Pick<ViewAtlasState, 'lighting' | 'activeTool'>;
-
-/** Lit scenes show their lights' markers, and the lighting tool shows them in any scene. */
-export function lightMarkersShown({ lighting, activeTool }: MarkerState): boolean {
-  return lighting.enabled || activeTool === 'wall';
-}
 
 interface Marker {
   view: Container;

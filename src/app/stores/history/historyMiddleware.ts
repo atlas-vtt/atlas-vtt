@@ -27,8 +27,9 @@ interface HistoryApi {
 type Creator = (set: SetState, get: () => HistorySnapshot, api: HistoryApi) => unknown;
 
 const historyMiddleware = (depths: UndoDepths) => (config: Creator): Creator => (set, get, api) => {
-  // Undo and redo write with zustand's own `set`, below every other middleware: such a write
-  // is never recorded and never saved by itself (the next recorded write saves its result).
+  // Undo and redo write with the `set` this middleware is handed, below immer and persist: such a
+  // write is never recorded and never saved by itself (the next recorded write saves its result).
+  // On a view store that `set` is `withSurfaces`'s, so what an undo makes stale closes in its write.
   const history = createHistory({ depths, read: () => trackedSliceOf(get(), depths), write: (slice) => set(slice) });
   api.temporal = history.store;
   const setState = api.setState;
@@ -37,8 +38,8 @@ const historyMiddleware = (depths: UndoDepths) => (config: Creator): Creator => 
 };
 
 /**
- * Atlas's undo history, outermost on a store, tracking the branches of `depths` as deep as it
- * says. Adds `store.temporal`.
+ * Atlas's undo history, outside immer and persist (on a view store inside `withSurfaces`),
+ * tracking the branches of `depths` as deep as it says. Adds `store.temporal`.
  * The cast is zustand's pattern for a middleware that adds a mutator: the implementation
  * is typed for any state, the export for the state of the store it is given.
  */

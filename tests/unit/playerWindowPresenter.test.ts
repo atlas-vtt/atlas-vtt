@@ -36,6 +36,7 @@ const serviceMock = vi.hoisted(() => ({
   getWindow: vi.fn(() => null),
   releaseSource: vi.fn(),
   awaitsSource: vi.fn(() => false),
+  mirrors: vi.fn(() => false),
 }));
 
 vi.mock('../../src/app/services/PlayerWindowService', async () => {
@@ -55,6 +56,7 @@ vi.mock('../../src/app/services/PlayerWindowService', async () => {
     releaseHeldFrame = serviceMock.releaseHeldFrame;
     releaseSource = serviceMock.releaseSource;
     awaitsSource = serviceMock.awaitsSource;
+    mirrors = serviceMock.mirrors;
     presentCanvas(source: PlayerFrameSource, tabId: string): void {
       serviceMock.presentCanvas(source, tabId);
       store.setState({ shownTabId: tabId });
@@ -293,48 +295,28 @@ describe('PlayerWindowPresenter', () => {
       return { ...fake, tavern, dungeon };
     }
 
-    test.each([
-      ['the scene is marked loaded', [{ isMapLoading: false }, { mapLoaded: true }]],
-      ['the loading overlay goes', [{ mapLoaded: true }, { isMapLoading: false }]],
-    ])('shows players the live scene again once it has loaded, whether last %s', async (_label, lastSteps) => {
-      const { view, atlasStore, tavern } = await presentTavernThenBrowse();
-
-      // The tab becomes active before the load starts, so the store still shows Dungeon as loaded
-      view.tabMetaStore.getState().setActiveTab(tavern);
+    test('leaves a window that still shows the tab live on its frame source when the tab loads again', async () => {
+      const fake = createFakeView();
+      const tavern = fake.view.tabMetaStore.getState().addTab(TAVERN, 'Tavern');
+      fake.atlasStore.setState({ mapPath: TAVERN });
+      await presentTab(app, fake.view, tavern);
+      serviceMock.mirrors.mockReturnValue(true);
+      fake.atlasStore.setState({ isMapLoading: true });
+      fake.atlasStore.setState({ isMapLoading: false });
       await flush();
+      serviceMock.mirrors.mockReturnValue(false);
       expect(serviceMock.releaseHeldFrame).not.toHaveBeenCalled();
-
-      atlasStore.setState({ mapLoaded: false, isMapLoading: true, mapPath: TAVERN });
-      await flush();
-      expect(serviceMock.releaseHeldFrame).not.toHaveBeenCalled();
-      for (const step of lastSteps) atlasStore.setState(step);
-      await waitForRelease(atlasStore);
-
-      expect(serviceMock.releaseHeldFrame).toHaveBeenCalledTimes(1);
     });
 
-    test('keeps the held frame when the scene fails to load, and releases it when a retry succeeds', async () => {
+    test('shows players the live scene again once the presented tab has loaded', async () => {
       const { view, atlasStore, tavern } = await presentTavernThenBrowse();
       view.tabMetaStore.getState().setActiveTab(tavern);
       atlasStore.setState({ mapLoaded: false, isMapLoading: true, mapPath: TAVERN });
-      atlasStore.setState({ isMapLoading: false, mapPath: null });
       await flush();
       expect(serviceMock.releaseHeldFrame).not.toHaveBeenCalled();
-
-      // The retry loads the same tab again: no tab change tells the presenter about it
-      atlasStore.setState({ isMapLoading: true, mapPath: TAVERN });
-      atlasStore.setState({ isMapLoading: false, mapLoaded: true });
-      await waitForRelease(atlasStore);
-    });
-
-    test('keeps the held frame while another scene loads into the view', async () => {
-      const { atlasStore } = await presentTavernThenBrowse();
-
-      atlasStore.setState({ mapLoaded: false, isMapLoading: true, mapPath: 'maps/crypt.md' });
       atlasStore.setState({ mapLoaded: true, isMapLoading: false });
-      await flush();
-
-      expect(serviceMock.releaseHeldFrame).not.toHaveBeenCalled();
+      await waitForRelease(atlasStore);
+      expect(serviceMock.releaseHeldFrame).toHaveBeenCalledTimes(1);
     });
   });
 

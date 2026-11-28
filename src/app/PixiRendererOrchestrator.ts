@@ -1107,11 +1107,12 @@ export class PixiRendererOrchestrator { // Renamed class
   /**
    * The tokens a players' frame of `mapPath` shows now, among `tokenIds` (all without), by
    * the perception `withPlayerSafeFrame` composes: for rolls to name. Nothing once the view
-   * holds another scene, or none loaded.
+   * holds another scene, or none loaded, and nothing while a lit scene's sight is another scene's
+   * or from before a lost graphics context, as for the doors and places.
    */
   public playerRollTokens(mapPath: string, tokenIds?: readonly string[]): ReadonlyMap<string, ShownRollToken> {
     const tokens = this.tokenRenderer;
-    if (!tokens || this._isDestroyed) return new Map();
+    if (!tokens || this._isDestroyed || this.lighting?.renderer.sightIsCurrent() === false) return new Map();
     return shownRollTokens(this.store.getState(), mapPath, tokens.getTokenSprites(), () => tokens.playerFramePerception(this.lighting?.playerSight()), tokenIds);
   }
 

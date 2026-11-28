@@ -6,7 +6,6 @@ import { Viewport } from 'pixi-viewport';
 import { levelSurfaceList, MAX_LEVEL_SURFACES } from '../../../src/app/levels/levelSurfaces';
 import { levelObjects } from '../../../src/app/levels/levelObjects';
 import { LevelSurfaceEditor } from '../../../src/app/pixi/levelSurfaces/LevelSurfaceEditor';
-import { closeStalePopovers } from '../../../src/app/pixi/lighting/popoverGuards';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../../src/app/storeFactory';
 import { getHistoryStore } from '../../../src/app/stores/history';
 import type { LevelSurface, SceneLevel } from '../../../src/app/types/sceneLevelTypes';
@@ -87,7 +86,6 @@ describe('the openings mode of the lighting tool', () => {
     const store = sceneStore({ hole: { id: 'hole', kind: 'level-surface', level: 'upper', open: true, polygon: SQUARE } });
     store.getState().openLevelSurfacePopover('hole');
     store.getState().setViewedLevel('ground');
-    closeStalePopovers(store.getState());
     expect(store.getState().levelSurfacePopover).toBeNull();
   });
 });
