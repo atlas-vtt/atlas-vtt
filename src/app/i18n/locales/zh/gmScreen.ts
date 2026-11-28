@@ -10,6 +10,7 @@ export const gmScreen: Translation = {
   'gmScreen.connecting': '正在连接…',
   'gmScreen.scan': '用手机或平板扫描。',
   'gmScreen.qrLabel': '{name} 链接的二维码',
+  'gmScreen.showQr': '显示二维码',
   'gmScreen.copyLink': '复制链接',
   'gmScreen.linkCopied': '链接已复制',
   'gmScreen.newLink': '新链接',

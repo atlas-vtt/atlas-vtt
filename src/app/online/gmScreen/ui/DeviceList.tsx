@@ -16,9 +16,9 @@ interface DeviceListProps {
 }
 
 /**
- * The devices allowed under this link, as a section that folds, its count in its heading. It rests open
- * while a device is connected and folded while all are away, and opens for a device that arrives. A device
- * that asks to join is never in here: the Allow prompt stands above, whatever the fold.
+ * The devices allowed under this link, as a section that folds, its count in its heading. It opens only when
+ * the GM opens it (`useDeviceFold`). A device that asks to join is never in here: the Allow prompt stands above,
+ * whatever the fold.
  */
 export function DeviceList({ devices, fold, layout = '', remove }: DeviceListProps): React.JSX.Element {
   const id = useId();

@@ -11,6 +11,7 @@ import { readHeldMark } from './heldMarks.ts';
 import { relayRooms, type RoomAccount } from './gmScreenRoom.ts';
 import { GmScreenSession } from './GmScreenSession.ts';
 import { gmScreenControlShown, setGmScreenHost } from './gmScreenSlot.ts';
+import { plugBackdropScreen } from './backdrop/plugBackdrop.ts';
 import { plugKeysScreen } from './keys/atlasKeys.ts';
 import { plugLayoutScreen } from './keys/atlasLayout.ts';
 import { noticeKnocks } from './knockNotice.ts';
@@ -57,6 +58,7 @@ export class AtlasGmScreen {
       plugLayoutScreen(app, this.session, companionTimers()),
       plugAtlasStatblocks(app, this.session),
       plugLookScreen(app, this.session, companionTimers()),
+      plugBackdropScreen(app, this.session),
       noticeKnocks(this.session, gmScreenControlShown, showNotice),
     ];
     setGmScreenHost({ session: this.session, account: signIn });

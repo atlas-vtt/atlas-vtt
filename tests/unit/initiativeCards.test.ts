@@ -207,6 +207,23 @@ describe('a fight by cards', () => {
     expect(turn(get())).toEqual([1, 'c']);
   });
 
+  it('keeps a combatant that acted now in its place when two others swap their cards', () => {
+    const { actions, get } = setup([token('a'), token('b'), token('c'), token('d'), token('e')]);
+    actions.startCombat(CARDS);
+    actions.nextTurn();
+    actions.delayInitiativeTurn('b');
+    actions.nextTurn();
+    actions.actNowInInitiative('b');
+    expect(cards(get())).toEqual([['a', 1], ['c', 3], ['b', 2], ['d', 4], ['e', 5]]);
+    actions.swapInitiativeCards('d', 'e');
+    expect(cards(get())).toEqual([['a', 1], ['c', 3], ['b', 2], ['e', 4], ['d', 5]]);
+    expect(turn(get())).toEqual([1, 'b']);
+    actions.nextTurn();
+    expect(turn(get())).toEqual([1, 'e']);
+    actions.nextTurn();
+    expect(turn(get())).toEqual([1, 'd']);
+  });
+
   it('passes the turn on when the combatant with it leaves, and deals as a new round begins', () => {
     const { actions, get } = setup([token('a'), token('b')], scripted([0.999, 0.999]));
     actions.startCombat({ ...CARDS, dealEachRound: true });

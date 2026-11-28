@@ -38,6 +38,8 @@ export interface FightCombatant {
   readonly delayed?: true;
   /** Kept beside the map, not on it. */
   readonly offMap?: true;
+  /** How much of its life it has lost, 0 (unhurt) to 1, as the tracker's red fills its line (`woundShare`); absent where nothing tells. */
+  readonly wound?: number;
 }
 
 /** A side of a fight by sides, as the tracker heads its group. */
@@ -71,7 +73,7 @@ const isName = (value: unknown): value is string => typeof value === 'string' &&
 
 function parseCombatant(value: unknown): FightCombatant | null {
   if (!isRecord(value) || typeof value.key !== 'string' || !KEY_PATTERN.test(value.key) || !isName(value.name)) return null;
-  const { statblock, portrait, ring, badge, turnColour } = value;
+  const { statblock, portrait, ring, badge, turnColour, wound } = value;
   if (!(statblock === null || (typeof statblock === 'string' && KEY_PATTERN.test(statblock)))) return null;
   if (!(portrait === null || isHash(portrait)) || !(ring === null || (typeof ring === 'string' && COLOUR_PATTERN.test(ring)))) return null;
   const flags = Object.fromEntries(FLAGS.flatMap((flag) => (value[flag] === true ? [[flag, true]] : [])));
@@ -79,6 +81,7 @@ function parseCombatant(value: unknown): FightCombatant | null {
     key: value.key, name: value.name, statblock, portrait, ring,
     ...((turnColour === null || (typeof turnColour === 'string' && COLOUR_PATTERN.test(turnColour))) && { turnColour }),
     ...(isWhole(badge, MAX_INSTANCE_NUMBER) && badge >= 1 && { badge }),
+    ...(typeof wound === 'number' && wound >= 0 && wound <= 1 && { wound }),
     ...flags,
   };
 }

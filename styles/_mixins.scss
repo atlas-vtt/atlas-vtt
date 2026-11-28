@@ -199,11 +199,9 @@
   background: transparent;
   color: var(--text-muted);
 
-  @media (hover: hover) {
-    &:hover {
-      background: var(--background-modifier-hover);
-      color: var(--text-normal);
-    }
+  @include atlas-hover {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
   }
 
   &:active {
@@ -890,12 +888,15 @@
   }
 }
 
-/// Hover styles, only where the pointer can hover: a touch screen leaves `:hover` on what was tapped last, so a tint
-/// meant for the pointer would stay on it. A device that hovers gets the same rule as without the mixin.
+/// Hover styles, only where the pointer can hover and a finger was not the last to touch the page: a touch screen
+/// leaves `:hover` on what was tapped last, and some (Samsung's, which Chromium takes for a touchpad) pass
+/// `(hover: hover)`, so a tint meant for the pointer would stay on what a finger tapped. The page's root carries
+/// `data-atlas-touch` while a finger was last (`watchInput`); `:where` keeps the rule's weight what it was without the
+/// mixin, so a hover never outweighs a state it gave way to before.
 /// @param {String} $selector - the hovered state, `&` being the rule the mixin is in
 @mixin atlas-hover($selector: '&:hover') {
   @media (hover: hover) {
-    #{$selector} {
+    :where(:root:not([data-atlas-touch])) #{$selector} {
       @content;
     }
   }

@@ -3,7 +3,7 @@ import React from 'react';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { GmScreenDeviceView } from '../../../../src/app/online/gmScreen/index.ts';
-import { foldAfter, restingFold, useDeviceFold } from '../../../../src/app/online/gmScreen/ui/deviceFold.ts';
+import { useDeviceFold } from '../../../../src/app/online/gmScreen/ui/deviceFold.ts';
 import { DeviceList } from '../../../../src/app/online/gmScreen/ui/DeviceList';
 import { ARM_MS } from '../../../../src/app/online/gm/armedCards.ts';
 import { CONFIRM_MS, deviceState } from '../../../../src/app/online/gmScreen/ui/DeviceRow';
@@ -19,46 +19,40 @@ const tablet = (connected: boolean, lastSeen = NOW): GmScreenDeviceView => ({ id
 
 /** The section with its fold kept beside it, as the panel keeps it. */
 function Listed(props: Omit<React.ComponentProps<typeof DeviceList>, 'fold'>): React.JSX.Element {
-  return <DeviceList {...props} fold={useDeviceFold(props.devices)} />;
+  return <DeviceList {...props} fold={useDeviceFold()} />;
 }
 
 const toggle = (): HTMLButtonElement => screen.getByRole('button', { name: /Devices/ });
 
 describe('the devices section that folds', () => {
-  it('rests open while a device is connected and folded while all are away', () => {
-    expect(restingFold([phone(true), tablet(false)]).open).toBe(true);
-    expect(restingFold([phone(false), tablet(false)]).open).toBe(false);
-    expect(restingFold([]).open).toBe(false);
-  });
-
-  it('opens for a device that arrives or connects again, and otherwise keeps what the GM chose', () => {
-    const folded = restingFold([phone(false)]);
-    expect(foldAfter(folded, [phone(false)])).toBe(folded);
-    expect(foldAfter(folded, [phone(false), tablet(false)]).open).toBe(true);
-    expect(foldAfter(folded, [phone(true)]).open).toBe(true);
-    const closedByGm = { ...restingFold([phone(true)]), open: false };
-    expect(foldAfter(closedByGm, [phone(false)]).open).toBe(false);
-    expect(foldAfter(closedByGm, [phone(true), tablet(false)]).open).toBe(true);
+  it('rests folded with a device connected, opens only when the GM opens it, and stays as the GM left it as devices come and connect', () => {
+    const { rerender } = render(<Listed devices={[phone(true), tablet(false)]} remove={() => undefined} />);
+    expect(toggle().getAttribute('aria-expanded')).toBe('false');
+    rerender(<Listed devices={[phone(true), tablet(true), { ...phone(true), id: 'p2' }]} remove={() => undefined} />);
+    expect(toggle().getAttribute('aria-expanded'), 'a device that arrives or connects leaves it folded').toBe('false');
+    fireEvent.click(toggle());
+    expect(toggle().getAttribute('aria-expanded')).toBe('true');
+    rerender(<Listed devices={[phone(false)]} remove={() => undefined} />);
+    expect(toggle().getAttribute('aria-expanded'), 'open as the GM left it while devices go').toBe('true');
   });
 
   it('counts its devices in its heading and folds them out of reach', () => {
     render(<Listed devices={[phone(true), tablet(false)]} remove={() => undefined} />);
     expect(toggle().textContent).toBe('Devices2');
-    expect(toggle().getAttribute('aria-expanded')).toBe('true');
     const fold = document.getElementById(toggle().getAttribute('aria-controls') ?? '')!;
-    expect(fold.hasAttribute('inert')).toBe(false);
-    fireEvent.click(toggle());
-    expect(toggle().getAttribute('aria-expanded')).toBe('false');
     expect(fold.hasAttribute('inert')).toBe(true);
     expect(fold.dataset.open).toBe('false');
+    fireEvent.click(toggle());
+    expect(toggle().getAttribute('aria-expanded')).toBe('true');
+    expect(fold.hasAttribute('inert')).toBe(false);
   });
 
-  it('says there is none yet, with nothing to fold, before a device is allowed, and opens for the first one', () => {
+  it('says there is none yet, with nothing to fold, before a device is allowed, and stays folded for the first one', () => {
     const { rerender } = render(<Listed devices={[]} remove={() => undefined} />);
     expect(screen.getByText('No device allowed yet.')).toBeTruthy();
     expect(screen.queryByRole('button')).toBeNull();
     rerender(<Listed devices={[phone(true)]} remove={() => undefined} />);
-    expect(toggle().getAttribute('aria-expanded')).toBe('true');
+    expect(toggle().getAttribute('aria-expanded')).toBe('false');
     expect(document.querySelector('.atlas-gm-screen-device')?.hasAttribute('data-arrived')).toBe(true);
   });
 
