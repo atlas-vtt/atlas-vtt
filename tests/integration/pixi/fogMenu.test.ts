@@ -7,7 +7,7 @@ import { TokenRenderer } from '../../../src/app/pixi/token-renderer';
 import { FogOfWarRenderer } from '../../../src/app/pixi/fog/FogOfWarRenderer';
 import { MapPointer } from '../../../src/app/pixi/pointer/MapPointer';
 import { listenToViewport } from '../../../src/app/pixi/pointer/viewportPointer';
-import { captureWithLayerVisibility } from '../../../src/app/pixi/playerSafeFrame';
+import { captureWithLayerVisibility } from '../../helpers/layerCapture';
 import { isHandled } from '../../../src/app/pixi/utils/handledEvents';
 import { fogAreaList } from '../../../src/app/fog/fogAreas';
 import type { FogShape } from '../../../src/app/fog/fogToolChoices';

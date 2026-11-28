@@ -388,7 +388,7 @@ export function frameSourceOf(view: AtlasView): PlayerFrameSource | null {
     keepTime: (time) => clocks.frame(time),
     canRender: () => renderer.canRenderPlayerFrame() && showsPresentedLevel(view),
     release: () => renderer.releasePlayerFrame(),
-    addDemandRegion: (region) => renderer.addMapDemandRegion(region),
+    addDemandRegion: (region) => renderer.pictures.keepReady(region),
   };
 }
 

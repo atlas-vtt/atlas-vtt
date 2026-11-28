@@ -6,7 +6,7 @@ import { auraBadgePoint } from '../../../src/app/measure/auraArea';
 import { MAP_LAYER_Z } from '../../../src/app/pixi/mapLayerOrder';
 import { placeUnderTokens } from '../../../src/app/pixi/measure/MeasureLayer';
 import type { MeasurePlayersView } from '../../../src/app/pixi/measurePartsVisibility';
-import { captureWithLayerVisibility } from '../../../src/app/pixi/playerSafeFrame';
+import { captureWithLayerVisibility } from '../../helpers/layerCapture';
 import type { TokenEntity } from '../../../src/app/types';
 import { GRID, measureFrom, measureScene, type MeasureScene } from '../../helpers/measureScene';
 

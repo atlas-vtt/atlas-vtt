@@ -8,19 +8,6 @@ export interface HideableLayer {
   alpha?: number | undefined;
 }
 
-/**
- * Runs `capture` while the canvas holds a frame without `dmOnlyLayers`, then
- * restores the DM's frame. Everything happens in one task, before the browser
- * composites, so the DM never sees the player-safe frame.
- */
-export function captureWithoutLayers(
-  dmOnlyLayers: readonly HideableLayer[],
-  render: () => void,
-  capture: () => void
-): void {
-  captureWithLayerVisibility(dmOnlyLayers.map(layer => ({ layer, visible: false })), render, capture);
-}
-
 export interface LayerVisibility {
   layer: HideableLayer;
   visible: boolean;
@@ -114,11 +101,23 @@ function applyCamera({ target, camera, screen }: PlayerFrameCamera): () => void 
   };
 }
 
+/** Runs every step, the later ones also after one throws, and adds what each throws to `errors` in order. */
+export function runEach(steps: Iterable<() => void>, errors: unknown[]): void {
+  for (const step of steps) {
+    try {
+      step();
+    } catch (error) {
+      errors.push(error);
+    }
+  }
+}
+
 /**
- * Apply the player frame's visibility, opacity and (optionally) its camera. Returns the
- * function that restores the DM's, and whether anything differs from the DM's frame.
+ * Apply a picture's visibility, opacity and (optionally) its camera. Of two entries for one layer
+ * that differ from it, the later decides. Returns the function that restores the DM's, and
+ * whether anything differs from the DM's frame; that restore throws the first error of its steps after all of them.
  */
-function applyPlayerFrame(layers: readonly LayerVisibility[], camera?: PlayerFrameCamera): { differs: boolean; restore: () => void } {
+export function applyLayerVisibility(layers: readonly LayerVisibility[], camera?: PlayerFrameCamera): { differs: boolean; restore: () => void } {
   const changed = layers.filter(({ layer, visible, alpha }) =>
     layer.visible !== visible || (alpha !== undefined && layer.alpha !== alpha))
     .map(entry => ({ ...entry, previous: entry.layer.visible, previousAlpha: entry.layer.alpha }));
@@ -130,55 +129,25 @@ function applyPlayerFrame(layers: readonly LayerVisibility[], camera?: PlayerFra
   return {
     differs: changed.length > 0 || !!camera,
     restore: (): void => {
-      restoreCamera?.();
-      for (const { layer, previous, alpha, previousAlpha } of changed) {
-        layer.visible = previous;
-        if (alpha !== undefined) layer.alpha = previousAlpha;
+      // Runs once per captured frame: no closure per layer.
+      let failed = false;
+      let first: unknown;
+      try {
+        restoreCamera?.();
+      } catch (error) {
+        first = error;
+        failed = true;
       }
+      for (const { layer, previous, alpha, previousAlpha } of changed) {
+        try {
+          layer.visible = previous;
+          if (alpha !== undefined) layer.alpha = previousAlpha;
+        } catch (error) {
+          if (!failed) first = error;
+          failed = true;
+        }
+      }
+      if (failed) throw first;
     },
   };
-}
-
-/**
- * Temporarily apply player visibility, opacity and (optionally) a players' camera, then
- * restore the DM frame.
- */
-export function captureWithLayerVisibility(
-  layers: readonly LayerVisibility[],
-  render: () => void,
-  capture: () => void,
-  camera?: PlayerFrameCamera,
-): void {
-  const { differs, restore } = applyPlayerFrame(layers, camera);
-  if (!differs) {
-    capture();
-    return;
-  }
-  try {
-    render();
-    capture();
-  } finally {
-    restore();
-    render();
-  }
-}
-
-/**
- * `captureWithLayerVisibility` for a caller that renders the DM's frame itself afterwards, or
- * whose own render of it follows in the same task (`RenderScheduler`'s before-render hook), so
- * restoring costs no render here. The player frame is always rendered: nothing holds it yet.
- */
-export function captureBeforeRender(
-  layers: readonly LayerVisibility[],
-  render: () => void,
-  capture: () => void,
-  camera?: PlayerFrameCamera,
-): void {
-  const { restore } = applyPlayerFrame(layers, camera);
-  try {
-    render();
-    capture();
-  } finally {
-    restore();
-  }
 }

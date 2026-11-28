@@ -5,7 +5,7 @@ import type { MeasureInput } from '../../src/app/measure/measureTypes';
 import type { TokenEntity } from '../../src/app/types';
 import { viewPlayback } from '../../src/app/pixi/liquids/viewLiquids';
 import { MeasureRenderer, type MeasureGrid } from '../../src/app/pixi/measure/MeasureRenderer';
-import { captureWithLayerVisibility } from '../../src/app/pixi/playerSafeFrame';
+import { captureWithLayerVisibility } from '../helpers/layerCapture';
 import { pointInPolygon } from '../../src/app/vision/visibility';
 import { measureMotionDone, openLitView, type LitView } from '../helpers/litView';
 import { contactSheet, savePng } from './measureEffectsHarness';

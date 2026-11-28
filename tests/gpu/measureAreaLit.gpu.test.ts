@@ -1,7 +1,7 @@
 import { Container, RenderTexture, Sprite, Texture } from 'pixi.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MeasureRenderer, type MeasureGrid } from '../../src/app/pixi/measure/MeasureRenderer';
-import { captureWithLayerVisibility } from '../../src/app/pixi/playerSafeFrame';
+import { captureWithLayerVisibility } from '../helpers/layerCapture';
 import { measureMotionDone, openLitView, type LitView } from '../helpers/litView';
 
 vi.mock('events', async () => import('eventemitter3'));

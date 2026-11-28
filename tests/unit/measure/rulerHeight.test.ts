@@ -9,7 +9,7 @@ import type { HeightAt } from '../../../src/app/measure/tokenHeight';
 import { followTokenHeights, measureHeightAt } from '../../../src/app/pixi/measureTokenHeights';
 import type { DiagonalRule } from '../../../src/app/types/collectionSettingsTypes';
 import type { MeasurePlayersView } from '../../../src/app/pixi/measurePartsVisibility';
-import { captureWithLayerVisibility } from '../../../src/app/pixi/playerSafeFrame';
+import { captureWithLayerVisibility } from '../../helpers/layerCapture';
 import type { TokenEntity } from '../../../src/app/types';
 import { measureFrom, measureScene, type MeasureScene } from '../../helpers/measureScene';
 
