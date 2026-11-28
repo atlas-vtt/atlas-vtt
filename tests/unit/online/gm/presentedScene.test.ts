@@ -169,6 +169,7 @@ describe('the scene players see', () => {
     present(tab);
     expect(workspace.shownElsewhere).toBe(0);
     const { online, relay } = await running();
+    expect(workspace.shownElsewhere).toBe(1);
     relay.outbox.join({ id: BEN, name: 'Ben' });
     await advance(500);
     expect(workspace.shownElsewhere).toBe(1);

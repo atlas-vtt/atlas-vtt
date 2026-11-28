@@ -2,7 +2,7 @@ import type { App, WorkspaceLeaf } from 'obsidian';
 import type { ShownRollToken } from '../../services/playerRollSource';
 import type { TokenEntity } from '../../types';
 import type { ViewState } from '../../types/viewState';
-import type { AtlasView } from '../../atlas-view';
+import { isAtlasView } from '../../atlasViewType';
 import type { ViewAtlasStore } from '../../storeFactory';
 import type { MapView } from './mapView.ts';
 
@@ -39,13 +39,14 @@ export interface ObservedStore extends SceneStore {
 }
 
 /**
- * The leaf's Atlas map view, or null for any other leaf. The one place an Obsidian view is taken for an Atlas
- * one, by its type; handing it out as a `MapView` holds every name the table reads to Atlas's own.
+ * The leaf's Atlas map view, or null for any other leaf: another view, or a tab Obsidian has not loaded yet,
+ * whose placeholder answers Atlas's view type and has nothing else of the view. The one place an Obsidian view
+ * is taken for an Atlas one; handing it out as a `MapView` holds every name the table reads to Atlas's own.
  */
 export function mapViewOf(leaf: WorkspaceLeaf): MapView | null {
-  if (leaf.view.getViewType() !== ATLAS_VIEW_TYPE) return null;
+  if (!isAtlasView(leaf.view)) return null;
   // Atlas's store writes through immer, which its declared type leaves out: a recipe handed to `setState` is one write.
-  const view: Omit<MapView, 'atlasStore'> & { readonly atlasStore: Pick<ViewAtlasStore, 'getState' | 'subscribe' | 'setState'> } = leaf.view as AtlasView;
+  const view: Omit<MapView, 'atlasStore'> & { readonly atlasStore: Pick<ViewAtlasStore, 'getState' | 'subscribe' | 'setState'> } = leaf.view;
   return view as MapView;
 }
 
