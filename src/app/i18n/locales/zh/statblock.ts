@@ -20,6 +20,8 @@ export const statblock: Translation = {
   'statblock.addToNextRoll': '把 {name} 加到下次掷骰',
   'statblock.addsToRolls': '加到下次掷骰',
   'statblock.counterAdd': '添加一行，例如气',
+  'statblock.counterMax': '{name}的最大使用次数',
+  'statblock.counterMaxLabel': '上限',
   'statblock.counterLeft': '{name}：剩余 {n} / {max}',
   'statblock.counterMoveDown': '下移 {name}',
   'statblock.counterMoveUp': '上移 {name}',

@@ -54,6 +54,12 @@ async function pane(values: Record<string, unknown>): Promise<PaneHarness> {
 
 const block = (harness: PaneHarness): HTMLElement => blockOf(harness.result.container, 'slots001');
 const press = async (button: HTMLElement): Promise<void> => { await act(async () => { fireEvent.click(button); }); };
+const configure = async (harness: PaneHarness, name: string): Promise<void> => {
+  const cell = within(block(harness)).getByText(name).closest('.atlas-sb-counter');
+  const button = cell?.querySelector<HTMLButtonElement>('.atlas-sb-counter__settings');
+  if (!button) throw new Error(`Missing settings button for ${name}`);
+  await press(button);
+};
 
 describe('Counters in the statblock pane', () => {
   it('writes a pressed pip as one patch of the whole value, with the old value as its base', async () => {
@@ -102,8 +108,55 @@ describe('Counters in the statblock pane', () => {
 
   it('steps a row of many uses with − and +', async () => {
     const harness = await pane({ slots: [{ name: 'Sorcery points', max: 10, used: 3 }] });
-    await press(within(block(harness)).getByRole('button', { name: 'Decrease Sorcery points' }));
+    const row = within(block(harness));
+    await press(row.getByRole('button', { name: 'Decrease Sorcery points' }));
     expect(harness.writer.patches().at(-1)).toMatchObject({ next: [{ name: 'Sorcery points', max: 10, used: 4 }, { name: '2nd level', max: 1, used: 0 }] });
+    await configure(harness, 'Sorcery points');
+    expect(row.getByRole('spinbutton', { name: 'Maximum uses for Sorcery points' })).toBeTruthy();
+  });
+
+  it('focuses the maximum input when settings open, including when reopened', async () => {
+    const harness = await pane({});
+    const row = within(block(harness));
+    await configure(harness, '1st level');
+    expect(document.activeElement).toBe(row.getByRole('spinbutton', { name: 'Maximum uses for 1st level' }));
+    await configure(harness, '1st level');
+    expect(row.queryByRole('spinbutton', { name: 'Maximum uses for 1st level' })).toBeNull();
+    await configure(harness, '1st level');
+    expect(document.activeElement).toBe(row.getByRole('spinbutton', { name: 'Maximum uses for 1st level' }));
+  });
+
+  it('commits a changed maximum once when its input is left', async () => {
+    const slots = [{ name: '1st level', max: 2, used: 1 }, { name: '2nd level', max: 1, used: 0 }];
+    const harness = await pane({ slots });
+    await configure(harness, '1st level');
+    const max = within(block(harness)).getByRole('spinbutton', { name: 'Maximum uses for 1st level' });
+
+    await act(async () => {
+      fireEvent.change(max, { target: { value: '4' } });
+      expect(harness.writer.patches()).toEqual([]);
+      fireEvent.blur(max);
+    });
+
+    expect(harness.writer.patches()).toEqual([{
+      op: 'set', path: ['slots'], base: slots,
+      next: [{ name: '1st level', max: 4, used: 1 }, { name: '2nd level', max: 1, used: 0, templateMax: 1 }],
+    }]);
+  });
+
+  it('discards an uncommitted maximum when Escape is pressed', async () => {
+    const harness = await pane({});
+    await configure(harness, '1st level');
+    const max = within(block(harness)).getByRole('spinbutton', { name: 'Maximum uses for 1st level' });
+
+    await act(async () => {
+      fireEvent.focus(max);
+      fireEvent.change(max, { target: { value: '4' } });
+      fireEvent.keyDown(max, { key: 'Escape' });
+    });
+
+    expect(harness.writer.patches()).toEqual([]);
+    expect((max as HTMLInputElement).value).toBe('2');
   });
 
   it('counts each of three quick presses of − while the note does not hold the first yet', async () => {

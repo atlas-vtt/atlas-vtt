@@ -8,6 +8,8 @@ export const statblock = {
   'statblock.changeToken': 'Change token for this statblock',
   'statblock.counterAdd': 'Add a row, like Ki',
   'statblock.counterLeft': '{name}: {n} of {max} left',
+  'statblock.counterMax': 'Maximum uses for {name}',
+  'statblock.counterMaxLabel': 'Max',
   'statblock.counterMoveDown': 'Move {name} down',
   'statblock.counterMoveUp': 'Move {name} up',
   'statblock.counterRegain': 'Uses {name} regains',

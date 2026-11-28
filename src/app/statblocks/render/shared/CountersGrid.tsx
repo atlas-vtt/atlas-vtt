@@ -1,5 +1,5 @@
-import React from 'react';
-import { Minus, Plus } from 'lucide-react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Minus, Plus, Settings } from 'lucide-react';
 import { t } from '../../../i18n';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import type { CounterPress, CounterRow } from '../../values/counterValues';
@@ -18,6 +18,8 @@ export interface CounterControls {
   use?: ((index: number, press: CounterPress) => void) | undefined;
   /** What stands under a row's uses: the statblock pane's choice of the rest that gives them back. */
   after?: ((shown: ShownCounter) => React.ReactNode) | undefined;
+  /** Sets the row at `index` of the stored list to this maximum. Unset: no maximum input is drawn. */
+  setMax?: ((index: number, max: number) => void) | undefined;
 }
 
 interface CountersGridProps {
@@ -28,6 +30,83 @@ interface CountersGridProps {
 
 function buttonProps(action: (() => void) | undefined): Pick<React.ButtonHTMLAttributes<HTMLButtonElement>, 'type' | 'disabled' | 'tabIndex' | 'onClick'> {
   return { type: 'button', disabled: !action, tabIndex: action ? undefined : -1, onClick: action };
+}
+
+interface CounterMaxInputProps extends ShownCounter {
+  onCommit: (index: number, max: number) => void;
+}
+
+function CounterMaxInput({ row, index, onCommit }: CounterMaxInputProps): React.JSX.Element {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const focused = useRef(false);
+  const skipCommit = useRef(false);
+  const [draft, setDraft] = useState(String(row.max));
+  const [invalid, setInvalid] = useState(false);
+
+  useLayoutEffect(() => {
+    inputRef.current?.focus({ preventScroll: true });
+  }, []);
+
+  useEffect(() => {
+    if (!focused.current) {
+      setDraft(String(row.max));
+      setInvalid(false);
+    }
+  }, [row.max]);
+
+  const commit = (input: HTMLInputElement): void => {
+    const max = input.valueAsNumber;
+    if (!input.validity.valid || !Number.isSafeInteger(max)) {
+      setInvalid(true);
+      return;
+    }
+    setInvalid(false);
+    setDraft(String(max));
+    if (max !== row.max) onCommit(index, max);
+  };
+
+  return (
+    <label className="atlas-sb-counter__max">
+      <span>{t('statblock.counterMaxLabel')}</span>
+      <input
+        ref={inputRef}
+        type="number"
+        className="atlas-sb-counter__max-input"
+        required
+        min={1}
+        max={Number.MAX_SAFE_INTEGER}
+        step={1}
+        value={draft}
+        aria-label={t('statblock.counterMax', { name: row.name })}
+        aria-invalid={invalid || undefined}
+        onFocus={() => { focused.current = true; }}
+        onChange={(event) => {
+          setDraft(event.currentTarget.value);
+          setInvalid(!event.currentTarget.validity.valid || !Number.isSafeInteger(event.currentTarget.valueAsNumber));
+        }}
+        onBlur={(event) => {
+          focused.current = false;
+          if (skipCommit.current) {
+            skipCommit.current = false;
+            return;
+          }
+          commit(event.currentTarget);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            inputRef.current?.blur();
+          } else if (event.key === 'Escape') {
+            event.preventDefault();
+            skipCommit.current = true;
+            setDraft(String(row.max));
+            setInvalid(false);
+            inputRef.current?.blur();
+          }
+        }}
+      />
+    </label>
+  );
 }
 
 function Pips({ row, index, controls }: ShownCounter & { controls: CounterControls | undefined }): React.JSX.Element {
@@ -76,6 +155,38 @@ function Count({ row, index, controls }: ShownCounter & { controls: CounterContr
   );
 }
 
+function CounterCell({ row, index, controls }: ShownCounter & { controls: CounterControls | undefined }): React.JSX.Element {
+  const [configMode, setConfigMode] = useState(false)
+
+  const handleCommit = (index: number, max: number): void => {
+    setConfigMode(false)
+    if (controls?.setMax) controls?.setMax(index, max)
+  }
+
+  return (
+    <span className="atlas-sb-counter">
+      <div className='atlas-sb-counter__header'>
+        <span className="atlas-sb-counter__name">{row.name}</span>
+        {controls?.setMax && (
+          <button type="button" className="atlas-sb-counter__settings" onClick={() => setConfigMode((previous) => !previous)}>
+            <Settings />
+          </button>
+        )}
+      </div>
+
+      {!configMode ? (
+        row.max > MAX_COUNTER_PIPS
+          ? <Count row={row} index={index} controls={controls} />
+          : <Pips row={row} index={index} controls={controls} />
+      ) : (
+        controls?.setMax && <CounterMaxInput row={row} index={index} onCommit={handleCommit} />
+      )}
+
+      {controls?.after?.({ row, index })}
+    </span>
+  );
+}
+
 /**
  * A Counters block's rows: a small cell each, its name over its pips (◆ left,
  * ◇ used), or over its count with − and + where it has more uses than pips fit.
@@ -86,11 +197,7 @@ export function CountersGrid({ counters, controls }: CountersGridProps): React.J
     <span className="atlas-sb-counters__body">
       <span className="atlas-sb-counters__cells">
         {counters.map((shown) => (
-          <span key={shown.index} className="atlas-sb-counter">
-            <span className="atlas-sb-counter__name">{shown.row.name}</span>
-            {shown.row.max > MAX_COUNTER_PIPS ? <Count {...shown} controls={controls} /> : <Pips {...shown} controls={controls} />}
-            {controls?.after?.(shown)}
-          </span>
+          <CounterCell key={shown.index} {...shown} controls={controls} />
         ))}
       </span>
     </span>

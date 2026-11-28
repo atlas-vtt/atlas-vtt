@@ -1,0 +1,41 @@
+@use '../../../../styles/tokens' as *;
+
+$quiet-button-size: 20px;
+
+@mixin quiet-button {
+  width: $quiet-button-size;
+  height: $quiet-button-size;
+
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-xs;
+  margin: $spacing-s 0 0;
+  padding: 0;
+  border: none;
+  border-radius: $radius-s;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-faint);
+  font: inherit;
+  cursor: pointer;
+  transition: color $transition-fast $transition-ease;
+
+  svg {
+    width: $icon-xs;
+    height: $icon-xs;
+  }
+
+  &:hover:not(:disabled) {
+    color: var(--text-normal);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--background-modifier-border-focus);
+    outline-offset: $spacing-xs;
+  }
+
+  &:disabled {
+    cursor: default;
+    opacity: 1;
+  }
+}

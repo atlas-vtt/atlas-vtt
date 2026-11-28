@@ -1,6 +1,6 @@
 import React from 'react';
 import { DieFace } from './DieFace';
-import { presetFaceParts } from './presetFace';
+import { presetFaceParts } from './presetFaceParts';
 
 /**
  * A saved roll on its place in the row: the body of its first die, how many it throws at the top left, what it
