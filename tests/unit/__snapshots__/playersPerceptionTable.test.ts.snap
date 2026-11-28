@@ -1,0 +1,476 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`what players are shown of a lit scene of two floors: the players' frame and each page > follows the scene through fog, roofs, hidden and held tokens, the peek, shared vision, another floor and stale sight 1`] = `
+{
+  "a roof drawn over the goblin's room, not over the party": {
+    "ana": {
+      "doors": [
+        "door (open)",
+      ],
+      "pins": [
+        "hall",
+      ],
+      "sensed": [],
+      "tokens": [
+        "ana",
+      ],
+    },
+    "ben": {
+      "doors": [],
+      "pins": [],
+      "sensed": [],
+      "tokens": [
+        "ben",
+      ],
+    },
+    "frame": {
+      "doors": [
+        "door (open)",
+      ],
+      "pins": [
+        "hall",
+      ],
+      "sensed": [],
+      "tokens": [
+        "ana",
+      ],
+    },
+  },
+  "fog over the nook": {
+    "ana": {
+      "doors": [
+        "door (open)",
+      ],
+      "pins": [
+        "hall",
+      ],
+      "sensed": [
+        "rat",
+      ],
+      "tokens": [
+        "ana",
+        "goblin",
+      ],
+    },
+    "ben": {
+      "doors": [],
+      "pins": [],
+      "sensed": [],
+      "tokens": [
+        "ben",
+      ],
+    },
+    "frame": {
+      "doors": [
+        "door (open)",
+      ],
+      "pins": [
+        "hall",
+      ],
+      "sensed": [
+        "rat",
+      ],
+      "tokens": [
+        "ana",
+        "goblin",
+      ],
+    },
+  },
+  "shared vision on": {
+    "ana": {
+      "doors": [
+        "door (open)",
+      ],
+      "pins": [
+        "hall",
+      ],
+      "sensed": [
+        "rat",
+      ],
+      "tokens": [
+        "ana",
+        "goblin",
+      ],
+    },
+    "ben": {
+      "doors": [],
+      "pins": [],
+      "sensed": [],
+      "tokens": [
+        "ben",
+      ],
+    },
+    "frame": {
+      "doors": [
+        "door (open)",
+      ],
+      "pins": [
+        "hall",
+      ],
+      "sensed": [
+        "rat",
+      ],
+      "tokens": [
+        "ana",
+        "goblin",
+      ],
+    },
+  },
+  "the GM drags Ana with sight on drop": {
+    "ana": {
+      "doors": [
+        "door (open)",
+      ],
+      "pins": [
+        "hall",
+      ],
+      "sensed": [
+        "rat",
+      ],
+      "tokens": [
+        "goblin",
+      ],
+    },
+    "ben": {
+      "doors": [],
+      "pins": [],
+      "sensed": [],
+      "tokens": [
+        "ben",
+      ],
+    },
+    "frame": {
+      "doors": [
+        "door (open)",
+      ],
+      "pins": [
+        "hall",
+      ],
+      "sensed": [
+        "rat",
+      ],
+      "tokens": [
+        "goblin",
+      ],
+    },
+  },
+  "the GM peeks": {
+    "ana": {
+      "doors": [
+        "door (open)",
+      ],
+      "pins": [
+        "hall",
+      ],
+      "sensed": [
+        "rat",
+      ],
+      "tokens": [
+        "ana",
+        "goblin",
+      ],
+    },
+    "ben": {
+      "doors": [],
+      "pins": [],
+      "sensed": [],
+      "tokens": [
+        "ben",
+      ],
+    },
+    "frame": {
+      "doors": [
+        "door (open)",
+      ],
+      "pins": [
+        "hall",
+      ],
+      "sensed": [
+        "rat",
+      ],
+      "tokens": [
+        "ana",
+        "goblin",
+      ],
+    },
+  },
+  "the door closed": {
+    "ana": {
+      "doors": [
+        "door",
+      ],
+      "pins": [
+        "hall",
+        "nook",
+      ],
+      "sensed": [
+        "rat",
+      ],
+      "tokens": [
+        "ana",
+        "ogre",
+      ],
+    },
+    "ben": {
+      "doors": [],
+      "pins": [],
+      "sensed": [],
+      "tokens": [
+        "ben",
+      ],
+    },
+    "frame": {
+      "doors": [
+        "door",
+      ],
+      "pins": [
+        "hall",
+        "nook",
+      ],
+      "sensed": [
+        "rat",
+      ],
+      "tokens": [
+        "ana",
+        "ogre",
+      ],
+    },
+  },
+  "the door closes while the lighting's sight is not the scene's": {
+    "ana": {
+      "doors": [
+        "door",
+      ],
+      "pins": [
+        "hall",
+      ],
+      "sensed": [
+        "rat",
+      ],
+      "tokens": [
+        "ana",
+      ],
+    },
+    "ben": {
+      "doors": [],
+      "pins": [],
+      "sensed": [],
+      "tokens": [
+        "ben",
+      ],
+    },
+    "frame": {
+      "doors": [
+        "door",
+      ],
+      "pins": [
+        "(none: cannot tell)",
+      ],
+      "sensed": [
+        "rat",
+      ],
+      "tokens": [],
+    },
+  },
+  "the door open": {
+    "ana": {
+      "doors": [
+        "door (open)",
+      ],
+      "pins": [
+        "hall",
+        "nook",
+      ],
+      "sensed": [
+        "rat",
+      ],
+      "tokens": [
+        "ana",
+        "goblin",
+        "ogre",
+      ],
+    },
+    "ben": {
+      "doors": [],
+      "pins": [],
+      "sensed": [],
+      "tokens": [
+        "ben",
+      ],
+    },
+    "frame": {
+      "doors": [
+        "door (open)",
+      ],
+      "pins": [
+        "hall",
+        "nook",
+      ],
+      "sensed": [
+        "rat",
+      ],
+      "tokens": [
+        "ana",
+        "goblin",
+        "ogre",
+      ],
+    },
+  },
+  "the goblin goes upstairs, beside Ben": {
+    "ana": {
+      "doors": [
+        "door (open)",
+      ],
+      "pins": [
+        "hall",
+      ],
+      "sensed": [
+        "rat",
+      ],
+      "tokens": [
+        "ana",
+      ],
+    },
+    "ben": {
+      "doors": [],
+      "pins": [],
+      "sensed": [],
+      "tokens": [
+        "ben",
+      ],
+    },
+    "frame": {
+      "doors": [
+        "door (open)",
+      ],
+      "pins": [
+        "hall",
+      ],
+      "sensed": [
+        "rat",
+      ],
+      "tokens": [
+        "ana",
+      ],
+    },
+  },
+  "the hidden ghost beside the goblin": {
+    "ana": {
+      "doors": [
+        "door (open)",
+      ],
+      "pins": [
+        "hall",
+      ],
+      "sensed": [
+        "rat",
+      ],
+      "tokens": [
+        "ana",
+        "goblin",
+      ],
+    },
+    "ben": {
+      "doors": [],
+      "pins": [],
+      "sensed": [],
+      "tokens": [
+        "ben",
+      ],
+    },
+    "frame": {
+      "doors": [
+        "door (open)",
+      ],
+      "pins": [
+        "hall",
+      ],
+      "sensed": [
+        "rat",
+      ],
+      "tokens": [
+        "ana",
+        "goblin",
+      ],
+    },
+  },
+  "the lighting builds the scene again": {
+    "ana": {
+      "doors": [
+        "door",
+      ],
+      "pins": [
+        "hall",
+      ],
+      "sensed": [
+        "rat",
+      ],
+      "tokens": [
+        "ana",
+      ],
+    },
+    "ben": {
+      "doors": [],
+      "pins": [],
+      "sensed": [],
+      "tokens": [
+        "ben",
+      ],
+    },
+    "frame": {
+      "doors": [
+        "door",
+      ],
+      "pins": [
+        "hall",
+      ],
+      "sensed": [
+        "rat",
+      ],
+      "tokens": [
+        "ana",
+      ],
+    },
+  },
+  "the lighting switched off": {
+    "ana": {
+      "doors": [
+        "door",
+      ],
+      "pins": [
+        "den",
+        "hall",
+      ],
+      "sensed": [
+        "rat",
+      ],
+      "tokens": [
+        "ana",
+        "goblin",
+        "rat",
+      ],
+    },
+    "ben": {
+      "doors": [],
+      "pins": [],
+      "sensed": [],
+      "tokens": [
+        "ben",
+      ],
+    },
+    "frame": {
+      "doors": [],
+      "pins": [
+        "hall",
+        "den",
+      ],
+      "sensed": [],
+      "tokens": [
+        "ana",
+        "goblin",
+        "rat",
+      ],
+    },
+  },
+}
+`;
