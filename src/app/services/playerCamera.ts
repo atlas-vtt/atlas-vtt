@@ -34,7 +34,9 @@ export interface PlayerCameraWorld {
   held(): boolean;
   /** The GM's screen, which a camera without the world rectangle it frames takes that rectangle from. */
   screen(): Size | undefined;
-  /** How long players glide to another camera, in ms; 0 where they jump: no glide time, reduced motion, the curtain down. */
+  /** Whether the curtain is down: players see none of a glide, so they jump. */
+  curtained(): boolean;
+  /** How long players glide to another camera, in ms; 0 where they jump: no glide time, or reduced motion. */
   glideMs(): number;
   now(): number;
 }
@@ -47,8 +49,8 @@ export type PlayerCameraEvent =
   | { type: 'moveTo'; camera: PlayerCameraState }
   /** Pin players on `camera` at once: a step of the glass being dragged. */
   | { type: 'drag'; camera: PlayerCameraState }
-  /** A scene is presented: `camera` to frame it through, `remembered` the frame the GM set on its map before. */
-  | { type: 'present'; anotherScene: boolean; camera?: PlayerCameraState | undefined; remembered?: PlayerCameraState | undefined }
+  /** A scene is presented from `map`: `camera` to frame it through, `remembered` the frame the GM set on that map before. */
+  | { type: 'present'; anotherScene: boolean; map: string; camera?: PlayerCameraState | undefined; remembered?: PlayerCameraState | undefined }
   /** Players were shown a frame through `camera`. */
   | { type: 'shown'; camera: PlayerCameraState }
   /** A display frame at `now` moves a glide on. */
@@ -72,6 +74,10 @@ export interface PlayerCameraStep {
   readonly moved?: boolean;
   /** Players dip through black to what they see next, as to another scene. */
   readonly dip?: boolean;
+  /** A camera a scene was presented through, kept as the frame its map returns players to. */
+  readonly remember?: { readonly map: string; readonly camera: PlayerCameraState };
+  /** Players follow the GM on another scene and were shown nothing of it: the camera kept to restore the window goes. */
+  readonly forget?: boolean;
 }
 
 /**
@@ -140,7 +146,7 @@ function unfrozen(camera: PlayerCamera, world: PlayerCameraWorld): PlayerCameraS
 /** Pins players on `to`, gliding there from the camera they see, frozen or following. */
 function movedTo(camera: PlayerCamera, to: PlayerCameraState, world: PlayerCameraWorld): PlayerCameraStep {
   const from = cameraPlayersAreOn(camera, world);
-  const ms = from && !sameCamera(from, to) ? world.glideMs() : 0;
+  const ms = from && !world.curtained() && !sameCamera(from, to) ? world.glideMs() : 0;
   if (!from || !(ms > 0)) return pinned(camera, to, world);
   // Players who followed the GM stop doing so here, not when the glide lands
   const step = camera.frozen ? { camera } : pinned(camera, from, world, false);
@@ -157,12 +163,25 @@ function glided(camera: PlayerCamera, now: number, world: PlayerCameraWorld): Pl
 }
 
 /**
- * Where a scene is presented: with a camera, players are pinned on it, gliding there on the scene
- * they see; else a map the GM framed before returns them to that frame; else a freeze carries over,
+ * Where a scene is presented: another scene dips players through black to it. With a camera, players
+ * are pinned on it, gliding there on the scene they see, and the camera is kept for its map; else, on
+ * another scene, a map the GM framed before returns them to that frame; else a freeze carries over,
  * on the GM's framing, gliding there on the same scene, at once on another. Players who follow keep following.
  */
 function presented(camera: PlayerCamera, event: Extract<PlayerCameraEvent, { type: 'present' }>, world: PlayerCameraWorld): PlayerCameraStep {
-  const { anotherScene, camera: to, remembered } = event;
+  const { anotherScene, map, camera: to } = event;
+  const step = framedOnPresent(camera, event, world);
+  return {
+    ...step,
+    ...(anotherScene ? { dip: true } : {}),
+    ...(to ? { remember: { map, camera: to } } : {}),
+    ...(anotherScene && step.camera.frozen === null ? { forget: true } : {}),
+  };
+}
+
+function framedOnPresent(camera: PlayerCamera, event: Extract<PlayerCameraEvent, { type: 'present' }>, world: PlayerCameraWorld): PlayerCameraStep {
+  const { anotherScene, camera: to } = event;
+  const remembered = anotherScene ? event.remembered : undefined;
   // The camera players saw the scene before through says nothing about this one
   const current = anotherScene ? { ...camera, shown: null } : camera;
   if (to) return anotherScene ? pinned(current, to, world) : movedTo(current, to, world);

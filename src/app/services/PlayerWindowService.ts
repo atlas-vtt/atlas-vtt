@@ -16,7 +16,7 @@ import { LocalPlayerView, LOCAL_PLAYER_VIEW_TYPE, type PlayerCameraState } from 
 import { t } from '../i18n';
 import { cannotRender, PlayerFrameMirror, type PlayerFrameSource } from './PlayerFrameMirror';
 import { PLAYER_FRAME_4K_PIXEL_BUDGET, PLAYER_FRAME_PIXEL_BUDGET } from './playerFrame';
-import { cameraPlayersAreOn, FOLLOWING, nextPlayerCamera, outlinedCamera, type PlayerCamera, type PlayerCameraEvent, type PlayerCameraWorld, type PlayerGlide } from './playerCamera';
+import { cameraPlayersAreOn, FOLLOWING, nextPlayerCamera, outlinedCamera, type PlayerCamera, type PlayerCameraEvent, type PlayerCameraStep, type PlayerCameraWorld, type PlayerGlide } from './playerCamera';
 import type { PlayerFrame, Screen, Size, WorldFrame } from '../types/playerFrame';
 import { presentedSceneOf, type PresentedScene } from './presentedScene';
 import { onMapRulesChange } from './mapRules';
@@ -354,20 +354,17 @@ export class PlayerWindowService {
     const levelId = presentedSceneOf(this.app).get()?.levelId ?? null;
     const anotherScene = playerWindowStore.getState().shownTabId !== tabId || this.shownLevelId !== levelId;
     this.shownLevelId = levelId;
-    if (anotherScene) this.dipToNextScene();
     this.streamSource = source;
     this.mirror?.markStale();
     this.presentScene();
     this.heldFrame = null;
     const map = filePath || tabId;
-    const remembered = anotherScene ? this.playerView?.getState().frames?.[map] : undefined;
-    if (camera) this.rememberFrame(map, camera);
-    this.moveCamera({ type: 'present', anotherScene, camera, remembered });
+    const step = this.moveCamera({ type: 'present', anotherScene, map, camera, remembered: this.playerView?.getState().frames?.[map] });
     // The held frame is gone even where no freeze changed
     this.updateFreezeIndicator();
     playerWindowStore.setState({ shownTabId: tabId });
     this.playerView?.updateSession({
-      tabId, ...(filePath ? { filePath } : {}), levelId: levelId ?? undefined, frozen: this.isFrozen(), ...(anotherScene && !this.isFrozen() ? { camera: null } : {}),
+      tabId, ...(filePath ? { filePath } : {}), levelId: levelId ?? undefined, frozen: this.isFrozen(), ...(step.forget ? { camera: null } : {}),
     });
     this.followSource();
   }
@@ -425,20 +422,22 @@ export class PlayerWindowService {
     live: () => !!this.streamSource && !this.heldFrame && !cannotRender(this.streamSource),
     held: () => this.heldFrame !== null,
     screen: () => this.streamSource?.getScreen?.(),
+    curtained: () => this.curtained,
     glideMs: () => {
       const win = this.playerWindow;
-      return win && !this.curtained && this.movesGently(win) ? this.settingsService.getTableTvSettings().viewGlideMs : 0;
+      return win && this.movesGently(win) ? this.settingsService.getTableTvSettings().viewGlideMs : 0;
     },
     now: () => this.playerWindow?.performance.now() ?? 0,
   };
 
   /** Takes the camera policy's next step on `event` and shows players what it says. */
-  private moveCamera(event: PlayerCameraEvent): void {
+  private moveCamera(event: PlayerCameraEvent): PlayerCameraStep {
     const before = this.camera;
     const step = nextPlayerCamera(before, event, this.world);
     this.camera = step.camera;
     const { frozen, glide } = step.camera;
     if (step.dip) this.dipToNextScene();
+    if (step.remember) this.rememberFrame(step.remember.map, step.remember.camera);
     switch (step.frozen) {
       case 'pinned':
         this.mirror?.markStale();
@@ -457,6 +456,7 @@ export class PlayerWindowService {
     }
     if (step.moved) this.glass.cameraChanged();
     if (glide && glide !== before.glide) this.runGlide(glide);
+    return step;
   }
 
   /** Moves players on along `glide` with each display frame of their window, until another move of their camera ends it. */

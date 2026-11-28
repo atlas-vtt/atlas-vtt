@@ -11,6 +11,7 @@ interface WorldState {
   view?: PlayerCameraState;
   live?: boolean;
   held?: boolean;
+  curtained?: boolean;
   screen?: Size;
   glideMs?: number;
   now?: number;
@@ -18,9 +19,11 @@ interface WorldState {
 
 /** A window whose view looks through `view` on an 800 × 600 pane, renders the presented scene, and glides 800 ms. */
 function world(state: WorldState = {}): PlayerCameraWorld {
-  const { view, live = true, held = false, glideMs = 800, now = 0 } = state;
+  const { view, live = true, held = false, curtained = false, glideMs = 800, now = 0 } = state;
   const screen = 'screen' in state ? state.screen : { width: 800, height: 600 };
-  return { view: () => view, live: () => live && !held, held: () => held, screen: () => screen, glideMs: () => glideMs, now: () => now };
+  return {
+    view: () => view, live: () => live && !held, held: () => held, curtained: () => curtained, screen: () => screen, glideMs: () => glideMs, now: () => now,
+  };
 }
 
 function step(camera: PlayerCamera, event: PlayerCameraEvent, state?: WorldState): PlayerCameraStep {
@@ -90,9 +93,10 @@ describe('sending players to a camera', () => {
     });
   });
 
-  it('jumps without glide time, to the camera they are on, or where they were shown nothing', () => {
+  it('jumps without glide time, under the curtain, to the camera they are on, or where they were shown nothing', () => {
     const at = { camera: { ...SEEN, frozen: FRAME_B, glide: null }, frozen: 'pinned', persist: true, moved: true };
     expect(step(SEEN, { type: 'moveTo', camera: FRAME_B }, { glideMs: 0 })).toEqual(at);
+    expect(step(SEEN, { type: 'moveTo', camera: FRAME_B }, { curtained: true })).toEqual(at);
     expect(step({ ...SEEN, frozen: FRAME_B }, { type: 'moveTo', camera: FRAME_B })).toEqual(at);
     expect(step(FOLLOWING, { type: 'moveTo', camera: FRAME_B }, { live: false }).camera).toEqual({ ...FOLLOWING, frozen: FRAME_B });
   });
@@ -121,12 +125,27 @@ describe('dragging the glass', () => {
 });
 
 describe('presenting a scene', () => {
-  const another = (event: Partial<Extract<PlayerCameraEvent, { type: 'present' }>> = {}): PlayerCameraEvent => ({ type: 'present', anotherScene: true, ...event });
-  const same = (event: Partial<Extract<PlayerCameraEvent, { type: 'present' }>> = {}): PlayerCameraEvent => ({ type: 'present', anotherScene: false, ...event });
+  const another = (event: Partial<Extract<PlayerCameraEvent, { type: 'present' }>> = {}): PlayerCameraEvent => ({ type: 'present', anotherScene: true, map: 'b.atlasmap', ...event });
+  const same = (event: Partial<Extract<PlayerCameraEvent, { type: 'present' }>> = {}): PlayerCameraEvent => ({ type: 'present', anotherScene: false, map: 'a.atlasmap', ...event });
 
-  it('leaves players who follow the GM following, and forgets what they saw of another scene', () => {
+  it('leaves players who follow the GM following; on another scene they dip to it, and what they saw of the last one is forgotten', () => {
     expect(step(SEEN, same(), { view: GM })).toEqual({ camera: SEEN });
-    expect(step(SEEN, another(), { view: GM })).toEqual({ camera: FOLLOWING });
+    expect(step(SEEN, another(), { view: GM })).toEqual({ camera: FOLLOWING, dip: true, forget: true });
+  });
+
+  it('forgets no camera for players frozen on another scene, and dips them all the same', () => {
+    expect(step(PINNED, another(), { view: GM })).toMatchObject({ dip: true, frozen: 'pinned' });
+    expect(step(PINNED, another(), { view: GM }).forget).toBeUndefined();
+  });
+
+  it('keeps a camera a scene is presented through as the frame of its map', () => {
+    expect(step(SEEN, same({ camera: FRAME_B })).remember).toEqual({ map: 'a.atlasmap', camera: FRAME_B });
+    expect(step(SEEN, another({ camera: FRAME_B })).remember).toEqual({ map: 'b.atlasmap', camera: FRAME_B });
+    expect(step(SEEN, another()).remember).toBeUndefined();
+  });
+
+  it('returns players to a remembered frame only on another scene, never on the scene they see', () => {
+    expect(step(SEEN, same({ remembered: FRAME_B }), { view: GM })).toEqual({ camera: SEEN });
   });
 
   it('carries a freeze over on the GM\'s framing: at once on another scene, gliding on the same', () => {
