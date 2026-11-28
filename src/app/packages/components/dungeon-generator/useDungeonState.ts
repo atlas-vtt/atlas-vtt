@@ -58,7 +58,7 @@ function sized(tags: readonly DungeonTag[]): DungeonTag[] {
   return tags.some((tag) => SIZE_TAGS.includes(tag)) ? [...tags] : withTag(tags, 'medium');
 }
 
-/** The stored preferences as this panel's own state: a copy, since the settings hand every reader the same value. */
+/** The stored preferences as this panel's own state, copied to the mutable type its state has (the settings hand out read-only values). */
 function readSettings(app: App): DungeonGeneratorSettings {
   const stored = SettingsService.forApp(app)?.get('dungeonGenerator') ?? DEFAULT_DUNGEON_GENERATOR_SETTINGS;
   return { ...stored, view: { ...stored.view }, tags: [...stored.tags] };
