@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ADD, surfaceView, undo, type SurfaceView } from './surfaceView';
+import { ADD, redo, surfaceView, undo, type PopoverObject, type SurfaceView } from './surfaceView';
 import { SURFACE_NAMES, SURFACES, type SurfaceCase, type SurfaceName } from './surfaces';
 
 /**
@@ -83,6 +83,15 @@ const NOT_WHILE: Partial<Record<SurfaceName, readonly SurfaceName[]>> = {
   ...Object.fromEntries(POPOVERS.map((name) => [name, ['tableMode']])),
 };
 
+/** A change of the object that keeps it, one undo step. */
+const CHANGE: Readonly<Record<PopoverObject, (view: SurfaceView) => void>> = {
+  light: (view) => view.state().patchObject('lights', view.ids.light, { x: 40 }),
+  zone: (view) => view.state().patchObject('lightZones', view.ids.zone, { ambient: 0.6 }),
+  link: (view) => view.state().patchObject('levelLinks', view.ids.link, { direction: 'up' }),
+  surface: (view) => view.state().patchObject('levelSurfaces', view.ids.surface, { open: false }),
+  measure: (view) => view.state().patchObject('measures', view.ids.measure, { hidden: true }),
+};
+
 /** The object stands on both levels, as the stairs always do. */
 function onBothLevels(view: SurfaceView, surface: SurfaceCase): void {
   if (surface.object === 'light') view.state().patchObject('lights', view.ids.light, { levels: ['ground', 'upper'] });
@@ -92,7 +101,7 @@ function onBothLevels(view: SurfaceView, surface: SurfaceCase): void {
 function applies(name: SurfaceName, event: EventName): boolean {
   const surface = SURFACES[name];
   if (OPENS[event] === name) return false;
-  if (ON_THE_OBJECT.includes(event) || event === 'otherLevel') return surface.object !== undefined;
+  if (ON_THE_OBJECT.includes(event)) return surface.object !== undefined;
   if (event === 'levelItStandsOnToo') return surface.object === 'light' || surface.object === 'zone' || surface.object === 'link';
   return true;
 }
@@ -126,6 +135,33 @@ describe('what closes each surface of the view', () => {
     expect(surface.isOpen(view.state())).toBe(false);
   });
 
+  it.each(POPOVERS)('%s, when undo and redo take back a change that keeps its object', (name) => {
+    const view = opened(name);
+    const surface = SURFACES[name];
+    CHANGE[surface.object!](view);
+    undo(view);
+    expect(surface.isOpen(view.state())).toBe(true);
+    redo(view);
+    expect(surface.isOpen(view.state())).toBe(true);
+  });
+
+  it.each(POPOVERS)('%s, when redo brings its object back after undo took it', (name) => {
+    const view = surfaceView();
+    const surface = SURFACES[name];
+    view.ids[surface.object!] = ADD[surface.object!](view.store);
+    if (surface.tool) view.state().setActiveTool(surface.tool);
+    surface.open(view);
+    undo(view);
+    redo(view);
+    expect(surface.isOpen(view.state())).toBe(false);
+  });
+
+  it.each(POPOVERS)('%s, when a plain write of the store leaves the GM\'s view', (name) => {
+    const view = opened(name);
+    view.store.setState({ isGMView: false });
+    expect(SURFACES[name].isOpen(view.state())).toBe(false);
+  });
+
   it('a light, in a scene without lighting, while the lighting tool is in hand', () => {
     const view = opened('lightPopover');
     view.state().setActiveTool('wall');
@@ -148,7 +184,17 @@ const PAIRS = SURFACE_NAMES.flatMap((first) => SURFACE_NAMES
   .filter((second) => !(SURFACES[first].tool && SURFACES[second].tool && SURFACES[first].tool !== SURFACES[second].tool))
   .map((second) => [first, second] as const));
 
+/** A popover open without a tool, then one opened without the tool it needs, which cannot stay. */
+const CANNOT_STAY = (['lightPopover', 'measurePopover'] as const).flatMap((first) => (['zonePopover', 'stairsPopover', 'openingPopover'] as const).map((second) => [first, second] as const));
+
 describe('what each surface closes when it opens', () => {
+  it.each(CANNOT_STAY)('%s, then %s without its tool: it closes what its opening closes, and does not stay', (first, second) => {
+    const view = opened(first);
+    SURFACES[second].open(view);
+    expect(SURFACES[second].isOpen(view.state())).toBe(false);
+    expect(SURFACES[first].isOpen(view.state())).toBe(!CLOSES[second].includes(first));
+  });
+
   it.each(PAIRS)('%s, then %s', (first, second) => {
     const view = surfaceView();
     view.state().setActiveTool(SURFACES[first].tool ?? SURFACES[second].tool ?? 'move');

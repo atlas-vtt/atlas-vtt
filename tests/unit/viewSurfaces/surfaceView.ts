@@ -1,6 +1,7 @@
 import { createViewAtlasStore, type ViewAtlasState, type ViewAtlasStore } from '../../../src/app/storeFactory';
 import { getHistoryStore } from '../../../src/app/stores/history';
 import type { SceneLevel } from '../../../src/app/types/sceneLevelTypes';
+import type { App } from 'obsidian';
 import { createInMemoryApp } from '../../mocks/inMemoryVault';
 
 export const LEVELS: SceneLevel[] = [
@@ -23,6 +24,7 @@ export const ADD: Readonly<Record<PopoverObject, (store: ViewAtlasStore) => stri
 };
 
 export interface SurfaceView {
+  app: App;
   store: ViewAtlasStore;
   ids: Record<PopoverObject, string>;
   state: () => ViewAtlasState;
@@ -41,9 +43,13 @@ export function surfaceView(): SurfaceView {
   });
   const ids = { light: ADD.light(store), zone: ADD.zone(store), link: ADD.link(store), surface: ADD.surface(store), measure: ADD.measure(store) };
   getHistoryStore(store)!.getState().clear();
-  return { store, ids, state: () => store.getState() };
+  return { app, store, ids, state: () => store.getState() };
 }
 
 export function undo(view: SurfaceView): void {
   getHistoryStore(view.store)!.getState().undo();
+}
+
+export function redo(view: SurfaceView): void {
+  getHistoryStore(view.store)!.getState().redo();
 }
