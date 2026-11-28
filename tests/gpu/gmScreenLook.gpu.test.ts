@@ -1,6 +1,7 @@
 import { afterAll, afterEach, describe, expect, it } from 'vitest';
 import { commands } from 'vitest/browser';
 import looksCss from '../../styles/looks/atlas-looks.css?inline';
+import probeCss from '../../src/app/online/gmScreen/look/look-probe.scss?inline';
 import { CUSTOM_ACCENT_CLASS, LOOK_CLASS, SCIFI_LOOK_CLASS } from '../../src/app/appearance/atlasLook';
 import { COLOUR_PRESETS } from '../../src/app/appearance/colourPresets';
 import { readLook } from '../../src/app/online/gmScreen/look/readLook.ts';
@@ -21,6 +22,7 @@ function stylesheet(css: string): void {
 function obsidian(scheme: 'light' | 'dark', ...classes: string[]): void {
   stylesheet(OBSIDIAN_DEFAULT_COLOURS);
   stylesheet(looksCss);
+  stylesheet(probeCss);
   document.body.addClass(`theme-${scheme}`, ...classes);
 }
 

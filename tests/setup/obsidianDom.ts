@@ -211,3 +211,16 @@ if (typeof window !== 'undefined' && typeof window.ResizeObserver !== 'function'
 if (typeof Element !== 'undefined' && !('checkVisibility' in Element.prototype)) {
   Object.defineProperty(Element.prototype, 'checkVisibility', { value: () => true, configurable: true, writable: true });
 }
+
+// Obsidian's Chromium has constructed stylesheets that shadow roots adopt; jsdom has neither.
+if (typeof CSSStyleSheet !== 'undefined' && typeof CSSStyleSheet.prototype.replaceSync !== 'function') {
+  Object.defineProperty(CSSStyleSheet.prototype, 'replaceSync', { value: () => undefined, configurable: true, writable: true });
+}
+if (typeof ShadowRoot !== 'undefined' && !('adoptedStyleSheets' in ShadowRoot.prototype)) {
+  const adopted = new WeakMap<ShadowRoot, CSSStyleSheet[]>();
+  Object.defineProperty(ShadowRoot.prototype, 'adoptedStyleSheets', {
+    configurable: true,
+    get(this: ShadowRoot): CSSStyleSheet[] { return adopted.get(this) ?? []; },
+    set(this: ShadowRoot, sheets: CSSStyleSheet[]) { adopted.set(this, sheets); },
+  });
+}
