@@ -282,10 +282,12 @@ function watchPresentedTab(view: AtlasView, service: PlayerWindowService, resume
   };
   // Players see the tab shown on its level only: every change of the active tab away from it, and every change of
   // level off theirs, holds their frame at once, before the canvas changes, also where the tab or level shown before
-  // was not theirs either. A tab that loads keeps what it has; it is shown live again once loaded, on their level.
+  // was not theirs either; so does a tab that finishes loading on another level. A level whose map is replaced under
+  // players keeps them live while the new image loads. A tab that loads keeps what it has; it is shown live again
+  // once loaded, on their level.
   const tracker = trackPresentedScene({ ...sceneOf(view), level: levelOf(view) }, shownTab, ({ now, before, tabChanged, levelChanged }) => {
     const moved = now !== before;
-    if ((now === 'away' && (moved || tabChanged)) || (now === 'other-level' && (moved || levelChanged))) service.holdCurrentFrame();
+    if ((now === 'away' && (moved || tabChanged)) || (now === 'other-level' && (levelChanged || (moved && before !== 'shown')))) service.holdCurrentFrame();
     else if (now === 'shown' && (moved || levelChanged)) resume();
   });
   function resume(): void {
