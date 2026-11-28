@@ -163,7 +163,7 @@ describe('a picture of a map view', () => {
         view.withPlayerSafeFrame((piece) => {
           if (fail) throw failure;
           context.drawImage(piece.image, piece.x, piece.y, piece.width, piece.height, piece.left, piece.top, piece.width, piece.height);
-        }, settings.getLocalPlayerViewSettings(), FRAME, renderFollows);
+        }, settings.get('localPlayerView'), FRAME, renderFollows);
         return lookOf(context.getImageData(0, 0, SIZE, SIZE).data);
       }),
       picture: ({ fail = false } = {}) => rethrowing(() => view.captureSceneFrame({ x: 0, y: 0, width: SIZE, height: SIZE, resolution: 1 }, () => {
