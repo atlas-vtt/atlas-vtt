@@ -2,7 +2,6 @@ import { MAX_MOVE_DISTANCE, MAX_MOVE_MULTIPLE, MAX_MOVE_STEP_NAME, MAX_MOVE_STEP
 import { movedThisTurn, type TurnMovesState } from '../../initiative/movedThisTurn';
 import type { MovementRules } from '../../measure/movementRules';
 import type { TokenEntity } from '../../types';
-import { call } from './atlasView.ts';
 import { hexColour } from './scenePicture.ts';
 import type { TurnShareState } from './turnShare.ts';
 
@@ -16,14 +15,6 @@ export interface TokenMoves {
   speedOf(token: TokenEntity): number | null;
   /** Has the statblocks of these tokens read, so their speeds are known. */
   prepare(tokens: Iterable<TokenEntity>): void;
-}
-
-/** The movement of an Atlas tab's token renderer (`getTokenRenderer()`), or null where it has none (another Atlas version, no renderer). */
-export function tokenMovesOf(tokens: unknown): TokenMoves | null {
-  const moves = call(tokens, 'tokenMovement');
-  if (typeof moves !== 'object' || moves === null) return null;
-  const has = (method: string): boolean => method in moves && typeof (moves as Record<string, unknown>)[method] === 'function';
-  return has('rules') && has('speedOf') && has('prepare') ? (moves as TokenMoves) : null;
 }
 
 /**

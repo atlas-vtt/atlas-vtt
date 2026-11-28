@@ -76,7 +76,6 @@ describe('the GM\'s controls over the online table', () => {
     seen.notices.length = 0;
     workspace.leaves = [];
     workspace.presented = null;
-    workspace.shownElsewhere = 0;
     workspace.files = new Map([['maps/cave.png', png(700, 700)], ['art/ogre.png', png(4, 4)]]);
     tableControlsStore.setState({ curtain: false, paused: false, playMode: 'table', online: false });
   });

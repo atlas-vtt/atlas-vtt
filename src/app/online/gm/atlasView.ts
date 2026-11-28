@@ -2,7 +2,9 @@ import type { App, WorkspaceLeaf } from 'obsidian';
 import type { ShownRollToken } from '../../services/playerRollSource';
 import type { TokenEntity } from '../../types';
 import type { ViewState } from '../../types/viewState';
-import type { TokenRules } from './tokenUI.ts';
+import type { AtlasView } from '../../atlas-view';
+import type { ViewAtlasStore } from '../../storeFactory';
+import type { MapView } from './mapView.ts';
 
 /** The view type of Atlas's map tabs; a test holds it to the vendor's `ATLAS_VIEW_TYPE`. */
 export const ATLAS_VIEW_TYPE = 'atlas-vtt';
@@ -11,7 +13,7 @@ export const LOCAL_PLAYER_VIEW_TYPE = 'atlas-vtt-local-player';
 
 /** The part of an Atlas map tab's store the companion reads. */
 export type SceneState = Pick<ViewState, 'mapPath' | 'mapLoaded' | 'isMapLoading' | 'background' | 'lighting' | 'objects' | 'grid' | 'heldTokens' | 'exploredMask' | 'exploredEdits' | 'isDragging' | '_audioDirty'>
-  & Partial<Pick<ViewState, 'tokenSettings' | 'levels' | 'viewedLevel' | 'exploredMasks' | 'exploredForgotten' | 'levelAlignments'>>;
+  & Partial<Pick<ViewState, 'tokenSettings' | 'levels' | 'viewedLevel' | 'exploredMasks' | 'exploredForgotten' | 'levelAlignments' | 'isPlayerView'>>;
 
 /**
  * What the companion asks of an Atlas tab's renderer (`PixiRendererOrchestrator`): the tokens the
@@ -36,49 +38,20 @@ export interface ObservedStore extends SceneStore {
   subscribe(listener: (state: SceneState) => void): () => void;
 }
 
-/** Atlas's store is zustand's `create` result: a function with the store methods on it. */
-function isStore(value: unknown): value is ObservedStore {
-  return (typeof value === 'object' || typeof value === 'function') && value !== null && 'getState' in value && typeof value.getState === 'function' && 'subscribe' in value && typeof value.subscribe === 'function'
-    && 'setState' in value && typeof value.setState === 'function';
-}
-
-function isTokenSource(value: unknown): value is PlayerTokenSource {
-  return typeof value === 'object' && value !== null && 'playerRollTokens' in value && typeof value.playerRollTokens === 'function'
-    && 'getGridOptions' in value && typeof value.getGridOptions === 'function';
-}
-
-/** Calls a method of an object by name when it has one, else gives undefined. */
-export function call(target: unknown, method: string): unknown {
-  if (typeof target !== 'object' || target === null || !(method in target)) return undefined;
-  const fn: unknown = (target as Record<string, unknown>)[method];
-  return typeof fn === 'function' ? (fn as () => unknown).call(target) : undefined;
-}
-
-/** Hears each change of what players see that comes without a store change (the renderer's `CanvasAudience.onSightChange`); a renderer without one tells nothing. Returns what stops it. */
-export function followPlayerSight(renderer: unknown, listener: () => void): () => void {
-  const audience = call(renderer, 'getCanvasAudience');
-  const follow: unknown = typeof audience === 'object' && audience !== null && 'onSightChange' in audience ? audience.onSightChange : undefined;
-  const stop: unknown = typeof follow === 'function' ? (follow as (listener: () => void) => unknown).call(audience, listener) : undefined;
-  return typeof stop === 'function' ? () => void (stop as () => unknown)() : () => undefined;
-}
-
-/** A renderer (`view.serviceManager.getRendererService().getRenderer()`) as the players' token source, or null when it is none. */
-export function asTokenSource(renderer: unknown): PlayerTokenSource | null {
-  return isTokenSource(renderer) ? renderer : null;
-}
-
-/** The renderer of an Atlas map tab as it is now, unchecked. */
-export function rendererOf(leaf: WorkspaceLeaf): unknown {
-  const view: unknown = leaf.view;
-  const services = typeof view === 'object' && view !== null && 'serviceManager' in view ? view.serviceManager : undefined;
-  return call(call(services, 'getRendererService'), 'getRenderer');
+/**
+ * The leaf's Atlas map view, or null for any other leaf. The one place an Obsidian view is taken for an Atlas
+ * one, by its type; handing it out as a `MapView` holds every name the table reads to Atlas's own.
+ */
+export function mapViewOf(leaf: WorkspaceLeaf): MapView | null {
+  if (leaf.view.getViewType() !== ATLAS_VIEW_TYPE) return null;
+  // Atlas's store writes through immer, which its declared type leaves out: a recipe handed to `setState` is one write.
+  const view: Omit<MapView, 'atlasStore'> & { readonly atlasStore: Pick<ViewAtlasStore, 'getState' | 'subscribe' | 'setState'> } = leaf.view as AtlasView;
+  return view as MapView;
 }
 
 /** The store of an Atlas map tab, or null for any other leaf. */
 export function sceneStoreOf(leaf: WorkspaceLeaf): ObservedStore | null {
-  const view: unknown = leaf.view;
-  if (leaf.view.getViewType() !== ATLAS_VIEW_TYPE || typeof view !== 'object' || view === null || !('atlasStore' in view)) return null;
-  return isStore(view.atlasStore) ? view.atlasStore : null;
+  return mapViewOf(leaf)?.atlasStore ?? null;
 }
 
 /** The Atlas map tab the GM works in: the most recent leaf if it is one, else the only one open. */
@@ -100,43 +73,6 @@ export function tokenLabel(token: TokenEntity): string {
   if (name.trim() !== '') return name.trim();
   const file = token.imagePath.split('/').pop()?.replace(/\.[^.]+$/, '') ?? '';
   return file === '' ? 'Unnamed token' : file;
-}
-
-/**
- * The resource and condition definitions a tab's token renderer (`getTokenRenderer()`) draws by (its collection
- * sync, one private hop: `collectionSync`), or null while they cannot be read (another Atlas version, no
- * renderer, a failing read): then players get no bars and no condition badges.
- */
-export function tokenRulesOf(tokens: unknown): TokenRules | null {
-  const sync: unknown = typeof tokens === 'object' && tokens !== null && 'collectionSync' in tokens ? tokens.collectionSync : undefined;
-  try {
-    const resources = call(sync, 'resources');
-    const conditions = call(sync, 'conditions');
-    const records = (list: unknown): boolean => Array.isArray(list) && list.every((entry) => typeof entry === 'object' && entry !== null);
-    return records(resources) && records(conditions) ? { resources: resources as TokenRules['resources'], conditions: conditions as TokenRules['conditions'] } : null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Where a tab's token renderer (`getTokenRenderer()`) draws each of these tokens now (`getTokenSprites()`):
- * during the GM's own drag Atlas moves the sprites with every pointer move but writes the store only
- * every 50 ms. Tokens without a sprite, or with a place that is no number, are left out; empty while
- * the renderer cannot be read.
- */
-export function drawnTokenPlaces(tokens: unknown, tokenIds: readonly string[]): ReadonlyMap<string, { readonly x: number; readonly y: number }> {
-  const places = new Map<string, { readonly x: number; readonly y: number }>();
-  const sprites = call(tokens, 'getTokenSprites');
-  if (typeof sprites !== 'object' || sprites === null) return places;
-  for (const id of tokenIds) {
-    const sprite: unknown = Object.hasOwn(sprites, id) ? (sprites as Record<string, unknown>)[id] : undefined;
-    const position: unknown = typeof sprite === 'object' && sprite !== null && 'position' in sprite ? sprite.position : undefined;
-    if (typeof position !== 'object' || position === null || !('x' in position) || !('y' in position)) continue;
-    const { x, y } = position;
-    if (typeof x === 'number' && typeof y === 'number' && Number.isFinite(x) && Number.isFinite(y)) places.set(id, { x, y });
-  }
-  return places;
 }
 
 /** An Atlas tab's store and the map path its player tokens are kept by. */

@@ -12,7 +12,8 @@ import { OnlineTable } from './OnlineTable.ts';
 import type { KnownPlayer, Ownership } from './ownership.ts';
 import { clearDrawnBy, drawnBy } from './playerDrawingsClear.ts';
 import { giveTokens, markTokens, playerTokenRows, type PlayerTokenRow } from './playerTokenRows.ts';
-import { presentOnPlayerView, presentedSceneSource, showPresentedElsewhere, type ShownElsewhere } from './presentedScene.ts';
+import { presentOnPlayerView } from './presentedScene.ts';
+import { presentedSceneOf } from '../../services/presentedScene';
 import type { SavedTable } from './savedTable.ts';
 import { RELAY_ORIGIN } from './servers.ts';
 import type { TableCampaigns } from './tableCampaigns.ts';
@@ -45,8 +46,8 @@ export class OnlineControl {
   private ended: LostTable | null = null;
   private readonly listeners = new Set<() => void>();
   private readonly account: HostAccount;
-  /** Atlas told that players see its presented scene online, while a table runs. */
-  private shown: ShownElsewhere | null = null;
+  /** Stops telling Atlas that players see its presented scene online; null while it is not told. */
+  private shown: (() => void) | null = null;
   /** Stops following what is played, which only matters while a table runs. */
   private unwatch = (): void => undefined;
   /** The running table's log, kept with it and told to its panels. */
@@ -389,8 +390,7 @@ export class OnlineControl {
 
   /**
    * Keeps Atlas told that players see its presented scene online for as long as a table runs, so
-   * the eye on a scene tab moves the table instead of opening the local player window. A reloaded
-   * Atlas has a presented scene of its own, which is told again at the next change.
+   * the eye on a scene tab moves the table instead of opening the local player window.
    */
   private syncShown(): void {
     const online = this.current !== null;
@@ -398,11 +398,10 @@ export class OnlineControl {
     if (tableControlsStore.getState().online !== online) {
       tableControlsStore.setState(online ? { online } : { online, paused: playerWindowStore.getState().isFrozen });
     }
-    const source = this.current === null ? null : presentedSceneSource(this.app);
-    if (this.shown !== null && this.shown.source !== source) {
-      this.shown.stop();
+    if (this.current === null && this.shown !== null) {
+      this.shown();
       this.shown = null;
     }
-    if (this.current !== null && this.shown === null) this.shown = showPresentedElsewhere(this.app);
+    if (this.current !== null && this.shown === null) this.shown = presentedSceneOf(this.app).showElsewhere();
   }
 }

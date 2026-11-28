@@ -18,7 +18,8 @@ import { CompanionDiagnostics } from './companionDiagnostics.ts';
 import { companionTimers, every, stopCompanionTimers } from './companionTimers.ts';
 import { DockMounts } from './dock/DockMounts.ts';
 import { ImageTakeover } from './image/imageTakeover.ts';
-import { atlasImageDisplay, localPlayerWindowOpen, readShownFile } from './image/atlasImageHost.ts';
+import { localPlayerWindowOpen, readShownFile } from './image/atlasImageHost.ts';
+import { ImageDisplayService } from '../../services/ImageDisplayService';
 import { LogMounts } from './log/LogMounts.ts';
 import { TableChat } from './tableChat.ts';
 import { lootCardOf } from './log/lootCard.ts';
@@ -198,7 +199,7 @@ export class OnlineFeature extends Component {
     // A drawing an online player made says who made it, while the campaign's players are known.
     this.register(nameAnnotationAuthors((id) => ownership.nameOf(id)));
     // Atlas's "Display on player view" reaches the players online too, while a table runs.
-    const images = new ImageTakeover<TFile>(() => atlasImageDisplay(this.app), {
+    const images = new ImageTakeover<TFile>(() => ImageDisplayService.getInstance(), {
       share: () => this.online.table?.image ?? null,
       readFile: (file) => readShownFile(this.app, file),
       pathOf: (file) => file.path,

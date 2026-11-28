@@ -1,13 +1,10 @@
 import type { App } from 'obsidian';
 import { readFogEdge, type FogEdge } from '../../fog/fogEdge';
 import type { MeasurementSettings } from '../../grid/measurementFormat';
-import type { AreaMap } from '../../measure/areaOnMap';
+import { SettingsService } from '../../services/SettingsService';
 import { resolveLaserPointerSettings, type LaserPointerSettings } from '../../tools/laserPointerSettings';
 import type { SightRules } from '../../vision/sightRules';
 import type { SceneState } from './atlasView.ts';
-
-/** The plugin id of Atlas, whose instance holds its settings. */
-export const ATLAS_PLUGIN_ID = 'atlas-vtt';
 
 /**
  * What the GM's own lighting of a tab works its scene out by: the sight rules of the map's
@@ -49,98 +46,37 @@ export interface AtlasPlayerSettings {
   readonly fogEdge?: FogEdge;
 }
 
-/** A field of an object by name, unchecked; undefined for anything that has none. */
-export function field(target: unknown, name: string): unknown {
-  return typeof target === 'object' && target !== null && name in target ? (target as Record<string, unknown>)[name] : undefined;
-}
-
-/**
- * The lighting source of an Atlas tab's renderer (`PixiRendererOrchestrator`): its lighting
- * controller's sight aids read the rules and measurement its lighting is built with. Null when
- * the path is not there (another Atlas version): a lit scene is then not shared at all.
- */
-export function lightingSourceOf(renderer: unknown): LightingSource | null {
-  const controller = field(renderer, 'lighting');
-  const deps = field(field(controller, 'sightAids'), 'deps');
-  const rules = field(deps, 'rules');
-  const measurement = field(deps, 'measurement');
-  if (typeof rules !== 'function' || typeof measurement !== 'function') return null;
-  return { rules: () => (rules as () => SightRules)(), measurement: () => (measurement as () => MeasurementSettings)() };
-}
-
-/** Atlas's settings service (`settingsService` of its plugin instance), unchecked. */
-const settingsServiceOf = (app: App): unknown => field(field(field(field(app, 'plugins'), 'plugins'), ATLAS_PLUGIN_ID), 'settingsService');
-
-/** Calls `listener` whenever Atlas's settings change; a settings service without `onChange` tells nothing. Returns what stops it. */
+/** Calls `listener` whenever Atlas's settings change; without its settings nothing is told. Returns what stops it. */
 export function followAtlasSettings(app: App, listener: () => void): () => void {
-  const settings = settingsServiceOf(app);
-  const follow = field(settings, 'onChange');
-  const stop: unknown = typeof follow === 'function' ? (follow as (listener: () => void) => unknown).call(settings, listener) : undefined;
-  return typeof stop === 'function' ? () => void (stop as () => unknown)() : () => undefined;
+  return SettingsService.forApp(app)?.onChange(() => listener()) ?? ((): void => undefined);
 }
 
-/** Atlas's own settings as its plugin instance holds them (`settingsService`). */
+/** Atlas's own settings, as its settings service holds them; each as said above while they cannot be read. */
 export function atlasPlayerSettings(app: App): AtlasPlayerSettings {
-  // Obsidian keeps the loaded plugins by id in `app.plugins.plugins`.
-  const settings = settingsServiceOf(app);
-  const playerView = field(settings, 'getLocalPlayerViewSettings');
-  const view: unknown = typeof playerView === 'function' ? (playerView as () => unknown).call(settings) : undefined;
-  const readLayout = field(settings, 'initiativeLayout');
-  const layout: unknown = typeof readLayout === 'function' ? (readLayout as () => unknown).call(settings) : undefined;
-  const readTurn = field(settings, 'initiativeTurnOptions');
-  const turn: unknown = typeof readTurn === 'function' ? (readTurn as () => unknown).call(settings) : undefined;
-  const readEdge = field(settings, 'getFogEdge');
-  const fogEdge = typeof readEdge === 'function' ? readFogEdge((readEdge as () => unknown).call(settings)) : undefined;
+  const settings = SettingsService.forApp(app);
+  const view = settings?.getLocalPlayerViewSettings();
+  const turn = settings?.initiativeTurnOptions();
+  const fogEdge = settings === undefined ? undefined : readFogEdge(settings.getFogEdge());
   return {
-    showNames: field(view, 'showTokenNameplates') === true,
-    showDiceRolls: field(view, 'showDiceRolls') === true,
-    showInitiative: field(view, 'showInitiative') === true,
-    showWidgets: field(view, 'showWidgets') === true,
-    showCursors: field(view, 'showCursors') === true,
-    initiativeFromTurn: field(layout, 'fromTurn') === true,
+    showNames: view?.showTokenNameplates === true,
+    showDiceRolls: view?.showDiceRolls === true,
+    showInitiative: view?.showInitiative === true,
+    showWidgets: view?.showWidgets === true,
+    showCursors: view?.showCursors === true,
+    initiativeFromTurn: settings?.initiativeLayout().fromTurn === true,
     initiativeDock: 'right',
-    turnBanner: field(turn, 'banner') !== false,
-    movesOnTurn: field(turn, 'movesOnTurn') === true,
-    playersDraw: field(view, 'playersDraw') === true,
-    playersOpenDoors: field(view, 'playersOpenDoors') === true,
-    sharedVision: field(view, 'sharedVision') === true,
+    turnBanner: turn?.banner !== false,
+    movesOnTurn: turn?.movesOnTurn === true,
+    playersDraw: view?.playersDraw === true,
+    playersOpenDoors: view?.playersOpenDoors === true,
+    sharedVision: view?.sharedVision === true,
     ...(fogEdge !== undefined && { fogEdge }),
   };
 }
 
 /** The GM's laser colour and size from Atlas's settings, as Atlas reads them (its default when they cannot be read). */
 export function atlasLaserLook(app: App): LaserPointerSettings {
-  const settings = settingsServiceOf(app);
-  const read = field(settings, 'getLaserPointerSettings');
-  const raw: unknown = typeof read === 'function' ? (read as () => unknown).call(settings) : undefined;
-  return resolveLaserPointerSettings(typeof raw === 'object' && raw !== null ? raw : undefined);
-}
-
-/**
- * How the GM's own ruler labels distances on the tab's map: its measure renderer's provider (the
- * map's collection settings). Null when the renderer has none (another Atlas version) or it fails.
- */
-export function measurementOf(renderer: unknown): MeasurementSettings | null {
-  const measure = field(renderer, 'measureRenderer');
-  const provider = field(measure, 'measurementSettingsProvider');
-  if (typeof provider !== 'function') return null;
-  try {
-    return (provider as () => MeasurementSettings).call(measure);
-  } catch {
-    return null;
-  }
-}
-
-/** The map of an Atlas tab as its measured areas are shaped by it (`MeasureRenderer.areaMap`): its rules and the walls of the level shown; null where it cannot be read. */
-export function tabAreaMap(renderer: unknown): AreaMap | null {
-  const measure = field(renderer, 'measureRenderer');
-  const read = field(measure, 'areaMap');
-  if (typeof read !== 'function') return null;
-  try {
-    return (read as () => AreaMap).call(measure);
-  } catch {
-    return null;
-  }
+  return resolveLaserPointerSettings(SettingsService.forApp(app)?.getLaserPointerSettings());
 }
 
 /** The theme's accent colour as `#rrggbb`, resolved by the document itself; null when it gives none. */
