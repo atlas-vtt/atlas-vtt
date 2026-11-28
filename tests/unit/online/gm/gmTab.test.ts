@@ -4,6 +4,9 @@ import type { SceneLevel } from '../../../../src/app/types/sceneLevelTypes';
 import { describe, expect, it } from 'vitest';
 import { cpuFloorSource, HELD_TAB, type FloorSource, type GmTab } from '../../../../src/app/online/gm/floorSource.ts';
 import { gmTabOf } from '../../../../src/app/online/gm/gmTab.ts';
+import type { MapCanvas, MapView } from '../../../../src/app/online/gm/mapView.ts';
+import { fakeAtlasTab } from './fakeAtlasTab.ts';
+import { GENERIC_SOURCE } from './gmLighting.ts';
 import { sceneState } from './shareHarness.ts';
 
 /*
@@ -22,14 +25,11 @@ const cpu: FloorSource = cpuFloorSource({ lighting: () => null, frame: (lit) => 
 const marks = { source: () => null, showPlayers: () => undefined, showPlayerDrags: () => undefined, showPlayerCursors: () => undefined, showPlayerStrokes: () => undefined };
 
 /** The GM's tab on `state`, its renderer having drawn the level its view shows while `drawn` says so. */
-function tabOn(state: SceneState, drawn: { now: boolean }): { readonly renderer: object; readonly gm: GmTab } {
+function tabOn(state: SceneState, drawn: { now: boolean }): { readonly renderer: MapCanvas; readonly gm: GmTab } {
   const store: ObservedStore = { getState: () => state, setState: () => undefined, subscribe: () => () => undefined };
-  const renderer = {
-    lighting: { renderer: { sightIsCurrent: () => drawn.now } },
-    playerRollTokens: () => new Map(),
-    getGridOptions: () => ({ size: 70 }),
-  };
-  const view = {};
+  const fake = fakeAtlasTab({ state: () => state, source: GENERIC_SOURCE, bounds: { width: 1400, height: 1400 }, drawn: () => drawn.now });
+  const renderer = fake.renderer;
+  const view = fake.view as MapView;
   return { renderer, gm: gmTabOf({ leaf: { view } as unknown as WorkspaceLeaf, view, store, renderer }, marks) };
 }
 

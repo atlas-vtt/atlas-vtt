@@ -1,7 +1,10 @@
 import { crc32, deflateSync } from 'node:zlib';
 import type { App, WorkspaceLeaf } from 'obsidian';
-import type { SceneState, SceneStore } from '../../../../src/app/online/gm/atlasView.ts';
-import type { Presented, TabSource } from '../../../../src/app/online/gm/presentedScene.ts';
+import type { CollectionLookup } from '../../../../src/app/gameSystems/mapRules';
+import type { ObservedStore, SceneState } from '../../../../src/app/online/gm/atlasView.ts';
+import type { MapCanvas, MapServices, MapStore, MapView } from '../../../../src/app/online/gm/mapView.ts';
+import type { TabSource } from '../../../../src/app/online/gm/presentedScene.ts';
+import { presentedSceneOf, type PresentedScene } from '../../../../src/app/services/presentedScene';
 import type { HostAccount } from '../../../../src/app/online/gm/tableStart.ts';
 import { fakeTokenSource } from './fakeTokenSource.ts';
 
@@ -59,24 +62,46 @@ export class FakeTabs implements TabSource {
   }
 }
 
-/** An Atlas view as the companion reads it: its type, store, scene tabs, renderer, and the flag it sets while it closes. */
-export class FakeView {
+/**
+ * An Atlas map view (`MapView`): its type, store, scene tabs, canvas and services, and the flag it sets while it
+ * closes. Its tools and bus are a test's to give (`serviceManager`); without them the table rolls no dice.
+ */
+export class FakeView implements MapView {
   isViewClosing = false;
+  readonly app = app;
+  viewId = 'fake-view';
   readonly containerEl = { ownerDocument: {} };
-  readonly serviceManager = { getRendererService: () => ({ getRenderer: () => this.renderer }), getAssetService: () => workspace.assets };
+  readonly serviceManager: MapServices = {
+    getAssetService: () => workspace.assets,
+    getToolController: () => null,
+    getEventBus: () => {
+      throw new Error('This view has no event bus.');
+    },
+  };
   readonly tabMetaStore: FakeTabs;
-  constructor(readonly atlasStore: SceneStore, public renderer: object | null) {
-    this.tabMetaStore = new FakeTabs(atlasStore.getState().mapPath);
+  readonly atlasStore: MapStore;
+  constructor(store: ObservedStore, public renderer: MapCanvas | null) {
+    // The scenes of these tests have no levels to switch: nothing calls the store's level switch.
+    this.atlasStore = store as MapStore;
+    this.tabMetaStore = new FakeTabs(store.getState().mapPath);
   }
   getViewType(): string {
     return 'atlas-vtt';
+  }
+  isClosing(): boolean {
+    return this.isViewClosing;
+  }
+  switchToTab(tabId: string): Promise<void> {
+    const tab = this.tabMetaStore.getState().tabs.find((entry) => entry.id === tabId);
+    if (tab !== undefined) this.tabMetaStore.activate(tab.filePath);
+    return Promise.resolve();
   }
 }
 
 export interface FakeTab {
   readonly leaf: WorkspaceLeaf;
   readonly view: FakeView;
-  readonly store: SceneStore & { set(next: SceneState): void };
+  readonly store: ObservedStore & { set(next: SceneState): void };
 }
 
 /** An Atlas map tab showing `state`, with a renderer whose players' frame sees every token not hidden. */
@@ -109,10 +134,19 @@ export function switchScene(tab: FakeTab, next: SceneState): void {
  */
 export const workspace = {
   leaves: [] as WorkspaceLeaf[],
-  presented: null as Presented | null,
+  /** Atlas's presented scene (`presentedSceneOf`): set, Atlas presents it and tells who listens. */
+  get presented(): PresentedScene | null {
+    return presentedSceneOf(app).get();
+  },
+  set presented(scene: PresentedScene | null) {
+    presentedSceneOf(app).set(scene);
+  },
   files: new Map<string, Uint8Array>(),
-  shownElsewhere: 0,
-  assets: null as object | null,
+  /** Whether anyone tells Atlas now that players see its presented scene elsewhere: 1 while one does, else 0. */
+  get shownElsewhere(): number {
+    return presentedSceneOf(app).isShownElsewhere() ? 1 : 0;
+  },
+  assets: null as CollectionLookup | null,
 };
 
 const workspaceListeners = new Map<string, Set<(...args: unknown[]) => void>>();
@@ -122,30 +156,10 @@ export function trigger(name: string, ...args: unknown[]): void {
   for (const listener of [...(workspaceListeners.get(name) ?? [])]) listener(...args);
 }
 
-const presentedListeners = new Set<(scene: Presented | null) => void>();
-
-/** Atlas's presented scene as its plugin offers it (`presentedScene`): read-only, with change listeners. */
-const atlasPresented = {
-  get: (): Presented | null => workspace.presented,
-  onChange: (listener: (scene: Presented | null) => void): (() => void) => {
-    presentedListeners.add(listener);
-    return () => presentedListeners.delete(listener);
-  },
-  showElsewhere: (): (() => void) => {
-    workspace.shownElsewhere += 1;
-    let stopped = false;
-    return () => {
-      if (!stopped) workspace.shownElsewhere -= 1;
-      stopped = true;
-    };
-  },
-};
-
 /** Atlas presents a tab's active scene, as the eye on its scene tab does, and tells who listens. */
 export function present(tab: FakeTab): void {
   const { mapPath } = tab.store.getState();
   workspace.presented = mapPath === null ? null : { tabId: FakeTabs.idOf(mapPath), filePath: mapPath };
-  presentedListeners.forEach((listener) => listener(workspace.presented));
 }
 
 /** The device's local storage of the fake app. */
@@ -175,7 +189,6 @@ export const app = {
     },
     readBinary: (file: { path: string }) => Promise.resolve(workspace.files.get(file.path)?.slice().buffer),
   },
-  plugins: { plugins: { 'atlas-vtt': { presentedScene: atlasPresented } } },
 } as unknown as App;
 
 /** A signed-in account whose tables keep assets in the store: the salt is known, so every reference carries its id (`storedRef`). */

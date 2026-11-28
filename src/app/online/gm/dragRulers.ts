@@ -2,7 +2,7 @@ import type { RemoteDrag } from '../marks/index.ts';
 import type { Point } from '../movement/index.ts';
 import { cellToWorld, formationGridFromOptions, worldToCell, type FormationGrid } from '../../encounters/encounterFormation';
 import { snapTokenCenter } from '../../grid/gridPlacement';
-import { call, type SceneState } from './atlasView.ts';
+import type { SceneState } from './atlasView.ts';
 import { mapTokens } from '../../tokens/offMap';
 import { levelObjects } from '../../levels/levelObjects';
 import type { TokenEntity } from '../../types';
@@ -64,16 +64,6 @@ export function rulersToDraw(state: RulerState, paths: RulerPaths): RemoteDrag[]
     const token = mapTokens(levelObjects(state))[tokenId];
     return token === undefined ? [] : [{ key: tokenId, path, cells: token.size || 1, snaps }];
   });
-}
-
-const isPoint = (value: unknown): value is Point => typeof value === 'object' && value !== null && 'x' in value && 'y' in value && typeof value.x === 'number' && typeof value.y === 'number';
-
-/** What the drag ruler of an Atlas tab's token renderer (`getTokenRenderer()`) measures now (`TokenRenderer.dragRulerPath`), or null. */
-export function dragRulerOf(tokens: unknown): GmRuler | null {
-  const path = call(tokens, 'dragRulerPath');
-  if (typeof path !== 'object' || path === null || !('tokenId' in path) || !('points' in path)) return null;
-  const { tokenId, points } = path;
-  return typeof tokenId === 'string' && Array.isArray(points) && points.every(isPoint) ? { tokenId, points } : null;
 }
 
 /** The rulers of the players' drags as the GM's overlay was last given them, given again only when they change. */

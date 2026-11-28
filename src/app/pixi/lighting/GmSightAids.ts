@@ -68,6 +68,11 @@ export class GmSightAids {
     this.schedule();
   }
 
+  /** The rules of sight the aids are worked out by: the map's collection's, as the GM's lighting reads them. */
+  rules(): SightRules { return this.deps.rules(); }
+  /** How the map measures, as the GM's lighting reads it. */
+  measurement(): MeasurementSettings { return this.deps.measurement(); }
+
   /** Shows nothing while the canvas shows the players' view. */
   setSuppressed(on: boolean): void {
     // The players' view hides the layer (`playerLightingLayers`); the GM's has it back here.

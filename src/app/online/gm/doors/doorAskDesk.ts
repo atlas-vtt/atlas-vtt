@@ -1,11 +1,10 @@
 import type { App, WorkspaceLeaf } from 'obsidian';
-import type { Viewport } from 'pixi-viewport';
 import { t } from '../../../i18n';
 import { hasLevels, viewedLevelId } from '../../../levels/sceneLevels';
 import { panToToken } from '../../../pixi/tokenFocus';
 import { showNoticeWithAction } from '../../../ui/notice';
-import { field } from '../atlasLighting.ts';
-import { call, type SceneStore } from '../atlasView.ts';
+import type { ObservedStore } from '../atlasView.ts';
+import type { MapCanvas, MapView } from '../mapView.ts';
 import type { PresentedStore } from '../presentedStore.ts';
 import { addDoorAsk } from './doorAskStore.ts';
 import type { DoorAskShown } from './PlayerDoorAsks.ts';
@@ -14,9 +13,9 @@ import type { DoorAskShown } from './PlayerDoorAsks.ts';
 export interface DoorAskTab {
   readonly app: App;
   readonly leaf: WorkspaceLeaf;
-  readonly view: object;
-  readonly renderer: object;
-  readonly store: SceneStore;
+  readonly view: MapView;
+  readonly renderer: MapCanvas;
+  readonly store: ObservedStore;
   readonly presented: PresentedStore;
 }
 
@@ -28,13 +27,11 @@ async function revealDoor(tab: DoorAskTab, shown: DoorAskShown): Promise<void> {
   tab.app.workspace.setActiveLeaf(tab.leaf, { focus: true });
   await tab.app.workspace.revealLeaf(tab.leaf);
   const tabId = tab.presented.presentedTabId;
-  const switchToTab = field(tab.view, 'switchToTab');
-  if (tab.presented.held && tabId !== null && typeof switchToTab === 'function') await (switchToTab as (id: string) => Promise<void>).call(tab.view, tabId);
-  const state = tab.store.getState();
-  const setLevel = field(state, 'setViewedLevel');
-  if (shown.level !== null && hasLevels(state.levels) && viewedLevelId(state) !== shown.level && typeof setLevel === 'function') (setLevel as (id: string) => void)(shown.level);
-  const viewport = call(tab.renderer, 'getViewportInstance') as Viewport | undefined;
-  if (viewport !== undefined) panToToken(viewport, { ...shown.at, size: 1 }, tab.store.getState().grid?.size ?? 70);
+  if (tab.presented.held && tabId !== null) await tab.view.switchToTab(tabId);
+  const state = tab.view.atlasStore.getState();
+  if (shown.level !== null && hasLevels(state.levels) && viewedLevelId(state) !== shown.level) state.setViewedLevel(shown.level);
+  const viewport = tab.renderer.getViewportInstance();
+  if (viewport !== null) panToToken(viewport, { ...shown.at, size: 1 }, tab.store.getState().grid?.size ?? 70);
 }
 
 /**
@@ -58,10 +55,4 @@ export function showDoorAsk(tab: DoorAskTab, shown: DoorAskShown): () => void {
     remove();
     notice.hide();
   };
-}
-
-/** Shows a player's token bump on the tab's map, where its token renderer (`getTokenRenderer()`) can (`TokenRenderer.bumpToken`). */
-export function bumpOnTab(tokens: unknown, tokenId: string, dx: number, dy: number): void {
-  const bump = field(tokens, 'bumpToken');
-  if (typeof bump === 'function') (bump as (id: string, x: number, y: number) => void).call(tokens, tokenId, dx, dy);
 }

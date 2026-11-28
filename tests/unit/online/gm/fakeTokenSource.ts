@@ -1,18 +1,21 @@
 import type { ShownRollToken } from '../../../../src/app/services/playerRollSource';
 import type { TokenEntity } from '../../../../src/app/types';
 import type { Perception } from '../../../../src/app/vision/perception';
-import type { PlayerTokenSource, SceneState } from '../../../../src/app/online/gm/atlasView.ts';
+import type { GridOptions } from '../../../../src/app/grid/GridSystem';
+import type { SceneState } from '../../../../src/app/online/gm/atlasView.ts';
+import type { MapCanvas } from '../../../../src/app/online/gm/mapView.ts';
+import { fakeCanvas } from './fakeAtlasTab.ts';
 import { levelObjects } from '../../../../src/app/levels/levelObjects';
 
 /**
- * A renderer that answers as `PixiRendererOrchestrator.playerRollTokens` does for a scene whose
+ * A canvas that answers as `PixiRendererOrchestrator.playerRollTokens` does for a scene whose
  * tokens are all drawn: nothing while another scene or none is loaded, else every token of the level
  * the view shows that is not
  * hidden and that `perception` (the players' frame: lighting with fog; unset sees all) sees.
  * The vendor's own function cannot be type checked here without the whole plugin.
  */
-export function fakeTokenSource(state: () => SceneState, perception: () => ((tokenId: string) => Perception) | undefined, gridSize: () => number): PlayerTokenSource {
-  return {
+export function fakeTokenSource(state: () => SceneState, perception: () => ((tokenId: string) => Perception) | undefined, gridSize: () => number): MapCanvas {
+  return fakeCanvas({
     playerRollTokens: (mapPath, ids) => {
       const scene = state();
       const shown = new Map<string, ShownRollToken>();
@@ -26,6 +29,6 @@ export function fakeTokenSource(state: () => SceneState, perception: () => ((tok
       }
       return shown;
     },
-    getGridOptions: () => ({ size: gridSize() }),
-  };
+    getGridOptions: () => ({ size: gridSize() }) as GridOptions,
+  });
 }

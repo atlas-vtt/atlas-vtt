@@ -2,7 +2,6 @@ import { normalizePath, type App, type WorkspaceLeaf } from 'obsidian';
 import type { GmMessage } from '../../protocol/index.ts';
 import { showNotice } from '../../../ui/notice';
 import type { Timers } from '../companionTimers.ts';
-import { tabSourceOf } from '../presentedScene.ts';
 import type { AssetSalt } from './assetSalt.ts';
 import { stagedSceneAssets } from './assetGather.ts';
 import { AssetPublisher } from './AssetPublisher.ts';
@@ -10,7 +9,8 @@ import type { AssetRefs } from './assetRefs.ts';
 import type { MapFocus } from './pyramidPlan.ts';
 import { buildMapPyramid } from '../../../pixi/mosaicCanvas/prebuildMosaicCanvas';
 import { TesseraDecoderClient } from '../../../pixi/mosaicCanvas/TesseraDecoderClient';
-import { call } from '../atlasView.ts';
+import { mapViewOf } from '../mapViewOf.ts';
+import type { MapCanvas } from '../mapView.ts';
 import { AssetStoreClient } from './storeClient.ts';
 
 /** What a table needs of the account to keep assets in the store for players. */
@@ -44,11 +44,11 @@ export interface TablePublisherDeps {
   storeChanged(): void;
 }
 
-/** Where a tab's renderer looks on its map, as shares of the map image's world rect; null while it cannot say. */
-export function viewFocus(renderer: unknown): MapFocus | null {
-  const rect = call(renderer, 'getMapRect') as { x: number; y: number; width: number; height: number } | null | undefined;
-  const centre = (call(renderer, 'getViewportInstance') as { center?: { x: number; y: number } } | null | undefined)?.center;
-  if (rect === null || rect === undefined || centre === undefined || !(rect.width > 0) || !(rect.height > 0)) return null;
+/** Where a tab's canvas looks on its map, as shares of the map image's world rect; null while it cannot say. */
+export function viewFocus(canvas: MapCanvas | undefined): MapFocus | null {
+  const rect = canvas?.getMapRect() ?? null;
+  const centre = canvas?.getViewportInstance()?.center;
+  if (rect === null || centre === undefined || !(rect.width > 0) || !(rect.height > 0)) return null;
   const share = (value: number): number => Math.min(1, Math.max(0, value));
   return { x: share((centre.x - rect.x) / rect.width), y: share((centre.y - rect.y) / rect.height) };
 }
@@ -99,7 +99,7 @@ export class OpenScenes {
   /** Looks at the open map tabs again: a scene opened since is offered. */
   check(leaves: readonly WorkspaceLeaf[], presented: string | null): void {
     const open = new Set<string>();
-    for (const leaf of leaves) for (const tab of tabSourceOf(leaf.view)?.getState().tabs ?? []) open.add(tab.filePath);
+    for (const leaf of leaves) for (const tab of mapViewOf(leaf)?.tabMetaStore.getState().tabs ?? []) open.add(tab.filePath);
     for (const path of [...this.staged]) if (!open.has(path)) this.staged.delete(path);
     for (const path of open) {
       if (path === presented || this.staged.has(path)) continue;

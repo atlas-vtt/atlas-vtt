@@ -4,8 +4,7 @@ import { StampScratch } from '../../../pixi/lighting/StampScratch';
 import type { ExploredShapes } from '../../../vision/exploredShapes';
 import type { MapBounds } from '../../../vision/visibility';
 import { toBase64 } from '../../../utils/base64';
-import { field } from '../atlasLighting.ts';
-import { call } from '../atlasView.ts';
+import type { MapCanvas } from '../mapView.ts';
 import type { MemoryPng, MemoryRaster, MemoryRasters } from './memoryPorts.ts';
 
 const dataUrl = (png: MemoryPng): string => `data:image/png;base64,${toBase64(png)}`;
@@ -110,11 +109,9 @@ class TextureRaster implements MemoryRaster {
   }
 }
 
-/** The PIXI renderer of an Atlas tab's renderer (`getAppInstance().renderer`), or null where it has none. */
-export function pixiRendererOf(tabRenderer: unknown): Renderer | null {
-  const renderer = field(call(tabRenderer, 'getAppInstance'), 'renderer');
-  const canvas = field(renderer, 'canvas');
-  return typeof field(renderer, 'render') === 'function' && typeof field(canvas, 'addEventListener') === 'function' ? (renderer as Renderer) : null;
+/** The PIXI renderer of an Atlas tab's canvas, or null while it has none. */
+export function pixiRendererOf(canvas: MapCanvas | null): Renderer | null {
+  return canvas?.getAppInstance().renderer ?? null;
 }
 
 /**

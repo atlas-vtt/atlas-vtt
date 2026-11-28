@@ -2,12 +2,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { TokenEntity } from '../../../../src/app/types';
-import type { App, WorkspaceLeaf } from 'obsidian';
+import type { WorkspaceLeaf } from 'obsidian';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { SceneState } from '../../../../src/app/online/gm/atlasView.ts';
+import { ATLAS_VIEW_TYPE, type SceneState } from '../../../../src/app/online/gm/atlasView.ts';
 import { OnlineControl } from '../../../../src/app/online/gm/OnlineControl.ts';
 import { boundOwnership, fakeCampaigns } from './fakeSeats.ts';
-import { findPresentedTab, PRESENT_COMMAND, presentedScene, readPresented, showPresentedElsewhere, showsPresented } from '../../../../src/app/online/gm/presentedScene.ts';
+import { findPresentedTab, PRESENT_COMMAND, showsPresented } from '../../../../src/app/online/gm/presentedScene.ts';
 import type { SavedTable } from '../../../../src/app/online/gm/savedTable.ts';
 import { app, atlasTab, FakeTabs, png, present, switchScene, workspace, storedAccount } from './fakeTable.ts';
 import { sceneState } from './shareHarness.ts';
@@ -79,7 +79,6 @@ describe('the scene players see', () => {
     seen.notices.length = 0;
     workspace.leaves = [];
     workspace.presented = null;
-    workspace.shownElsewhere = 0;
     workspace.files = new Map([['maps/cave.png', png(700, 700)], ['maps/hall.png', png(350, 350)], ['art/ogre.png', png(4, 4)]]);
   });
   afterEach(() => {
@@ -164,20 +163,13 @@ describe('the scene players see', () => {
     online.stop();
   });
 
-  it('tells Atlas that players see its presented scene online while a table runs, also after Atlas reloads', async () => {
+  it('tells Atlas that players see its presented scene online while a table runs', async () => {
     const tab = atlasTab(cave());
     workspace.leaves = [tab.leaf];
     present(tab);
     expect(workspace.shownElsewhere).toBe(0);
     const { online, relay } = await running();
     expect(workspace.shownElsewhere).toBe(1);
-
-    // A reloaded Atlas has a presented scene of its own, which is told at the next change
-    const atlas = (app as unknown as { plugins: { plugins: Record<string, { presentedScene: object }> } }).plugins.plugins['atlas-vtt'];
-    if (atlas === undefined) throw new Error('no Atlas');
-    const before = atlas.presentedScene;
-    const reloaded = { ...before };
-    atlas.presentedScene = reloaded;
     relay.outbox.join({ id: BEN, name: 'Ben' });
     await advance(500);
     expect(workspace.shownElsewhere).toBe(1);
@@ -185,7 +177,6 @@ describe('the scene players see', () => {
     online.stop();
     await advance(500);
     expect(workspace.shownElsewhere).toBe(0);
-    atlas.presentedScene = before;
   });
 
   it('is none while Atlas presents nothing, and none again once it presents nothing', async () => {
@@ -229,16 +220,9 @@ describe('the scene players see', () => {
 });
 
 describe('what Atlas presents', () => {
-  const tabsLeaf = (tabs: FakeTabs, isPlayerView = false): WorkspaceLeaf => ({ view: { tabMetaStore: tabs, atlasStore: { getState: () => ({ isPlayerView }) } } }) as unknown as WorkspaceLeaf;
+  const tabsLeaf = (tabs: FakeTabs, isPlayerView = false): WorkspaceLeaf => ({ view: { getViewType: () => ATLAS_VIEW_TYPE, tabMetaStore: tabs, atlasStore: { getState: () => ({ isPlayerView }) } } }) as unknown as WorkspaceLeaf;
 
-  it('is read from Atlas\'s presented scene, with or without its player window, by tab id, else by file', () => {
-    const atlas = (presented: unknown): App => ({ plugins: { plugins: { 'atlas-vtt': { presentedScene: { get: () => presented, onChange: () => () => undefined } } } } }) as unknown as App;
-    expect(presentedScene(atlas({ tabId: 't1', filePath: CAVE }))).toEqual({ tabId: 't1', filePath: CAVE });
-    expect(presentedScene(atlas(null))).toBeNull();
-    // An Atlas without the accessor presents nothing the companion can read
-    expect(presentedScene({ plugins: { plugins: { 'atlas-vtt': {} } } } as unknown as App)).toBeNull();
-    expect(readPresented({ tabId: 't1', filePath: CAVE, frozen: false })).toEqual({ tabId: 't1', filePath: CAVE });
-    for (const state of [undefined, null, {}, { tabId: '', filePath: CAVE }, { tabId: 't1' }, { tabId: 1, filePath: CAVE }]) expect(readPresented(state)).toBeNull();
+  it('is found in the open map views by tab id, else by file, never in a player view', () => {
     const caveTabs = new FakeTabs(CAVE);
     const both = new FakeTabs(HALL);
     both.activate(CAVE);
@@ -255,7 +239,6 @@ describe('what Atlas presents', () => {
       { id: 'ground', name: 'Ground', elevation: { bottom: 0, top: 10 }, background: 'maps/cave.png' },
       { id: 'upper', name: 'Upper', elevation: { bottom: 10, top: 20 }, background: 'maps/hall.png' },
     ];
-    expect(readPresented({ tabId: 't1', filePath: CAVE, levelId: 'upper' })).toEqual({ tabId: 't1', filePath: CAVE, levelId: 'upper' });
     const leaves = [tabsLeaf(new FakeTabs(CAVE))];
     const tab = findPresentedTab(leaves, { tabId: FakeTabs.idOf(CAVE), filePath: CAVE, levelId: 'upper' });
     if (tab === null) throw new Error('no tab');
@@ -263,19 +246,6 @@ describe('what Atlas presents', () => {
     expect(showsPresented(cave(), tab)).toBe(true);
     expect(showsPresented({ ...cave(), levels, viewedLevel: 'upper' }, tab)).toBe(true);
     expect(showsPresented({ ...cave(), levels, viewedLevel: 'ground' }, tab)).toBe(true);
-  });
-
-  it('tells Atlas it shows the presented scene, and tells nothing to an Atlas without the call', () => {
-    const shown = vi.fn();
-    const stop = vi.fn();
-    const presentedSceneOf = (source: object): App => ({ plugins: { plugins: { 'atlas-vtt': { presentedScene: source } } } }) as unknown as App;
-    const atlasNow = presentedSceneOf({ get: () => null, onChange: () => () => undefined, showElsewhere: () => { shown(); return stop; } });
-    const told = showPresentedElsewhere(atlasNow);
-    expect(shown).toHaveBeenCalledOnce();
-    told?.stop();
-    expect(stop).toHaveBeenCalledOnce();
-    expect(showPresentedElsewhere(presentedSceneOf({ get: () => null, onChange: () => () => undefined }))).toBeNull();
-    expect(showPresentedElsewhere({ plugins: { plugins: {} } } as unknown as App)).toBeNull();
   });
 
   it('is named as Atlas names its accessor and its command', () => {
