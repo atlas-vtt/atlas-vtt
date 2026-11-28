@@ -98,7 +98,7 @@
     "src/app/services/NotePreviewUIManager.ts": 600,
     "src/app/services/NotePreviewWindow.ts": 850,
     "src/app/services/PlayerFrameMirror.ts": 400,
-    "src/app/services/PlayerWindowPresenter.ts": 450,
+    "src/app/services/PlayerWindowPresenter.ts": 400,
     "src/app/services/PlayerWindowService.ts": 850,
     "src/app/services/SettingsService.ts": 700,
     "src/app/services/StatblockPreviewWindow.ts": 350,
