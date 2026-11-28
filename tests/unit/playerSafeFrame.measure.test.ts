@@ -4,12 +4,40 @@ import { MeasureRenderer } from '../../src/app/pixi/measure/MeasureRenderer';
 import { measurePlayersView } from '../../src/app/pixi/measurePlayersView';
 import type { LayerVisibility } from '../../src/app/pixi/playerSafeFrame';
 import { measuresPicture } from '../../src/app/pixi/picture/viewPictureParts';
+import type { MeasurePlayersView } from '../../src/app/pixi/measurePartsVisibility';
+import type { SceneLightingDeps } from '../../src/app/pixi/lighting/createSceneLighting';
+import type { SceneLightingView } from '../../src/app/pixi/lighting/sceneLightingView';
+import { LIGHTING_PEEK_EVENT } from '../../src/app/lighting/lightingPeek';
+import { SEES_ALL } from '../../src/app/vision/sight';
+import { stubJsdomGraphics } from '../mocks/jsdomGraphics';
 import { computeTokenPixelSize } from '../../src/app/pixi/token-renderer/tokenSizing';
 import { bareMapView } from '../helpers/bareMapView';
 import { playersFrame, picturesOf, scenePicture } from '../helpers/pictures';
 import { FRAME } from '../mocks/playerFrameSource';
 
-afterEach(() => vi.restoreAllMocks());
+// The view's lighting draws with WebGL: a scene lighting that sees all stands in for it.
+vi.mock('../../src/app/pixi/lighting/createSceneLighting', () => ({
+  createSceneLighting: (deps: SceneLightingDeps): SceneLightingView => ({
+    modeLayer: { visible: false },
+    isEnabled: () => deps.store.getState().lighting.enabled,
+    currentSight: () => SEES_ALL,
+    sightIsCurrent: () => true,
+    lightReaches: () => [],
+    ambientLight: () => ({ ambient: 1 }),
+    refreshBounds: () => undefined,
+    resetExplored: () => undefined,
+    editExplored: () => false,
+    beforeMapUnload: () => undefined,
+    renderForFrame: (_frame, render) => render(),
+    destroy: () => undefined,
+  }),
+}));
+
+const afterTest: Array<() => void> = [];
+afterEach(() => {
+  afterTest.splice(0).forEach((cleanup) => cleanup());
+  vi.restoreAllMocks();
+});
 
 /** A view's captures with its measurements alone, whose one part shows by whether the players see the goblin. */
 function harness(options: { tokens?: boolean } = {}) {
@@ -53,16 +81,49 @@ describe('a players\' frame and the measurements', () => {
 });
 
 describe('the measure renderer\'s wiring', () => {
-  it('shows measurements by whom the canvas is drawn for, following each change once', async () => {
-    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
-    const refreshed = vi.spyOn(MeasureRenderer.prototype, 'refreshVisibility');
-    const { store, destroy } = await bareMapView({ grid: { size: 70, enabled: true, color: 0xffffff } });
-    refreshed.mockClear();
-    store.getState().setGMView(false);
-    expect(refreshed).toHaveBeenCalledTimes(1);
-    store.getState().setGMView(true);
-    expect(refreshed).toHaveBeenCalledTimes(2);
-    destroy();
+  /**
+   * A view whose grid is built before it opens: opening builds the measure renderer again and wires
+   * it a second time, which must stop what the first wiring follows.
+   */
+  async function rewiredView(): Promise<{ view: Awaited<ReturnType<typeof bareMapView>>; renderers: () => readonly unknown[] }> {
+    vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: () => undefined, removeEventListener: () => undefined }));
+    const restoreGraphics = stubJsdomGraphics();
+    const built = vi.spyOn(MeasureRenderer.prototype, 'followShown');
+    const view = await bareMapView({ grid: { size: 70, enabled: true, color: 0xffffff } });
+    await view.renderer.init(document.createElement('div'));
+    afterTest.push(() => {
+      view.destroy();
+      restoreGraphics();
+      vi.unstubAllGlobals();
+    });
+    return { view, renderers: () => built.mock.contexts };
+  }
+
+  it('follows the tokens\' heights, the view\'s leaving and whom the canvas is drawn for with the measure renderer it has now', async () => {
+    const rulesChanged = vi.spyOn(MeasureRenderer.prototype, 'rulesChanged');
+    const left = vi.spyOn(MeasureRenderer.prototype, 'leave');
+    const players = vi.spyOn(MeasureRenderer.prototype, 'playersView', 'set');
+    const { view, renderers } = await rewiredView();
+    const [first, current] = renderers();
+    expect(renderers()).toHaveLength(2);
+    expect(current).not.toBe(first);
+
+    // A token off the floor: the rulers of the measure renderer the view has now are written again, once
+    view.store.getState().addTokens([{ id: 'flier', kind: 'token', imagePath: '', size: 1, x: 100, y: 100, elevation: 30 } as never]);
+    expect(rulesChanged.mock.contexts).toEqual([current]);
+
+    // Leaving the view is heard once, by that renderer
+    view.events.emit('map-unloading');
+    expect(left.mock.contexts).toEqual([current]);
+
+    // Whom the canvas is drawn for: nobody's sight while the GM looks, the players' while the GM peeks
+    const playersView = players.mock.lastCall?.[0] as MeasurePlayersView;
+    const heard = vi.fn();
+    playersView.onChange(heard);
+    expect(playersView.seenOnCanvas()).toBeNull();
+    view.events.emit(LIGHTING_PEEK_EVENT, true);
+    expect(heard).toHaveBeenCalled();
+    expect(playersView.seenOnCanvas()).not.toBeNull();
   });
 });
 
