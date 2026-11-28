@@ -9,7 +9,8 @@ import type { DrawFont, TextLook } from '../../src/app/annotations/annotationTyp
 import { FONT_FAMILIES, TEXT_PLATE } from '../../src/app/annotations/madeText';
 import { HALO } from '../../src/app/annotations/textLook';
 import { AnnotationsRenderer } from '../../src/app/pixi/annotations/AnnotationsRenderer';
-import { captureWithLayerVisibility, type LayerVisibility } from '../../src/app/pixi/playerSafeFrame';
+import type { LayerVisibility } from '../../src/app/pixi/playerSafeFrame';
+import { captureWithLayerVisibility } from '../helpers/layerCapture';
 import { textLayout } from '../../src/app/pixi/textLayout';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import type { TextElement } from '../../src/app/types';

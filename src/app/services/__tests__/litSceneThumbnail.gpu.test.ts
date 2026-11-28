@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { watchGl } from '../../pixi/lighting/engine/__tests__/strictGl';
 import { LightingWorld } from '../../pixi/lighting/engine/LightingWorld';
 import { visionToken } from '../../pixi/lighting/__tests__/rendererHarness';
-import type { SceneFrameCapture } from '../../pixi/sceneFrameCapture';
+import type { SceneFrameCapture } from '../MapThumbnailService';
 import { MapThumbnailService, SNAPSHOT_THUMBNAIL_SIZE, type ThumbnailSize } from '../MapThumbnailService';
 import {
   DARK_AT, LIGHT_AT, MAP_RECT, OPEN_AT, SHADOW_AT, brightnessAt, createThumbnailScene, decodeImage, inThumbnail, largestDifference, overlayLayers, type Pixels, type ThumbnailScene,

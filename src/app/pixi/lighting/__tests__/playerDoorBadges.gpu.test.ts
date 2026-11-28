@@ -4,7 +4,7 @@ import { fogCoverage, type FogCoverage } from '../../../fog/fogCoverage';
 import { fogRectangle } from '../../../../../tests/helpers/fogOperations';
 import type { WallSegment } from '../../../types/wallTypes';
 import { copiedPixel } from '../engine/__tests__/gpuTestUtils';
-import { captureWithLayerVisibility } from '../../playerSafeFrame';
+import { captureWithLayerVisibility } from '../../../../../tests/helpers/layerCapture';
 import { DoorIcons } from '../DoorIcons';
 import { playerDoorSight, playerLightingLayers } from '../playerLightingLayers';
 import { SIZE, visionToken } from './rendererHarness';

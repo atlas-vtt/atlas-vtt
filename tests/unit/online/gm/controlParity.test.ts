@@ -145,10 +145,11 @@ describe("Atlas's player window rules, read from its source at the pin", () => {
   it('captures the grid as the GM has it: no grid layer in the capture, hidden while the GM hides it', () => {
     const orchestrator = vendor('PixiRendererOrchestrator.ts');
     const capture = /public withPlayerSafeFrame\([\s\S]*?\n {2}\}\n/.exec(orchestrator)?.[0] ?? '';
-    expect(capture).toContain('this.playerFrameLayers(settings)');
-    const layers = /private playerFrameLayers\([\s\S]*?\n {2}\}\n/.exec(orchestrator)?.[0] ?? '';
-    expect(layers).toContain('return layers;');
-    expect(`${capture}${layers}`).not.toMatch(/getGridSprite|showGrid/);
+    expect(capture).toContain('this.pictures.capture(picture,');
+    const parts = orchestrator.match(/this\.pictures\.attach\(.*/g) ?? [];
+    expect(parts.length).toBeGreaterThan(0);
+    const pictures = ['pixi/picture/picture.ts', 'pixi/picture/PictureCapture.ts', 'pixi/picture/viewPictureParts.ts'].map(vendor).join('\n');
+    expect(`${capture}${parts.join('\n')}${pictures}`).not.toMatch(/getGridSprite|showGrid|gridSystem/);
     const grid = vendor('grid/GridSystem.ts');
     expect(grid).toContain('grid.visible = this.options.enabled !== false;');
     expect(grid).toMatch(/public setEnabled\(enabled: boolean\): void \{\s*this\.options\.enabled = enabled;\s*if \(enabled\) \{\s*this\.createGrid\(\);\s*\} else if \(this\.gridSprite\) \{\s*this\.gridSprite\.visible = false;\s*\}/);

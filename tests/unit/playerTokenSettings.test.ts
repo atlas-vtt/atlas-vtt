@@ -3,7 +3,7 @@ import { expect, it, vi } from 'vitest';
 import { Container } from 'pixi.js';
 import { createStore } from 'zustand/vanilla';
 import { UIManager } from '../../src/app/pixi/token-renderer/UIManager';
-import { captureWithLayerVisibility } from '../../src/app/pixi/playerSafeFrame';
+import { captureWithLayerVisibility } from '../helpers/layerCapture';
 
 // Text rasterization requires a GPU/canvas; keep the real display tree and UI manager.
 vi.mock('../../src/app/pixi/TokenUIRenderer', async () => {

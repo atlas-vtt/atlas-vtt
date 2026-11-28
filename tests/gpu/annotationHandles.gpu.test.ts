@@ -6,7 +6,8 @@ import { HANDLE_LOOK, handleSpots, handlesOf } from '../../src/app/annotations/a
 import { annotationList } from '../../src/app/annotations/annotationList';
 import { rectanglePoints } from '../../src/app/annotations/shapeOutlines';
 import { AnnotationsRenderer } from '../../src/app/pixi/annotations/AnnotationsRenderer';
-import { captureWithLayerVisibility, type LayerVisibility } from '../../src/app/pixi/playerSafeFrame';
+import type { LayerVisibility } from '../../src/app/pixi/playerSafeFrame';
+import { captureWithLayerVisibility } from '../helpers/layerCapture';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { viewAudience } from '../helpers/viewAudience';

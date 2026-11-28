@@ -7,8 +7,9 @@ import { LightMarkers } from '../../pixi/lighting/LightMarkers';
 import { LightRangeRings } from '../../pixi/lighting/LightRangeRings';
 import { playerLightingLayers, type GmOverlays } from '../../pixi/lighting/playerLightingLayers';
 import { SessionLighting } from '../../pixi/lighting/SessionLighting';
-import { captureSceneFrame, type SceneFrameCapture } from '../../pixi/sceneFrameCapture';
-import { MapThumbnailService, type ThumbnailSize } from '../MapThumbnailService';
+import { PictureCapture } from '../../pixi/picture/PictureCapture';
+import { lightingPicture } from '../../pixi/picture/viewPictureParts';
+import { MapThumbnailService, type SceneFrameCapture, type ThumbnailSize } from '../MapThumbnailService';
 import { LIGHT_AT, MAP_RECT, brightnessAt, createThumbnailScene, decodeImage, inThumbnail, largestDifference, overlayLayers, type Pixels, type ThumbnailScene } from './thumbnailScene';
 
 const SCENE_CARD: ThumbnailSize = { width: 400, height: 300 };
@@ -61,8 +62,9 @@ describe('thumbnail of a scene while the canvas shows the players\' view', () =>
       rings.destroy();
       markers.destroy();
     };
-    const mapViewCapture: SceneFrameCapture = (frame, render) =>
-      captureSceneFrame({ gmViewLayers: [], markerLayers: [], lighting: { gmOverlays: () => gmOverlays, renderer: lighting } }, frame, render);
+    const pictures = new PictureCapture({ camera: () => null, renderGmFrame: () => undefined });
+    pictures.attach('lighting', lightingPicture({ gmOverlays: () => gmOverlays, playerLayers: () => [], playerOnlyLayers: () => [], renderer: lighting }));
+    const mapViewCapture: SceneFrameCapture = (frame, render) => pictures.capture({ kind: 'scene', frame, view: null }, render);
     const thumbnail = (capture: SceneFrameCapture = mapViewCapture): Promise<Pixels> =>
       decodeImage(new MapThumbnailService({} as App).renderThumbnail(app, viewport, MAP_RECT, SCENE_CARD, capture)!);
     scene.tick();

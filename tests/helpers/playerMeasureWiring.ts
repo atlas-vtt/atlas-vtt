@@ -34,12 +34,7 @@ export function wirePlayerMeasurements(deps: {
   };
 }
 
-/** A players' frame as `withPlayerSafeFrame` composes it: one sight for tokens and measurements. */
+/** A players' frame's layers as its capture sets them: one sight for tokens and measurements. */
 export function playerFrameLayers({ measure, tokens, fog, settings, lighting }: Parts & { settings: AtlasSettings['localPlayerView']; lighting: TokenPerception | undefined }): LayerVisibility[] {
   return [...tokens.getPlayerViewLayers(settings, lighting), ...fog.getPlayerViewLayers(), ...measure.getPlayerViewLayers(tokens.playersSeeInFrame(lighting))];
-}
-
-/** A picture of the scene as `gmViewLayers` forces it. */
-export function gmPictureLayers({ measure, tokens, fog }: Parts): LayerVisibility[] {
-  return [...tokens.getGmViewLayers(), ...fog.getGmViewLayers(), ...measure.getGmViewLayers()];
 }

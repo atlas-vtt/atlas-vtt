@@ -9,7 +9,7 @@ import { GridSystem } from '../../src/app/grid/GridSystem';
 import { mapImageViewOf } from './fakeMapImageView';
 import { TokenRenderer } from '../../src/app/pixi/TokenRenderer';
 import { FogOfWarRenderer } from '../../src/app/pixi/fog/FogOfWarRenderer';
-import { captureWithLayerVisibility } from '../../src/app/pixi/playerSafeFrame';
+import { captureWithLayerVisibility } from './layerCapture';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import { DEFAULT_SETTINGS } from '../../src/app/services/atlasSettings';
 import { createTestRenderer } from '../../src/app/pixi/lighting/engine/__tests__/gpuTestUtils';

@@ -5,7 +5,7 @@ import type { MeasurementSettings } from '../../../src/app/grid/measurementForma
 import type { KeptMeasure } from '../../../src/app/measure/measureTypes';
 import { handleDrag, sameDragChanges } from '../../../src/app/pixi/measure/measureHandleDrag';
 import type { MeasurePlayersView } from '../../../src/app/pixi/measurePartsVisibility';
-import { captureWithLayerVisibility } from '../../../src/app/pixi/playerSafeFrame';
+import { captureWithLayerVisibility } from '../../helpers/layerCapture';
 import { getHistoryStore } from '../../../src/app/stores/history';
 import type { TokenEntity } from '../../../src/app/types';
 import { finishMeasureExits, GRID, measureScene, type MeasureScene } from '../../helpers/measureScene';

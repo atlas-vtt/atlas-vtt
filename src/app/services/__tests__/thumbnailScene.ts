@@ -6,11 +6,12 @@ import { createSceneLighting } from '../../pixi/lighting/createSceneLighting';
 import { createTestRenderer, readRgba } from '../../pixi/lighting/engine/__tests__/gpuTestUtils';
 import type { LightingViewHost } from '../../pixi/lighting/LightingViewHost';
 import type { GmOverlays } from '../../pixi/lighting/playerLightingLayers';
-import { captureSceneFrame, type SceneFrameCapture } from '../../pixi/sceneFrameCapture';
+import { PictureCapture } from '../../pixi/picture/PictureCapture';
+import { lightingPicture } from '../../pixi/picture/viewPictureParts';
 import type { ViewAtlasState, ViewAtlasStore } from '../../storeFactory';
 import type { TokenEntity } from '../../types';
 import type { SceneLighting } from '../../types/lightingTypes';
-import type { ThumbnailSize } from '../MapThumbnailService';
+import type { SceneFrameCapture, ThumbnailSize } from '../MapThumbnailService';
 
 /** The map: 800 × 600 world pixels. A scene card (400 × 300) frames all of it, a snapshot card (640 × 360) rows 75 to 525. */
 export const MAP = { width: 800, height: 600 };
@@ -139,9 +140,10 @@ export async function createThumbnailScene(lighting: SceneLighting, antialias: b
     hexLinks: overlay(40),
     gmOverlays: { wallEditor: overlay(96), lightZones: overlay(96), levelSurfaces: overlay(96), exploredMemory: overlay(91), rooms: overlay(92), doorBadges: overlay(97), lightMarkers: overlay(98), rangeRings: overlay(99), sightAids: overlay(99) },
   };
-  const markerLayers = [{ layer: overlays.pins, visible: false }, { layer: overlays.hexLinks, visible: false }];
-  const capture: SceneFrameCapture = (frame, render) =>
-    captureSceneFrame({ gmViewLayers: [], markerLayers, lighting: { gmOverlays: () => overlays.gmOverlays, renderer: host } }, frame, render);
+  const pictures = new PictureCapture({ camera: () => null, renderGmFrame: () => undefined });
+  pictures.attach('pins', { layersFor: () => [{ layer: overlays.pins, visible: false }, { layer: overlays.hexLinks, visible: false }] });
+  pictures.attach('lighting', lightingPicture({ gmOverlays: () => overlays.gmOverlays, playerLayers: () => [], playerOnlyLayers: () => [], renderer: host }));
+  const capture: SceneFrameCapture = (frame, render) => pictures.capture({ kind: 'scene', frame, view: null }, render);
 
   return {
     renderer,

@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { Container } from 'pixi.js';
 import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { createStore } from 'zustand/vanilla';
-import { captureWithLayerVisibility, hiddenTokenLayers } from '../../src/app/pixi/playerSafeFrame';
+import { hiddenTokenLayers } from '../../src/app/pixi/playerSafeFrame';
+import { captureWithLayerVisibility } from '../helpers/layerCapture';
 import { SelectionManager } from '../../src/app/pixi/SelectionManager';
 
 describe('hiddenTokenLayers', () => {
