@@ -793,6 +793,11 @@ export class AtlasView extends FileView {
    * Get the service manager
    * Exposes the service manager for UI components
    */
+  /** Whether the view is closing: it marks itself so before it destroys its services. */
+  public isClosing(): boolean {
+    return this.isViewClosing;
+  }
+
   public get serviceManager(): ServiceManager {
     return this._serviceManager;
   }
