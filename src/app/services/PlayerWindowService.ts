@@ -114,21 +114,6 @@ export class PlayerWindowService {
   }
 
   /**
-   * Toggle the DM's camera freeze and return the new frozen state. Where players are not shown
-   * the presented scene yet there is nothing to freeze them on, and the DM is told so.
-   */
-  public toggleCameraFreeze(): boolean {
-    if (this.frozenCamera) {
-      this.unfreezeCamera();
-      showNotice(t('player.unfrozen'));
-      return false;
-    }
-    this.freezeCamera();
-    showNotice(this.isFrozen() ? t('player.frozen') : t('player.nothingToFreeze'));
-    return this.isFrozen();
-  }
-
-  /**
    * Keep players on `camera`, by default the camera they currently see, and on the world
    * rectangle it frames: map changes stay visible; the DM's panning and zooming, and the size
    * of the DM's pane, no longer reach them.

@@ -85,11 +85,6 @@ function fakeService() {
       state.frozen = true;
       changed();
     }),
-    toggleCameraFreeze: vi.fn(() => {
-      state.frozen = !state.frozen;
-      changed();
-      return state.frozen;
-    }),
     unfreezeCamera: vi.fn(() => {
       state.frozen = false;
       changed();
@@ -186,9 +181,7 @@ describe('the glass chip', () => {
     expect(screen.getByRole('group', { name: 'Players' })).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Let the players follow you' }));
-    // Silently: the notice of the command palette's freeze is not the chip's
     expect(service.unfreezeCamera).toHaveBeenCalledOnce();
-    expect(service.toggleCameraFreeze).not.toHaveBeenCalled();
     expect(screen.getByRole('group', { name: 'Players · following you' })).toBeTruthy();
   });
 
