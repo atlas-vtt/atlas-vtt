@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ViewAtlasState, ViewAtlasStore } from '../../../storeFactory';
-import { captureWithLayerVisibility, type HideableLayer, type LayerVisibility } from '../../playerSafeFrame';
+import type { HideableLayer, LayerVisibility } from '../../playerSafeFrame';
+import { captureWithLayerVisibility } from '../../../../../tests/helpers/layerCapture';
 import { playerLightingLayers, type GmOverlays } from '../playerLightingLayers';
 import { SessionLighting } from '../SessionLighting';
 

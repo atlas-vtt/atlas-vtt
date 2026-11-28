@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { asked, overlay, PEEK, setup, told } from './lightingMemoryHarness';
-import { captureSceneFrame } from '../../src/app/pixi/sceneFrameCapture';
+import { lightingPicture } from '../../src/app/pixi/picture/viewPictureParts';
+import { scenePicture } from '../helpers/pictures';
 
 describe('the lighting tool\'s explored-memory mode', () => {
   it('shows what is explored only with the lighting tool in that mode, on a lit scene that remembers', () => {
@@ -32,7 +33,7 @@ describe('the lighting tool\'s explored-memory mode', () => {
     expect(overlay(controller).visible).toBe(true);
 
     expect(controller.playerLayers()).toContainEqual({ layer: overlay(controller), visible: false });
-    const inThumbnail = captureSceneFrame({ gmViewLayers: [], markerLayers: [], lighting: controller }, { x: 0, y: 0, resolution: 0.5 }, () => overlay(controller).visible);
+    const inThumbnail = scenePicture({ lighting: lightingPicture(controller) }, { x: 0, y: 0, resolution: 0.5 }, () => overlay(controller).visible);
     expect(inThumbnail).toBe(false);
     expect(overlay(controller).visible).toBe(true);
 

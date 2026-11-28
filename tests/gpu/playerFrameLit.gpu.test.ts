@@ -2,7 +2,7 @@ import { RenderTexture, type WebGLRenderer } from 'pixi.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { firstDifference, playerFrameSource, playerWindow, viewOf } from '../helpers/playerFrameView';
 import { openLitView, type LitView } from '../helpers/litView';
-import { captureWithLayerVisibility } from '../../src/app/pixi/playerSafeFrame';
+import { captureWithLayerVisibility } from '../helpers/layerCapture';
 import type { TokenEntity } from '../../src/app/types';
 
 vi.mock('events', async () => import('eventemitter3'));

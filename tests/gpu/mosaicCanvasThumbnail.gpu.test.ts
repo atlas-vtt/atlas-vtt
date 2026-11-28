@@ -5,7 +5,7 @@ import { MosaicCanvasLayer, type TesseraSource } from '../../src/app/pixi/mosaic
 import { levelFor, pictureView, visibleTesserae, type TesseraView } from '../../src/app/pixi/mosaicCanvas/levelOfDetail';
 import { pyramidOf, tesseraKey, tesseraSourceRect, type TesseraRef } from '../../src/app/pixi/mosaicCanvas/pyramid';
 import { TesseraTextureCache } from '../../src/app/pixi/mosaicCanvas/tesseraTextureCache';
-import type { SceneFrameCapture } from '../../src/app/pixi/sceneFrameCapture';
+import type { SceneFrameCapture } from '../../src/app/services/MapThumbnailService';
 import { MAP_THUMBNAIL_SIZE, MapThumbnailService } from '../../src/app/services/MapThumbnailService';
 import { decodeImage } from '../../src/app/services/__tests__/thumbnailScene';
 

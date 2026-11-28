@@ -6,10 +6,11 @@ import { MosaicCanvas } from '../../src/app/pixi/mosaicCanvas/MosaicCanvas';
 import type { MosaicCanvasOpener } from '../../src/app/pixi/mosaicCanvas/mosaicCanvasTypes';
 import type { TesseraView } from '../../src/app/pixi/mosaicCanvas/levelOfDetail';
 import { pyramidOf, tesseraKey, tesseraSourceRect, type TesseraRef } from '../../src/app/pixi/mosaicCanvas/pyramid';
-import { PixiRendererOrchestrator } from '../../src/app/PixiRendererOrchestrator';
+import { mapImagePicture } from '../../src/app/pixi/picture/viewPictureParts';
 import { frameView } from '../../src/app/services/playerFrameDemand';
-import { MIRRORED, SETTINGS, setupMirror, type MirrorHarness } from '../mocks/mirrorHarness';
-import { FRAME, fakePlayerFrames, fakeViewport } from '../mocks/playerFrameSource';
+import { MIRRORED, setupMirror, type MirrorHarness } from '../mocks/mirrorHarness';
+import { FRAME } from '../mocks/playerFrameSource';
+import { picturesOf, playersFrame } from '../helpers/pictures';
 
 class Bitmap {
   readonly close = vi.fn();
@@ -173,34 +174,29 @@ describe('PlayerFrameMirror and the map image', () => {
 });
 
 describe('a players\' frame of a map view', () => {
-  /** The orchestrator with only what a players' frame reads; its map image notes what it draws for. */
-  function view(events: string[]): { renderer: PixiRendererOrchestrator; drawFor: ReturnType<typeof vi.fn> } {
+  /** The view's captures with its map image alone, which notes what it draws for. */
+  function view(events: string[]): { pictures: ReturnType<typeof picturesOf>; drawFor: ReturnType<typeof vi.fn> } {
     const drawFor = vi.fn((_view: TesseraView) => {
       events.push('draw:players');
       return (): void => { events.push('draw:dm'); };
     });
-    const renderer = Object.assign(Object.create(PixiRendererOrchestrator.prototype) as PixiRendererOrchestrator, {
-      pixiAppManager: { getApp: () => ({ renderer: { render: () => events.push('render:dm') }, stage: {} }), getViewport: fakeViewport, getGestures: () => null },
-      playerFrames: fakePlayerFrames(() => events.push('render:player')),
-      mapImage: { drawFor },
-      dmScreenOverlays: new Set(),
-      playerFrameOnly: new Set(),
-    });
-    return { renderer, drawFor };
+    const image = { drawFor, hideVideoFor: () => () => undefined, addDemandRegion: () => () => undefined };
+    return { pictures: picturesOf({ mapImage: mapImagePicture(image) }, { renderGmFrame: () => events.push('render:dm') }), drawFor };
   }
+  const frameRender = (events: string[]) => (): void => { events.push('render:player', 'copy'); };
 
   it('draws the map image at the frame\'s own detail, and the DM\'s again before the DM\'s render', () => {
     const events: string[] = [];
-    const { renderer, drawFor } = view(events);
-    renderer.withPlayerSafeFrame(() => events.push('copy'), SETTINGS, FRAME);
+    const { pictures, drawFor } = view(events);
+    pictures.capture(playersFrame(FRAME), frameRender(events));
     expect(drawFor).toHaveBeenCalledWith(frameView(FRAME));
     expect(events).toEqual(['draw:players', 'render:player', 'copy', 'draw:dm', 'render:dm']);
   });
 
   it('puts the DM\'s picture back when the DM\'s own render follows', () => {
     const events: string[] = [];
-    const { renderer } = view(events);
-    renderer.withPlayerSafeFrame(() => events.push('copy'), SETTINGS, FRAME, true);
+    const { pictures } = view(events);
+    pictures.capture(playersFrame(FRAME, { renderFollows: true }), frameRender(events));
     expect(events).toEqual(['draw:players', 'render:player', 'copy', 'draw:dm']);
   });
 });

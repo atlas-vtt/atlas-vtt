@@ -7,6 +7,8 @@ import { subscribeWithSelector } from 'zustand/middleware';
 import { PixiRendererOrchestrator } from '../../src/app/PixiRendererOrchestrator';
 import type { SceneFrame } from '../../src/app/pixi/lighting/engine/types';
 import type { TesseraView } from '../../src/app/pixi/mosaicCanvas/levelOfDetail';
+import { hiddenFromPictures } from '../../src/app/pixi/picture/picture';
+import { fogPicture, lightingPicture, mapImagePicture, pinsPicture, tokensPicture } from '../../src/app/pixi/picture/viewPictureParts';
 import { MapThumbnailService } from '../../src/app/services/MapThumbnailService';
 import { ServiceManager } from '../../src/app/services/ServiceManager';
 
@@ -64,23 +66,27 @@ function setup(contextLost = false) {
   const frames: SceneFrame[] = [];
   const drawn = deferred();
   const whenReady = vi.fn((_rect: Rectangle, _worldPerScreenPixel: number, _timeoutMs: number) => drawn.promise);
-  Object.assign(orchestrator as any, {
-    mapImage: { layer: background, worldRect: { x: 0, y: 0, width: 800, height: 600 }, whenReady, drawFor, hideVideoFor: () => () => undefined },
-    pinRenderer: { getPinContainer: () => pins, pictureLayers: () => [{ layer: pins, visible: false }] },
-    hexLinkRenderer: { container: hexLinks },
-    tokenRenderer: { getGmViewLayers: () => [{ layer: hiddenToken, visible: true, alpha: 0.5 }] },
-    fogRenderer: { getGmViewLayers: () => [{ layer: fog, visible: true, alpha: 0.5 }] },
-    lighting: {
-      gmOverlays: () => gmOverlays,
-      renderer: {
-        renderForFrame: <T,>(frame: SceneFrame, render: () => T): T => {
-          frames.push(frame);
-          lighting = true;
-          try { return render(); } finally { lighting = false; }
-        },
+  const mapImage = { layer: background, worldRect: { x: 0, y: 0, width: 800, height: 600 }, whenReady, drawFor, hideVideoFor: () => () => undefined, addDemandRegion: () => () => undefined };
+  // The map image the view has once its scene is loaded: what the thumbnail frames
+  Object.assign(orchestrator as any, { mapImage });
+  // What the view's renderers attach as they are built
+  orchestrator.pictures.attach('mapImage', mapImagePicture(mapImage));
+  orchestrator.pictures.attach('pins', pinsPicture({ playerLayers: () => [], pictureLayers: () => [{ layer: pins, visible: false }] }));
+  orchestrator.pictures.attach('hexLinks', hiddenFromPictures(() => [hexLinks]));
+  orchestrator.pictures.attach('tokens', tokensPicture({ getPlayerViewLayers: () => [], getGmViewLayers: () => [{ layer: hiddenToken, visible: true, alpha: 0.5 }] }));
+  orchestrator.pictures.attach('fog', fogPicture({ getPlayerViewLayers: () => [], getGmViewLayers: () => [{ layer: fog, visible: true, alpha: 0.5 }] }));
+  orchestrator.pictures.attach('lighting', lightingPicture({
+    gmOverlays: () => gmOverlays,
+    playerLayers: () => [],
+    playerOnlyLayers: () => [],
+    renderer: {
+      renderForFrame: <T,>(frame: SceneFrame, render: () => T): T => {
+        frames.push(frame);
+        lighting = true;
+        try { return render(); } finally { lighting = false; }
       },
     },
-  });
+  }));
   // Session view shows the fog opaque
   fog.alpha = 1;
 

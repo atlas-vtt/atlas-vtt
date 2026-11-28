@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { fogRectangle } from '../helpers/fogOperations';
 import { firstDifference, playerFrameSource, playerWindow, viewOf } from '../helpers/playerFrameView';
 import { CELL, playerViewScenes, type PlayerViewScene } from '../helpers/playerViewScene';
-import { captureWithLayerVisibility } from '../../src/app/pixi/playerSafeFrame';
+import { captureWithLayerVisibility } from '../helpers/layerCapture';
 import { LaserBeam, beamWidth } from '../../src/app/pixi/laser/LaserBeam';
 import type { TokenPerception } from '../../src/app/vision/tokenPerception';
 

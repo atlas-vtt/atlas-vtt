@@ -1,7 +1,7 @@
 import { Container } from 'pixi.js';
 import { describe, expect, it, vi } from 'vitest';
 import { RenderScheduler, hasPendingChanges, setBeforeRender } from '../../src/app/pixi/RenderScheduler';
-import { captureBeforeRender } from '../../src/app/pixi/playerSafeFrame';
+import { captureBeforeRender } from '../helpers/layerCapture';
 import { DEFAULT_SETTINGS } from '../../src/app/services/atlasSettings';
 import { fogRectangle } from '../helpers/fogOperations';
 import { differingIn, differingPixels, playerViewScenes, samePixels, type PlayerViewScene } from '../helpers/playerViewScene';

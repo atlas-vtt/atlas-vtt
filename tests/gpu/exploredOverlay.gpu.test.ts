@@ -7,7 +7,7 @@ import type { MeasurementSettings } from '../../src/app/grid/measurementFormat';
 import { ExploredBrush } from '../../src/app/pixi/lighting/ExploredBrush';
 import { LightingRenderer } from '../../src/app/pixi/lighting/LightingRenderer';
 import { playerLightingLayers } from '../../src/app/pixi/lighting/playerLightingLayers';
-import { captureWithLayerVisibility } from '../../src/app/pixi/playerSafeFrame';
+import { captureWithLayerVisibility } from '../helpers/layerCapture';
 import { SIZE } from '../../src/app/pixi/lighting/__tests__/rendererHarness';
 import { createTestRenderer, readRgba } from '../../src/app/pixi/lighting/engine/__tests__/gpuTestUtils';
 import { watchGl, type GlWatch } from '../../src/app/pixi/lighting/engine/__tests__/strictGl';

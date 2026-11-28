@@ -8,8 +8,9 @@ import { NotePinTool } from '../../../src/app/tools/NotePinTool';
 import { MapService } from '../../../src/app/services/MapService';
 import type { RendererService } from '../../../src/app/services/RendererService';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../../src/app/storeFactory';
-import { captureSceneFrame } from '../../../src/app/pixi/sceneFrameCapture';
-import { captureWithLayerVisibility } from '../../../src/app/pixi/playerSafeFrame';
+import { pinsPicture } from '../../../src/app/pixi/picture/viewPictureParts';
+import { scenePicture } from '../../helpers/pictures';
+import { captureWithLayerVisibility } from '../../helpers/layerCapture';
 import { levelObjects } from '../../../src/app/levels/levelObjects';
 import { showNotice } from '../../../src/app/ui/notice';
 import type { NotePin } from '../../../src/app/types';
@@ -171,9 +172,9 @@ describe('Placing many note pins', () => {
 
       if (index % 5 === 4) {
         // A thumbnail shows no pin and puts them back, also when its render fails
-        const parts = { gmViewLayers: [], markerLayers: renderer.pictureLayers(), lighting: undefined };
-        captureSceneFrame(parts, { x: 0, y: 0, resolution: 1 }, () => expect(renderer.getPinContainer().visible).toBe(false));
-        expect(() => captureSceneFrame(parts, { x: 0, y: 0, resolution: 1 }, () => { throw new Error('lost context'); })).toThrow('lost context');
+        const parts = { pins: pinsPicture(renderer) };
+        scenePicture(parts, { x: 0, y: 0, resolution: 1 }, () => expect(renderer.getPinContainer().visible).toBe(false));
+        expect(() => scenePicture(parts, { x: 0, y: 0, resolution: 1 }, () => { throw new Error('lost context'); })).toThrow('lost context');
         captureWithLayerVisibility(renderer.playerLayers(), () => undefined, () => expect(renderer.getPinContainer().visible).toBe(false));
         expectPinsShown(`${step}, after pictures`);
       }

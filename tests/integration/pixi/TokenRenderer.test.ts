@@ -14,7 +14,8 @@ import {
 import { Viewport } from 'pixi-viewport';
 import { EventEmitter } from '../../../src/app/utils/typedEmitter';
 import { TokenRenderer } from '../../../src/app/pixi/token-renderer';
-import { captureSceneFrame } from '../../../src/app/pixi/sceneFrameCapture';
+import { tokensPicture } from '../../../src/app/pixi/picture/viewPictureParts';
+import { scenePicture } from '../../helpers/pictures';
 import { AnnotationsRenderer } from '../../../src/app/pixi/annotations/AnnotationsRenderer';
 import { auraBadgePoint } from '../../../src/app/measure/auraArea';
 import { MeasureRenderer } from '../../../src/app/pixi/measure/MeasureRenderer';
@@ -37,7 +38,8 @@ import { fogRectangle } from '../../helpers/fogOperations';
 import { stubJsdomGraphics } from '../../mocks/jsdomGraphics';
 import { wirePlayerMeasurements } from '../../helpers/playerMeasureWiring';
 import { viewAudience, type ViewAudience } from '../../helpers/viewAudience';
-import { captureWithLayerVisibility, type LayerVisibility } from '../../../src/app/pixi/playerSafeFrame';
+import type { LayerVisibility } from '../../../src/app/pixi/playerSafeFrame';
+import { captureWithLayerVisibility } from '../../helpers/layerCapture';
 import type { TokenEntity } from '../../../src/app/types';
 
 const openContextMenuGlobal = vi.hoisted(() => vi.fn());
@@ -1292,7 +1294,7 @@ describe('TokenRenderer Integration Tests', () => {
           const onCanvas = look();
           expect(onCanvas).toEqual({ unseen: { visible: false, alpha: 1, ui: false }, hidden: { visible: false, alpha: 1 }, seen: { visible: true, ui: false } });
 
-          const picture = captureSceneFrame({ gmViewLayers: tokenRenderer.getGmViewLayers(), markerLayers: [], lighting: undefined }, { x: 0, y: 0, resolution: 1 }, look);
+          const picture = scenePicture({ tokens: tokensPicture(tokenRenderer) }, { x: 0, y: 0, resolution: 1 }, look);
 
           // The GM's picture: every token, the hidden one translucent, and only the token UI that has something to show.
           expect(picture).toEqual({ unseen: { visible: true, alpha: 1, ui: true }, hidden: { visible: true, alpha: 0.5 }, seen: { visible: true, ui: false } });
@@ -1410,7 +1412,7 @@ describe('TokenRenderer Integration Tests', () => {
           it('should leave it out of a picture of the scene, which shows the token itself', async () => {
             await sensedSetup();
             outlineLayer().visible = true;
-            const picture = captureSceneFrame({ gmViewLayers: tokenRenderer.getGmViewLayers(), markerLayers: [], lighting: undefined }, { x: 0, y: 0, resolution: 1 }, () => ({
+            const picture = scenePicture({ tokens: tokensPicture(tokenRenderer) }, { x: 0, y: 0, resolution: 1 }, () => ({
               outlines: outlineLayer().visible, token: tokenGroup('token-1').visible,
             }));
             expect(picture).toEqual({ outlines: false, token: true });
@@ -1597,7 +1599,7 @@ describe('TokenRenderer Integration Tests', () => {
       expect(inFrame()).toEqual([false, false]);
       store.getState().setGMView(false);
       expect(onCanvas()).toEqual([false, false]);
-      const picture = captureSceneFrame({ gmViewLayers: [...tokenRenderer.getGmViewLayers(), ...measure.getGmViewLayers()], markerLayers: [], lighting: undefined },
+      const picture = scenePicture({ tokens: tokensPicture(tokenRenderer), measures: { layersFor: () => measure.getGmViewLayers() } },
         {} as never, () => onCanvas());
       expect(picture).toEqual([true, true]);
       expect(onCanvas()).toEqual([false, false]);
@@ -1699,7 +1701,7 @@ describe('TokenRenderer Integration Tests', () => {
     };
     /** The same in a picture of the scene, always the GM's. */
     const pictureLooks = (...ids: string[]): string[] =>
-      captureSceneFrame({ gmViewLayers: tokenRenderer.getGmViewLayers(), markerLayers: [], lighting: undefined }, {} as never, () => looks(...ids));
+      scenePicture({ tokens: tokensPicture(tokenRenderer) }, {} as never, () => looks(...ids));
     const goblins = async (...tokens: Array<Partial<TokenInput> & { id: string }>): Promise<void> => {
       for (const [index, entry] of tokens.entries()) store.getState().addTokens([token({ x: 105 + 140 * index, y: 105, ...entry })]);
       await waitForTokens(...tokens.map(({ id }) => id));
