@@ -110,7 +110,6 @@ export class PlayerDrags {
       if (moved === undefined) return;
       moved.x = at.x;
       moved.y = at.y;
-      draft._audioDirty = true;
     });
   }
 
@@ -208,7 +207,6 @@ export class PlayerDrags {
             const token = sceneTokens(draft.objects)[tokenId];
             if (token !== undefined) Object.assign(token, start);
           }
-          draft._audioDirty = true;
         } else {
           placeTokens(draft, drags.map(({ tokenId }) => ({ id: tokenId, ...outcome })));
           for (const { tokenId, distance } of counted) countTurnMoveIn(draft, [tokenId], distance);

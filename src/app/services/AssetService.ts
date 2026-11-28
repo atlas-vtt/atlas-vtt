@@ -19,19 +19,15 @@ import { nothingReconciled, reconcileIndex, type VaultReconciliation } from './v
 import { listVault, readVault } from './vault-sync/vaultListing';
 import type { CollectionSettings } from '../types/collectionSettingsTypes';
 import { isLegacyTokenRecord, type LegacyAssetMetadata } from './assetMetadataGuards';
-import { isRecord } from '../utils/guards';
 import { groupLegacyTags, hasAssetTag, tagGroupOf, tagKey, type TagGroup } from './tagGroups';
 import { t } from '../i18n';
 import { trashVaultItem } from '../utils/trashVaultItem';
-import { thumbnailFiles } from './thumbnailFiles';
-import { encounterThumbnailFile } from '../encounters/encounterThumbnailFile';
 import { LibrarySync } from './library/LibrarySync';
 import type { LibraryMergeResult } from './library/mergeLibraryChanges';
 import { LEGACY_INDEX_FILE, LIBRARY_FILE, recordFilePath } from './library/libraryPaths';
 import { isKnownAssetType, isPayloadUnread, serializeRecord } from './library/recordFile';
 import { assetKey, emptyLibraryState, libraryClock, parseLibraryState } from './library/libraryState';
 import { indexText, snapshotIndex } from './library/indexSnapshot';
-import { trashSceneBelongings } from './sceneBelongings';
 import { showNotice } from '../ui/notice';
 import { workSlices } from '../utils/workSlices';
 
@@ -1138,97 +1134,17 @@ export class AssetService {
     const asset = this.metadata!.assets[id];
     if (!asset) return;
 
-    // Delete the asset file
-    try {
-      const assetPath = this.getAssetPath(asset);
-      const file = this.app.vault.getAbstractFileByPath(assetPath);
-      if (file instanceof TFile) {
-        await trashVaultItem(this.app, file);
-      }
-    } catch (error) {
-      console.error('[AssetService] Error deleting asset file:', error);
-    }
-
-    // For scene assets, also delete the map file and close any open leaves
-    if (asset.type === 'scene') {
-      // Load the scene data from the JSON file if not already loaded
-      let sceneData = asset.data;
-      if (!sceneData) {
-        try {
-          const sceneJsonPath = this.getAssetPath(asset);
-          const sceneJsonFile = this.app.vault.getAbstractFileByPath(sceneJsonPath);
-          if (sceneJsonFile instanceof TFile) {
-            const parsed: unknown = JSON.parse(await this.app.vault.read(sceneJsonFile));
-            if (isRecord(parsed) && typeof parsed.mapPath === 'string') {
-              sceneData = { mapPath: parsed.mapPath };
-            }
-          }
-        } catch (error) {
-          console.error('[AssetService] Error loading scene data:', error);
-        }
-      }
-      
-      const mapPath = sceneData?.mapPath;
-      if (mapPath) {
-        try {
-          // Delete the map file
-          const mapFile = this.app.vault.getAbstractFileByPath(mapPath);
-          if (mapFile instanceof TFile) {
-            // Atlas closes the scene's tab when the vault reports the deletion (`vaultSync`); a markdown leaf showing the file goes here.
-            const markdownLeaves = this.app.workspace.getLeavesOfType('markdown');
-            for (const leaf of markdownLeaves) {
-              const state = leaf.view?.getState?.();
-              if (state?.file === mapPath) {
-                leaf.detach();
-              }
-            }
-            
-            await trashVaultItem(this.app, mapFile);
-          }
-        } catch (error) {
-          console.error('[AssetService] Error deleting scene map file:', error);
-        }
-      }
-      try {
-        await trashSceneBelongings(this.app, asset, mapPath);
-      } catch (error) {
-        console.error('[AssetService] Error deleting scene snapshots:', error);
-      }
-    }
+    // Loaded when needed: the reference collector reaches into statblocks and scenes, which import this service.
+    const { trashAssetBelongings } = await import('./trashAssetBelongings');
+    await trashAssetBelongings(this.app, this, asset, Object.values(this.metadata!.assets));
 
     const emptiedGroups = asset.type === 'token' ? await this.getGroupsUsingTokens([asset.id]) : [];
-    if (asset.type === 'token') {
-      this.removeTokenReferencesFromGroups(asset.id);
-      for (const path of thumbnailFiles(asset.thumbnailPath)) await this.trashFileIfPresent(path);
-    }
-    if (asset.type === 'encounter') await this.trashEncounterThumbnail(asset);
-    if (asset.type === 'map') {
-      // Loaded when needed: the reference collector reaches into statblocks and scenes, which import this service.
-      const { unusedMapFiles } = await import('./mapAssetFiles');
-      const unused = await unusedMapFiles(this.app, this, asset, Object.values(this.metadata!.assets));
-      for (const path of unused) await this.trashFileIfPresent(path);
-    }
+    if (asset.type === 'token') this.removeTokenReferencesFromGroups(asset.id);
 
-    // Remove from metadata
     delete this.metadata!.assets[id];
     await this.saveMetadata();
 
     await this.deleteEmptiedGroups(emptiedGroups);
-  }
-
-  /** An encounter's thumbnail goes with it, unless another encounter (a copy) still shows the same file. */
-  private async trashEncounterThumbnail(encounter: EncounterAsset): Promise<void> {
-    const url = encounter.thumbnailUrl;
-    if (!url) return;
-    const shared = Object.values(this.metadata!.assets)
-      .some((other) => other.id !== encounter.id && other.type === 'encounter' && other.thumbnailUrl === url);
-    const file = shared ? null : encounterThumbnailFile(this.app, url);
-    if (!file) return;
-    try {
-      await trashVaultItem(this.app, file);
-    } catch (error) {
-      console.error('[AssetService] Error deleting encounter thumbnail:', error);
-    }
   }
 
   private async trashFileIfPresent(path: string | undefined): Promise<void> {
@@ -1496,14 +1412,6 @@ export class AssetService {
       changed = true;
     }
     if (changed) await this.saveMetadata();
-  }
-
-  async deleteTokenAsset(id: string): Promise<void> {
-    await this.deleteAsset(id);
-  }
-
-  async updateTokenAsset(id: string, updates: Partial<Omit<TokenAsset, 'id' | 'createdAt' | 'type' | 'collection'>>): Promise<void> {
-    await this.updateAsset(id, updates);
   }
 
   async createEncounter(encounterData: Omit<EncounterAsset, 'id' | 'createdAt' | 'modifiedAt' | 'type'>): Promise<EncounterAsset> {

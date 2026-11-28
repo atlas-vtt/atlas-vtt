@@ -16,14 +16,13 @@ import {
 } from './sceneObjectKinds';
 
 /**
- * A draft of a store's scene, as far as object writes reach it. A draft without a selection,
- * popovers or audio flag (an action's narrower one, a store online players write through) has
- * nothing of them to change.
+ * A draft of a store's scene, as far as object writes reach it. A draft without a selection or
+ * popovers (an action's narrower one, a store online players write through) has nothing of them to
+ * change.
  */
 export type ObjectsDraft = LevelView & { [Popover in ObjectPopover]?: string | null } & {
   objects: SceneObjectRecords;
   selectedIds?: string[];
-  _audioDirty?: boolean;
 };
 
 /** What a removal does with a locked drawing or text: it stays (a delete, a cut) or goes along (a clear). */
@@ -36,7 +35,6 @@ export function addObjectIn<K extends AddedKind>(draft: ObjectsDraft, kind: K, d
   // Whatever is in their place that is no record (a store filled by something else than a load) gives way.
   if (!isRecord(draft.objects[kind])) draft.objects[kind] = {};
   (draft.objects[kind] as Record<string, unknown>)[id] = { id, kind: tag, ...placed(draft), ...data };
-  if (OBJECT_KINDS[kind].heard) draft._audioDirty = true;
   return id;
 }
 
@@ -58,15 +56,13 @@ export function patchObjectIn<K extends PatchedKind>(draft: ObjectsDraft, kind: 
     else Reflect.set(object, field, value);
   }
   if (kind === 'pins' && draft.objects.pins) relabelPin(draft.objects.pins, object as unknown as NotePin, iconBefore as string | undefined);
-  if (OBJECT_KINDS[kind].heard) draft._audioDirty = true;
 }
 
 /** The popovers that may stand open on an object. */
 const POPOVERS = OBJECT_COLLECTIONS.flatMap((collection) => OBJECT_KINDS[collection].popover ?? []);
 
-/** Removes the objects of `ids` and what goes with them, adding their ids to `removed`; whether spatial audio hears one of them. */
-function take(objects: SceneObjectRecords, ids: readonly string[], locked: LockedObjects, removed: Set<string>): boolean {
-  let heard = false;
+/** Removes the objects of `ids` and what goes with them, adding their ids to `removed`. */
+function take(objects: SceneObjectRecords, ids: readonly string[], locked: LockedObjects, removed: Set<string>): void {
   for (const collection of OBJECT_COLLECTIONS) {
     const record: unknown = objects[collection];
     if (!isRecord(record)) continue;
@@ -78,26 +74,21 @@ function take(objects: SceneObjectRecords, ids: readonly string[], locked: Locke
       gone.add(id);
       removed.add(id);
     }
-    if (gone.size === 0) continue;
-    heard ||= OBJECT_KINDS[collection].heard === true;
-    if (takes) heard = take(objects, takes(objects, gone), 'go', removed) || heard;
+    if (gone.size > 0 && takes) take(objects, takes(objects, gone), 'go', removed);
   }
-  return heard;
 }
 
 /**
  * Removes the objects of `ids`, of whatever kind, with all that follows: what goes with them (a
- * token's auras), the selection and any popover on them, and spatial audio where it hears one of
- * them.
+ * token's auras), and the selection and any popover on them.
  */
 export function removeObjectsIn(draft: ObjectsDraft, ids: Iterable<string>, locked: LockedObjects): void {
   const removed = new Set<string>();
-  const heard = take(draft.objects, [...ids], locked, removed);
+  take(draft.objects, [...ids], locked, removed);
   if (removed.size === 0) return;
   for (const popover of POPOVERS) {
     const open = draft[popover];
     if (typeof open === 'string' && removed.has(open)) draft[popover] = null;
   }
   if (draft.selectedIds?.some((id) => removed.has(id))) draft.selectedIds = draft.selectedIds.filter((id) => !removed.has(id));
-  if (heard) draft._audioDirty = true;
 }
