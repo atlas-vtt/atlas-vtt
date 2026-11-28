@@ -5,7 +5,7 @@ import type { AtlasSettingSection } from '../../settings/settingSections';
 import { AccountControl } from './account/AccountControl.ts';
 import { obsidianHttp } from '../../account/obsidianHttp.ts';
 import type { AtlasAccount } from '../../account/AtlasAccount';
-import { activeAtlasLeaf } from './atlasView.ts';
+import { activeAtlasLeaf } from './mapViewOf.ts';
 import { AssetService } from '../../services/AssetService';
 import { openPinNote } from '../../services/noteHeadings';
 import { CampaignBooks } from '../../campaigns/players/CampaignBooks';

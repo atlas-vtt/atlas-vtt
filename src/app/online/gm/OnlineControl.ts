@@ -1,6 +1,7 @@
 import { type App, type WorkspaceLeaf } from 'obsidian';
 import { showNotice } from '../../ui/notice';
-import { activeAtlasLeaf, activeStore, sceneStoreOf, selectedTokenIds, workScene, type WorkScene } from './atlasView.ts';
+import { selectedTokenIds, workScene, type WorkScene } from './atlasView.ts';
+import { activeAtlasLeaf, activeStore, sceneStoreOf } from './mapViewOf.ts';
 import type { CampaignPlayer } from '../../campaigns/players/playersFile';
 import { BookShelf } from './book/BookShelf.ts';
 import { CAMPAIGNS_LOADING_TEXT, linkRefusal, NO_CAMPAIGN_TEXT, NO_TABLE_TEXT, renewLink, type TableSeats } from './campaignSeats.ts';

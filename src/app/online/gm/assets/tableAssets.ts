@@ -9,7 +9,7 @@ import type { AssetRefs } from './assetRefs.ts';
 import type { MapFocus } from './pyramidPlan.ts';
 import { buildMapPyramid } from '../../../pixi/mosaicCanvas/prebuildMosaicCanvas';
 import { TesseraDecoderClient } from '../../../pixi/mosaicCanvas/TesseraDecoderClient';
-import { mapViewOf } from '../atlasView.ts';
+import { mapViewOf } from '../mapViewOf.ts';
 import type { MapCanvas } from '../mapView.ts';
 import { AssetStoreClient } from './storeClient.ts';
 

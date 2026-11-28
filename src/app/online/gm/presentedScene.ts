@@ -1,7 +1,8 @@
 import type { App, WorkspaceLeaf } from 'obsidian';
 import type { PresentedScene } from '../../services/presentedScene';
 import type { TabMetaState } from '../../stores/tabMetaStore';
-import { mapViewOf, type SceneState } from './atlasView.ts';
+import { type SceneState } from './atlasView.ts';
+import { mapViewOf } from './mapViewOf.ts';
 
 /** Atlas's command that shows the active map tab's scene on the player view, as the eye on a scene tab does. */
 export const PRESENT_COMMAND = 'atlas-vtt:send-map-to-player-view';

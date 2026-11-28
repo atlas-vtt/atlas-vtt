@@ -1,5 +1,6 @@
 import type { WorkspaceLeaf } from 'obsidian';
-import { mapViewOf, type ObservedStore } from './atlasView.ts';
+import { type ObservedStore } from './atlasView.ts';
+import { mapViewOf } from './mapViewOf.ts';
 import type { MapCanvas, MapView } from './mapView.ts';
 import type { PresentedScene } from '../../services/presentedScene';
 import { findPresentedTab, showsPresented, type PresentedTab } from './presentedScene.ts';

@@ -1,7 +1,8 @@
 import type { WorkspaceLeaf } from 'obsidian';
 import { describe, expect, it } from 'vitest';
 import { create } from 'zustand';
-import { ATLAS_VIEW_TYPE, LOCAL_PLAYER_VIEW_TYPE, mapViewOf, sceneStoreOf } from '../../../../src/app/online/gm/atlasView.ts';
+import { ATLAS_VIEW_TYPE, LOCAL_PLAYER_VIEW_TYPE } from '../../../../src/app/online/gm/atlasView.ts';
+import { mapViewOf, sceneStoreOf } from '../../../../src/app/online/gm/mapViewOf.ts';
 
 function leafWith(atlasStore: unknown, viewType = ATLAS_VIEW_TYPE): WorkspaceLeaf {
   return { view: { getViewType: () => viewType, atlasStore } } as unknown as WorkspaceLeaf;
