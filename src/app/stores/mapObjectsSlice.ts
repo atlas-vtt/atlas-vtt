@@ -41,7 +41,6 @@ interface MapObjectsStoreState {
   objects: CopyableCollections;
   grid: GridState | null;
   selectedIds: string[];
-  _audioDirty: boolean;
   levels?: SceneLevel[] | undefined;
   viewedLevel?: string | null | undefined;
   activeTool: string;
@@ -99,9 +98,6 @@ function addCopies(draft: MapObjectsStoreState, content: MapObjectContent, linkR
     ids.push(id);
   }
   if (ids.length > 0) draft.selectedIds = ids;
-  if (content.tokens.length > 0) {
-    draft._audioDirty = true;
-  }
   return [...ids, ...addLinkCopies(draft, content, linkRoom)];
 }
 
