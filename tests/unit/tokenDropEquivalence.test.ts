@@ -79,7 +79,9 @@ describe('dropTokens against the drop it replaces', () => {
     fc.assert(fc.property(scenes, (scene) => {
       const store = createStore(scene);
       const before = store.getState();
-      const expected = produce(before, (draft) => frozenDrop(draft, scene.positions));
+      // The frozen drop also raised spatial audio's flag; the engine now hears a drop by its objects alone.
+      const frozen = produce(before, (draft) => frozenDrop(draft, scene.positions));
+      const expected = frozen.objects === before.objects && frozen.heldTokens === before.heldTokens ? before : { ...frozen, _audioDirty: before._audioDirty };
       let writes = 0;
       const stop = store.subscribe(() => { writes += 1; });
 
