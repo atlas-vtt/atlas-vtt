@@ -25,8 +25,8 @@ const renderAudience = ({ id, label, audience, onChange }: ResourceAudienceChoic
 
 /** The sliders: how large the players' initiative list is, and how many cards it shows. */
 function InitiativeLookSliders({ settings }: { settings: SettingsService | undefined }): React.ReactElement {
-  const values: AtlasSettings['localPlayerView'] = settings?.getLocalPlayerViewSettings() ?? DEFAULT_SETTINGS.localPlayerView;
-  const update = (changes: Partial<AtlasSettings['localPlayerView']>): void => settings?.setLocalPlayerViewSettings(changes);
+  const values: AtlasSettings['localPlayerView'] = settings?.get('localPlayerView') ?? DEFAULT_SETTINGS.localPlayerView;
+  const update = (changes: Partial<AtlasSettings['localPlayerView']>): void => settings?.set('localPlayerView', changes);
   const initiativeScale = initiativeScaleOf(values.initiativeScale);
   const maxCards = initiativeMaxCardsOf(values.initiativeMaxCards);
   return (

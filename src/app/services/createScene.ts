@@ -43,7 +43,7 @@ export async function createScene(app: App, assetService: AssetService, draft: S
   const mapData = newSceneFile(
     assetService.getCollectionSettings(collection.id),
     draft.background ? normalizeImagePath(draft.background) : null,
-    SettingsService.forApp(app)?.detectsGridOnNewScenes() ?? true,
+    SettingsService.forApp(app)?.get('detectGridOnNewScenes') ?? true,
   );
   const scenePath = scenePathFor(collection.id, name);
   if (app.vault.getAbstractFileByPath(scenePath)) throw new SceneNameTakenError(name);

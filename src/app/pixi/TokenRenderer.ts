@@ -288,7 +288,7 @@ export class TokenRenderer {
     this.uiManager.measurementProvider = this.collectionSync.measurement;
     // Table mode is the players' picture for good: names follow the player view's Show nameplates, as in their window
     this.uiManager.tableNameplates = () => (this.store.getState().tableMode
-      ? SettingsService.forApp(obsApp)?.getLocalPlayerViewSettings().showTokenNameplates ?? false
+      ? SettingsService.forApp(obsApp)?.get('localPlayerView').showTokenNameplates ?? false
       : undefined);
     this.statblockSync = new StatblockTokenSync(obsApp, store, tokenStatblockLinkService, this.resourceDefsProvider);
 
@@ -318,7 +318,7 @@ export class TokenRenderer {
       this.store,
       this.collectionSync.measurement,
       (id) => this.tokenSprites[id]?.visible ?? false,
-      () => showsDragDistance(SettingsService.forApp(this.obsApp)?.getDragDistance() ?? DEFAULT_DRAG_DISTANCE, this.store.getState().initiative.isActive),
+      () => showsDragDistance(SettingsService.forApp(this.obsApp)?.get('dragDistance') ?? DEFAULT_DRAG_DISTANCE, this.store.getState().initiative.isActive),
       movement,
     );
     this.interactionController.setDragRuler(this.dragRuler);
@@ -828,7 +828,7 @@ export class TokenRenderer {
    */
   private syncCanvasTurn(): void {
     const showsPlayers = this.audience.showsPlayers();
-    const view = SettingsService.forApp(this.obsApp)?.getLocalPlayerViewSettings();
+    const view = SettingsService.forApp(this.obsApp)?.get('localPlayerView');
     this.turnMarkers.showOnCanvas(!showsPlayers || ((view?.showInitiative ?? false) && this.store.getState().initiativeTrackerOpen));
   }
 

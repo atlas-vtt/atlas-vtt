@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
+import { DEVICE_PREFERENCES, readDevice, writeDevice, type DeviceStorage } from '../../src/app/services/deviceSettings';
 import { CARD_MM, cellPx, firstGuessPxPerMm, glideCamera, pxPerMM } from '../../src/app/services/tableTv';
 import { drawTvSetup, tableTvOf, tableTvPlayerFrame, targetCellPx, type TableTv } from '../../src/app/services/tableTvFrame';
 import { DEFAULT_TABLE_TV_SETTINGS, readTableTvSettings } from '../../src/app/services/tableTvSettings';
 import {
-  DEFAULT_TABLE_TV_DEVICE, loadTableTvDevice, readTableTvDevice, saveTableTvDevice, screenKey, setupOf, TABLE_TV_STORAGE_KEY,
+  DEFAULT_TABLE_TV_DEVICE, readTableTvDevice, screenKey, setupOf, TABLE_TV_STORAGE_KEY,
 } from '../../src/app/services/tableTvDevice';
 import { playerFrame, viewOf } from '../../src/app/services/playerFrame';
 import { withSetupScreen } from '../../src/app/services/playerGlass';
@@ -105,7 +106,7 @@ describe('the TrueScale settings as stored', () => {
 });
 
 describe("this device's table TVs", () => {
-  function storage(): Parameters<typeof loadTableTvDevice>[0] & { stored: Map<string, unknown> } {
+  function storage(): DeviceStorage & { stored: Map<string, unknown> } {
     const stored = new Map<string, unknown>();
     return {
       stored,
@@ -120,11 +121,11 @@ describe("this device's table TVs", () => {
   });
 
   it('reads the default where nothing or nothing usable is stored', () => {
-    expect(loadTableTvDevice(storage())).toEqual(DEFAULT_TABLE_TV_DEVICE);
+    expect(readDevice(storage(), DEVICE_PREFERENCES.tableTvDevice)).toEqual(DEFAULT_TABLE_TV_DEVICE);
     const broken = storage();
     broken.stored.set(TABLE_TV_STORAGE_KEY, '{not json');
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    expect(loadTableTvDevice(broken)).toEqual(DEFAULT_TABLE_TV_DEVICE);
+    expect(readDevice(broken, DEVICE_PREFERENCES.tableTvDevice)).toEqual(DEFAULT_TABLE_TV_DEVICE);
     expect(readTableTvDevice({ trueScale: 'yes', cellMm: -2, screens: 3 })).toEqual(DEFAULT_TABLE_TV_DEVICE);
     expect(DEFAULT_TABLE_TV_DEVICE.cellMm).toBe(25.4);
   });
@@ -143,9 +144,9 @@ describe("this device's table TVs", () => {
   it('saves what it reads back', () => {
     const local = storage();
     const device = { trueScale: true, cellMm: 30, screens: { '3840x2160': { pxPerMm: 3.15, rotation: 270 as const }, '1920x1080': { rotation: 90 as const } } };
-    saveTableTvDevice(local, device);
+    writeDevice(local, DEVICE_PREFERENCES.tableTvDevice, device);
     expect(typeof local.stored.get(TABLE_TV_STORAGE_KEY)).toBe('string');
-    expect(loadTableTvDevice(local)).toEqual(device);
+    expect(readDevice(local, DEVICE_PREFERENCES.tableTvDevice)).toEqual(device);
   });
 
   it('has a setup only for a screen fitted to a card', () => {

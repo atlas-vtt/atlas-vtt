@@ -4,6 +4,7 @@ import { useAtlasSettings } from '../../../../keyboard/useMapHotkeys';
 import { SettingsService } from '../../../../services/SettingsService';
 import { showAtlasToast } from '../../../../react/components/AtlasToast';
 import { MOVED_TOAST_MS } from '../utils/moveNotice';
+import { withListed } from '../../../../services/preferences/syncedPreferences';
 
 export interface StarterOfferDismissal {
   /** The sidebar does not offer the starter tokens in this collection. */
@@ -20,13 +21,14 @@ export interface StarterOfferDismissal {
 export function useStarterOfferDismissal(app: App | undefined, collectionUid: string | undefined): StarterOfferDismissal {
   const settings = useAtlasSettings(SettingsService.forApp(app));
   if (!settings || !collectionUid) return { dismissed: false, dismiss: undefined };
+  const hide = (hidden: boolean): void => settings.set('hiddenStarterOffers', withListed(settings.get('hiddenStarterOffers'), collectionUid, hidden));
   return {
-    dismissed: settings.isStarterOfferHidden(collectionUid),
+    dismissed: settings.get('hiddenStarterOffers').includes(collectionUid),
     dismiss: () => {
-      settings.setStarterOfferHidden(collectionUid, true);
+      hide(true);
       showAtlasToast(t('am.bestiary.hidden'), MOVED_TOAST_MS, {
         label: t('history.undo'),
-        run: () => settings.setStarterOfferHidden(collectionUid, false),
+        run: () => hide(false),
       });
     },
   };

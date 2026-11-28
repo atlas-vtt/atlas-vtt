@@ -71,7 +71,7 @@ describe('grids in a settings file this version did not write', () => {
   ];
   it.each(hostile)('reads %s into a legal grid or the default, and takes a change', async (_name, stored) => {
     const rig = await layoutRig(memoryPluginData({ gmScreenKeys: stored }));
-    const keys = rig.settings.getGmScreenKeys();
+    const keys = rig.settings.get('gmScreenKeys');
     expect(illegal(keys.phone, 'phone')).toBeNull();
     expect(illegal(keys.tablet, 'tablet')).toBeNull();
     const phone = await joinedDevice(rig, PHONE);
@@ -85,7 +85,7 @@ describe('grids in a settings file this version did not write', () => {
   ])('loads the settings with %s nested too deep to write, leaving it out', async (_name, stored) => {
     const settings = new SettingsService(new App(), undefined, { loadData: () => Promise.resolve(stored), saveData: () => Promise.resolve() });
     await settings.initialize();
-    expect(settings.getGmScreenKeys().phone?.slots[0] ?? null).toBeNull();
+    expect(settings.get('gmScreenKeys').phone?.slots[0] ?? null).toBeNull();
   });
 
   it.each([['€', 975], ['x', 975], ['\u0001', 160], ['"', 480]])('sends a full grid of newer keys of %j x %i to a device whole, in parts', async (char, count) => {
@@ -93,7 +93,7 @@ describe('grids in a settings file this version did not write', () => {
     const folder = (slots: unknown[]): unknown => ({ k: 'folder', name: 'n', glyph: 'star', slots });
     const slots = Array.from({ length: GRID_SLOTS.phone }, () => folder(Array.from({ length: GRID_SLOTS.phone - 1 }, () => folder(Array.from({ length: GRID_SLOTS.phone - 1 }, newer)))));
     const rig = await layoutRig(memoryPluginData({ gmScreenKeys: { phone: { slots } } }));
-    const stored = rig.settings.getGmScreenKeys().phone;
+    const stored = rig.settings.get('gmScreenKeys').phone;
     expect(layoutKeyCount(stored?.slots ?? [])).toBe(MAX_LAYOUT_KEYS);
     const phone = await joinedDevice(rig, PHONE);
     const framesBefore = rig.socket().sent.length;

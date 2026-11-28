@@ -60,14 +60,14 @@ describe('dismissing the Sound page offers', () => {
     await act(async () => within(section('Ambience')).getByRole('button', { name: t('audio.library.offerHide') }).click());
     await waitFor(() => expect(ambienceOffer()).toBeNull());
     expect(musicOffer()).not.toBeNull();
-    expect(rig.settings.isSoundOfferHidden('starter-ambience')).toBe(true);
+    expect(rig.settings.get('hiddenSoundOffers').includes('starter-ambience')).toBe(true);
     expect(showAtlasToast).toHaveBeenCalledWith(t('audio.library.offerHidden', { root: 'Ambience' }), expect.any(Number), expect.objectContaining({ label: t('history.undo') }));
 
     await rig.settings.saveSettingsNow();
     expect(data.stored()).toMatchObject({ hiddenSoundOffers: ['starter-ambience'] });
     const reread = new SettingsService(createInMemoryApp().app, undefined, data);
     await reread.initialize();
-    expect(reread.isSoundOfferHidden('starter-ambience')).toBe(true);
+    expect(reread.get('hiddenSoundOffers').includes('starter-ambience')).toBe(true);
   });
 
   it('comes back with Undo, and the file no longer lists it', async () => {
@@ -91,7 +91,7 @@ describe('dismissing the Sound page offers', () => {
   it('reads anything but a list of ids as nothing dismissed', async () => {
     const settings = new SettingsService(createInMemoryApp().app, undefined, memoryPluginData({ hiddenSoundOffers: 'all' }));
     await settings.initialize();
-    expect(settings.isSoundOfferHidden('starter-ambience')).toBe(false);
+    expect(settings.get('hiddenSoundOffers').includes('starter-ambience')).toBe(false);
   });
 
   it('still offers both downloads in their root\'s ⋯ menu, and a running download of a dismissed offer stays in the downloads', async () => {

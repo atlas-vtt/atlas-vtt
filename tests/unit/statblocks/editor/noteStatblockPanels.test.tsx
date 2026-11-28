@@ -62,7 +62,7 @@ const harnesses: Harness[] = [];
 async function setup({ switchedOn = true } = {}): Promise<Harness> {
   const { app } = createInMemoryApp({ files: { [WARDEN]: '', [HAG]: '', [GOBLIN]: '', [PLAIN]: '' } });
   const settings = new SettingsService(app);
-  if (switchedOn) settings.setExperimental('statblockEditor', true);
+  if (switchedOn) settings.set('experimental', { statblockEditor: true });
   const listeners = new Map<string, Set<Listener>>();
   const on = (name: string, listener: Listener): { name: string; listener: Listener } => {
     const set = listeners.get(name) ?? new Set();
@@ -149,12 +149,12 @@ describe('the statblock beside its note', () => {
       expect(view.containerEl.classList.contains('atlas-sb-note')).toBe(false);
     }
 
-    await act(async () => { harness.settings.setExperimental('statblockEditor', true); });
+    await act(async () => { harness.settings.set('experimental', { statblockEditor: true }); });
     expect(panelOf(native)).not.toBeNull();
     expect(panelOf(fantasy)).toBeNull();
     expect(panelOf(plain)).toBeNull();
 
-    await act(async () => { harness.settings.setExperimental('statblockEditor', false); });
+    await act(async () => { harness.settings.set('experimental', { statblockEditor: false }); });
     expect(panelOf(native)).toBeNull();
     expect(native.containerEl.className).toBe('workspace-leaf-content');
   });

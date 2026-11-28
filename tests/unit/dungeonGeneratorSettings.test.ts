@@ -10,13 +10,13 @@ import { DEFAULT_DUNGEON_GENERATOR_SETTINGS, readDungeonGeneratorSettings } from
 import { parseHex } from '../../src/app/dungeons/render/palette';
 import { DEFAULT_VIEW } from '../../src/app/dungeons/style';
 import { DEFAULT_STYLE_ID, DUNGEON_STYLES, dungeonStyle } from '../../src/app/dungeons/styleCatalog';
-import { readStoredSettings } from '../../src/app/services/atlasSettings';
+import { SYNCED_PREFERENCES } from '../../src/app/services/preferences/syncedPreferences';
 import { SettingsService } from '../../src/app/services/SettingsService';
 
 describe('reading the generator settings', () => {
   it('gives the defaults for nothing stored', () => {
     expect(readDungeonGeneratorSettings(undefined)).toEqual(DEFAULT_DUNGEON_GENERATOR_SETTINGS);
-    expect(readStoredSettings({}, 'mouse').settings.dungeonGenerator).toEqual(DEFAULT_DUNGEON_GENERATOR_SETTINGS);
+    expect(SYNCED_PREFERENCES.dungeonGenerator.read(() => undefined)).toEqual(DEFAULT_DUNGEON_GENERATOR_SETTINGS);
   });
 
   it('keeps a style it knows and drops what it cannot read', () => {
@@ -41,8 +41,8 @@ describe('reading the generator settings', () => {
 
   it('keeps what the GM chose in Atlas settings', () => {
     const settings = new SettingsService({} as App);
-    settings.setDungeonGenerator({ view: { ...DEFAULT_VIEW, monochrome: true }, theme: 'cavern', tags: ['wet'], style: 'blueprint', floors: 3, bossRoom: false, fiveRoom: true });
-    expect(settings.getDungeonGenerator()).toEqual({ view: { ...DEFAULT_VIEW, monochrome: true }, theme: 'cavern', tags: ['wet'], style: 'blueprint', floors: 3, bossRoom: false, fiveRoom: true });
+    settings.set('dungeonGenerator', { view: { ...DEFAULT_VIEW, monochrome: true }, theme: 'cavern', tags: ['wet'], style: 'blueprint', floors: 3, bossRoom: false, fiveRoom: true });
+    expect(settings.get('dungeonGenerator')).toEqual({ view: { ...DEFAULT_VIEW, monochrome: true }, theme: 'cavern', tags: ['wet'], style: 'blueprint', floors: 3, bossRoom: false, fiveRoom: true });
   });
 
   it('reads retired theme tags and an unknown theme as Any', () => {

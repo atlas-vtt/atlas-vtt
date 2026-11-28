@@ -103,16 +103,16 @@ export function usePlayerViewSwitches(explicit?: SettingsService): PlayerViewSwi
   const settings = useAtlasSettings(explicit);
   const resources = useMapResources();
   const mapPath = useAtlasStore((state) => state.mapPath);
-  const values = settings?.getLocalPlayerViewSettings() ?? DEFAULT_SETTINGS.localPlayerView;
-  const view4k = settings?.isPlayerView4k() ?? false;
-  const onlinePlay = settings?.isExperimentalOn('onlinePlay') ?? false;
+  const values = settings?.get('localPlayerView') ?? DEFAULT_SETTINGS.localPlayerView;
+  const view4k = settings?.get('playerView4k') ?? false;
+  const onlinePlay = settings?.get('experimental').onlinePlay === true;
 
   const switchOf = ({ key, label, hint }: SwitchText): PlayerViewSwitch => ({
     id: key,
     label,
     ...(hint !== undefined && { hint }),
     value: values[key] === true,
-    onToggle: () => settings?.setLocalPlayerViewSettings({ [key]: values[key] !== true }),
+    onToggle: () => settings?.set('localPlayerView', { [key]: values[key] !== true }),
   });
 
   const { source } = mapRules(app, mapPath);
@@ -130,7 +130,7 @@ export function usePlayerViewSwitches(explicit?: SettingsService): PlayerViewSwi
 
   // The players' list as a row across the screen, and mirrored for the far side of the table: two choices, each kept as
   // the other changes
-  const layout = settings?.initiativeLayout() ?? DEFAULT_INITIATIVE_LAYOUT;
+  const layout = settings?.get('initiativeLayout') ?? DEFAULT_INITIATIVE_LAYOUT;
   const rows = playersListShape(layout) === 'horizontal';
   const mirrored = playersListMirrored(layout);
   // How the list is laid out means nothing while players see no list: the switches stay, shown disabled
@@ -141,7 +141,7 @@ export function usePlayerViewSwitches(explicit?: SettingsService): PlayerViewSwi
     label: t('lpv.initiativeRows'),
     hint: t('lpv.initiativeRowsHint'),
     value: rows,
-    onToggle: () => settings?.setInitiativeLayout(playersListLayout(rows ? 'vertical' : 'horizontal', mirrored)),
+    onToggle: () => settings?.set('initiativeLayout', playersListLayout(rows ? 'vertical' : 'horizontal', mirrored)),
   };
   const initiativeMirrored: PlayerViewSwitch = {
     ...listOff,
@@ -149,16 +149,16 @@ export function usePlayerViewSwitches(explicit?: SettingsService): PlayerViewSwi
     label: t('lpv.initiativeMirrored'),
     hint: t('lpv.initiativeMirroredHint'),
     value: mirrored,
-    onToggle: () => settings?.setInitiativeLayout(playersListLayout(rows ? 'horizontal' : 'vertical', !mirrored)),
+    onToggle: () => settings?.set('initiativeLayout', playersListLayout(rows ? 'horizontal' : 'vertical', !mirrored)),
   };
   // A GM's choice for the table rather than a player view setting, but the player view's online settings are where it is looked for
-  const movesOnTurn = (settings?.initiativeTurnOptions() ?? DEFAULT_TURN_OPTIONS).movesOnTurn;
+  const movesOnTurn = (settings?.get('initiativeTurnOptions') ?? DEFAULT_TURN_OPTIONS).movesOnTurn;
   const movesOnTurnSwitch: PlayerViewSwitch = {
     id: 'movesOnTurn',
     label: t('initiative.movesOnTurn'),
     hint: t('initiative.movesOnTurnHint'),
     value: movesOnTurn,
-    onToggle: () => settings?.setInitiativeTurnOptions({ movesOnTurn: !movesOnTurn }),
+    onToggle: () => settings?.set('initiativeTurnOptions', { movesOnTurn: !movesOnTurn }),
   };
 
   return {
@@ -166,7 +166,7 @@ export function usePlayerViewSwitches(explicit?: SettingsService): PlayerViewSwi
     initiativeLayout: [initiativeRows, initiativeMirrored],
     online: onlinePlay ? [...ONLINE_SWITCHES.map(switchOf), movesOnTurnSwitch] : [],
     initiative: INITIATIVE_SWITCHES.map(switchOf),
-    view4k: { id: 'view4k', label: t('lpv.view4k'), value: view4k, onToggle: () => settings?.setPlayerView4k(!view4k) },
+    view4k: { id: 'view4k', label: t('lpv.view4k'), value: view4k, onToggle: () => settings?.set('playerView4k', !view4k) },
     hasRules: source.kind !== 'none',
     resources: source.kind === 'none' ? [] : slottedResources(resources).map(({ definition: resource }) => ({
       id: `resource:${resource.key}`,

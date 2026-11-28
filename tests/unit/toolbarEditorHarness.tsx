@@ -52,8 +52,8 @@ export function renderToolbar({ player = false, stored = {}, space = null, noteP
   const settings = new SettingsService(app);
   // The palette's first-run tutorial would cover it and take its keys.
   settings.completeTutorial('palette');
-  settings.setToolbarLayout(stored);
-  if (sideBars?.online) settings.setExperimental('onlinePlay', true);
+  settings.set('toolbar', stored);
+  if (sideBars?.online) settings.set('experimental', { onlinePlay: true });
   const store = createViewAtlasStore(app, `toolbar-editor-${Math.random()}`);
   store.getState().setPersistenceEnabled(false);
   const bus = new EventEmitter();

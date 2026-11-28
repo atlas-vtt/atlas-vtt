@@ -132,7 +132,7 @@ it('welcomes a GM updating from an Atlas without the wizard, and one who switche
   expect(screen.getByRole('dialog', { name: 'Welcome' })).toBeTruthy();
   cleanup();
   const off = appWith([]);
-  off.settings.setSetting('onboarding', { ...off.settings.getSetting('onboarding'), enabled: false });
+  off.settings.set('onboarding', { ...off.settings.get('onboarding'), enabled: false });
   render(<WelcomeWizard app={off.app} settings={off.settings} onOpenAtlas={() => {}} />);
   expect(screen.getByRole('dialog', { name: 'Welcome' })).toBeTruthy();
 });

@@ -47,7 +47,7 @@ it('does not count the starter tokens as the user importing a token', async () =
 
   await addStarterTokens(vault.app, assets, settings);
 
-  expect(settings.getSetting('onboarding').tokenImported).toBe(false);
+  expect(settings.get('onboarding').tokenImported).toBe(false);
 });
 
 it('adds the starter tokens only once, so deleted ones stay deleted', async () => {
@@ -77,7 +77,7 @@ it('gives the starter tokens the same ids on every device, so two devices adding
 
 it('adds none in a vault whose earlier version added them, by the flag it kept in the settings', async () => {
   const { vault, assets, settings } = await setup();
-  settings.setSetting('starterTokensAdded', true);
+  settings.set('starterTokensAdded', true);
 
   await addStarterTokens(vault.app, assets, settings);
 

@@ -197,14 +197,14 @@ function MoreMenu(): React.ReactElement {
       <div className="atlas-dropdown-section">
         <DropdownSliderRow
           label={t('fog.gmOpacity')}
-          value={percent(settings?.getGmFogOpacity() ?? DEFAULT_GM_FOG_OPACITY)}
+          value={percent(settings?.get('gmFogOpacity') ?? DEFAULT_GM_FOG_OPACITY)}
           min={percent(GM_FOG_OPACITY_RANGE.min)}
           max={percent(GM_FOG_OPACITY_RANGE.max)}
           step={5}
           unit="%"
           // Shown where Atlas' settings cannot be reached, with nothing to set.
           disabled={!settings}
-          onChange={(next) => settings?.setGmFogOpacity(next / 100)}
+          onChange={(next) => settings?.set('gmFogOpacity', next / 100)}
         />
       </div>
       {/* What Ctrl or Cmd and Shift are to a keyboard: corners land on the grid and on walls, rectangles are squares. */}

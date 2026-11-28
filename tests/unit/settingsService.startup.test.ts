@@ -21,13 +21,13 @@ describe('SettingsService startup', () => {
     finishMigration();
     await loading;
     expect(data.loadData).toHaveBeenCalledOnce();
-    expect(settings.getDiceDisplay()).toBe('card');
+    expect(settings.get('diceDisplay')).toBe('card');
   });
 
   it('still loads the settings when the migration failed', async () => {
     const settings = new SettingsService(new App(), Promise.reject(new Error('migration failed')), memoryPluginData({ diceDisplay: 'card' }));
     await settings.initialize();
-    expect(settings.getDiceDisplay()).toBe('card');
+    expect(settings.get('diceDisplay')).toBe('card');
   });
 
   it('never saves the defaults over the plugin data before it was read', async () => {
@@ -75,9 +75,9 @@ describe('SettingsService startup', () => {
   it('keeps everything in memory without plugin data', async () => {
     const settings = new SettingsService(new App());
     await settings.initialize();
-    settings.setDiceDisplay('card');
+    settings.set('diceDisplay', 'card');
     await settings.saveSettingsNow();
-    expect(settings.getDiceDisplay()).toBe('card');
+    expect(settings.get('diceDisplay')).toBe('card');
   });
 
   it('reports a failed save and keeps the settings', async () => {
@@ -86,10 +86,10 @@ describe('SettingsService startup', () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const settings = new SettingsService(new App(), undefined, data);
     await settings.initialize();
-    settings.setDiceDisplay('card');
+    settings.set('diceDisplay', 'card');
     await settings.saveSettingsNow();
     expect(error).toHaveBeenCalled();
-    expect(settings.getDiceDisplay()).toBe('card');
+    expect(settings.get('diceDisplay')).toBe('card');
     error.mockRestore();
   });
 });

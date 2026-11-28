@@ -55,10 +55,10 @@ export class PlayerWidgetBar extends PlayerSceneOverlay<WidgetScene> {
 
   constructor(private readonly settings: SettingsService) {
     super({ cls: 'atlas-vtt-plugin', attr: { id: 'atlas-player-widgets' } }, settings);
-    this.shape = playersListShape(settings.initiativeLayout());
+    this.shape = playersListShape(settings.get('initiativeLayout'));
     // The GM's layout is no player setting: the widgets are laid out anew when the players' list changes shape
     this.stopLayout = settings.onChange(() => {
-      const shape = playersListShape(settings.initiativeLayout());
+      const shape = playersListShape(settings.get('initiativeLayout'));
       if (shape === this.shape) return;
       this.shape = shape;
       this.refresh();

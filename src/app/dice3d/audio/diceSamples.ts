@@ -56,7 +56,7 @@ export const POOLS = {
 const MASTER = 0.5;
 
 let ctx: AudioContext | null = null;
-/** The user's dice volume, 0 to 1 (`SettingsService.getDiceVolume`). */
+/** The user's dice volume, 0 to 1 (the `diceVolume` preference). */
 let volume = 1;
 let master: GainNode | null = null;
 /** Decoded samples, data URL to buffer. Filled by `prime()`. */

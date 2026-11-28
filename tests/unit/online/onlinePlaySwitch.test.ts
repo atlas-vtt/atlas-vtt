@@ -33,7 +33,7 @@ function host(): { plugin: Plugin; settings: SettingsService; children: Set<unkn
     removeChild: <T>(child: T): T => (playedAtRemoval.push(CampaignPlay.forApp(plugin.app).playing()), children.delete(child), child),
   } as unknown as Plugin;
   const settings = {
-    isExperimentalOn: (id: string): boolean => id === 'onlinePlay' && on,
+    get: (name: string): unknown => (name === 'experimental' ? { onlinePlay: on } : undefined),
     onChange: (listener: () => void): (() => void) => ((changed = listener), () => undefined),
   } as unknown as SettingsService;
   return { plugin, settings, children, commands, playedAtRemoval, flip: (next) => ((on = next), changed()) };

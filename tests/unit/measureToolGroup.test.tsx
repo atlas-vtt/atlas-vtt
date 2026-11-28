@@ -70,10 +70,10 @@ describe('the measure tool\'s menu', () => {
     expect(screen.getByRole('radiogroup', { name: 'Distance while moving tokens' })).toBeTruthy();
     expect(chosen('Always')).toBe(true);
     fireEvent.click(option('In combat'));
-    expect(settings.getDragDistance()).toBe('combat');
+    expect(settings.get('dragDistance')).toBe('combat');
     expect(chosen('In combat')).toBe(true);
     fireEvent.click(option('Never'));
-    expect(settings.getDragDistance()).toBe('never');
+    expect(settings.get('dragDistance')).toBe('never');
     expect(screen.queryByRole('button', { name: 'Circle' })).toBeNull();
   });
 

@@ -13,6 +13,7 @@ import { ResponsiveWidgetBar } from '../../src/app/react/components/ResponsiveWi
 import { PlayerWidgetBar } from '../../src/app/services/PlayerWidgetBar';
 import type { SettingsService } from '../../src/app/services/SettingsService';
 import type { CounterWidget, WidgetSettings } from '../../src/app/types/widgetTypes';
+import { preferenceReader } from '../mocks/preferenceReader';
 
 /**
  * The widgets move as the initiative lists do, in the map view and in the player window: the bar shown or hidden as a
@@ -166,8 +167,10 @@ describe('the player window\'s widgets', () => {
   let showWidgets = true;
   const listeners: (() => void)[] = [];
   const settings = {
-    getLocalPlayerViewSettings: () => ({ showWidgets }),
-    initiativeLayout: () => ({ fromTurn: true, dock: 'right', edges: ['right'], facesPlayers: false }),
+    get: preferenceReader({
+      localPlayerView: () => ({ showWidgets }),
+      initiativeLayout: () => ({ fromTurn: true, dock: 'right', edges: ['right'], facesPlayers: false }),
+    }),
     onChange: (listener: () => void) => { listeners.push(listener); return () => undefined; },
   } as unknown as SettingsService;
   let bar: PlayerWidgetBar;

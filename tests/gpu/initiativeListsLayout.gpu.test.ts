@@ -67,8 +67,8 @@ async function showTracker({ names = false, layout = {}, sides = false, turn = 3
   await page.viewport(1200, 900);
   const { app } = createInMemoryApp({ files: {} });
   const settings = new SettingsService(app);
-  settings.setCompactInitiative(names);
-  settings.setInitiativeLayout({ fromTurn: true, dock: 'right', ...layout });
+  settings.set('initiativeCompact', names);
+  settings.set('initiativeLayout', { fromTurn: true, dock: 'right', ...layout });
   const store = createViewAtlasStore(app, `initiative-lists-${Math.random()}`);
   store.setState({
     persistenceEnabled: false,

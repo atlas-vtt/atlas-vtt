@@ -28,7 +28,7 @@ const toggle = (turn: number): Record<string, unknown> => (turn % 2 === 0 ? { op
 describe("the grid's changes in the settings file", () => {
   it('reach the settings a few times while keys are arranged, never later than the longest wait, and the last state on a pause', async () => {
     const rig = await layoutRig();
-    const writes = vi.spyOn(rig.settings, 'setGmScreenKeys');
+    const writes = vi.spyOn(rig.settings, 'set');
     const phone = await joinedDevice(rig, PHONE);
     await rig.ask(phone, 'phone');
     const start = rig.timers.now();
@@ -37,7 +37,7 @@ describe("the grid's changes in the settings file", () => {
     for (let turn = 0; turn < 30; turn += 1) {
       expect(await rig.edit(phone, turn + 1, toggle(turn))).toBeNull();
       const held = JSON.stringify(rig.store.layout('phone'));
-      const saved = JSON.stringify(rig.settings.getGmScreenKeys().phone ?? defaultLayout('phone'));
+      const saved = JSON.stringify(rig.settings.get('gmScreenKeys').phone ?? defaultLayout('phone'));
       unsavedSince = held === saved ? null : (unsavedSince ?? rig.timers.now());
       if (unsavedSince !== null) longestUnsaved = Math.max(longestUnsaved, rig.timers.now() - unsavedSince);
       rig.timers.advance(300);
@@ -46,7 +46,7 @@ describe("the grid's changes in the settings file", () => {
     expect(writes.mock.calls.length).toBeLessThanOrEqual(Math.ceil(took / LAYOUT_SAVE_MAX_MS));
     expect(longestUnsaved).toBeLessThanOrEqual(LAYOUT_SAVE_MAX_MS);
     rig.timers.advance(LAYOUT_SAVE_QUIET_MS);
-    expect(rig.settings.getGmScreenKeys().phone ?? defaultLayout('phone')).toEqual(rig.store.layout('phone'));
+    expect(rig.settings.get('gmScreenKeys').phone ?? defaultLayout('phone')).toEqual(rig.store.layout('phone'));
     await rig.settings.saveSettingsNow();
     expect(storedPhone(rig.data) ?? defaultLayout('phone')).toEqual(JSON.parse(JSON.stringify(lastLayout(phone))));
   });
@@ -56,10 +56,10 @@ describe("the grid's changes in the settings file", () => {
     const phone = await joinedDevice(rig, PHONE);
     await rig.ask(phone, 'phone');
     expect(await rig.edit(phone, 1, { op: 'remove', at: [0] })).toBeNull();
-    expect(rig.settings.getGmScreenKeys().phone).toBeUndefined();
+    expect(rig.settings.get('gmScreenKeys').phone).toBeUndefined();
     rig.socket().receive({ t: 'player-left', id: PHONE });
     await rig.settle();
-    expect(rig.settings.getGmScreenKeys().phone?.slots[0]).toBeNull();
+    expect(rig.settings.get('gmScreenKeys').phone?.slots[0]).toBeNull();
   });
 
   it('are written to the file at once when Atlas unloads', async () => {

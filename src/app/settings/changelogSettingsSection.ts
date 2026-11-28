@@ -25,12 +25,12 @@ export function changelogSettingsSection(settings: SettingsService, changelog: C
         render: setting => {
           let unsubscribe: (() => void) | undefined;
           setting.addToggle(toggle => {
-            toggle.setValue(settings.getSetting('showChangelogOnUpdate'))
+            toggle.setValue(settings.get('showChangelogOnUpdate'))
               .onChange(enabled => {
-                if (settings.getSetting('showChangelogOnUpdate') !== enabled) settings.setSetting('showChangelogOnUpdate', enabled);
+                if (settings.get('showChangelogOnUpdate') !== enabled) settings.set('showChangelogOnUpdate', enabled);
               });
             // The preference can also change while the changelog is open.
-            unsubscribe = settings.onChange(value => { toggle.setValue(value.showChangelogOnUpdate); });
+            unsubscribe = settings.onChange(() => { toggle.setValue(settings.get('showChangelogOnUpdate')); });
           });
           return unsubscribe;
         },
@@ -41,14 +41,14 @@ export function changelogSettingsSection(settings: SettingsService, changelog: C
         render: setting => {
           let unsubscribe: (() => void) | undefined;
           setting.addToggle(toggle => {
-            toggle.setValue(settings.getSetting('changelogMajorUpdatesOnly'))
-              .setDisabled(!settings.getSetting('showChangelogOnUpdate'))
+            toggle.setValue(settings.get('changelogMajorUpdatesOnly'))
+              .setDisabled(!settings.get('showChangelogOnUpdate'))
               .onChange(enabled => {
-                if (settings.getSetting('changelogMajorUpdatesOnly') !== enabled) settings.setSetting('changelogMajorUpdatesOnly', enabled);
+                if (settings.get('changelogMajorUpdatesOnly') !== enabled) settings.set('changelogMajorUpdatesOnly', enabled);
               });
-            unsubscribe = settings.onChange(value => {
-              toggle.setValue(value.changelogMajorUpdatesOnly);
-              toggle.setDisabled(!value.showChangelogOnUpdate);
+            unsubscribe = settings.onChange(() => {
+              toggle.setValue(settings.get('changelogMajorUpdatesOnly'));
+              toggle.setDisabled(!settings.get('showChangelogOnUpdate'));
             });
           });
           return unsubscribe;

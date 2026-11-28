@@ -160,7 +160,7 @@ async function soundApp(theme: string, appId: string, sounds: Record<string, Tab
   await settings.initialize();
   const held = linked ? fakeLibrary(app, KEEPING_LIBRARY) : null;
   if (held) await fillMockLibrary(held.locations);
-  else settings.setSoundRoots(HARNESS_ROOTS);
+  else settings.set('soundRoots', HARNESS_ROOTS);
   const library = SoundLibrary.forApp(app);
   const place = soundPlace(library, held);
   for (const [name, { url, synth, kind }] of Object.entries(sounds)) {

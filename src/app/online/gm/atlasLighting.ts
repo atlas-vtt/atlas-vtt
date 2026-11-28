@@ -28,13 +28,13 @@ export interface AtlasPlayerSettings {
   readonly showWidgets: boolean;
   /** Whether everyone at the table sees everyone else's cursor (the player view's setting); false when it cannot be read. */
   readonly showCursors: boolean;
-  /** Whether the GM's initiative lists start at the turn during a fight (`initiativeLayout`); false when it cannot be read. */
+  /** Whether the GM's initiative lists start at the turn during a fight (the `initiativeLayout` preference); false when it cannot be read. */
   readonly initiativeFromTurn?: boolean;
-  /** The edge the GM docked the initiative lists at (`initiativeLayout`); the right one when it cannot be read. */
+  /** The edge the GM docked the initiative lists at (the `initiativeLayout` preference); the right one when it cannot be read. */
   readonly initiativeDock?: 'left' | 'right';
-  /** Whether a turn change shows the turn banner (`initiativeTurnOptions`); on when it cannot be read. */
+  /** Whether a turn change shows the turn banner (the `initiativeTurnOptions` preference); on when it cannot be read. */
   readonly turnBanner?: boolean;
-  /** Whether players move tokens that fight only on their turn (`initiativeTurnOptions`); off when it cannot be read. */
+  /** Whether players move tokens that fight only on their turn (the `initiativeTurnOptions` preference); off when it cannot be read. */
   readonly movesOnTurn?: boolean;
   /** Whether players may draw on the map (the player view's setting); off when it cannot be read. */
   readonly playersDraw?: boolean;
@@ -54,16 +54,16 @@ export function followAtlasSettings(app: App, listener: () => void): () => void 
 /** Atlas's own settings, as its settings service holds them; each as said above while they cannot be read. */
 export function atlasPlayerSettings(app: App): AtlasPlayerSettings {
   const settings = SettingsService.forApp(app);
-  const view = settings?.getLocalPlayerViewSettings();
-  const turn = settings?.initiativeTurnOptions();
-  const fogEdge = settings === undefined ? undefined : readFogEdge(settings.getFogEdge());
+  const view = settings?.get('localPlayerView');
+  const turn = settings?.get('initiativeTurnOptions');
+  const fogEdge = settings === undefined ? undefined : readFogEdge(settings.get('fogEdge'));
   return {
     showNames: view?.showTokenNameplates === true,
     showDiceRolls: view?.showDiceRolls === true,
     showInitiative: view?.showInitiative === true,
     showWidgets: view?.showWidgets === true,
     showCursors: view?.showCursors === true,
-    initiativeFromTurn: settings?.initiativeLayout().fromTurn === true,
+    initiativeFromTurn: settings?.get('initiativeLayout').fromTurn === true,
     initiativeDock: 'right',
     turnBanner: turn?.banner !== false,
     movesOnTurn: turn?.movesOnTurn === true,
@@ -76,7 +76,7 @@ export function atlasPlayerSettings(app: App): AtlasPlayerSettings {
 
 /** The GM's laser colour and size from Atlas's settings, as Atlas reads them (its default when they cannot be read). */
 export function atlasLaserLook(app: App): LaserPointerSettings {
-  return resolveLaserPointerSettings(SettingsService.forApp(app)?.getLaserPointerSettings());
+  return resolveLaserPointerSettings(SettingsService.forApp(app)?.get('laserPointer'));
 }
 
 /** The theme's accent colour as `#rrggbb`, resolved by the document itself; null when it gives none. */

@@ -43,7 +43,7 @@ describe('resetting tutorials', () => {
 
   it('shows every tutorial again, and turns tutorials back on', () => {
     const settings = service();
-    settings.setSetting('onboarding', { ...settings.getSetting('onboarding'), enabled: false });
+    settings.set('onboarding', { ...settings.get('onboarding'), enabled: false });
     settings.completeTutorial('lootSettings');
     const { button } = resetRow(settings);
 

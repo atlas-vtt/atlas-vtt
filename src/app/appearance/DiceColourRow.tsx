@@ -11,7 +11,7 @@ export function DiceColourRow({ app }: { app: App }): React.JSX.Element {
   const previews = useDicePreviews(app, look.font);
   return (
     <div className="atlas-appearance-dice">
-      <DiceColourStrip value={look.colour} previews={previews} onChange={(colour) => SettingsService.forApp(app)?.setDiceLook({ colour })} />
+      <DiceColourStrip value={look.colour} previews={previews} onChange={(colour) => SettingsService.forApp(app)?.set('diceLook', { colour })} />
     </div>
   );
 }

@@ -36,8 +36,8 @@ export class PlayerTurnBanner implements PlayerOverlay {
   private show(banners: TurnBanner[], fight?: FightMove): void {
     this.stage.show(banners, {
       ...(fight !== undefined && { fight }),
-      atLists: this.settings.getLocalPlayerViewSettings().turnBannerAtLists === true,
-      facesPlayers: this.settings.initiativeLayout().facesPlayers,
+      atLists: this.settings.get('localPlayerView').turnBannerAtLists === true,
+      facesPlayers: this.settings.get('initiativeLayout').facesPlayers,
     });
   }
 
@@ -66,13 +66,13 @@ export class PlayerTurnBanner implements PlayerOverlay {
   }
 
   private look(state: ViewAtlasState): void {
-    const localPlayerView = this.settings.getLocalPlayerViewSettings();
+    const localPlayerView = this.settings.get('localPlayerView');
     // Names as the players' list shows them
     const showNames = localPlayerView.showTokenNameplates;
     const mapShowsNameplates = state.tokenSettings?.showNameplates ?? false;
     const banner = this.watch.next(state, { kind: 'players', showNames, mapShowsNameplates });
     const change = this.fights.next(state);
-    const shown = localPlayerView.showInitiative && state.initiativeTrackerOpen && this.settings.initiativeTurnOptions().banner;
+    const shown = localPlayerView.showInitiative && state.initiativeTrackerOpen && this.settings.get('initiativeTurnOptions').banner;
     if (!state.initiative?.isActive) {
       // The fight ended: its banner replaces the turn's; a turn's banner leaves with the fight
       if (change === 'ended' && shown) this.show([fightBanner('ended')], 'end');

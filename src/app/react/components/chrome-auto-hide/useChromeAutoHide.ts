@@ -66,7 +66,7 @@ export function useChromeAutoHide(rootRef: RefObject<HTMLElement | null>, player
   // Passed in: UIRoot, which calls this, is where the view's context is provided, so none reaches it.
   const settings = useAtlasSettings(explicitSettings);
   const editing = useAtlasStore(state => state.isToolbarEditing);
-  const on = !playerView && !editing && settings?.isToolbarAutoHide() === true;
+  const on = !playerView && !editing && settings?.get('toolbarAutoHide') === true;
   useToolbarPeek(rootRef, on);
   // The palette takes a hidden toolbar's place: while it is open the bars stay as they were.
   const paletteOpen = useRef(false);

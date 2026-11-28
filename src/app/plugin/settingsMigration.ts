@@ -1,7 +1,7 @@
 import type { App } from 'obsidian';
 import { isRecord } from '../utils/guards';
 import { foreignHotkeys, readHotkeyOverrides } from '../keyboard/hotkeyOverrides';
-import { isInputMode, loadInputMode, saveInputMode } from '../services/deviceSettings';
+import { deviceStorage, INPUT_MODE_STORAGE_KEY, isInputMode } from '../services/deviceSettings';
 import type { PluginDataStore } from '../services/SettingsService';
 import { isStoredPreset } from '../services/systemPresets/presetFiles';
 import type { SystemPresetFiles } from '../services/systemPresets/SystemPresetFiles';
@@ -100,7 +100,8 @@ export async function migrateSettingsToPluginData(app: App, data: PluginDataStor
   if (!current && old) await data.saveData(oldPreferencesOf(old));
 
   const mode = isRecord(old?.navigation) ? old.navigation.inputMode : undefined;
-  if (isInputMode(mode) && !loadInputMode(app)) saveInputMode(app, mode);
+  const device = deviceStorage(app);
+  if (isInputMode(mode) && !isInputMode(device.entry(INPUT_MODE_STORAGE_KEY))) device.put({ [INPUT_MODE_STORAGE_KEY]: mode });
 
   await presets.load();
   const created: string[] = [];

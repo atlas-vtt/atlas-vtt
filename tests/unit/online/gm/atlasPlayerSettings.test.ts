@@ -9,7 +9,7 @@ describe('the Atlas settings an online table follows', () => {
     const app = {} as App;
     const settingsService = new SettingsService(app);
     expect(atlasPlayerSettings(app).showCursors).toBe(false);
-    settingsService.setLocalPlayerViewSettings({ showCursors: true });
+    settingsService.set('localPlayerView', { showCursors: true });
     expect(atlasPlayerSettings(app).showCursors).toBe(true);
     expect(atlasPlayerSettings({} as App).showCursors).toBe(false);
   });
@@ -25,7 +25,7 @@ describe('the Atlas settings an online table follows', () => {
     const app = {} as App;
     const settingsService = new SettingsService(app);
     expect(atlasPlayerSettings(app)).toMatchObject({ turnBanner: true, movesOnTurn: false });
-    settingsService.setInitiativeTurnOptions({ banner: false, movesOnTurn: true });
+    settingsService.set('initiativeTurnOptions', { banner: false, movesOnTurn: true });
     expect(atlasPlayerSettings(app)).toMatchObject({ turnBanner: false, movesOnTurn: true });
     expect(atlasPlayerSettings({} as App)).toMatchObject({ turnBanner: true, movesOnTurn: false });
   });
@@ -41,7 +41,7 @@ describe('the Atlas settings an online table follows', () => {
     const app = {} as App;
     const settingsService = new SettingsService(app);
     expect(atlasPlayerSettings(app).fogEdge).toEqual({ style: 'crackle', width: 15 });
-    settingsService.setFogEdge({ style: 'soft', width: 60 });
+    settingsService.set('fogEdge', { style: 'soft', width: 60 });
     expect(atlasPlayerSettings(app).fogEdge).toEqual({ style: 'soft', width: 60 });
     expect(atlasPlayerSettings({} as App)).not.toHaveProperty('fogEdge');
   });
@@ -51,9 +51,9 @@ describe('the Atlas settings an online table follows', () => {
     const settingsService = new SettingsService(app);
     let heard = 0;
     const stop = followAtlasSettings(app, () => (heard += 1));
-    settingsService.setLocalPlayerViewSettings({ sharedVision: true });
+    settingsService.set('localPlayerView', { sharedVision: true });
     stop();
-    settingsService.setLocalPlayerViewSettings({ sharedVision: false });
+    settingsService.set('localPlayerView', { sharedVision: false });
     expect(heard).toBe(1);
     expect(() => followAtlasSettings({} as App, () => undefined)()).not.toThrow();
   });

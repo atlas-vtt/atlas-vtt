@@ -63,8 +63,8 @@ async function show({ names, dock, cards }: View): Promise<HTMLElement> {
   await page.viewport(1200, 900);
   const { app } = createInMemoryApp({ files: {} });
   const settings = new SettingsService(app);
-  settings.setCompactInitiative(names);
-  settings.setInitiativeLayout({ fromTurn: true, dock });
+  settings.set('initiativeCompact', names);
+  settings.set('initiativeLayout', { fromTurn: true, dock });
   const store = createViewAtlasStore(app, `off-map-card-${Math.random()}`);
   store.setState({
     persistenceEnabled: false,

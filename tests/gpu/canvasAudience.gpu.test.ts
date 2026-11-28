@@ -113,7 +113,7 @@ describe('whom the map view\'s canvas is drawn for', () => {
         composed.width = SIZE;
         composed.height = SIZE;
         const context = composed.getContext('2d')!;
-        view.withPlayerSafeFrame((piece) => context.drawImage(piece.image, piece.x, piece.y, piece.width, piece.height, piece.left, piece.top, piece.width, piece.height), settings.getLocalPlayerViewSettings(), FRAME);
+        view.withPlayerSafeFrame((piece) => context.drawImage(piece.image, piece.x, piece.y, piece.width, piece.height, piece.left, piece.top, piece.width, piece.height), settings.get('localPlayerView'), FRAME);
         const frame = lookOf(context.getImageData(0, 0, SIZE, SIZE).data, floorShade);
         return { frame, after: lookOf(render(), floorShade) };
       },

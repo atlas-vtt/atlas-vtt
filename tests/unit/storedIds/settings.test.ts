@@ -11,7 +11,61 @@ import { EXPERIMENTAL_FEATURES } from '../../../src/app/experimental/experimenta
 import { MAP_HOTKEYS } from '../../../src/app/keyboard/mapHotkeys';
 import { FOLDER_GLYPHS, GM_SCREEN_DEVICES, KEY_COMMANDS } from '../../../src/app/online/protocol/index.ts';
 import { SIDE_BAR_IDS, TOOLBAR_CONTROLS } from '../../../src/app/toolbar/toolbarCatalog';
+import { PREFERENCES } from '../../../src/app/services/preferences/preferences';
+import { DEVICE_PREFERENCES } from '../../../src/app/services/deviceSettings';
 import { expectStoredIds } from './storedIdList';
+
+/** The keys of Atlas' settings file a preference is stored under. */
+const SETTINGS_FILE_KEYS = [
+  'changelogMajorUpdatesOnly',
+  'checkForUpdates',
+  'detectGridOnNewScenes',
+  'diceColour',
+  'diceDisplay',
+  'diceFont',
+  'diceVolume',
+  'dragDistance',
+  'dungeonGenerator',
+  'experimental',
+  'fogEdge',
+  'gmScreenKeys',
+  'hiddenSoundOffers',
+  'hiddenStarterOffers',
+  'hotkeys',
+  'initiativeBanner',
+  'initiativeCompact',
+  'initiativeDock',
+  'initiativeEdges',
+  'initiativeFacesPlayers',
+  'initiativeMovesOnTurn',
+  'laserPointer',
+  'localPlayerView',
+  'onboarding',
+  'showChangelogOnUpdate',
+  'sound',
+  'soundRoots',
+  'starterTokensAdded',
+  'tableTv',
+  'toolbar',
+  'toolbarAutoHide',
+];
+
+/** The keys of the vault's local storage a preference of the device is stored under. */
+const DEVICE_STORAGE_KEYS = [
+  'atlas-vtt:animate-maps',
+  'atlas-vtt:draw-tool',
+  'atlas-vtt:finger-use',
+  'atlas-vtt:gm-fog-opacity',
+  'atlas-vtt:graphics',
+  'atlas-vtt:input-mode',
+  'atlas-vtt:lighting-quality',
+  'atlas-vtt:lighting-quality-picked',
+  'atlas-vtt:pen-seen',
+  'atlas-vtt:player-view-4k',
+  'atlas-vtt:selection-bar',
+  'atlas-vtt:table-tv',
+  'atlas-vtt:zoom-buttons',
+];
 
 const EXPERIMENTAL_FEATURE_IDS = [
   'onlinePlay',
@@ -141,6 +195,22 @@ const GM_SCREEN_KEY_COMMAND_IDS = [
 const GM_SCREEN_FOLDER_GLYPH_IDS = ['dice', 'flame', 'folder', 'map', 'moon', 'music', 'shield', 'skull', 'star', 'swords'];
 
 describe('ids that settings store choices under: a list only grows, and no id on it is renamed or removed', () => {
+  it('keeps every key of the settings file a preference is stored under', () => {
+    expectStoredIds(
+      { what: 'Settings file keys', namedBy: "Atlas' settings (`data.json`)" },
+      Object.values(PREFERENCES).filter((row) => row.store === 'synced').flatMap((row) => row.keys),
+      SETTINGS_FILE_KEYS,
+    );
+  });
+
+  it("keeps every key of the device's local storage a preference is stored under", () => {
+    expectStoredIds(
+      { what: 'Device storage keys', namedBy: "Each device's local storage of the vault" },
+      Object.values(DEVICE_PREFERENCES).flatMap((row) => row.keys),
+      DEVICE_STORAGE_KEYS,
+    );
+  });
+
   it('keeps every experimental feature id, under which the GM switched the feature on', () => {
     expectStoredIds(
       { what: 'Experimental feature ids', namedBy: "Atlas' settings (`experimental` in `data.json`)" },

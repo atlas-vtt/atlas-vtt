@@ -17,5 +17,5 @@ export function useShareRolls(): ShareRolls | null {
   const shown = useShowDiceRolls(app ?? undefined);
   const settings = SettingsService.forApp(app ?? undefined);
   if (isPlayerView || !settings) return null;
-  return { shown, onToggle: () => settings.setLocalPlayerViewSettings({ showDiceRolls: !shown }) };
+  return { shown, onToggle: () => settings.set('localPlayerView', { showDiceRolls: !shown }) };
 }

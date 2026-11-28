@@ -187,14 +187,14 @@ describe('the toolbar editor in a real layout', () => {
     const trayFace = '.atlas-toolbar-tray [data-tray-item="fog"] > .atlas-toolbar-face';
     fireEvent.keyDown(handle('fog', 'bar'), { key: 'Delete' });
     await eachFrame(SETTLE_FRAMES, watch(() => document.querySelector(trayFace)));
-    expect(settings.getToolbarLayout().hidden).toEqual(['fog']);
+    expect(settings.get('toolbar').hidden).toEqual(['fog']);
     expect(query('.atlas-main-toolbar > [data-toolbar-item="fog"]').hidden).toBe(true);
     expectLanded(trayFace);
 
     const barFace = '.atlas-main-toolbar > [data-toolbar-item="fog"] > .atlas-toolbar-item__content';
     fireEvent.keyDown(handle('fog', 'tray'), { key: 'Enter' });
     await eachFrame(SETTLE_FRAMES, watch(() => document.querySelector(barFace)));
-    expect(settings.getToolbarLayout()).toEqual({});
+    expect(settings.get('toolbar')).toEqual({});
     expect(barIds()).toEqual(DEFAULT_BAR);
     expectLanded(barFace);
 
@@ -202,10 +202,10 @@ describe('the toolbar editor in a real layout', () => {
     fireEvent.keyDown(handle('pin', 'bar'), { key: 'Delete' });
     await eachFrame(SETTLE_FRAMES, watch(() => null));
     // A hidden Draw tool is stored with the id of the Text control it took in.
-    expect(settings.getToolbarLayout().hidden).toEqual(['draw', 'pin', 'text']);
+    expect(settings.get('toolbar').hidden).toEqual(['draw', 'pin', 'text']);
     fireEvent.click(screen.getByRole('button', { name: 'Reset toolbar' }));
     await eachFrame(SETTLE_FRAMES, watch(() => null));
-    expect(settings.getToolbarLayout()).toEqual({});
+    expect(settings.get('toolbar')).toEqual({});
     expect(barIds()).toEqual(DEFAULT_BAR);
     expect(problems).toEqual([]);
   });
@@ -235,6 +235,6 @@ describe('the toolbar editor in a real layout', () => {
     expect(ghosts.length).toBeGreaterThan(0);
     for (const box of ghosts) expectSameBox(box, takeOff);
     expect(document.querySelector('.atlas-toolbar-ghost')).toBeNull();
-    expect(settings.getToolbarLayout().hidden).toEqual(['fog']);
+    expect(settings.get('toolbar').hidden).toEqual(['fog']);
   });
 });

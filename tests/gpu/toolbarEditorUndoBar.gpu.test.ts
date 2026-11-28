@@ -84,7 +84,7 @@ describe('dragging the undo/redo bar in the toolbar editor', () => {
 
     await mouse.up(tray.x, tray.y);
     await eachFrame(SETTLE_FRAMES, watch);
-    expect(harness.settings.getToolbarLayout()).toEqual({ hidden: ['undo'] });
+    expect(harness.settings.get('toolbar')).toEqual({ hidden: ['undo'] });
     expect(undoSlot().hidden).toBe(true);
     expect(document.querySelector('.atlas-toolbar-ghost')).toBeNull();
     if (!lastGhost) throw new Error('no ghost settled');
@@ -103,7 +103,7 @@ describe('dragging the undo/redo bar in the toolbar editor', () => {
     lastGhost = null;
     await mouse.up(overBar.x, overBar.y);
     await eachFrame(SETTLE_FRAMES, watch);
-    expect(harness.settings.getToolbarLayout()).toEqual({});
+    expect(harness.settings.get('toolbar')).toEqual({});
     expect(undoSlot().hidden).toBe(false);
     expect(document.querySelector('.atlas-toolbar-ghost')).toBeNull();
     if (!lastGhost) throw new Error('no ghost settled');
@@ -122,7 +122,7 @@ describe('dragging the undo/redo bar in the toolbar editor', () => {
     await settle(10);
     await mouse.up(ownPlace.x, ownPlace.y);
     await settle();
-    expect(harness.settings.getToolbarLayout()).toEqual({});
+    expect(harness.settings.get('toolbar')).toEqual({});
     expect(undoSlot().hidden).toBe(false);
   });
 
@@ -136,7 +136,7 @@ describe('dragging the undo/redo bar in the toolbar editor', () => {
     let lastGhost: Rect | null = null;
     await mouse.up(start.x, start.y - 300);
     await eachFrame(SETTLE_FRAMES, () => { lastGhost = ghostBox() ?? lastGhost; });
-    expect(harness.settings.getToolbarLayout()).toEqual({});
+    expect(harness.settings.get('toolbar')).toEqual({});
     expect(undoSlot().hidden).toBe(false);
     if (!lastGhost) throw new Error('no ghost went back');
     expectSameBox(lastGhost, home);
@@ -151,7 +151,7 @@ describe('dragging the undo/redo bar in the toolbar editor', () => {
     query('[role="menuitem"]').click();
     let lastGhost: Rect | null = null;
     await eachFrame(SETTLE_FRAMES, () => { lastGhost = ghostBox() ?? lastGhost; });
-    expect(harness.settings.getToolbarLayout()).toEqual({ hidden: ['undo'] });
+    expect(harness.settings.get('toolbar')).toEqual({ hidden: ['undo'] });
     if (!lastGhost) throw new Error('no flight');
     expectSameBox(lastGhost, rectOf(query('.atlas-toolbar-tray [data-tray-item="undo"] > .atlas-toolbar-face')));
 
@@ -161,7 +161,7 @@ describe('dragging the undo/redo bar in the toolbar editor', () => {
     query('[role="menuitem"]').click();
     lastGhost = null;
     await eachFrame(SETTLE_FRAMES, () => { lastGhost = ghostBox() ?? lastGhost; });
-    expect(harness.settings.getToolbarLayout()).toEqual({});
+    expect(harness.settings.get('toolbar')).toEqual({});
     if (!lastGhost) throw new Error('no flight');
     expectSameBox(lastGhost, home);
     expectSameBox(rectOf(undoBar()), home);

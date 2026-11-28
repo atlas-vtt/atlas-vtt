@@ -60,11 +60,11 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
     super({ cls: 'atlas-player-initiative-container' }, settings);
     // The GM's layout is no player setting: the list is drawn anew when the edge or the start changes. Lists standing at
     // other edges then leave towards theirs as the new ones come in from theirs, overlapping a little
-    let drawn = layoutKey(settings.initiativeLayout());
+    let drawn = layoutKey(settings.get('initiativeLayout'));
     // TrueScale switched or a TV fitted (settings changes too) shows or takes away the cards' conditions
     let shownTrueScale = this.trueScale();
     this.stopLayout = settings.onChange(() => {
-      const next = layoutKey(settings.initiativeLayout());
+      const next = layoutKey(settings.get('initiativeLayout'));
       const nextTrueScale = this.trueScale();
       if (next === drawn && nextTrueScale === shownTrueScale) return;
       if (next !== drawn) this.stage.layoutChanged();
@@ -144,7 +144,7 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
     const turnFlash = this.stage.turnFlash(turn ? turnKey(turn) : null);
     // Outside a fight there is no list to show players, however the GM prepares one
     const drawn = initiativeShown(scene, { showInitiative: settings.showInitiative, beforeFight: false });
-    this.stage.begin(container, drawn, initiative?.isActive === true, () => this.settings.initiativeTurnOptions().banner);
+    this.stage.begin(container, drawn, initiative?.isActive === true, () => this.settings.get('initiativeTurnOptions').banner);
     if (!drawn || scene.list === null) return;
     const list = JSON.parse(scene.list) as PlayerInitiativeList;
     const live = this.badgeNumbers;
@@ -157,7 +157,7 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
       if (number !== null) shown.set(tokenId, number);
     }
     this.shownNumbers = shown;
-    const { fromTurn, edges, facesPlayers } = this.settings.initiativeLayout();
+    const { fromTurn, edges, facesPlayers } = this.settings.get('initiativeLayout');
     const maxCards = initiativeMaxCardsOf(settings.initiativeMaxCards);
     if (!this.ivyLent) {
       lendThemeIvy(container);
