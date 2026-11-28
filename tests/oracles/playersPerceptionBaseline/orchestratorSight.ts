@@ -1,4 +1,4 @@
-// Frozen from c2d0d849f33e9fe0e3d31f8c5fea25d0ec51b05a src/app/PixiRendererOrchestrator.ts: the bodies of
+// Frozen from c2d0d849fbb09f316ca017a3fd2fa6bbb62274c3 src/app/PixiRendererOrchestrator.ts: the bodies of
 // `playersSeeMapAt` and `playerRollTokens`, as functions of the parts of the view they read. Only import paths are adapted.
 import type { FogCoverage } from '../../../src/app/fog/fogCoverage';
 import { playerPointSight } from '../../../src/app/pixi/lighting/playerLightingLayers';

@@ -1,4 +1,5 @@
 import { levelObjects } from '../levels/levelObjects';
+import { hiddenFromPlayers } from './framePerception';
 import { heldForSight } from '../lighting/sightOnDrop';
 import { playerDoorSight, playerPointSight } from '../pixi/lighting/playerLightingLayers';
 import type { SceneLightingView } from '../pixi/lighting/sceneLightingView';
@@ -103,7 +104,7 @@ export class PlayersPerception {
     if (this.lighting(source) === null || source.drawn() === null) return null;
     const perception = source.roofed() ? undefined : this.tokens(source);
     if (perception === undefined) return [];
-    return Object.entries(tokens).flatMap(([id, token]) => (token.isHidden === true || perception(id) !== 'sensed' ? [] : [id]));
+    return Object.entries(tokens).flatMap(([id, token]) => (hiddenFromPlayers(token) || perception(id) !== 'sensed' ? [] : [id]));
   }
 
   /** The doors these eyes see now (`playerDoorSight`, with the committed fog); null while the floor is unlit or its lighting cannot tell. */
