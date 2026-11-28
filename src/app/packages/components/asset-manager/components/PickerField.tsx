@@ -1,4 +1,4 @@
-import React, { useId, useLayoutEffect, type RefObject } from 'react';
+import React, { useEffect, useId, useLayoutEffect, useRef, type RefObject } from 'react';
 import { usePickerListKeys } from '../hooks/usePickerListKeys';
 import type { PickerRow } from './PickerOption';
 
@@ -37,6 +37,20 @@ export function PickerField<T>({
   const keys = usePickerListKeys({ choices, listOpen, setListOpen, chosen, choose, onConfirm });
   // Before the dialog's first paint, so it never draws without its list and then grows.
   useLayoutEffect(() => { setListOpen(true); }, []);
+  // The list closes a moment after the field loses focus, so a press on a row still lands; the dialog may go within it.
+  const closing = useRef<number | null>(null);
+  const cancelClosing = (): void => {
+    if (closing.current !== null) window.clearTimeout(closing.current);
+    closing.current = null;
+  };
+  useEffect(() => cancelClosing, []);
+  const closeSoon = (): void => {
+    cancelClosing();
+    closing.current = window.setTimeout(() => {
+      closing.current = null;
+      setListOpen(false);
+    }, 150);
+  };
   const showsList = listOpen && choices.length > 0;
   // A listbox holds options only, so the message stands in a box of the list's look instead.
   const showsNoMatch = listOpen && choices.length === 0 && noMatch !== undefined;
@@ -73,7 +87,7 @@ export function PickerField<T>({
         value={text}
         onChange={(e) => { onText(e.target.value); setListOpen(true); }}
         onClick={() => setListOpen(true)}
-        onBlur={() => window.setTimeout(() => setListOpen(false), 150)}
+        onBlur={closeSoon}
       />
       {showsList && (
         <div id={listId} className="atlas-move-folder-list" role="listbox" aria-labelledby={labelId}>
