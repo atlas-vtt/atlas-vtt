@@ -8,19 +8,6 @@ export interface HideableLayer {
   alpha?: number | undefined;
 }
 
-/**
- * Runs `capture` while the canvas holds a frame without `dmOnlyLayers`, then
- * restores the DM's frame. Everything happens in one task, before the browser
- * composites, so the DM never sees the player-safe frame.
- */
-export function captureWithoutLayers(
-  dmOnlyLayers: readonly HideableLayer[],
-  render: () => void,
-  capture: () => void
-): void {
-  captureWithLayerVisibility(dmOnlyLayers.map(layer => ({ layer, visible: false })), render, capture);
-}
-
 export interface LayerVisibility {
   layer: HideableLayer;
   visible: boolean;
