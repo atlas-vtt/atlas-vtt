@@ -129,15 +129,25 @@ export function applyLayerVisibility(layers: readonly LayerVisibility[], camera?
   return {
     differs: changed.length > 0 || !!camera,
     restore: (): void => {
-      const errors: unknown[] = [];
-      runEach([
-        ...(restoreCamera ? [restoreCamera] : []),
-        ...changed.map(({ layer, previous, alpha, previousAlpha }) => (): void => {
+      // Runs once per captured frame: no closure per layer.
+      let failed = false;
+      let first: unknown;
+      try {
+        restoreCamera?.();
+      } catch (error) {
+        first = error;
+        failed = true;
+      }
+      for (const { layer, previous, alpha, previousAlpha } of changed) {
+        try {
           layer.visible = previous;
           if (alpha !== undefined) layer.alpha = previousAlpha;
-        }),
-      ], errors);
-      if (errors.length > 0) throw errors[0];
+        } catch (error) {
+          if (!failed) first = error;
+          failed = true;
+        }
+      }
+      if (failed) throw first;
     },
   };
 }
