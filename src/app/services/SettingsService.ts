@@ -681,10 +681,4 @@ export class SettingsService {
   getAllSettings(): AtlasSettings {
     return { ...this.settings };
   }
-
-  // Reset to default settings
-  resetToDefaults(): void {
-    this.settings = { ...DEFAULT_SETTINGS, navigation: this.settings.navigation };
-    this.commit();
-  }
 }

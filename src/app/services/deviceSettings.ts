@@ -58,10 +58,6 @@ export function loadLightingQuality(storage: DeviceStorage): LightingQualityLeve
   return loadQualityLevel(storage, LIGHTING_QUALITY_STORAGE_KEY);
 }
 
-export function saveLightingQuality(storage: DeviceStorage, level: LightingQualityLevel): void {
-  saveQualityLevel(storage, LIGHTING_QUALITY_STORAGE_KEY, level);
-}
-
 /** The Graphics page's choice on this device, or null when none was made (an older stored level stands in, `loadLightingQuality`). */
 export function loadGraphicsChoice(storage: DeviceStorage): GraphicsChoice | null {
   try {
