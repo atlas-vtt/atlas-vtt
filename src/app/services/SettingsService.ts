@@ -2,7 +2,7 @@ import type { App, Plugin } from 'obsidian';
 import type { LegacyPlayerBars } from '../resources/playerVisibilityMigration';
 import { availableHotkeys, canShareHotkey, type MapHotkeyId, type MapHotkeys } from '../keyboard/mapHotkeys';
 import { hotkeyOrigin, resolveHotkeys, withHotkey, type HotkeyOrigin } from '../keyboard/hotkeyOverrides';
-import { TUTORIAL_IDS, type TutorialId } from './atlasSettings';
+import { overDefault, TUTORIAL_IDS, type TutorialId } from './atlasSettings';
 import { isRecord } from '../utils/guards';
 import { DEVICE_PREFERENCES, deviceStorage, readDevice, writeDevice } from './deviceSettings';
 import { readGpuFacts } from './gpuFacts';
@@ -96,7 +96,7 @@ export class SettingsService {
     if (!(await this.loadSettings(true))) return;
     // A change made here and not saved yet is newer than what arrived; it stays and is saved.
     if (this.saveTimeout !== undefined) {
-      const changed = [...new Set([...Object.keys(local), ...Object.keys(saved)])].filter((key) => !sameValue(local[key], saved[key]));
+      const changed = [...new Set([...Object.keys(local), ...Object.keys(saved)])].filter((key) => !sameValue(overDefault(key, local[key]), overDefault(key, saved[key])));
       this.synced.put(Object.fromEntries(changed.map((key) => [key, local[key]])));
     }
     this.notify();

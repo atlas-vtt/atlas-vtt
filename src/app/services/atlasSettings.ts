@@ -12,6 +12,7 @@ import { DEFAULT_TABLE_TV_SETTINGS, type TableTvSettings } from './tableTvSettin
 import type { GmScreenKeys } from './gmScreenKeysSettings';
 import { DEFAULT_FOG_EDGE, type FogEdge } from '../fog/fogEdge';
 import { DEFAULT_DRAG_DISTANCE, type DragDistance } from '../measure/dragDistance';
+import { isRecord } from '../utils/guards';
 
 /** Every tutorial Atlas has; the settings list those the user finished or skipped. */
 export const TUTORIAL_IDS = ['welcome', 'dashboard', 'map', 'online', 'tableLog', 'assets', 'palette', 'tokenStatblocks', 'lootSettings', 'lootRoller', 'lootResults', 'savedRolls'] as const;
@@ -158,3 +159,24 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
   },
   tableTv: DEFAULT_TABLE_TV_SETTINGS,
 };
+
+/** `target` with `source`'s values on top, records merged key by key; keys only `source` has are kept. */
+function deepMerge(target: Record<string, unknown>, source: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = { ...target };
+  for (const [key, value] of Object.entries(source)) {
+    const base = target[key];
+    if (isRecord(value) && isRecord(base)) result[key] = deepMerge(base, value);
+    else if (value !== undefined) result[key] = value;
+  }
+  return result;
+}
+
+/**
+ * A key's value as the settings take it when comparing what changed: what is stored, merged over
+ * the key's default, so a key the file lacks equals its default.
+ */
+export function overDefault(key: string, stored: unknown): unknown {
+  const fallback: unknown = (DEFAULT_SETTINGS as unknown as Record<string, unknown>)[key];
+  if (stored === undefined) return fallback;
+  return isRecord(stored) && isRecord(fallback) ? deepMerge(fallback, stored) : stored;
+}
