@@ -571,7 +571,6 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             if (token) {
               token.x = x;
               token.y = y;
-              draft._audioDirty = true;
             }
           }),
 
@@ -729,7 +728,6 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
                 token.y += dy;
               }
             });
-            draft._audioDirty = true;
           }),
 
           setTokenPositions: (positions) => set((draft) => {
@@ -744,7 +742,6 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
                 token.y = y;
               }
             });
-            draft._audioDirty = true;
           }),
 
           dropTokens: (positions, art) => set((draft) => {
@@ -841,7 +838,6 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             // A locked door stays shut until it is unlocked.
             if (wall && (wall.type === 'door' || wall.type === 'secret-door') && wall.locked !== true) {
               wall.closed = !(wall.closed ?? true);
-              draft._audioDirty = true;
             }
           }),
 
@@ -853,10 +849,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               return;
             }
             wall.locked = true;
-            if (!(wall.closed ?? true)) {
-              wall.closed = true;
-              draft._audioDirty = true;
-            }
+            if (!(wall.closed ?? true)) wall.closed = true;
           }),
 
           // Clear all map state when switching maps

@@ -65,7 +65,7 @@ export class SpatialAudioEngine {
     });
     this.unsubscribers.push(unsub1);
 
-    // Mark dirty on any objects change (catches hydration, bulk loads, undo/redo)
+    // The one way a scene change reaches spatial audio: no write marks it itself, and loads and undo write nothing else.
     let prevObjects = levelObjects(this.store.getState());
     const unsubObjects = this.store.subscribe((state) => {
       if (levelObjects(state) !== prevObjects) {

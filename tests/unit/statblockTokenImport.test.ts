@@ -148,7 +148,7 @@ describe('bulk importing recognized statblock notes', () => {
     expect(tokens.map(t => t.statblockPath)).toEqual([note, 'Other/Goblin.md']);
     expect(files.get(note)).toBe('Original note');
     expect(files.get(image)).toBe('image-bytes');
-    await assets.updateTokenAsset(tokens[0]!.id, { name: 'Customized Goblin' });
+    await assets.updateAsset(tokens[0]!.id, { name: 'Customized Goblin' });
     expect((await importer.import([note], 'Default')).items[0]?.status).toBe('skipped');
     expect((await assets.getTokenAssets())[0]?.name).toBe('Customized Goblin');
     await assets.deleteAsset(tokens[0]!.id);
