@@ -140,9 +140,10 @@ export const SURFACES: Readonly<Record<Surface, SurfaceRow>> = {
   isToolbarEditing: flag('isToolbarEditing', ['isDiceTrayOpen']),
   dungeonGenerator: { closed: { dungeonGenerator: null }, closes: ENDS_TOOLBAR_EDITING },
   // The players' picture: no panel of the GM's over it, and no tool's editor (its popovers go with the GM's view).
+  // Position floor's ghost would show the other floor on it, and its drag would move the floor under a finger.
   tableMode: {
     closed: { tableMode: null },
-    closes: ['isCommandPaletteOpen', 'isDiceTrayOpen', 'isToolbarEditing', 'isHotkeyHelpOpen', 'isGridSettingsOpen', 'isGridAlignmentOpen'],
+    closes: ['isCommandPaletteOpen', 'isDiceTrayOpen', 'isToolbarEditing', 'isHotkeyHelpOpen', 'isGridSettingsOpen', 'isGridAlignmentOpen', 'isFloorPositioning'],
   },
 };
 
