@@ -2,7 +2,8 @@ import type { Asset } from '../AssetService';
 import { collectionFolderPath } from '../assetPaths';
 import type { BundleFile } from '../collectionBundle/bundleFormat';
 import { besideMap, freePathIn, sceneMapOf, type PathMap } from '../collectionBundle/pathRemap';
-import { siblingPaths, thumbnailFiles } from '../thumbnailFiles';
+import { tokenArtwork } from '../assetBelongings';
+import { siblingPaths } from '../thumbnailFiles';
 import { JSON_FOLDERS } from '../vault-sync/assetFiles';
 import { sceneSnapshotFolder, snapshotOwnerOf } from '../../snapshots/snapshotPaths';
 import { baseName, parentPath } from '../../utils/pathUtils';
@@ -40,17 +41,6 @@ export interface TransferPlan {
   rewrites: PathMap;
   /** Where the JSON file behind each asset's record ends up, by the asset's current id. */
   recordPaths: ReadonlyMap<string, string>;
-}
-
-/** The image and thumbnail (in every format, `thumbnailFiles`) of every token among `assets`, which each token owns: deleting the token deletes them. */
-export function tokenArtwork(assets: readonly Asset[]): Set<string> {
-  const artwork = new Set<string>();
-  for (const asset of assets) {
-    if (asset.type !== 'token') continue;
-    artwork.add(asset.imagePath);
-    for (const path of thumbnailFiles(asset.thumbnailPath)) artwork.add(path);
-  }
-  return artwork;
 }
 
 /** Files an asset owns: they go wherever the asset goes. Everything else it only refers to. */

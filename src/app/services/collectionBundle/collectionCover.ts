@@ -4,7 +4,7 @@ import { sceneBackground } from '../sceneBackground';
 import { readVaultBinary } from '../../utils/hiddenVaultFiles';
 import { optimizeImage } from '../../imageProcessing/imageProcessing';
 import { baseName } from '../../utils/pathUtils';
-import { sceneThumbnailPath } from './collectionReferences';
+import { sceneThumbnailPath } from '../assetBelongings';
 import { derivedImageExtension } from '../assetImageFiles';
 import type { DerivedFormat } from '../../imageProcessing/imageEncoder';
 import { asNamedWebp } from './webpNamedFiles';

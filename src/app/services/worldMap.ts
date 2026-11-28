@@ -2,7 +2,7 @@ import type { App } from 'obsidian';
 import type { CampaignService } from '../campaigns/CampaignService';
 import { AssetService, type Asset } from './AssetService';
 import { coverCandidates } from './collectionBundle/collectionCover';
-import { sceneThumbnailPath } from './collectionBundle/collectionReferences';
+import { sceneThumbnailPath } from './assetBelongings';
 
 /**
  * The artwork of a map or scene that can be a world map: the map's image, or the background a
