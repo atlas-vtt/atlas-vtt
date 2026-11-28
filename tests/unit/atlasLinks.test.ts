@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TFile, type EditorSuggestContext, type EmbedContext, type EmbedCreator, type Plugin } from 'obsidian';
-import { findByLinkName, isEncounterPath, linkSafeName, snapshotNameOfSubpath } from '../../src/app/links/atlasLinkTargets';
+import { findByLinkName, isEncounterPath, linkSafeName, pinIdOfSubpath, snapshotNameOfSubpath } from '../../src/app/links/atlasLinkTargets';
 import { atlasLink } from '../../src/app/links/atlasLinkText';
 import { SnapshotLinkSuggest, registerSnapshotLinkSuggest } from '../../src/app/links/SnapshotLinkSuggest';
 import { registerAtlasLinks } from '../../src/app/links/registerAtlasLinks';
@@ -29,6 +29,11 @@ describe('link names', () => {
     expect(snapshotNameOfSubpath('#^block')).toBeNull();
     expect(snapshotNameOfSubpath('')).toBeNull();
     expect(snapshotNameOfSubpath('#  ')).toBeNull();
+    expect(pinIdOfSubpath('#pin=pin_123')).toBe('pin_123');
+    expect(pinIdOfSubpath('#pin=pin%20with%20spaces')).toBe('pin with spaces');
+    expect(pinIdOfSubpath('#pin=')).toBeNull();
+    expect(pinIdOfSubpath('#pin=%E0%A4%A')).toBeNull();
+    expect(snapshotNameOfSubpath('#pin=pin_123')).toBeNull();
   });
 
   it('finds a name as written first, else ignoring case', () => {

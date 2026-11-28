@@ -10,4 +10,5 @@ export const pinMenu: Translation = {
   'pinMenu.rollEncounter': 'Бросить столкновение',
   'pinMenu.openOnLevel': 'Открывается на уровне',
   'pinMenu.levelAsLeft': 'Последний показанный уровень',
+  'pinMenu.linkTargetMissing': 'Цель ссылки не найдена',
 };

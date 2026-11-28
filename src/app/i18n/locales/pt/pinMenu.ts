@@ -10,4 +10,5 @@ export const pinMenu: Translation = {
   'pinMenu.renameTitle': 'Nome do alfinete',
   'pinMenu.openOnLevel': 'Abre no andar',
   'pinMenu.levelAsLeft': 'O último andar mostrado',
+  'pinMenu.linkTargetMissing': 'Destino do link não encontrado',
 };

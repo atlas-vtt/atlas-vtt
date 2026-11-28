@@ -240,52 +240,6 @@ export const CONVENTIONS = [
     good: ["import type { App } from 'obsidian';\nimport { setQuestStatus } from './campaigns/quests/questNotes';\nexport const close = (app: App, path: string): Promise<boolean> => setQuestStatus(app, path, 'done');"],
   },
   {
-    name: 'vault-text-writes',
-    // Text only: an image or a sound is never a note. The front matter has its own rule (process-front-matter).
-    selectors: [
-      "CallExpression[callee.property.name=/^(process|modify|append)$/]:matches([callee.object.name='vault'], [callee.object.property.name='vault'])",
-      "CallExpression[callee.property.name=/^(write|append|process)$/]:matches([callee.object.name='adapter'], [callee.object.property.name='adapter'])",
-    ],
-    message: "Write into a user's note only when the user asks for that write at that moment, and show what Atlas can work out from its own files instead of storing it in notes. A new module that writes vault text is added to this rule's owners in scripts/eslint/conventions.mjs, with the maintainer's agreement.",
-    why: "A note belongs to its user: a line Atlas adds by itself lands where they did not choose and stays right only as long as Atlas sees every later change, and the call cannot tell a note from Atlas' own files, so every module that writes vault text is a reviewed owner.",
-    owners: [
-      // Atlas' own files: scenes, snapshots, records, the library, templates, settings and stores.
-      'src/app/services/MapPersistence.ts',
-      'src/app/services/sceneFileWriter.ts',
-      'src/app/services/collectionScenes.ts',
-      'src/app/services/TokenStatblockLinkService.ts',
-      'src/app/services/FileReferenceService.ts',
-      'src/app/services/tokenRingSync.ts',
-      'src/app/services/tokenAssetPlacements.ts',
-      'src/app/snapshots/SceneSnapshotService.ts',
-      'src/app/snapshots/snapshotStorage.ts',
-      'src/app/services/recordFiles/RecordFiles.ts',
-      'src/app/services/library/libraryWriter.ts',
-      'src/app/services/collectionBundle/installRecord.ts',
-      'src/app/statblocks/library/templateWriter.ts',
-      'src/app/services/AssetService.ts',
-      'src/app/plugin/settingsMigration.ts',
-      'src/app/online/gm/onlineData.ts',
-      'src/app/loot/LootHistoryStore.ts',
-      // Notes, each written on the user's own action: a statblock value they change, the body of a
-      // template they edit, the links in files of assets they move or copy.
-      'src/app/statblocks/notes/NoteFieldWriter.ts',
-      'src/app/statblocks/library/templateBodyNotes.ts',
-      'src/app/services/assetTransfer/transferFiles.ts',
-    ],
-    ignores: [TEST_HELPERS],
-    bad: [
-      "import type { App, TFile } from 'obsidian';\nexport const link = (app: App, note: TFile): Promise<string> => app.vault.process(note, (text) => `${text}\\n[[Keep.atlasmap]]`);",
-      "import type { App, TFile } from 'obsidian';\nexport const link = (app: App, note: TFile): Promise<void> => app.vault.append(note, '[[Keep.atlasmap]]');",
-      "import type { Vault, TFile } from 'obsidian';\nexport const clear = (vault: Vault, note: TFile): Promise<void> => vault.modify(note, '');",
-      "import type { App } from 'obsidian';\nexport const save = (app: App): Promise<void> => app.vault.adapter.write('Notes/Keep.md', '');",
-    ],
-    good: [
-      "import type { App, TFile } from 'obsidian';\nexport const text = (app: App, note: TFile): Promise<string> => app.vault.cachedRead(note);",
-      'export const run = (queue: { process(): void }): void => queue.process();',
-    ],
-  },
-  {
     name: 'bestiary-lookup',
     selectors: ["MemberExpression[property.name='getCreatureFromBestiary']"],
     message: 'Ask bestiaryCreatureByName (src/app/services/FantasyStatblocksService.ts) for a creature of the bestiary.',

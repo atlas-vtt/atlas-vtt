@@ -10,4 +10,5 @@ export const pinMenu: Translation = {
   'pinMenu.rollEncounter': '随机遭遇',
   'pinMenu.openOnLevel': '打开的楼层',
   'pinMenu.levelAsLeft': '上次显示的楼层',
+  'pinMenu.linkTargetMissing': '找不到链接目标',
 };

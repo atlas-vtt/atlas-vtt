@@ -1,6 +1,7 @@
 import type { Translation } from '../../types';
 
 export const pinMenu: Translation = {
+  'pinMenu.linkTargetMissing': 'No se encontró el destino del enlace',
   'pinMenu.open': 'Abrir nota',
   'pinMenu.edit': 'Editar chincheta',
   'pinMenu.rollEncounter': 'Tirar encuentro',

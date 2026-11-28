@@ -3,6 +3,7 @@ import type { Message } from '../../types';
 export const pinMenu = {
   'pinMenu.open': 'Open Note',
   'pinMenu.edit': 'Edit Pin',
+  'pinMenu.linkTargetMissing': 'This link points to a pin that no longer exists.',
   'pinMenu.rollEncounter': 'Roll Encounter',
   'pinMenu.readable': 'Show to players',
   'pinMenu.showName': 'Show name',

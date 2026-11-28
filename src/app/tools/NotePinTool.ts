@@ -9,6 +9,7 @@ import { resolvePinIcon } from '../types/pinIcons';
 import { createPinIconPalette, type PinIconPalette } from './pinIconPalette';
 import { createPinNoteSearch } from './pinNoteSearch';
 import { dungeonCreateEntry, noteCreateEntry, type PinCreateEntry } from './pinCreateEntries';
+import { copyAtlasLink } from '../links/atlasLinkText';
 import type { PinActionEventDetail } from '../types/atlasWindowEvents';
 import { animatePanelIn, animatePanelOutAndRemove } from '../ui/panelMotion';
 import { NotePinPreview } from './notePinPreview';
@@ -134,6 +135,9 @@ export class NotePinTool {
         // The preview a held Mod opens over the pin, from its menu
         const at = e.detail.at ?? { x: activeWindow.innerWidth / 2, y: activeWindow.innerHeight / 2 };
         this.eventBus.emit(OPEN_PREVIEW_EVENT, { pin, screenX: at.x, screenY: at.y });
+      } else if (action === 'copy-link') {
+        const mapPath = this.store.getState().mapPath;
+        if (mapPath) runInBackground(copyAtlasLink(this.app, mapPath, { pinId: pin.id }), 'Copying pin link');
       } else if (action === 'edit') {
         // Show the note selection dropdown at the pin's position
         runInBackground(this.showNotePinDropdownForExistingPin(pin), 'Opening the note pin editor');

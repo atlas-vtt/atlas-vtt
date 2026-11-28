@@ -194,6 +194,10 @@ exports[`the desktop menus of what is selected > a drawing, and a locked one 2`]
 exports[`the desktop menus of what is selected > a pin 1`] = `
 [
   {
+    "icon": "link",
+    "item": "Copy link",
+  },
+  {
     "icon": "file-text",
     "item": "Open Note",
   },
@@ -233,6 +237,10 @@ exports[`the desktop menus of what is selected > a pin 1`] = `
 
 exports[`the desktop menus of what is selected > a pin 2`] = `
 [
+  {
+    "icon": "link",
+    "item": "Copy link",
+  },
   {
     "icon": "file-text",
     "item": "Open Note",

@@ -10,4 +10,5 @@ export const pinMenu = {
   "pinMenu.renameTitle": "Nome del segnaposto",
   "pinMenu.openOnLevel": "Si apre sul livello",
   "pinMenu.levelAsLeft": "L’ultimo livello mostrato",
+  "pinMenu.linkTargetMissing": "Destinazione del collegamento non trovata",
 } satisfies Translation;
