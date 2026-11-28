@@ -127,18 +127,53 @@ describe('a players\' frame', () => {
     expect(renderGmFrame).not.toHaveBeenCalled();
   });
 
-  it('puts every part and the GM\'s frame back when the render throws, or a part\'s change does', () => {
-    const events: string[] = [];
-    const layer = { visible: true };
-    const pictures = picturesOf({ mapImage: noting('map', events), tokens: { layersFor: () => [{ layer, visible: false }] } }, { renderGmFrame: () => events.push('gm') });
-    expect(() => pictures.capture(playersFrame(PLAYER_FRAME), () => { throw new Error('failed'); })).toThrow('failed');
-    expect(layer.visible).toBe(true);
-    expect(events.slice(-2)).toEqual(['back:map', 'gm']);
+  describe('on a path that fails', () => {
+    /** Three parts and a layer, and the GM's render: what each did, in order. */
+    function failing(more: Partial<Record<'roofs' | 'liquids', PicturePart>> = {}) {
+      const events: string[] = [];
+      const layer = { visible: true };
+      const pictures = picturesOf({
+        mapImage: noting('map', events),
+        tokens: { layersFor: () => [{ layer, visible: false }] },
+        annotations: noting('drawings', events),
+        ...more,
+      }, { renderGmFrame: () => events.push('gm') });
+      return { events, layer, pictures };
+    }
 
-    events.length = 0;
-    pictures.attach('liquids', { showFor: () => { throw new Error('no stage'); } });
-    expect(() => pictures.capture(playersFrame(PLAYER_FRAME), () => events.push('render'))).toThrow('no stage');
-    expect(events).toEqual(['show:map', 'back:map', 'gm']);
+    it('puts every part back and renders the GM\'s frame again when the render throws', () => {
+      const { events, layer, pictures } = failing();
+      expect(() => pictures.capture(playersFrame(PLAYER_FRAME), () => { throw new Error('failed'); })).toThrow('failed');
+      expect(layer.visible).toBe(true);
+      expect(events.slice(-3)).toEqual(['back:drawings', 'back:map', 'gm']);
+    });
+
+    it('puts back the parts it changed before a part\'s change threw, and renders the GM\'s frame again', () => {
+      const { events, layer, pictures } = failing({ liquids: { showFor: () => { throw new Error('no stage'); } } });
+      expect(() => pictures.capture(playersFrame(PLAYER_FRAME), () => events.push('render'))).toThrow('no stage');
+      expect(events).toEqual(['show:map', 'back:map', 'gm']);
+      expect(layer.visible).toBe(true);
+    });
+
+    it('puts every other part back when one part\'s restore throws, renders the GM\'s frame again, and throws that error after', () => {
+      const { events, layer, pictures } = failing({ roofs: { showFor: () => () => { throw new Error('roof stuck'); } } });
+      expect(() => pictures.capture(playersFrame(PLAYER_FRAME), () => events.push('render'))).toThrow('roof stuck');
+      expect(events).toEqual(['show:map', 'show:drawings', 'layers:map', 'layers:drawings', 'around:map', 'around:drawings', 'render', 'back:drawings', 'back:map', 'gm']);
+      expect(layer.visible).toBe(true);
+    });
+
+    it('throws the render\'s error, not a restore\'s that followed it', () => {
+      const { events, pictures } = failing({ roofs: { showFor: () => () => { throw new Error('roof stuck'); } } });
+      expect(() => pictures.capture(playersFrame(PLAYER_FRAME), () => { throw new Error('failed'); })).toThrow('failed');
+      expect(events.slice(-3)).toEqual(['back:drawings', 'back:map', 'gm']);
+    });
+
+    it('leaves the GM\'s frame to the render that follows, also when the render throws', () => {
+      const { events, pictures } = failing();
+      expect(() => pictures.capture(playersFrame(PLAYER_FRAME, { renderFollows: true }), () => { throw new Error('failed'); })).toThrow('failed');
+      expect(events).not.toContain('gm');
+      expect(events.slice(-2)).toEqual(['back:drawings', 'back:map']);
+    });
   });
 
   it('renders through its own camera, centred in its own size, and puts the GM\'s camera back', () => {

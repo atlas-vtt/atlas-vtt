@@ -40,29 +40,46 @@ export class PictureCapture {
   }
 
   /**
-   * Runs `render` with the stage as `picture` shows it, and returns its result. The stage is the
-   * GM's again when this returns or throws; after a players' frame that no render of the GM's
-   * follows, the GM's frame is rendered on the canvas again, since the frame went through it.
+   * Runs `render` with the stage as `picture` shows it, and returns its result. Every part is put
+   * back on its own, also when the render, a part's change or another part's restore throws; after
+   * a players' frame that no render of the GM's follows, the GM's frame is rendered on the canvas
+   * again, since the frame went through it. Then the first error, if any, is thrown.
    */
   capture<T>(picture: Picture, render: () => T): T {
-    const parts = this.walk();
     const restores: Array<() => void> = [];
+    const errors: unknown[] = [];
+    let rendered: { value: T } | null = null;
     try {
-      for (const part of parts) if (part.showFor) restores.push(part.showFor(picture));
-      const layers = parts.flatMap((part) => part.layersFor?.(picture) ?? []);
-      restores.push(applyLayerVisibility(layers, picture.kind === 'players' ? this.cameraOf(picture.frame) : undefined).restore);
-      let held = render;
-      for (const part of [...parts].reverse()) {
-        const around = part.renderFor?.bind(part);
-        if (!around) continue;
-        const inner = held;
-        held = (): T => around(picture, inner);
-      }
-      return held();
-    } finally {
-      for (const restore of restores.reverse()) restore();
-      if (picture.kind === 'players' && !picture.renderFollows) this.deps.renderGmFrame();
+      rendered = { value: this.draw(picture, render, restores) };
+    } catch (error) {
+      errors.push(error);
     }
+    for (const restore of restores.reverse()) {
+      try {
+        restore();
+      } catch (error) {
+        errors.push(error);
+      }
+    }
+    if (picture.kind === 'players' && !picture.renderFollows) this.deps.renderGmFrame();
+    if (errors.length > 0 || rendered === null) throw errors[0];
+    return rendered.value;
+  }
+
+  /** Makes every part's change for `picture`, adding what puts each back to `restores` as it goes, and renders. */
+  private draw<T>(picture: Picture, render: () => T, restores: Array<() => void>): T {
+    const parts = this.walk();
+    for (const part of parts) if (part.showFor) restores.push(part.showFor(picture));
+    const layers = parts.flatMap((part) => part.layersFor?.(picture) ?? []);
+    restores.push(applyLayerVisibility(layers, picture.kind === 'players' ? this.cameraOf(picture.frame) : undefined).restore);
+    let held = render;
+    for (const part of [...parts].reverse()) {
+      const around = part.renderFor?.bind(part);
+      if (!around) continue;
+      const inner = held;
+      held = (): T => around(picture, inner);
+    }
+    return held();
   }
 
   /** Keeps what `view` (the player window's frame) shows ready at its detail in every part, until the returned function; the levels below draw their snapshots' own. */
