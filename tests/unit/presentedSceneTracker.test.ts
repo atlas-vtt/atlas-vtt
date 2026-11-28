@@ -122,13 +122,13 @@ describe('following the presented tab', () => {
     tab = null;
     tracker.check();
     expect(heard).toEqual([
-      { now: 'shown', before: 'shown', changed: true, tabChanged: false, levelChanged: false },
-      { now: 'shown', before: 'shown', changed: true, tabChanged: false, levelChanged: false },
-      { now: 'away', before: 'shown', changed: false, tabChanged: false, levelChanged: false },
+      { now: 'shown', before: 'shown', changed: true, tabChanged: false, levelChanged: false, levelLoaded: false },
+      { now: 'shown', before: 'shown', changed: true, tabChanged: false, levelChanged: false, levelLoaded: false },
+      { now: 'away', before: 'shown', changed: false, tabChanged: false, levelChanged: false, levelLoaded: false },
     ]);
   });
 
-  it('tells a change of the active tab and of the level shown where the standing stayed', () => {
+  it('tells a change of the active tab, of the level shown and of the level\'s image where the standing stayed', () => {
     const { sources, tavern, dungeon, level } = view();
     const crypt = sources.tabs.getState().addTab('maps/crypt.md', 'Crypt');
     sources.tabs.getState().setActiveTab(dungeon);
@@ -142,11 +142,14 @@ describe('following the presented tab', () => {
     // On another level, then on a third: still another level.
     level.viewed = 'upper';
     sources.store.setState({});
-    expect(heard.map(({ now, before, tabChanged, levelChanged }) => [before, now, tabChanged, levelChanged])).toEqual([
-      ['away', 'away', true, false],
-      ['away', 'shown', true, false],
-      ['shown', 'other-level', false, false],
-      ['other-level', 'other-level', false, true],
+    // The map image finished loading a level's background, still not players'.
+    level.changed();
+    expect(heard.map(({ now, before, tabChanged, levelChanged, levelLoaded }) => [before, now, tabChanged, levelChanged, levelLoaded])).toEqual([
+      ['away', 'away', true, false, false],
+      ['away', 'shown', true, false, false],
+      ['shown', 'other-level', false, false, false],
+      ['other-level', 'other-level', false, true, false],
+      ['other-level', 'other-level', false, false, true],
     ]);
   });
 });

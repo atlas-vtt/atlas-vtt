@@ -67,6 +67,8 @@ export interface StandingChange {
   readonly tabChanged: boolean;
   /** Whether the level the view shows changed. */
   readonly levelChanged: boolean;
+  /** Whether the level source told of its change: the view's map image finished loading a level's background. */
+  readonly levelLoaded: boolean;
 }
 
 /** The presented scene's standing in one view, as it follows the view. */
@@ -94,14 +96,15 @@ export function trackPresentedScene(sources: TrackedSources, tab: () => TrackedT
   let last = standingOf(sources, tab());
   let activeTab = sources.tabs.getState().activeTabId;
   let viewed = sources.level?.viewed() ?? null;
-  const check = (changed = false): void => {
+  const read = (changed: boolean, levelLoaded: boolean): void => {
     const before = last;
     last = standingOf(sources, tab());
     const tabChanged = activeTab !== (activeTab = sources.tabs.getState().activeTabId);
     const levelChanged = viewed !== (viewed = sources.level?.viewed() ?? null);
-    if (last !== before || changed || tabChanged || levelChanged) listener({ now: last, before, changed, tabChanged, levelChanged });
+    if (last !== before || changed || tabChanged || levelChanged || levelLoaded) listener({ now: last, before, changed, tabChanged, levelChanged, levelLoaded });
   };
-  const stops = [sources.tabs.subscribe(() => check()), sources.store.subscribe(() => check(true)), ...(sources.level ? [sources.level.follow(() => check())] : [])];
+  const check = (changed = false): void => read(changed, false);
+  const stops = [sources.tabs.subscribe(() => check()), sources.store.subscribe(() => check(true)), ...(sources.level ? [sources.level.follow(() => read(false, true))] : [])];
   return {
     get standing(): Standing {
       return standingOf(sources, tab());
