@@ -1,7 +1,7 @@
 import type { SharedToken, SnapGrid } from '../protocol/index.ts';
 import { ArtRefs } from './artRefs.ts';
 import type { AssetStoring } from './assets/assetUses.ts';
-import type { PlayerTokenSource, SceneStore } from './atlasView.ts';
+import { playable, type PlayerTokenSource, type SceneStore } from './atlasView.ts';
 import { Feed, type FeedPorts, type FeedScene } from './feed/Feed.ts';
 import type { FeedOut } from './feed/feedOutbox.ts';
 import type { ListedTokens } from './mineShare.ts';
@@ -133,7 +133,7 @@ export class TokenShare {
   shownIds(): ReadonlySet<string> | null {
     const state = this.store.getState();
     const source = this.ports.tokenSource();
-    if (!state.mapLoaded || state.isMapLoading || state.mapPath === null || source === null) return null;
+    if (!playable(state) || state.mapPath === null || source === null) return null;
     return new Set(source.playerRollTokens(state.mapPath).keys());
   }
 
@@ -192,7 +192,7 @@ export class TokenShare {
   private read(): { readonly tokens: SharedToken[]; readonly cell: number; readonly snap: SnapGrid | null; readonly aliases: Map<string, string>; readonly beside: Map<string, string> } | null {
     const state = this.store.getState();
     const source = this.ports.tokenSource();
-    if (!state.mapLoaded || state.isMapLoading || state.mapPath === null || source === null) return null;
+    if (!playable(state) || state.mapPath === null || source === null) return null;
     const gridSize = source.getGridOptions()?.size ?? state.grid?.size;
     if (gridSize === undefined || !(gridSize > 0)) return null;
     const gmIds = new Map<string, string>();

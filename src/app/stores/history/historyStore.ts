@@ -53,7 +53,7 @@ export interface TrackedStore {
   /** The branches undo tracks, and how deep. */
   depths: UndoDepths;
   read: () => HistorySnapshot;
-  /** Writes below every other middleware: never recorded, never saved by itself. */
+  /** Writes below immer and persist: never recorded, never saved by itself. */
   write: (slice: HistorySnapshot) => void;
 }
 

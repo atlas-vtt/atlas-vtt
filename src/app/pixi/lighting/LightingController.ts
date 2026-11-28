@@ -35,7 +35,6 @@ import { LightingModes } from './LightingModes';
 import type { RoomEditorDeps } from './RoomEditor';
 import { followLightingTool } from './followLightingTool';
 import { showExploredTravelNotice, showSurfacesFullNotice, showZonesFullNotice } from './lightingNotices';
-import { closeStalePopovers } from './popoverGuards';
 import { playerDoorSight, playerLightingLayers, playerTokenSight, type GmOverlays } from './playerLightingLayers';
 import type { PerceptionMemo, TokenPerception } from '../../vision/tokenPerception';
 import type { SceneLightingView } from './sceneLightingView';
@@ -172,7 +171,6 @@ export class LightingController {
     // Subscribed after the overlays' own subscriptions, so the players' view is set last.
     this.cleanups.push(store.subscribe((state, previous) => {
       if (state.activeTool !== previous.activeTool || state.lighting.enabled !== previous.lighting.enabled) this.session.sync();
-      closeStalePopovers(state);
     }));
     this.listen();
     this.cleanups.push(followLightingTool(store, eventBus));

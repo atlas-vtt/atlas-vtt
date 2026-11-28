@@ -12,6 +12,7 @@ import { GroupBreak, ToolOptionsBars } from '../../../packages/components/toolba
 import { FLOOR_GHOST_ALPHA } from '../../../pixi/levels/FloorGhost';
 import { useAtlasUI } from '../../root/AtlasUIContext';
 import { useAtlasStore, useViewStoreHook } from '../../ViewStoreContext';
+import { barShown } from '../../../stores/viewSurfaces';
 import { FloorPositioning, placeFloor } from './floorPositioning';
 import { levelLabel } from './levelEditing';
 import './floor-position-bar.scss';
@@ -22,16 +23,7 @@ import './floor-position-bar.scss';
  * tool's. It ends with Done, Enter or Escape, when the scene is left, or when it keeps one floor.
  */
 export function FloorPositionBar(): React.ReactElement {
-  const on = useAtlasStore((state) => state.isFloorPositioning);
-  const several = useAtlasStore((state) => (state.levels?.length ?? 0) > 1);
-  const loading = useAtlasStore((state) => state.isMapLoading);
-  const aligningGrid = useAtlasStore((state) => state.isGridAlignmentOpen);
-  const setFloorPositioning = useAtlasStore((state) => state.setFloorPositioning);
-  const shown = useAtlasStore((state) => state.isFloorPositioning && !state.isPlayerView && !state.isToolbarEditing && !state.isMapLoading);
-  // A scene left, one floor left (nothing to place against), or the grid being aligned, which takes the map's presses
-  useEffect(() => {
-    if (on && (loading || !several || aligningGrid)) setFloorPositioning(false);
-  }, [on, loading, several, aligningGrid, setFloorPositioning]);
+  const shown = useAtlasStore((state) => barShown(state, 'floorPosition'));
   return <ToolOptionsBars shown={shown}><FloorPositionBars /></ToolOptionsBars>;
 }
 

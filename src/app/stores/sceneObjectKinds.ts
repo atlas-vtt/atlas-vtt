@@ -1,8 +1,7 @@
 /**
  * The kinds of object a scene holds, and what follows from each when one is added, changed or
- * removed: what it is called, where it is placed, the popover that may be open on it, whether
- * spatial audio hears it, whether a lock keeps it, and what goes with it. The store's object
- * writes (`sceneObjectWrites.ts`) read this table; nothing else decides it.
+ * removed: what it is called, where it is placed, whether a lock keeps it, and what goes with it.
+ * The store's object writes (`sceneObjectWrites.ts`) read this table; nothing else decides it.
  */
 
 import type { NotePin } from '../types';
@@ -19,15 +18,10 @@ import { aurasOf } from '../measure/auraUpkeep';
 /** The collections of a scene that hold objects by id: all but fog, whose operations are paint. */
 export type ObjectCollection = Exclude<keyof ViewState['objects'], 'fog'>;
 
-/** The popovers that stand open on one object. */
-export type ObjectPopover = 'lightPopover' | 'lightZonePopover' | 'levelLinkPopover' | 'levelSurfacePopover' | 'measurePopover';
-
 /** A scene's objects as the object writes reach them: a store's own, or as far as a narrower store holds them. */
 export type SceneObjectRecords = { [Collection in ObjectCollection]?: ViewState['objects'][Collection] | undefined };
 
 interface KindRules {
-  /** The popover that may stand open on one of them: it closes when that one goes. */
-  readonly popover?: ObjectPopover;
   /** A locked one stays when it is removed by id; only a clear takes it (`annotationLock.ts`). */
   readonly lockable?: true;
   /** What goes with those of `ids` that are gone, in the same write: a token's auras and the measurements grouped with it. */
@@ -40,14 +34,14 @@ export const OBJECT_KINDS: Readonly<Record<ObjectCollection, KindRules>> = {
   texts: { lockable: true },
   drawings: { lockable: true },
   walls: {},
-  lights: { popover: 'lightPopover' },
+  lights: {},
   audios: {},
-  lightZones: { popover: 'lightZonePopover' },
-  levelLinks: { popover: 'levelLinkPopover' },
-  levelSurfaces: { popover: 'levelSurfacePopover' },
+  lightZones: {},
+  levelLinks: {},
+  levelSurfaces: {},
   mapFeatures: {},
   liquids: {},
-  measures: { popover: 'measurePopover' },
+  measures: {},
 };
 
 export const OBJECT_COLLECTIONS = Object.keys(OBJECT_KINDS) as readonly ObjectCollection[];

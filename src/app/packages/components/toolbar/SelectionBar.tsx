@@ -5,6 +5,7 @@ import { t } from "../../../i18n"
 import { SELECTION_BAR } from "../../../pixi/annotations/BarMenuPress"
 import { frameOnCanvas } from "../../../pixi/annotations/frameOnCanvas"
 import { useViewStoreHook } from "../../../react/ViewStoreContext"
+import { barShown } from "../../../stores/viewSurfaces"
 import { useAtlasUI } from "../../../react/root/AtlasUIContext"
 import { useAnchoredPopoverVariants } from "../primitives/dialogMotion"
 import { TooltipProvider } from "../primitives/tooltip"
@@ -40,7 +41,7 @@ function useSelectionBarShown(): boolean {
   useEffect(() => {
     const look = (): void => {
       const state = store.getState()
-      setShown(state.isGMView && !state.isPlayerView && !state.isToolbarEditing && !state.isMapLoading && (renderer?.getAnnotations()?.barFrame() ?? null) !== null)
+      setShown(barShown(state, 'drawingSelection') && (renderer?.getAnnotations()?.barFrame() ?? null) !== null)
     }
     look()
     const ticker = pixiApp?.ticker

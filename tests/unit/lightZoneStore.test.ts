@@ -14,6 +14,8 @@ function setup(): { store: ViewAtlasStore; steps: () => number; undo: () => void
   const store = createViewAtlasStore(app, `light-zones-${Math.random()}`);
   store.getState().setPersistenceEnabled(false);
   store.getState().setMapPath('maps/zones.atlasmap');
+  // A zone's popover opens with the lighting tool.
+  store.getState().setActiveTool('wall');
   const history = getHistoryStore(store)!;
   history.getState().clear();
   return { store, steps: () => history.getState().pastStates.length, undo: () => history.getState().undo() };

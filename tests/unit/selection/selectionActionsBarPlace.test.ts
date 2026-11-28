@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BAR_GAP, BAR_MARGIN, placeSelectionBar, type BarPlaceInput } from '../../../src/app/packages/components/toolbar/selectionBarPlacement';
-import { barOffered, type BarOfferState } from '../../../src/app/packages/components/toolbar/useSelectionActionsShown';
+import { barOffered } from '../../../src/app/packages/components/toolbar/useSelectionActionsShown';
+import type { BarState } from '../../../src/app/stores/viewSurfaces';
 
 /** A token's highlight 80 px wide on a 1180 × 820 view, scene tabs above and the toolbar below; the bar 300 × 56. */
 const input = (more: Partial<BarPlaceInput> = {}): BarPlaceInput => ({
@@ -70,7 +71,7 @@ describe('where the bar above a selection stands', () => {
 });
 
 describe('when the view offers the bar a place', () => {
-  const state = (more: Partial<BarOfferState> = {}): BarOfferState => ({
+  const state = (more: Partial<BarState> = {}): BarState => ({
     selectedIds: ['token'], activeTool: 'move', isGMView: true, isPlayerView: false, isToolbarEditing: false, isMapLoading: false, ...more,
   });
 
