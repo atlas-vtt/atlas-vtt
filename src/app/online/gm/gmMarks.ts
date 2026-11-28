@@ -1,66 +1,25 @@
-import { CursorOverlay, CursorTap, MarkOverlay, PointerTap, type CursorViewport, type LayBodies, type MeasureRules, type OverlayHost, type RemoteDrag, type TapViewport } from '../marks/index.ts';
+import { CursorOverlay, CursorTap, MarkOverlay, PointerTap, type MeasureRules, type OverlayHost, type RemoteDrag } from '../marks/index.ts';
 import { LIVE_INTERVAL_MS, type SharedCursor, type SharedStroke } from '../protocol/index.ts';
-import { Container } from 'pixi.js';
+import type { Viewport } from 'pixi-viewport';
 import { placeUnderTokens } from '../../pixi/measure/MeasureLayer';
 import type { HeldPlayout } from '../../pixi/token-renderer/TokenPlaces';
 import type { App } from 'obsidian';
-import type { UnderWaySource } from '../../annotations/underWay';
 import { FogCoverageCache } from '../../fog/FogCoverageCache';
-import type { SceneSource } from '../../host/sceneSource';
-import type { Measurements } from '../../pixi/measure/measurements';
 import type { ViewState } from '../../types/viewState';
 import { tokenFootprints, type TokenFootprint } from '../../vision/measureOrigin';
-import { atlasLaserLook, field } from './atlasLighting.ts';
-import { asTokenSource, call, type SceneState, type SceneStore } from './atlasView.ts';
+import { atlasLaserLook } from './atlasLighting.ts';
+import type { SceneState, SceneStore } from './atlasView.ts';
+import type { MapCanvas, MapMeasure, MapTokens } from './mapView.ts';
 import type { GmMarkSource, PlayerMarks } from './MarkShare.ts';
 import { levelObjects } from '../../levels/levelObjects';
 import { levelMapKey } from '../../levels/sceneLevels';
 import { mapTokens } from '../../tokens/offMap';
 
-type Viewport = TapViewport & CursorViewport & OverlayHost['viewport'];
-
-const isFunction = (value: unknown): value is (...args: never[]) => unknown => typeof value === 'function';
-const hasMethods = (value: unknown, names: readonly string[]): boolean => typeof value === 'object' && value !== null && names.every((name) => isFunction(field(value, name)));
-const isContainer = (value: unknown): value is Container => value instanceof Container;
-
-/** The renderer's measurements as data (`MeasureRenderer.measurements`, a private renderer field), or null. */
-function measurementsOf(renderer: unknown): SceneSource<Measurements> | null {
-  const source = field(field(renderer, 'measureRenderer'), 'measurements');
-  return hasMethods(source, ['get', 'subscribe']) ? (source as SceneSource<Measurements>) : null;
-}
-
-/** The drawing the tab's Draw tool is making (`AnnotationsRenderer.underWay`, a private renderer field), or null in a build without it. */
-function strokeOf(renderer: unknown): UnderWaySource | null {
-  const source = field(field(renderer, 'annotations'), 'underWay');
-  return hasMethods(source, ['get', 'subscribe']) ? (source as UnderWaySource) : null;
-}
-
-/** Tells an Atlas tab's token renderer how to draw the tokens players drag (`TokenRenderer.setHeldPlayout`), where it can be told. */
-function setHeldPlayout(tokens: unknown, playout: HeldPlayout | null): void {
-  const set = field(tokens, 'setHeldPlayout');
-  if (isFunction(set)) (set as (playout: HeldPlayout | null) => void).call(tokens, playout);
-}
-
-/**
- * The parts of an Atlas tab's renderer the GM's marks are read from, or null while it has no viewport
- * and canvas. Measurement records came later than the rest (public PR 345): without them the laser
- * and the players' marks still work, and the GM's measurements stay with the GM.
- */
-/** Shows a layer to the players' frame alone (`PixiRendererOrchestrator.addPlayerFrameLayer`). */
-type PlayerFrameLayer = NonNullable<OverlayHost['playerFrame']>;
-
-function rendererParts(renderer: unknown): { readonly measurements: SceneSource<Measurements> | null; readonly viewport: Viewport; readonly canvas: HTMLCanvasElement; readonly tokens: unknown; readonly audience: unknown; readonly layBodies: LayBodies | null; readonly playerFrame: PlayerFrameLayer | null } | null {
-  const viewport = call(renderer, 'getViewportInstance');
-  const canvas = call(renderer, 'getCanvasElement');
-  if (!hasMethods(viewport, ['on', 'off', 'toWorld']) || !hasMethods(canvas, ['addEventListener', 'getContext'])) return null;
-  const measurements = measurementsOf(renderer);
-  if (measurements === null) console.warn('Atlas Online: this Atlas build keeps no measurement records, so players do not see the GM\'s measurements. Update Atlas.');
-  // The bodies of the areas players measure lie in the map itself, where Atlas's own lie: under its tokens and its lighting.
-  const layBodies: LayBodies | null = isContainer(viewport) ? (layer) => placeUnderTokens(viewport, layer) : null;
-  // The players' measurements in the player window too, where this Atlas build can show a layer to its players' frame alone.
-  const addLayer = field(renderer, 'addPlayerFrameLayer');
-  const playerFrame: PlayerFrameLayer | null = isFunction(addLayer) ? (layer) => (addLayer as PlayerFrameLayer).call(renderer, layer) : null;
-  return { measurements, viewport: viewport as Viewport, canvas: canvas as HTMLCanvasElement, tokens: call(renderer, 'getTokenRenderer'), audience: call(renderer, 'getCanvasAudience'), layBodies, playerFrame };
+/** The parts of an Atlas tab's canvas the GM's marks are read from, or null while it has no viewport. */
+function canvasParts(canvas: MapCanvas): { readonly viewport: Viewport; readonly canvas: HTMLCanvasElement; readonly tokens: MapTokens | null; readonly measure: MapMeasure | null } | null {
+  const viewport = canvas.getViewportInstance();
+  if (viewport === null) return null;
+  return { viewport, canvas: canvas.getCanvasElement(), tokens: canvas.getTokenRenderer(), measure: canvas.getMeasureRenderer() };
 }
 
 /**
@@ -74,8 +33,8 @@ function rendererParts(renderer: unknown): { readonly measurements: SceneSource<
  */
 export class GmMarks {
   private readonly app: App;
-  /** The shared tab's renderer, or null once it is gone. */
-  private readonly renderer: () => unknown;
+  /** The shared tab's canvas, or null once it is gone. */
+  private readonly renderer: () => MapCanvas | null;
   private readonly store: SceneStore;
   /** The player whose drag holds a token, by GM token id. */
   private readonly draggerOf: (tokenId: string) => string | undefined;
@@ -85,7 +44,7 @@ export class GmMarks {
   private readonly fog = new FogCoverageCache();
   /** What the overlay shows: the players' marks and the rulers of their drags, each kept until it changes. */
   private shown: { players: PlayerMarks; drags: readonly RemoteDrag[]; strokes: readonly SharedStroke[] } = { players: { lasers: [], measures: [] }, drags: [], strokes: [] };
-  private built: { readonly renderer: unknown; readonly source: GmMarkSource; readonly taps: readonly { destroy(): void }[]; readonly host: OverlayHost; readonly tokens: unknown } | null = null;
+  private built: { readonly renderer: MapCanvas; readonly source: GmMarkSource; readonly taps: readonly { destroy(): void }[]; readonly host: OverlayHost; readonly tokens: MapTokens | null } | null = null;
   private readonly playout: HeldPlayout = {
     interval: LIVE_INTERVAL_MS,
     lag: (tokenId) => {
@@ -94,7 +53,7 @@ export class GmMarks {
     },
   };
 
-  constructor(app: App, renderer: () => unknown, store: SceneStore, rules: () => MeasureRules | null, draggerOf: (tokenId: string) => string | undefined) {
+  constructor(app: App, renderer: () => MapCanvas | null, store: SceneStore, rules: () => MeasureRules | null, draggerOf: (tokenId: string) => string | undefined) {
     this.app = app;
     this.renderer = renderer;
     this.store = store;
@@ -108,17 +67,18 @@ export class GmMarks {
     const built = this.built;
     if (built !== null && built.renderer === renderer) return built.source;
     this.release();
-    const parts = rendererParts(renderer);
+    if (renderer === null) return null;
+    const parts = canvasParts(renderer);
     if (parts === null) return null;
     const state = (): SceneState & Partial<Pick<ViewState, 'activeTool' | 'tokenSettings'>> => this.store.getState();
     const tap = new PointerTap(parts.viewport, parts.canvas, () => state().activeTool === 'laser-pointer');
     const cursor = new CursorTap(parts.viewport, parts.canvas);
-    const stroke = strokeOf(renderer);
+    const stroke = renderer.getAnnotations()?.underWay;
     const source: GmMarkSource = {
-      measurements: parts.measurements,
+      measurements: parts.measure?.measurements ?? null,
       laser: tap,
       cursor,
-      ...(stroke !== null && { stroke }),
+      ...(stroke !== undefined && { stroke }),
       fog: () => {
         const scene = state();
         return this.fog.get(levelObjects(scene).fog, levelMapKey(scene.mapPath, scene));
@@ -127,17 +87,14 @@ export class GmMarks {
       footprints: () => this.footprints(parts.tokens, state()),
       seen: () => {
         const mapPath = state().mapPath;
-        const shown = mapPath === null ? null : asTokenSource(this.renderer())?.playerRollTokens(mapPath);
+        const shown = mapPath === null ? null : this.renderer()?.playerRollTokens(mapPath);
         return (id) => shown?.has(id) === true;
       },
-      onPlayersViewChange: (listener) => {
-        const subscribe = field(parts.audience, 'onChange');
-        const stop: unknown = isFunction(subscribe) ? (subscribe as (listener: () => void) => unknown).call(parts.audience, listener) : undefined;
-        return isFunction(stop) ? () => void stop() : () => undefined;
-      },
+      onPlayersViewChange: (listener) => renderer.getCanvasAudience().onChange(listener),
     };
-    setHeldPlayout(parts.tokens, this.playout);
-    const host: OverlayHost = { canvas: parts.canvas, viewport: parts.viewport, ...(parts.layBodies && { layBodies: parts.layBodies }), ...(parts.playerFrame && { playerFrame: parts.playerFrame }) };
+    parts.tokens?.setHeldPlayout(this.playout);
+    // The bodies of the areas players measure lie in the map itself, where Atlas's own lie: under its tokens and its lighting.
+    const host: OverlayHost = { canvas: parts.canvas, viewport: parts.viewport, layBodies: (layer) => placeUnderTokens(parts.viewport, layer), playerFrame: (layer) => renderer.addPlayerFrameLayer(layer) };
     this.built = { renderer, source, taps: [tap, cursor], host, tokens: parts.tokens };
     return source;
   }
@@ -176,7 +133,7 @@ export class GmMarks {
   /** Lets go of the renderer's parts: its taps, and its tokens go back to gliding. */
   private release(): void {
     this.built?.taps.forEach((tap) => tap.destroy());
-    if (this.built !== null) setHeldPlayout(this.built.tokens, null);
+    this.built?.tokens?.setHeldPlayout(null);
     this.built = null;
   }
 
@@ -186,10 +143,9 @@ export class GmMarks {
   }
 
   /** Where every token stands, hidden ones included, as Atlas's measurements judge their start. */
-  private footprints(tokens: unknown, state: SceneState & Partial<Pick<ViewState, 'tokenSettings'>>): TokenFootprint[] {
-    const sprites = call(tokens, 'getTokenSprites');
-    const displayed = typeof sprites === 'object' && sprites !== null ? (sprites as Record<string, { x: number; y: number } | null>) : {};
-    const size = asTokenSource(this.renderer())?.getGridOptions()?.size ?? state.grid?.size ?? 0;
+  private footprints(tokens: MapTokens | null, state: SceneState & Partial<Pick<ViewState, 'tokenSettings'>>): TokenFootprint[] {
+    const displayed = tokens?.getTokenSprites() ?? {};
+    const size = this.renderer()?.getGridOptions()?.size ?? state.grid?.size ?? 0;
     return tokenFootprints(mapTokens(levelObjects(state)), displayed, size, state.tokenSettings?.tokenRingSize ?? 1);
   }
 }

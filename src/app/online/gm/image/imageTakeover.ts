@@ -1,4 +1,3 @@
-import { field } from '../atlasLighting.ts';
 import type { VaultImage } from '../TokenShare.ts';
 import type { ImageShare, ShowResult } from './ImageShare.ts';
 import { t } from '../../../i18n';
@@ -14,7 +13,8 @@ const REFUSALS: Readonly<Record<Exclude<ShowResult, 'shown' | 'replaced'>, strin
 const TAKEN = ['displayImageOnPlayerView', 'closeImageDisplay', 'isImageDisplayed'] as const;
 type TakenName = (typeof TAKEN)[number];
 
-interface AtlasImageDisplay<File> {
+/** Atlas's image display (`ImageDisplayService`), as far as the takeover stands in front of it. */
+export interface AtlasImageDisplay<File> {
   displayImageOnPlayerView: (file: File) => Promise<void>;
   closeImageDisplay: (options?: { quiet?: boolean }) => void;
   isImageDisplayed: () => boolean;
@@ -42,21 +42,15 @@ export interface ImageDisplayTakeover {
   end(): void;
 }
 
-function asImageDisplay<File>(service: unknown): AtlasImageDisplay<File> | null {
-  return TAKEN.every((name) => typeof field(service, name) === 'function') ? (service as AtlasImageDisplay<File>) : null;
-}
-
 /**
  * Stands in front of Atlas's image display, so "Display on player view" (every menu that offers it,
  * the command and the ribbon) and "Dismiss image from player view" reach the players online too.
  * While a table runs: an image goes to its players, and to Atlas's own player window only while that
  * is open (Atlas would otherwise say that it is not); dismissing, from the command or the window's
  * own ×, takes it away from both; and Atlas's dismiss command is offered while players online still
- * see one. Without a table every call is Atlas's own. Null for an Atlas whose service has no such calls.
+ * see one. Without a table every call is Atlas's own.
  */
-export function takeOverImageDisplay<File>(service: unknown, ports: ImageTakeoverPorts<File>): ImageDisplayTakeover | null {
-  const display = asImageDisplay<File>(service);
-  if (display === null) return null;
+export function takeOverImageDisplay<File>(display: AtlasImageDisplay<File>, ports: ImageTakeoverPorts<File>): ImageDisplayTakeover {
   const own: Record<TakenName, unknown> = display;
   const atlas = { show: display.displayImageOnPlayerView, close: display.closeImageDisplay, isShown: display.isImageDisplayed };
   // A call Atlas keeps on the service itself is put back; one of its class shows again once ours is gone.
@@ -103,25 +97,22 @@ export function takeOverImageDisplay<File>(service: unknown, ports: ImageTakeove
  * a reloaded Atlas has a new one, which is taken at the next look.
  */
 export class ImageTakeover<File> {
-  private readonly service: () => unknown;
+  private readonly service: () => AtlasImageDisplay<File> | null;
   private readonly ports: ImageTakeoverPorts<File>;
-  private taken: { readonly service: unknown; readonly takeover: ImageDisplayTakeover } | null = null;
+  private taken: { readonly service: AtlasImageDisplay<File>; readonly takeover: ImageDisplayTakeover } | null = null;
   /** Whether players online were shown an image at the last look. */
   private shownOnline = false;
 
-  constructor(service: () => unknown, ports: ImageTakeoverPorts<File>) {
+  constructor(service: () => AtlasImageDisplay<File> | null, ports: ImageTakeoverPorts<File>) {
     this.service = service;
     this.ports = ports;
   }
 
   /** Looks again: takes the service over while a table runs, and gives it back otherwise; says when players online were shown an image or no longer are. */
   sync(): void {
-    const service = this.ports.share() === null ? null : this.service() ?? null;
+    const service = this.ports.share() === null ? null : this.service();
     if (this.taken !== null && this.taken.service !== service) this.dispose();
-    if (service !== null && this.taken === null) {
-      const takeover = takeOverImageDisplay(service, this.ports);
-      if (takeover !== null) this.taken = { service, takeover };
-    }
+    if (service !== null && this.taken === null) this.taken = { service, takeover: takeOverImageDisplay(service, this.ports) };
     this.shown(this.ports.share()?.isShown === true);
   }
 

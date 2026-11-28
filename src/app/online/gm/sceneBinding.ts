@@ -1,18 +1,19 @@
 import type { MeasureRules } from '../marks/index.ts';
 import { type App } from 'obsidian';
-import type { GridGeometry } from '../../grid/gridDistance';
-import { resolveMeasurementSettings } from '../../grid/measurementFormat';
+import { resolveMeasurementSettings, type MeasurementSettings } from '../../grid/measurementFormat';
+import type { AreaMap } from '../../measure/areaOnMap';
 import { levelObjects } from '../../levels/levelObjects';
 import { difficultCells } from '../../mapFeatures/featureIndex';
 import { mapFeatureList } from '../../mapFeatures/mapFeatures';
-import { accentColour, lightingSourceOf, measurementOf, tabAreaMap } from './atlasLighting.ts';
-import { call, type PlayerTokenSource, type SceneStore } from './atlasView.ts';
+import { accentColour } from './atlasLighting.ts';
+import type { PlayerTokenSource, SceneStore } from './atlasView.ts';
 import { bookSceneOf, type BookScene } from './book/bookScene.ts';
 import { ResourceWrites } from './book/resourceWrites.ts';
 import { companionTimers } from './companionTimers.ts';
 import { decodeMaskAlpha } from './exploredMaskAlpha.ts';
 import { clearPlayerMarks, HELD_TAB, type GmTab } from './floorSource.ts';
 import { GmMarks } from './gmMarks.ts';
+import type { MapCanvas } from './mapView.ts';
 import { gmTabOf } from './gmTab.ts';
 import type { GmMessage, RollRequestAnswer } from '../protocol/index.ts';
 import type { LoggedRoll, RollRequest } from './log/TableLog.ts';
@@ -77,6 +78,24 @@ function floorsSeen(share: SceneShare, source: PlayerTokenSource | null): Player
   return { playerRollTokens: (mapPath, tokenIds) => share.shown(mapPath, tokenIds ?? []), getGridOptions: () => source.getGridOptions() };
 }
 
+/** How the GM's own ruler labels distances on the tab's map (the map's collection settings); null while it cannot be read. */
+function measurementOf(canvas: MapCanvas): MeasurementSettings | null {
+  try {
+    return canvas.getMeasureRenderer()?.measurementSettingsProvider?.() ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** The map as the tab's measured areas are shaped by it (its rules and the walls of the level shown); null where it cannot be read. */
+function areaMapOf(canvas: MapCanvas | null): AreaMap | null {
+  try {
+    return canvas?.getMeasureRenderer()?.areaMap() ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** The last value a read gave while `shown`, given again while not: what players were last sent stays as it was. */
 function lastWhileShown<T>(shown: () => boolean, read: () => T | null): () => T | null {
   let last: T | null = null;
@@ -95,16 +114,16 @@ export function bindScene(ports: SceneBindingPorts, tab: AtlasTab, presented: Pr
   const timers = companionTimers();
   const live = (): boolean => ports.isLive(binding);
   const shown = (): boolean => live() && !store.held;
-  const measurement = lastWhileShown(shown, () => measurementOf(renderer) ?? lightingSourceOf(renderer)?.measurement() ?? null);
-  const liveRenderer = (): unknown => (live() ? renderer : null);
+  const measurement = lastWhileShown(shown, () => measurementOf(renderer) ?? renderer.getLightingController()?.sightAids.measurement() ?? null);
+  const liveRenderer = (): MapCanvas | null => (live() ? renderer : null);
   const rasters = new TextureRasters(() => pixiRendererOf(liveRenderer()));
   const marks: GmMarks = new GmMarks(ports.app, liveRenderer, tab.store, () => {
-    const grid = call(liveRenderer(), 'getGridOptions') as GridGeometry | null | undefined;
-    if (grid === null || grid === undefined) return null;
+    const grid = liveRenderer()?.getGridOptions() ?? null;
+    if (grid === null) return null;
     const state = tab.store.getState();
     const difficult = difficultCells(mapFeatureList(levelObjects(state).mapFeatures));
     // The areas players measure stop at the walls the GM's own do.
-    return { grid, measurement: measurement() ?? resolveMeasurementSettings(undefined, state.grid), difficult, areas: tabAreaMap(liveRenderer()) } satisfies MeasureRules;
+    return { grid, measurement: measurement() ?? resolveMeasurementSettings(undefined, state.grid), difficult, areas: areaMapOf(liveRenderer()) } satisfies MeasureRules;
   }, (tokenId): string | undefined => share.draggerOf(tokenId));
   const gm = gmTabOf(tab, marks);
   // Players' marks leave the GM's canvas as the hold begins: it is about to show another scene.

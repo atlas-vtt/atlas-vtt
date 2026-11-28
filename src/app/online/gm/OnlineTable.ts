@@ -17,7 +17,7 @@ import { gmRoll, type GmRollDraft, type GmRollRefusal } from './log/gmRolls.ts';
 import { restChangeOwners, restRecordOf } from './log/restEntry.ts';
 import { TableLog } from './log/TableLog.ts';
 import type { Ownership } from './ownership.ts';
-import { presentedScene, presentedSceneSource } from './presentedScene.ts';
+import { presentedSceneOf } from '../../services/presentedScene';
 import { bindScene, type SceneBinding } from './sceneBinding.ts';
 import { TabWatch } from './sharedTab.ts';
 import { CoveredPages } from './coveredPages.ts';
@@ -182,7 +182,7 @@ export class OnlineTable {
     });
     this.watch = new TabWatch<SceneBinding>({
       leaves: () => app.workspace.getLeavesOfType(ATLAS_VIEW_TYPE),
-      presented: () => presentedScene(app),
+      presented: () => presentedSceneOf(app).get(),
       bind: (tab, presented) => bindScene({
         app,
         seats: ownership,
@@ -323,7 +323,7 @@ export class OnlineTable {
     this.check();
     this.stopWatchTimer = every(companionTimers(), WATCH_MS, () => this.check());
     // Atlas presenting another scene is followed at once; the timer catches everything else
-    this.stopFollowingPresented = presentedSceneSource(this.app)?.onChange(() => this.watch.check()) ?? ((): void => undefined);
+    this.stopFollowingPresented = presentedSceneOf(this.app).onChange(() => this.watch.check());
   }
 
   /** Looks at the presented and the shared tab again (the workspace's layout changed). */

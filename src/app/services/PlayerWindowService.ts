@@ -15,13 +15,13 @@ import { PlayerWidgetBar } from './PlayerWidgetBar';
 import { LocalPlayerView, LOCAL_PLAYER_VIEW_TYPE, type PlayerCameraState } from '../local-player-view';
 import { t } from '../i18n';
 import { cannotRender, PlayerFrameMirror, type PlayerFrameSource } from './PlayerFrameMirror';
-import { framedCamera, PLAYER_FRAME_4K_PIXEL_BUDGET, PLAYER_FRAME_PIXEL_BUDGET } from './playerFrame';
+import { PLAYER_FRAME_4K_PIXEL_BUDGET, PLAYER_FRAME_PIXEL_BUDGET } from './playerFrame';
+import { cameraPlayersAreOn, FOLLOWING, nextPlayerCamera, outlinedCamera, type PlayerCamera, type PlayerCameraEvent, type PlayerCameraStep, type PlayerCameraWorld, type PlayerGlide } from './playerCamera';
 import type { PlayerFrame, Screen, Size, WorldFrame } from '../types/playerFrame';
 import { presentedSceneOf, type PresentedScene } from './presentedScene';
 import { onMapRulesChange } from './mapRules';
 import { showNotice } from '../ui/notice';
 import { frameWorldSize, tableTvOf, tableTvPlayerFrame, type TableTv, type TvSetupScreen } from './tableTvFrame';
-import { glideCamera } from './tableTv';
 import { prefersReducedMotion } from '../utils/motion';
 import { applyTableTvLook, PLAYER_OVERLAYS_CLASS } from './playerWindowTurn';
 import { glassFrame, PlayerGlass, sameCamera, withSetupScreen } from './playerGlass';
@@ -62,10 +62,8 @@ export class PlayerWindowService {
   private settingsService: SettingsService;
   private streamSource: PlayerFrameSource | null = null;
   private animationFrame: number | null = null;
-  /** Camera the DM froze players on; the presented scene is still rendered live through it. */
-  private frozenCamera: PlayerCameraState | null = null;
-  /** The camera of the last frame players were shown of the presented scene; none until a frame of that scene came. */
-  private shownCamera: PlayerCameraState | null = null;
+  /** Which camera players are framed through (`playerCamera.ts`): only `moveCamera` changes it, and draws what it says. */
+  private camera: PlayerCamera = FOLLOWING;
   /** The level of the shown tab players see; another level of the same tab is another picture, as another tab is. */
   private shownLevelId: string | null = null;
   /** Last player frame, shown unchanged while the DM works on another scene tab. */
@@ -84,8 +82,6 @@ export class PlayerWindowService {
   private mirrorFallback: PlayerMirrorFallback | null = null;
   /** Identifies the running frame loop; a newer loop ends older ones. */
   private mirrorLoopId = 0;
-  /** Identifies the running glide of frozen players; any other change of their camera ends it. */
-  private glideId = 0;
   /** The set-up screen on the TV and the followers of the players' camera. */
   private readonly glass = new PlayerGlass();
   /** Whether the curtain is down: players see black until it is lifted, whatever is presented meanwhile. */
@@ -114,27 +110,12 @@ export class PlayerWindowService {
   }
 
   /**
-   * Toggle the DM's camera freeze and return the new frozen state. Where players are not shown
-   * the presented scene yet there is nothing to freeze them on, and the DM is told so.
-   */
-  public toggleCameraFreeze(): boolean {
-    if (this.frozenCamera) {
-      this.unfreezeCamera();
-      showNotice(t('player.unfrozen'));
-      return false;
-    }
-    this.freezeCamera();
-    showNotice(this.isFrozen() ? t('player.frozen') : t('player.nothingToFreeze'));
-    return this.isFrozen();
-  }
-
-  /**
    * Keep players on `camera`, by default the camera they currently see, and on the world
    * rectangle it frames: map changes stay visible; the DM's panning and zooming, and the size
    * of the DM's pane, no longer reach them.
    */
   public freezeCamera(camera?: PlayerCameraState): void {
-    this.setFrozenCamera(camera ?? this.cameraPlayersSee());
+    this.moveCamera({ type: 'freeze', camera });
   }
 
   /**
@@ -142,12 +123,7 @@ export class PlayerWindowService {
    * them another place, they dip through black to it, as to another scene, never jump.
    */
   public unfreezeCamera(): void {
-    const frozen = this.frozenCamera;
-    if (!frozen) return;
-    const following = this.streamSource?.getCamera?.();
-    const samePlace = following && following.centerX === frozen.centerX && following.centerY === frozen.centerY && following.scale === frozen.scale;
-    if (!samePlace && !this.heldFrame) this.dipToNextScene();
-    this.setFrozenCamera(null);
+    this.moveCamera({ type: 'unfreeze' });
   }
 
   /**
@@ -167,7 +143,7 @@ export class PlayerWindowService {
     if (!this.framingCamera(tabId)) return false;
     const to = { ...camera };
     this.rememberFrame(this.playerView?.getState().filePath || tabId, to);
-    this.moveFrozenCamera(to);
+    this.moveCamera({ type: 'moveTo', camera: to });
     return true;
   }
 
@@ -185,13 +161,13 @@ export class PlayerWindowService {
   public dragPlayersTo(tabId: string, x: number, y: number): boolean {
     const camera = this.framingCamera(tabId);
     if (!camera) return false;
-    this.setFrozenCamera({ ...camera, centerX: x, centerY: y }, false);
+    this.moveCamera({ type: 'drag', camera: { ...camera, centerX: x, centerY: y } });
     return true;
   }
 
   /** The glass on the map of `tabId`: what players see of it, pinned or following; null where they see another scene. */
   public glassOf(tabId: string): WorldFrame | null {
-    return this.framingCamera(tabId) ? glassFrame(this.playerViewFrame(tabId), this.frozenCamera) : null;
+    return this.framingCamera(tabId) ? glassFrame(this.playerViewFrame(tabId), this.camera.frozen) : null;
   }
 
   /** Runs `listener` whenever the camera players see through moves: a freeze, a glide step, a frame through another camera. */
@@ -221,41 +197,9 @@ export class PlayerWindowService {
     return this.settingsService.getTableTvSettings().viewGlideMs > 0 && !prefersReducedMotion(win.document.body);
   }
 
-  /**
-   * Freezes players on `to`, gliding there from the camera they see, frozen or following. Under
-   * the curtain there is nothing to see of it. Every step is an ordinary frame, fog and lighting included.
-   */
-  private moveFrozenCamera(to: PlayerCameraState): void {
-    const camera = this.frozenCamera ?? this.cameraPlayersSee();
-    const win = this.playerWindow;
-    if (!camera || !win || this.curtained || sameCamera(camera, to) || !this.movesGently(win)) {
-      this.setFrozenCamera(to);
-      return;
-    }
-    // Players who followed the GM stop doing so here, not when the glide lands
-    if (!this.frozenCamera) this.setFrozenCamera(camera, false);
-    const from = this.frozenCamera ?? camera;
-    const { viewGlideMs } = this.settingsService.getTableTvSettings();
-    const glide = ++this.glideId;
-    const start = win.performance.now();
-    const step = (now: number): void => {
-      if (glide !== this.glideId || !this.isWindowOpen()) return;
-      const t = Math.min(1, (now - start) / viewGlideMs);
-      if (t >= 1) {
-        this.setFrozenCamera(to);
-        return;
-      }
-      this.frozenCamera = glideCamera(from, to, t);
-      this.mirror?.markStale();
-      this.glass.cameraChanged();
-      win.requestAnimationFrame(step);
-    };
-    win.requestAnimationFrame(step);
-  }
-
   /** The camera players are on, moved to the world point (x, y): to present another scene framed there; null while the window is closed. */
   public playerCameraAt(x: number, y: number): PlayerCameraState | null {
-    const camera = this.isWindowOpen() ? this.frozenCamera ?? this.cameraPlayersSee() : null;
+    const camera = this.isWindowOpen() ? cameraPlayersAreOn(this.camera, this.world) : null;
     return camera ? { ...camera, centerX: x, centerY: y } : null;
   }
 
@@ -278,46 +222,20 @@ export class PlayerWindowService {
   /** The camera players see the scene of `tabId` through, where they see it live. */
   private framingCamera(tabId: string): PlayerCameraState | null {
     if (!this.isWindowOpen() || this.heldFrame || playerWindowStore.getState().shownTabId !== tabId) return null;
-    return this.outlinedCamera();
-  }
-
-  /**
-   * The camera the glass on the GM's map is placed through: pinned, the frozen one; following,
-   * the view's own, which the outline is drawn through and the next frame is rendered through
-   * (the last frame's would trail the GM's pans by a frame); else what players were shown last.
-   */
-  private outlinedCamera(): PlayerCameraState | null {
-    if (this.frozenCamera) return this.frozenCamera;
-    const source = this.streamSource;
-    const live = source && !this.heldFrame && !cannotRender(source) ? source.getCamera?.() : undefined;
-    return live ?? this.cameraPlayersSee();
+    return outlinedCamera(this.camera, this.world);
   }
 
   /** The frame the mirror would render of `source` through the camera players are on: the same function, so the outline is what players get. */
   private playerFrameOf(source: PlayerFrameSource | null): PlayerFrame | null {
     const canvas = this.playerWindow?.document.getElementById('atlas-player-canvas');
     const window = canvas?.instanceOf(HTMLCanvasElement) ? this.windowScreen(canvas) : null;
-    const camera = this.isWindowOpen() ? this.outlinedCamera() : null;
+    const camera = this.isWindowOpen() ? outlinedCamera(this.camera, this.world) : null;
     if (!source || !window || !camera) return null;
     return tableTvPlayerFrame(window, camera, source.getScreen?.(), this.tableTv(), source.getGridSize?.(), this.pixelBudget());
   }
 
-  /**
-   * The camera players see the presented scene through now: that of its last frame, else the
-   * DM's own. Never a camera of another scene: the one players saw before this scene was
-   * presented frames a rectangle of that scene's map; while a frame is held the view shows the
-   * scene the DM browses, through its camera; and while the scene loads the view's camera is
-   * not the scene's yet. With none of its own, there is nothing to freeze on yet.
-   */
-  private cameraPlayersSee(): PlayerCameraState | null {
-    if (this.shownCamera) return this.shownCamera;
-    const source = this.streamSource;
-    if (!source || this.heldFrame || cannotRender(source)) return null;
-    return source.getCamera?.() ?? null;
-  }
-
   public isFrozen(): boolean {
-    return this.frozenCamera !== null;
+    return this.camera.frozen !== null;
   }
 
   public isCurtained(): boolean {
@@ -413,7 +331,7 @@ export class PlayerWindowService {
   public releaseHeldFrame(source: PlayerFrameSource): void {
     if (!this.isWindowOpen()) return;
     this.streamSource = source;
-    this.pinFrozenCamera();
+    this.moveCamera({ type: 'pin' });
     this.mirror?.markStale();
     this.presentScene();
     this.heldFrame = null;
@@ -436,31 +354,17 @@ export class PlayerWindowService {
     const levelId = presentedSceneOf(this.app).get()?.levelId ?? null;
     const anotherScene = playerWindowStore.getState().shownTabId !== tabId || this.shownLevelId !== levelId;
     this.shownLevelId = levelId;
-    if (anotherScene) this.dipToNextScene();
     this.streamSource = source;
     this.mirror?.markStale();
     this.presentScene();
     this.heldFrame = null;
-    // The camera players saw the scene before through says nothing about this one
-    if (anotherScene) this.shownCamera = null;
     const map = filePath || tabId;
-    const remembered = anotherScene ? this.playerView?.getState().frames?.[map] : undefined;
-    if (camera) {
-      this.rememberFrame(map, camera);
-      if (anotherScene) this.setFrozenCamera(camera);
-      else this.moveFrozenCamera(camera);
-    } else if (remembered) {
-      this.setFrozenCamera(remembered);
-    } else if (this.frozenCamera) {
-      const framing = source.getCamera?.() ?? null;
-      if (framing && !anotherScene) this.moveFrozenCamera(framing);
-      else this.setFrozenCamera(framing);
-    }
+    const step = this.moveCamera({ type: 'present', anotherScene, map, camera, remembered: this.playerView?.getState().frames?.[map] });
     // The held frame is gone even where no freeze changed
     this.updateFreezeIndicator();
     playerWindowStore.setState({ shownTabId: tabId });
     this.playerView?.updateSession({
-      tabId, ...(filePath ? { filePath } : {}), levelId: levelId ?? undefined, frozen: this.isFrozen(), ...(anotherScene && !this.isFrozen() ? { camera: null } : {}),
+      tabId, ...(filePath ? { filePath } : {}), levelId: levelId ?? undefined, frozen: this.isFrozen(), ...(step.forget ? { camera: null } : {}),
     });
     this.followSource();
   }
@@ -492,12 +396,11 @@ export class PlayerWindowService {
     this.shownLevelId = scene.levelId ?? null;
     this.playerWindow = view.contentEl.win;
     this.streamSource = source;
-    this.shownCamera = null;
     // A curtain lowered for online players while the window was closed stays down here, and one a restored window had comes down for them too
     this.curtained = view.getState().curtain === true || tableControlsStore.getState().curtain;
     if (this.curtained) tableControlsStore.setState({ curtain: true });
     this.sceneFade.cancel();
-    this.pinFrozenCamera();
+    this.moveCamera({ type: 'attach' });
     this.mirror?.markStale();
     playerWindowStore.setState({ shownTabId: scene.tabId, curtain: this.curtained });
     view.updateSession({ tabId: scene.tabId, filePath: scene.filePath, levelId: scene.levelId });
@@ -513,35 +416,66 @@ export class PlayerWindowService {
     this.setupPlayerWindow();
   }
 
-  /** `persist` false leaves the window's session as it is: for steps of a drag, whose drop writes it. */
-  private setFrozenCamera(camera: PlayerCameraState | null, persist = true): void {
-    this.glideId++;
-    this.frozenCamera = camera ? framedCamera({ ...camera }, this.streamSource?.getScreen?.()) : null;
-    this.mirror?.markStale();
-    this.updateFreezeIndicator();
-    playerWindowStore.setState({ isFrozen: this.isFrozen() });
-    if (persist) this.playerView?.updateSession({ frozen: this.isFrozen(), ...(this.frozenCamera ? { camera: { ...this.frozenCamera } } : {}) });
-    this.glass.cameraChanged();
+  /** What a decision of the camera policy reads of the window. */
+  private readonly world: PlayerCameraWorld = {
+    view: () => this.streamSource?.getCamera?.(),
+    live: () => !!this.streamSource && !this.heldFrame && !cannotRender(this.streamSource),
+    held: () => this.heldFrame !== null,
+    screen: () => this.streamSource?.getScreen?.(),
+    curtained: () => this.curtained,
+    glideMs: () => {
+      const win = this.playerWindow;
+      return win && this.movesGently(win) ? this.settingsService.getTableTvSettings().viewGlideMs : 0;
+    },
+    now: () => this.playerWindow?.performance.now() ?? 0,
+  };
+
+  /** Takes the camera policy's next step on `event` and shows players what it says. */
+  private moveCamera(event: PlayerCameraEvent): PlayerCameraStep {
+    const before = this.camera;
+    const step = nextPlayerCamera(before, event, this.world);
+    this.camera = step.camera;
+    const { frozen, glide } = step.camera;
+    if (step.dip) this.dipToNextScene();
+    if (step.remember) this.rememberFrame(step.remember.map, step.remember.camera);
+    switch (step.frozen) {
+      case 'pinned':
+        this.mirror?.markStale();
+        this.updateFreezeIndicator();
+        playerWindowStore.setState({ isFrozen: frozen !== null });
+        if (step.persist) this.playerView?.updateSession({ frozen: frozen !== null, ...(frozen ? { camera: { ...frozen } } : {}) });
+        break;
+      case 'glided':
+        this.mirror?.markStale();
+        break;
+      case 'framed':
+        if (frozen) this.playerView?.updateSession({ camera: { ...frozen } });
+        break;
+      case undefined:
+        break;
+    }
+    if (step.moved) this.glass.cameraChanged();
+    if (glide && glide !== before.glide) this.runGlide(glide);
+    return step;
   }
 
-  /**
-   * A frozen camera that came without the world rectangle it frames (one an older Atlas saved,
-   * or one frozen before a scene was attached) takes what the DM's screen shows through it now,
-   * and keeps that.
-   */
-  private pinFrozenCamera(): void {
-    if (!this.frozenCamera) return;
-    const pinned = framedCamera(this.frozenCamera, this.streamSource?.getScreen?.());
-    if (pinned === this.frozenCamera) return;
-    this.frozenCamera = pinned;
-    this.playerView?.updateSession({ camera: { ...pinned } });
+  /** Moves players on along `glide` with each display frame of their window, until another move of their camera ends it. */
+  private runGlide(glide: PlayerGlide): void {
+    const win = this.playerWindow;
+    if (!win) return;
+    const step = (now: number): void => {
+      if (this.camera.glide !== glide || !this.isWindowOpen()) return;
+      this.moveCamera({ type: 'tick', now });
+      if (this.camera.glide === glide) win.requestAnimationFrame(step);
+    };
+    win.requestAnimationFrame(step);
   }
 
   private updateFreezeIndicator(): void {
     if (!this.playerWindow || this.playerWindow.closed) return;
     const indicator = this.playerWindow.document.getElementById('atlas-player-freeze-indicator');
     if (indicator) {
-      indicator.style.display = this.frozenCamera || this.heldFrame ? 'flex' : 'none';
+      indicator.style.display = this.camera.frozen || this.heldFrame ? 'flex' : 'none';
     }
   }
 
@@ -673,7 +607,7 @@ export class PlayerWindowService {
       freezeIcon.createSvg('rect', { attr: { x: 14, y: 4, width: 4, height: 16, rx: 1 } });
       freezeIcon.createSvg('rect', { attr: { x: 6, y: 4, width: 4, height: 16, rx: 1 } });
       freezeIndicator.createSpan({ text: t('player.paused') });
-      freezeIndicator.style.display = this.frozenCamera || this.heldFrame ? 'flex' : 'none';
+      freezeIndicator.style.display = this.camera.frozen || this.heldFrame ? 'flex' : 'none';
       
       // Create title bar container
       const titleBarContainer = content.createDiv();
@@ -738,7 +672,7 @@ export class PlayerWindowService {
       source: () => this.streamSource,
       window: () => this.windowScreen(targetCanvas),
       heldFrame: () => this.heldFrame,
-      frozenCamera: () => this.frozenCamera,
+      frozenCamera: () => this.camera.frozen,
       settings: () => this.settingsService.getLocalPlayerViewSettings(),
       tableTv: () => this.tableTv(),
       setup: () => this.glass.setupScreen(),
@@ -807,13 +741,8 @@ export class PlayerWindowService {
   /** Persist the camera players see so a restored window reopens on the same framing. */
   private recordPlayerCamera(camera: PlayerCameraState | undefined): void {
     if (!camera) return;
-    const moved = !sameCamera(camera, this.shownCamera);
-    this.shownCamera = camera;
-    if (moved) this.glass.cameraChanged();
-    const previous = this.playerView?.getState().camera;
-    const changed = camera.centerX !== previous?.centerX || camera.centerY !== previous.centerY || camera.scale !== previous.scale
-      || camera.width !== previous.width || camera.height !== previous.height;
-    if (changed) this.playerView?.updateSession({ camera });
+    this.moveCamera({ type: 'shown', camera });
+    if (!sameCamera(camera, this.playerView?.getState().camera)) this.playerView?.updateSession({ camera });
   }
 
   /**
@@ -857,8 +786,7 @@ export class PlayerWindowService {
     this.playerView = null;
     this.streamSource = null;
     this.heldFrame = null;
-    this.frozenCamera = null;
-    this.shownCamera = null;
+    this.camera = FOLLOWING;
     this.glass.showSetup(null);
     resetPlayerWindowStore();
     // With no online table the curtain and the pause were this window's alone, and close with it
