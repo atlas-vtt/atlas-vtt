@@ -170,7 +170,9 @@ describe('the players\' picture of a floor, from the GM\'s canvas and worked out
     views.push(view);
     const disagreements: Record<string, Record<string, string[]>> = {};
     const shown: Record<string, number> = {};
+    const partyDifferences: string[] = [];
     let compared = 0;
+    let partyCompared = 0;
     for (let seed = 1; seed <= SCENES; seed++) {
       const generated = generate(seeded(seed));
       for (const floor of ['ground', 'upper']) {
@@ -181,6 +183,14 @@ describe('the players\' picture of a floor, from the GM\'s canvas and worked out
         const partyEast = shownTokens.some((token) => token.x > 500 && PLAYER_SIGHT_POLICY.alwaysSeen(token));
         view.renderer.getTokenRenderer()!.setRoofProvider((point) => floor === 'upper' && point.x > 500 && !partyEast);
         canvas.drawn = true;
+        // The lighting's own perception of the party (`LightingController.playerSight`, which the canvas's frame, its
+        // pictures and its measurements read) and the players' perception module give one answer for every token.
+        const lit = view.renderer.getLightingController()!.playerSight();
+        const perceived = view.renderer.playersPerception().tokens({ ...view.renderer.sightSource(), frame: (party) => party });
+        for (const token of shownTokens) {
+          partyCompared += 1;
+          if (lit?.(token.id) !== perceived?.(token.id)) partyDifferences.push(`seed ${seed} ${floor} ${token.id}: ${lit?.(token.id)} | ${perceived?.(token.id)}`);
+        }
         const gpu = answersOf(view, floor);
         canvas.drawn = false;
         const cpu = answersOf(view, floor);
@@ -196,5 +206,7 @@ describe('the players\' picture of a floor, from the GM\'s canvas and worked out
     }
     expect(compared).toBe(SCENES * 2);
     expect({ shown, disagreements }).toMatchSnapshot();
+    expect(partyCompared).toBeGreaterThan(SCENES * 4);
+    expect(partyDifferences).toEqual([]);
   }, 30_000);
 });
