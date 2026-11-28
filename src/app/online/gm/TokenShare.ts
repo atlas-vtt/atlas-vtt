@@ -13,6 +13,7 @@ import { levelObjects } from '../../levels/levelObjects';
 import type { AtlasInputs } from './sceneSignal.ts';
 import { movesOutOfTurn, sharedTurnTokens, type TurnShareState } from './turnShare.ts';
 import { isOffMap, mapTokens, sceneTokens } from '../../tokens/offMap';
+import { hiddenFromPlayers } from '../../perception/framePerception';
 
 /** An image as read from the vault. */
 export interface VaultImage {
@@ -114,7 +115,7 @@ export class TokenShare {
   /** The id players know a combatant beside the map by, where their initiative list shows it (it is not hidden). */
   besideAlias(tokenId: string): string | undefined {
     const token = sceneTokens(levelObjects(this.store.getState()))[tokenId];
-    return isOffMap(token) && token?.isHidden !== true ? this.alias(tokenId) : undefined;
+    return isOffMap(token) && !hiddenFromPlayers(token) ? this.alias(tokenId) : undefined;
   }
 
   /** The scene of the last list players were sent, or null while none is. */
@@ -200,7 +201,7 @@ export class TokenShare {
     const shown = source.playerRollTokens(state.mapPath);
     // The GM's numbers, as Atlas's player window shows them: on the tokens they see, and the combatants beside the map their list shows unless hidden
     const scene = sceneTokens(levelObjects(state));
-    const inView = (id: string): boolean => (isOffMap(scene[id]) ? scene[id]?.isHidden !== true : shown.has(id));
+    const inView = (id: string): boolean => (isOffMap(scene[id]) ? !hiddenFromPlayers(scene[id]) : shown.has(id));
     const numbers = shownBadgeNumbers(scene, inView, state.tokenSettings?.showInstanceBadges ?? true);
     const changed = numbers.size !== this.numbers.size || [...numbers].some(([id, number]) => this.numbers.get(id) !== number);
     this.numbers = numbers;

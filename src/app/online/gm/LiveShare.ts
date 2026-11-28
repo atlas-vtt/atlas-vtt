@@ -121,7 +121,7 @@ export class LiveShare {
     for (const id of held) {
       const token = mapTokens(levelObjects(state))[id];
       const alias = listed.alias(id);
-      if (token === undefined || alias === undefined || token.isHidden === true || !shown.has(id)) continue;
+      if (token === undefined || alias === undefined || !shown.has(id)) continue;
       // The GM's own drag runs ahead of the store on the canvas. Its drawn place is what players' sight
       // was asked about (fog is tested at the drawn place) only where the lighting's own place does not
       // matter: on an unlit scene, and for a token with vision, which the players always see unless
@@ -183,7 +183,7 @@ export class LiveShare {
     const shown = source.playerRollTokens(state.mapPath, free);
     return new Map(free.flatMap((id): [string, Place][] => {
       const token = mapTokens(state.objects)[id];
-      if (token === undefined || token.isHidden === true || !shown.has(id) || !onMap(token.x) || !onMap(token.y)) return [];
+      if (token === undefined || !shown.has(id) || !onMap(token.x) || !onMap(token.y)) return [];
       return [[id, { x: roundPlace(token.x), y: roundPlace(token.y) }]];
     }));
   }

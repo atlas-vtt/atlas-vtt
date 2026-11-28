@@ -1,7 +1,8 @@
 import type { GmMessage, SharedFloor } from '../protocol/index.ts';
 import { PLAYER_SIGHT_POLICY, type SightPolicy } from '../../vision/tokenSightPolicy';
 import type { SceneState } from './atlasView.ts';
-import { EyesSight, type EyesContext } from './eyesSight.ts';
+import type { PerceivedFloor } from '../../perception/playersPerception';
+import { EyesSight } from './eyesSight.ts';
 import type { FloorRoutes } from './floorRoutes.ts';
 import { FloorSight } from './floorSight.ts';
 import { cpuFloorSource, eyesPicture, floorReads, type FloorReads, type FloorSource, type GmTab, type PictureSources } from './floorSource.ts';
@@ -47,7 +48,7 @@ export interface FloorPortsDeps {
 export function floorPorts(ports: SceneSharePorts, deps: FloorPortsDeps): FloorSharePorts {
   const tab = (): GmTab => ports.tab();
   const sight = new FloorSight({ state: () => deps.state(), map: () => deps.map(), lightingSource: () => tab().lightingSource(), cell: () => deps.cell() });
-  const context: EyesContext = { state: () => deps.state(), rules: () => tab().lightingSource()?.rules() };
+  const context: PerceivedFloor = { state: () => deps.state(), rules: () => tab().lightingSource()?.rules() };
   const cpu = cpuFloorSource(sight, eyesPicture(new EyesSight(PLAYER_SIGHT_POLICY, context), () => sight, tab));
   const source = (): FloorSource => tab().sourceOf(deps.floor, cpu);
   const { routes } = deps;

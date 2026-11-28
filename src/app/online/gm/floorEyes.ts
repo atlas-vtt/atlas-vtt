@@ -6,6 +6,7 @@ import type { SightRules } from '../../vision/sightRules';
 import { PLAYER_SIGHT_POLICY, sceneHasVision, sightPolicyFor } from '../../vision/tokenSightPolicy';
 import { isLit } from './atlasLighting.ts';
 import type { SceneState } from './atlasView.ts';
+import { hiddenFromPlayers } from '../../perception/framePerception';
 
 /**
  * Whose sight a player sees a floor through: the whole party's, or only that of `tokens`, their own characters
@@ -49,7 +50,7 @@ export function floorEyes(inputs: EyesInputs, players: readonly string[]): Map<s
   const seeing = new Map<string, string[]>();
   const owning = new Map<string, string[]>();
   for (const [id, token] of Object.entries(mapTokens(levelObjects(state)))) {
-    const owner = token.isHidden === true ? undefined : inputs.ownerOf(id, token);
+    const owner = hiddenFromPlayers(token) ? undefined : inputs.ownerOf(id, token);
     if (owner === undefined) continue;
     owning.set(owner, [...(owning.get(owner) ?? []), id]);
     if (givesSight(token)) seeing.set(owner, [...(seeing.get(owner) ?? []), id]);

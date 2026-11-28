@@ -1,7 +1,8 @@
 import { Container } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import { fogCoverage, type FogCoverage } from '../../src/app/fog/fogCoverage';
-import { NOTHING_SEEN, PlayerSightTokens, seenByPlayers } from '../../src/app/pixi/token-renderer/PlayerSightTokens';
+import { NOTHING_SEEN, seenByPlayers } from '../../src/app/perception/framePerception';
+import { PlayerSightTokens } from '../../src/app/pixi/token-renderer/PlayerSightTokens';
 import type { TokenGroupContainer } from '../../src/app/pixi/token-renderer/types';
 import type { TokenEntity } from '../../src/app/types';
 import { fogRectangle } from '../helpers/fogOperations';

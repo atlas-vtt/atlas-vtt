@@ -5,6 +5,7 @@ import type { ViewState } from '../../types/viewState';
 import { checkMove, dropPlace, insideMap, MoveRate, refusalReason, samePlace, type MoveContext } from './moveCheck.ts';
 import { PlayerDrags } from './playerDrags.ts';
 import { mapTokens } from '../../tokens/offMap';
+import { hiddenFromPlayers } from '../../perception/framePerception';
 import { playable, type SceneLoad } from './atlasView.ts';
 
 /** What player moves read and write of an Atlas tab's store. */
@@ -172,7 +173,7 @@ export class PlayerMoves {
     const context = this.context(state, from);
     const tokenId = context.scene === move.scene ? context.listedToken(move.id) : undefined;
     const token = tokenId === undefined ? undefined : mapTokens(state.objects)[tokenId];
-    const seen = token !== undefined && token.isHidden !== true && insideMap(token.x, token.y, null);
+    const seen = token !== undefined && !hiddenFromPlayers(token) && insideMap(token.x, token.y, null);
     this.ports.send({ t: 'move-refused', scene: move.scene, id: move.id, x: seen ? token.x : null, y: seen ? token.y : null, ...(reason ? { reason } : {}) }, from);
   }
 

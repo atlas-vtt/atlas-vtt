@@ -1,0 +1,388 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the players' picture of a floor, from the GM's canvas and worked out on the CPU > gives the same answers but where a rule of one side differs (40 generated scenes of two floors) 1`] = `
+{
+  "disagreements": {
+    "seed 1 upper": {
+      "doors the canvas shows and the CPU does not": [
+        "doorUp",
+      ],
+      "pins the canvas shows and the CPU does not": [
+        "pin4",
+        "pin5",
+      ],
+      "tokens the canvas shows and the CPU does not": [
+        "upper3",
+      ],
+    },
+    "seed 10 upper": {
+      "doors the canvas shows and the CPU does not": [
+        "doorUp",
+      ],
+      "pins the canvas shows and the CPU does not": [
+        "pin3",
+        "pin4",
+        "pin5",
+      ],
+    },
+    "seed 11 ground": {
+      "doors the canvas shows and the CPU does not": [
+        "door",
+      ],
+    },
+    "seed 11 upper": {
+      "pins the canvas shows and the CPU does not": [
+        "pin5",
+      ],
+    },
+    "seed 12 upper": {
+      "doors the canvas shows and the CPU does not": [
+        "doorUp",
+      ],
+      "pins the canvas shows and the CPU does not": [
+        "pin5",
+      ],
+    },
+    "seed 13 upper": {
+      "doors the canvas shows and the CPU does not": [
+        "doorUp",
+      ],
+    },
+    "seed 14 upper": {
+      "doors the canvas shows and the CPU does not": [
+        "doorUp",
+      ],
+      "pins the canvas shows and the CPU does not": [
+        "pin4",
+      ],
+    },
+    "seed 15 upper": {
+      "doors the canvas shows and the CPU does not": [
+        "doorUp",
+      ],
+      "tokens the canvas shows and the CPU does not": [
+        "upper2",
+      ],
+    },
+    "seed 17 upper": {
+      "doors the canvas shows and the CPU does not": [
+        "doorUp",
+      ],
+      "pins the canvas shows and the CPU does not": [
+        "pin3",
+        "pin4",
+        "pin5",
+      ],
+      "tokens the canvas shows and the CPU does not": [
+        "upper1",
+        "upper2",
+      ],
+    },
+    "seed 18 upper": {
+      "doors the canvas shows and the CPU does not": [
+        "doorUp",
+      ],
+      "pins the canvas shows and the CPU does not": [
+        "pin4",
+      ],
+    },
+    "seed 19 upper": {
+      "doors the canvas shows and the CPU does not": [
+        "doorUp",
+      ],
+      "pins the canvas shows and the CPU does not": [
+        "pin3",
+        "pin4",
+        "pin5",
+      ],
+    },
+    "seed 2 upper": {
+      "doors the canvas shows and the CPU does not": [
+        "doorUp",
+      ],
+      "pins the canvas shows and the CPU does not": [
+        "pin3",
+        "pin4",
+      ],
+      "tokens the canvas shows and the CPU does not": [
+        "upper1",
+      ],
+    },
+    "seed 20 upper": {
+      "doors the canvas shows and the CPU does not": [
+        "doorUp",
+      ],
+      "pins the canvas shows and the CPU does not": [
+        "pin3",
+        "pin4",
+        "pin5",
+      ],
+      "tokens the canvas shows and the CPU does not": [
+        "upper2",
+        "upper3",
+      ],
+    },
+    "seed 21 upper": {
+      "doors the canvas shows and the CPU does not": [
+        "doorUp",
+      ],
+      "pins the canvas shows and the CPU does not": [
+        "pin4",
+      ],
+      "tokens the canvas shows and the CPU does not": [
+        "upper2",
+      ],
+    },
+    "seed 22 upper": {
+      "doors the canvas shows and the CPU does not": [
+        "doorUp",
+      ],
+      "pins the canvas shows and the CPU does not": [
+        "pin4",
+        "pin5",
+      ],
+    },
+    "seed 23 upper": {
+      "doors the canvas shows and the CPU does not": [
+        "doorUp",
+      ],
+      "pins the canvas shows and the CPU does not": [
+        "pin3",
+        "pin4",
+      ],
+    },
+    "seed 24 upper": {
+      "doors the canvas shows and the CPU does not": [
+        "doorUp",
+      ],
+      "pins the canvas shows and the CPU does not": [
+        "pin3",
+        "pin5",
+      ],
+      "tokens the canvas shows and the CPU does not": [
+        "upper1",
+        "upper2",
+      ],
+    },
+    "seed 25 upper": {
+      "doors the canvas shows and the CPU does not": [
+        "doorUp",
+      ],
+      "pins the canvas shows and the CPU does not": [
+        "pin4",
+      ],
+      "tokens the canvas shows and the CPU does not": [
+        "upper1",
+      ],
+    },
+    "seed 26 upper": {
+      "doors the canvas shows and the CPU does not": [
+        "doorUp",
+      ],
+      "pins the canvas shows and the CPU does not": [
+        "pin3",
+        "pin4",
+        "pin5",
+      ],
+      "tokens the canvas shows and the CPU does not": [
+        "upper1",
+      ],
+    },
+    "seed 28 upper": {
+      "doors the canvas shows and the CPU does not": [
+        "doorUp",
+      ],
+      "tokens the canvas shows and the CPU does not": [
+        "upper1",
+      ],
+    },
+    "seed 29 upper": {
+      "pins the canvas shows and the CPU does not": [
+        "pin3",
+        "pin5",
+      ],
+    },
+    "seed 3 upper": {
+      "doors the canvas shows and the CPU does not": [
+        "doorUp",
+      ],
+      "pins the canvas shows and the CPU does not": [
+        "pin4",
+        "pin5",
+      ],
+      "tokens the canvas shows and the CPU does not": [
+        "upper1",
+        "upper3",
+      ],
+    },
+    "seed 30 upper": {
+      "doors the canvas shows and the CPU does not": [
+        "doorUp",
+      ],
+      "pins the canvas shows and the CPU does not": [
+        "pin3",
+      ],
+      "tokens the canvas shows and the CPU does not": [
+        "upper2",
+      ],
+    },
+    "seed 31 upper": {
+      "doors the canvas shows and the CPU does not": [
+        "doorUp",
+      ],
+      "pins the canvas shows and the CPU does not": [
+        "pin3",
+      ],
+    },
+    "seed 32 upper": {
+      "pins the canvas shows and the CPU does not": [
+        "pin5",
+      ],
+      "tokens the canvas shows and the CPU does not": [
+        "upper1",
+        "upper2",
+      ],
+    },
+    "seed 33 upper": {
+      "doors the canvas shows and the CPU does not": [
+        "doorUp",
+      ],
+      "pins the canvas shows and the CPU does not": [
+        "pin4",
+        "pin5",
+      ],
+      "tokens the canvas shows and the CPU does not": [
+        "upper1",
+      ],
+    },
+    "seed 34 upper": {
+      "doors the canvas shows and the CPU does not": [
+        "doorUp",
+      ],
+      "pins the canvas shows and the CPU does not": [
+        "pin4",
+      ],
+    },
+    "seed 35 upper": {
+      "doors the canvas shows and the CPU does not": [
+        "doorUp",
+      ],
+      "tokens the canvas shows and the CPU does not": [
+        "upper1",
+        "upper2",
+        "upper3",
+      ],
+    },
+    "seed 37 upper": {
+      "pins the canvas shows and the CPU does not": [
+        "pin4",
+      ],
+    },
+    "seed 38 upper": {
+      "sensed the canvas shows and the CPU does not": [
+        "upper3",
+      ],
+    },
+    "seed 39 upper": {
+      "doors the canvas shows and the CPU does not": [
+        "doorUp",
+      ],
+      "pins the canvas shows and the CPU does not": [
+        "pin4",
+        "pin5",
+      ],
+    },
+    "seed 4 upper": {
+      "doors the canvas shows and the CPU does not": [
+        "doorUp",
+      ],
+      "pins the canvas shows and the CPU does not": [
+        "pin3",
+        "pin5",
+      ],
+      "tokens the canvas shows and the CPU does not": [
+        "upper1",
+        "upper4",
+      ],
+    },
+    "seed 40 upper": {
+      "doors the canvas shows and the CPU does not": [
+        "doorUp",
+      ],
+      "pins the canvas shows and the CPU does not": [
+        "pin4",
+        "pin5",
+      ],
+    },
+    "seed 5 upper": {
+      "doors the canvas shows and the CPU does not": [
+        "doorUp",
+      ],
+      "pins the canvas shows and the CPU does not": [
+        "pin3",
+        "pin4",
+        "pin5",
+      ],
+      "tokens the canvas shows and the CPU does not": [
+        "upper1",
+        "upper3",
+        "upper4",
+      ],
+    },
+    "seed 6 upper": {
+      "doors the canvas shows and the CPU does not": [
+        "doorUp",
+      ],
+      "pins the canvas shows and the CPU does not": [
+        "pin4",
+      ],
+      "tokens the canvas shows and the CPU does not": [
+        "upper1",
+        "upper2",
+      ],
+    },
+    "seed 7 upper": {
+      "doors the canvas shows and the CPU does not": [
+        "doorUp",
+      ],
+      "pins the canvas shows and the CPU does not": [
+        "pin3",
+      ],
+      "tokens the canvas shows and the CPU does not": [
+        "upper1",
+      ],
+    },
+    "seed 8 upper": {
+      "doors the canvas shows and the CPU does not": [
+        "doorUp",
+      ],
+      "pins the canvas shows and the CPU does not": [
+        "pin4",
+        "pin5",
+      ],
+    },
+    "seed 9 upper": {
+      "doors the canvas shows and the CPU does not": [
+        "doorUp",
+      ],
+      "pins the canvas shows and the CPU does not": [
+        "pin4",
+        "pin5",
+      ],
+      "tokens the canvas shows and the CPU does not": [
+        "upper1",
+      ],
+    },
+  },
+  "shown": {
+    "ground: doors the canvas shows": 28,
+    "ground: pins the canvas shows": 36,
+    "ground: sensed the canvas shows": 2,
+    "ground: tokens the canvas shows": 57,
+    "upper: doors the canvas shows": 32,
+    "upper: pins the canvas shows": 57,
+    "upper: sensed the canvas shows": 1,
+    "upper: tokens the canvas shows": 87,
+  },
+}
+`;

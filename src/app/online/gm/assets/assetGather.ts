@@ -5,6 +5,7 @@ import { isVideoMapPath } from '../../../pixi/mosaicCanvas/video/videoMapFiles';
 import { mapTokens } from '../../../tokens/offMap';
 import { imageMimeType } from '../assetServe.ts';
 import { ASSET_RANKS, type AssetUse } from './assetUses.ts';
+import { hiddenFromPlayers } from '../../../perception/framePerception';
 
 /** A vault image a scene offers, for the use it has there. */
 export interface GatheredAsset {
@@ -47,7 +48,7 @@ export function stagedAssets(scene: GatherScene): GatheredAsset[] {
   const staged: AssetUse = { kind: 'image', rank: ASSET_RANKS.staged };
   const maps = [scene.background, ...(scene.levels ?? []).map((level) => level.background)];
   const tokens = scene.objects?.tokens === undefined ? [] : Object.values(mapTokens({ tokens: scene.objects.tokens }));
-  const art = tokens.filter((token) => token.isHidden !== true).map((token) => token.imagePath);
+  const art = tokens.filter((token) => !hiddenFromPlayers(token)).map((token) => token.imagePath);
   const seen = new Set<string>();
   return [...imagesOf(maps, staged, true, seen), ...imagesOf(art, staged, false, seen)];
 }

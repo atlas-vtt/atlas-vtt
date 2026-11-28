@@ -22,6 +22,7 @@ import { GM_SIGHT_POLICY, sceneHasVision, sightPolicyFor, type SightPolicy } fro
 import { mapTokens } from '../../tokens/offMap';
 import { isAura, measureList } from '../../measure/keptMeasures';
 import { measureLightKey, measureLights } from '../../measure/measureLights';
+import { hiddenFromPlayers } from '../../perception/framePerception';
 
 const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
 
@@ -118,7 +119,7 @@ const SEES_NOTHING: SharedVision = Object.freeze({ senses: [], sightRange: 0 });
  * vision, light and blindness only.
  */
 function sightToken(token: TokenEntity, inputs: SightInputs, policy: SightPolicy): SightToken | null {
-  if (token.isHidden === true || !finite(token.x) || !finite(token.y)) return null;
+  if (hiddenFromPlayers(token) || !finite(token.x) || !finite(token.y)) return null;
   const seen = inputs.shown.has(token.id);
   const vision = policy.givesSight(token) ? token.vision : undefined;
   const light = readEmission(token.light);
@@ -161,7 +162,7 @@ function sharedMeasureLights(inputs: SightInputs, sent: ReadonlySet<string>): Sh
   const measures = measureList(levelObjects(state).measures);
   if (!measurement || !measures.some((measure) => measure.light !== undefined)) return [];
   const held = heldForSight(state);
-  const places = Object.fromEntries(Object.values(mapTokens(levelObjects(state))).filter((token) => token.isHidden !== true).map((token) => [token.id, { ...token, ...held[token.id] }]));
+  const places = Object.fromEntries(Object.values(mapTokens(levelObjects(state))).filter((token) => !hiddenFromPlayers(token)).map((token) => [token.id, { ...token, ...held[token.id] }]));
   const bearers = new Map(measures.flatMap((measure): [string, string][] => (isAura(measure) && sent.has(measure.follows) ? [[measureLightKey(measure.id), measure.follows]] : [])));
   return measureLights({ measures, scale: unitScaleOf(measurement, state.grid), coneAngle: measurement.coneAngle }, places).map((light) => {
     const bearer = bearers.get(light.key);

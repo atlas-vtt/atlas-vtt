@@ -1,0 +1,146 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the players' perception moved into one module > answers as every place that told what players see did (30 generated scenes of two floors) 1`] = `
+{
+  "canvas own doors": {
+    "cases": 960,
+    "differences": 0,
+    "named": 0,
+  },
+  "canvas own places": {
+    "cases": 960,
+    "differences": 0,
+    "named": 160,
+  },
+  "canvas own seen": {
+    "cases": 960,
+    "differences": 0,
+    "named": 0,
+  },
+  "canvas own sensed": {
+    "cases": 960,
+    "differences": 0,
+    "named": 0,
+  },
+  "canvas own sightParts": {
+    "cases": 960,
+    "differences": 0,
+    "named": 0,
+  },
+  "canvas own tokens": {
+    "cases": 960,
+    "differences": 0,
+    "named": 0,
+  },
+  "canvas party doors": {
+    "cases": 960,
+    "differences": 0,
+    "named": 0,
+  },
+  "canvas party places": {
+    "cases": 960,
+    "differences": 0,
+    "named": 160,
+  },
+  "canvas party seen": {
+    "cases": 960,
+    "differences": 0,
+    "named": 0,
+  },
+  "canvas party sensed": {
+    "cases": 960,
+    "differences": 0,
+    "named": 0,
+  },
+  "canvas party sightParts": {
+    "cases": 960,
+    "differences": 0,
+    "named": 0,
+  },
+  "canvas party tokens": {
+    "cases": 960,
+    "differences": 0,
+    "named": 0,
+  },
+  "canvas pins": {
+    "cases": 960,
+    "differences": 0,
+    "named": 0,
+  },
+  "cpu own doors": {
+    "cases": 960,
+    "differences": 0,
+    "named": 0,
+  },
+  "cpu own places": {
+    "cases": 960,
+    "differences": 0,
+    "named": 160,
+  },
+  "cpu own seen": {
+    "cases": 960,
+    "differences": 0,
+    "named": 0,
+  },
+  "cpu own sensed": {
+    "cases": 960,
+    "differences": 0,
+    "named": 0,
+  },
+  "cpu own sightParts": {
+    "cases": 960,
+    "differences": 0,
+    "named": 0,
+  },
+  "cpu own tokens": {
+    "cases": 960,
+    "differences": 0,
+    "named": 0,
+  },
+  "cpu party doors": {
+    "cases": 960,
+    "differences": 0,
+    "named": 0,
+  },
+  "cpu party places": {
+    "cases": 960,
+    "differences": 0,
+    "named": 160,
+  },
+  "cpu party seen": {
+    "cases": 960,
+    "differences": 0,
+    "named": 0,
+  },
+  "cpu party sensed": {
+    "cases": 960,
+    "differences": 0,
+    "named": 0,
+  },
+  "cpu party sightParts": {
+    "cases": 960,
+    "differences": 0,
+    "named": 0,
+  },
+  "cpu party tokens": {
+    "cases": 960,
+    "differences": 0,
+    "named": 0,
+  },
+  "cpu pins": {
+    "cases": 960,
+    "differences": 0,
+    "named": 0,
+  },
+  "pinsOnCanvas": {
+    "cases": 960,
+    "differences": 0,
+    "named": 0,
+  },
+  "rolls": {
+    "cases": 960,
+    "differences": 0,
+    "named": 0,
+  },
+}
+`;

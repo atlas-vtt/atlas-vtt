@@ -161,6 +161,24 @@ export const CONVENTIONS = [
     good: ["import { mapTokens } from '../tokens/offMap';\nexport const tokensOf = (state: { objects: { tokens: Record<string, object> } }): object => mapTokens(state.objects);"],
   },
   {
+    name: 'players-hidden-tokens',
+    // The literal and pattern selectors catch `token['isHidden']`, `({ isHidden }) =>` and `const { isHidden } = token`.
+    selectors: ["MemberExpression[property.name='isHidden']", "MemberExpression[property.value='isHidden']", "ObjectPattern > Property[key.name='isHidden']", "ObjectPattern > Property[key.value='isHidden']"],
+    message: "Ask the players' perception (src/app/perception/): hiddenFromPlayers(token) for whether players may know of a token at all, PlayersPerception for what they see of it.",
+    why: 'What players may know of a hidden token is decided in one place, so a rule about hidden tokens changes there once and holds for every message the table sends.',
+    files: ['src/app/online/gm/**/*.{ts,tsx}'],
+    ignores: [TEST_HELPERS],
+    filename: 'src/app/online/gm/example.ts',
+    bad: [
+      "export const shown = (token: { isHidden?: boolean }): boolean => token.isHidden !== true;",
+      "export const owner = (token: { isHidden?: boolean } | undefined): boolean => token?.isHidden === true;",
+      "export const shown = (token: { isHidden?: boolean }): boolean => token['isHidden'] !== true;",
+      'export const shown = ({ isHidden }: { isHidden?: boolean }): boolean => isHidden !== true;',
+      'export function shown(token: { isHidden?: boolean }): boolean {\n  const { isHidden } = token;\n  return isHidden !== true;\n}',
+    ],
+    good: ["import { hiddenFromPlayers } from '../../perception/framePerception';\nexport const shown = (token: { isHidden?: boolean }): boolean => !hiddenFromPlayers(token);"],
+  },
+  {
     name: 'level-object-reads',
     // The pattern selector catches `const { objects } = state` and `({ objects }) =>`.
     selectors: ["MemberExpression[property.name='objects']", "ObjectPattern > Property[key.name='objects']"],
