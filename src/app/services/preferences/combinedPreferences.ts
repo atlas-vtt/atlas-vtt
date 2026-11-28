@@ -10,6 +10,7 @@ const hotkeys: PreferenceRow<HotkeyOverrides> = {
   keys: ['hotkeys'],
   read: (stored) => readHotkeyOverrides(stored('hotkeys')),
   write: (overrides, stored) => ({ hotkeys: { ...keptHotkeys(stored('hotkeys')), ...overrides } }),
+  rebasesOnArrival: true,
 };
 
 const readDiceLook = (stored: StoredEntries): DiceLook => {

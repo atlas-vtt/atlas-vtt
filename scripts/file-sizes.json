@@ -100,7 +100,7 @@
     "src/app/services/PlayerFrameMirror.ts": 400,
     "src/app/services/PlayerWindowPresenter.ts": 450,
     "src/app/services/PlayerWindowService.ts": 850,
-    "src/app/services/SettingsService.ts": 330,
+    "src/app/services/SettingsService.ts": 315,
     "src/app/services/StatblockPreviewWindow.ts": 350,
     "src/app/services/TokenStatblockLinkService.ts": 500,
     "src/app/services/WidgetSyncService.ts": 350,

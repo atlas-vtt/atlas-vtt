@@ -25,6 +25,12 @@ export interface PreferenceRow<T, Change = T> {
    * undefined to leave it out, so a hostile value is never kept to be written back.
    */
   readonly onLoad?: (stored: unknown) => unknown;
+  /**
+   * For a row that keeps another version's entries inside its value (the hotkeys' bindings of
+   * actions this version lacks): when another device's file arrives during the save wait, a change
+   * made here is written again over what arrived instead of replacing it, so those entries stay.
+   */
+  readonly rebasesOnArrival?: true;
 }
 
 /** Any row, for tables that hold rows of different types. */

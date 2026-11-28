@@ -2,7 +2,8 @@ import type { App, Plugin } from 'obsidian';
 import type { LegacyPlayerBars } from '../resources/playerVisibilityMigration';
 import { availableHotkeys, canShareHotkey, type MapHotkeyId, type MapHotkeys } from '../keyboard/mapHotkeys';
 import { hotkeyOrigin, resolveHotkeys, withHotkey, type HotkeyOrigin } from '../keyboard/hotkeyOverrides';
-import { overDefault, TUTORIAL_IDS, type TutorialId } from './atlasSettings';
+import { TUTORIAL_IDS, type TutorialId } from './atlasSettings';
+import { asLoaded, keptOnArrival } from './preferences/settingsFile';
 import { isRecord } from '../utils/guards';
 import { DEVICE_PREFERENCES, deviceStorage, readDevice, writeDevice } from './deviceSettings';
 import { readGpuFacts } from './gpuFacts';
@@ -20,23 +21,6 @@ export type { PreferenceName } from './preferences/preferences';
 
 /** Where the settings are kept: the plugin's `data.json`, which Obsidian syncs with the plugin's settings. */
 export type PluginDataStore = Pick<Plugin, 'loadData' | 'saveData'>;
-
-/** Keys that are no preferences and never go into the plugin's data: the input mode is the device's, the game system presets are vault files. */
-const NOT_PREFERENCES = ['navigation', 'systemPresets'];
-
-/** The file's record as the service keeps it: without the keys that are no preferences, the values other devices write checked. */
-function asLoaded(loaded: Record<string, unknown>): Record<string, unknown> {
-  const stored = Object.fromEntries(Object.entries(loaded).filter(([key]) => !NOT_PREFERENCES.includes(key)));
-  for (const row of Object.values(PREFERENCES)) {
-    if (!('onLoad' in row) || !row.onLoad) continue;
-    for (const key of row.keys.filter((name) => name in stored)) {
-      const checked = row.onLoad(stored[key]);
-      if (checked === undefined) delete stored[key];
-      else stored[key] = checked;
-    }
-  }
-  return stored;
-}
 
 /**
  * The GM's Atlas preferences (`PREFERENCES`), read and changed by name. Synced ones are kept in the
@@ -96,8 +80,7 @@ export class SettingsService {
     if (!(await this.loadSettings(true))) return;
     // A change made here and not saved yet is newer than what arrived; it stays and is saved.
     if (this.saveTimeout !== undefined) {
-      const changed = [...new Set([...Object.keys(local), ...Object.keys(saved)])].filter((key) => !sameValue(overDefault(key, local[key]), overDefault(key, saved[key])));
-      this.synced.put(Object.fromEntries(changed.map((key) => [key, local[key]])));
+      this.synced.put(keptOnArrival(local, saved, this.synced.entry));
     }
     this.notify();
   }
