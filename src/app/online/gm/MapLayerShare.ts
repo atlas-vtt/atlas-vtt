@@ -187,7 +187,7 @@ export class MapLayerShare {
   }
 
   private readablePins(state: SceneState, source: MapLayerSource, fog: FogCoverage | null): ListedPin[] | null {
-    return this.pins.listed(state, { lit: this.feed.scene?.lit === true, fog, seen: (points) => source.pointsSeen(points, fog) });
+    return this.pins.listed(state, (points) => source.pointsSeen(points, fog));
   }
 
   /** Tells of the shown level's pins when they are not the ones last told of. */

@@ -1,7 +1,7 @@
 import type { TokenEntity } from '../types';
 import { tokenFace, type ShownRollToken } from '../services/playerRollSource';
 import type { TokenPerception } from '../vision/tokenPerception';
-import { seenByPlayers } from './token-renderer/PlayerSightTokens';
+import { seenByPlayers } from '../perception/framePerception';
 import { levelObjects } from '../levels/levelObjects';
 import { mapTokens } from '../tokens/offMap';
 

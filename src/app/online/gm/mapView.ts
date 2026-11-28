@@ -19,7 +19,7 @@ import type { ShownRollToken } from '../../services/playerRollSource';
 import type { ViewAtlasState } from '../../storeFactory';
 import type { DiceTool } from '../../tools/DiceTool';
 import type { EventEmitter } from '../../utils/typedEmitter';
-import type { TokenPerception } from '../../vision/tokenPerception';
+import type { PlayersPerception, SightSource } from '../../perception/playersPerception';
 import type { LightingSource } from './atlasLighting.ts';
 import type { ObservedStore, SceneState } from './atlasView.ts';
 import type { TokenMoves } from './moveShare.ts';
@@ -38,8 +38,6 @@ export type DrawnToken = Pick<TokenGroupContainer, 'x' | 'y' | 'tokenSize'>;
 
 /** The canvas's token renderer (`TokenRenderer`): the players' frame of the tokens and where each is drawn. */
 export interface MapTokens {
-  /** How the players' frame shows each token, given what the players perceive by the lighting (none while unlit): under committed fog and the roof drawn. */
-  playerFramePerception(lighting?: TokenPerception): TokenPerception | undefined;
   /** Each token's sprite by id; null for one whose sprite is not made yet. */
   getTokenSprites(): Readonly<Record<string, DrawnToken | null>>;
   /** The map's resource and condition definitions the tokens are drawn by. */
@@ -54,8 +52,6 @@ export interface MapTokens {
 /** The canvas's lighting (`LightingController`), there for a lit scene's view. */
 export interface MapLighting {
   readonly renderer: Pick<SceneLightingView, 'isEnabled' | 'sightIsCurrent' | 'currentSight' | 'ambientLight' | 'lightReaches'>;
-  /** How the players perceive each token by the lighting; undefined on an unlit scene. */
-  playerSight(): TokenPerception | undefined;
   /** The rules and measurement the GM's lighting works the scene out by. */
   readonly sightAids: LightingSource;
 }
@@ -75,6 +71,10 @@ export interface MapCanvas {
   getGridOptions(): Readonly<GridOptions> | null;
   /** The tokens the players' frame of `mapPath` shows: not hidden, seen, not under fog. */
   playerRollTokens(mapPath: string, tokenIds?: readonly string[]): ReadonlyMap<string, ShownRollToken>;
+  /** The canvas as the source of the players' picture of the floor it shows. */
+  sightSource(): SightSource;
+  /** What the players' frame of the canvas shows: the party's perception of the floor it shows. */
+  playersPerception(): PlayersPerception;
   getTokenRenderer(): MapTokens | null;
   getLightingController(): MapLighting | null;
   getMeasureRenderer(): MapMeasure | null;

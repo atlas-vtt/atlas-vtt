@@ -9,7 +9,8 @@ import { HIDDEN_TOKEN_ALPHA, gmTokenLayers, type HideableLayer, type LayerVisibi
 import type { TokenPerception } from '../vision/tokenPerception';
 import { TokenExit } from './token-renderer/TokenExit';
 import { TokenPile } from './token-renderer/TokenPile';
-import { NOTHING_SEEN, PlayerSightTokens, seenByPlayers, seenTokens } from './token-renderer/PlayerSightTokens';
+import { NOTHING_SEEN, seenByPlayers } from '../perception/framePerception';
+import { PlayerSightTokens, seenTokens } from './token-renderer/PlayerSightTokens';
 import type { CanvasAudience } from './audience/CanvasAudience';
 import { TurnMarkers } from './token-renderer/turnMarker/TurnMarkers';
 import { ShownBadgeNumbers, type PlayerBadgeNumbers } from './token-renderer/PlayerBadgeNumbers';

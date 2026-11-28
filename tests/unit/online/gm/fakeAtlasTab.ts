@@ -1,9 +1,11 @@
 import { cellNumberStyleOfGrid } from '../../../../src/app/grid/cellNumbering';
 import { parseGridColor } from '../../../../src/app/grid/gridContrastColor';
-import { heldForSight } from '../../../../src/app/lighting/sightOnDrop';
 import type { CollectionLookup } from '../../../../src/app/gameSystems/mapRules';
 import { fogCoverage } from '../../../../src/app/fog/fogCoverage';
-import { tokenPerception, type TokenPerception } from '../../../../src/app/vision/tokenPerception';
+import type { TokenPerception } from '../../../../src/app/vision/tokenPerception';
+import { PLAYER_SIGHT_POLICY } from '../../../../src/app/vision/tokenSightPolicy';
+import { canvasSightSource } from '../../../../src/app/perception/canvasSight';
+import { PlayersPerception } from '../../../../src/app/perception/playersPerception';
 import type { MapBounds } from '../../../../src/app/vision/visibility';
 import type { App } from 'obsidian';
 import { NO_MOVEMENT_RULES } from '../../../../src/app/measure/movementRules';
@@ -12,7 +14,6 @@ import type { DrawnToken, MapCanvas, MapLighting, MapServices, MapTokens, MapVie
 import type { LightingSource } from '../../../../src/app/online/gm/atlasLighting.ts';
 import { mapLayerSourceOf, type MapLayerSource } from '../../../../src/app/online/gm/atlasMapLayers.ts';
 import type { SceneState } from '../../../../src/app/online/gm/atlasView.ts';
-import { shownRollTokens } from '../../../../src/app/pixi/playerRollTokens';
 import { gmModel, gmPerception } from './gmLighting.ts';
 
 /**
@@ -43,9 +44,16 @@ export interface FakeTabOptions {
   readonly drawn?: () => boolean;
 }
 
-/** A map view's canvas that draws nothing beyond `parts`: no lighting, token renderer, measure renderer, drawings or viewport. */
+/**
+ * A map view's canvas that draws nothing beyond `parts`: no lighting, token renderer, measure renderer, drawings or
+ * viewport, and so no players' picture of its own (no lighting, no tokens drawn) unless `parts` gives one.
+ */
 export function fakeCanvas(parts: Pick<MapCanvas, 'playerRollTokens' | 'getGridOptions'> & Partial<MapCanvas>): MapCanvas {
+  const unlit = canvasSightSource({ lighting: () => null, tokens: () => null });
+  const party = new PlayersPerception(PLAYER_SIGHT_POLICY, { state: () => { throw new Error('This canvas draws no scene.'); }, rules: () => undefined });
   return {
+    sightSource: () => unlit,
+    playersPerception: () => party,
     getTokenRenderer: () => null,
     getLightingController: () => null,
     getMeasureRenderer: () => null,
@@ -64,12 +72,11 @@ export function fakeCanvas(parts: Pick<MapCanvas, 'playerRollTokens' | 'getGridO
 }
 
 /**
- * A canvas's token renderer that draws no sprite and holds no rules beyond `parts`: its players' frame shows what
- * the lighting shows, and its map's collection names no movement steps (no speeds, nothing counted per turn).
+ * A canvas's token renderer that draws no sprite and holds no rules beyond `parts`: its map's collection names no
+ * movement steps (no speeds, nothing counted per turn).
  */
 export function fakeTokens(parts: Partial<MapTokens> = {}): MapTokens {
   return {
-    playerFramePerception: (lit) => lit,
     getTokenSprites: () => ({}),
     collectionRules: () => ({ resources: () => [], conditions: () => [] }),
     tokenMovement: () => ({ rules: () => NO_MOVEMENT_RULES, speedOf: () => null, prepare: () => undefined }),
@@ -85,9 +92,10 @@ export type FakeRulesView = Pick<MapView, 'app' | 'serviceManager'>;
 
 /**
  * An Atlas map tab's canvas (`MapCanvas`) answering with Atlas's own rules: the players' sight, ambient light and
- * light reaches of the scene model, the token perception with committed fog of `gmPerception` (the players' frame
- * of another perception: committed fog over it), token sprites where the tokens stand, and the tokens the
- * players' frame shows (`playerRollTokens`, as `PixiRendererOrchestrator` composes it); and the view's rules.
+ * light reaches of the scene model, the players' frame of another perception (committed fog over it; on an unlit
+ * scene none, and the perception with fog of `gmPerception` where none is given), token sprites where the tokens
+ * stand, and what the players' frame shows of all of it through the players' perception (`PlayersPerception`), as
+ * `PixiRendererOrchestrator` composes it; and the view's rules.
  */
 export function fakeAtlasTab(options: FakeTabOptions): { readonly renderer: MapCanvas; readonly view: FakeRulesView } {
   const model = (): ReturnType<typeof gmModel>['model'] => gmModel(options.state(), options.source, options.bounds).model;
@@ -100,12 +108,6 @@ export function fakeAtlasTab(options: FakeTabOptions): { readonly renderer: MapC
       lightReaches: () => model().reaches,
     },
     sightAids: { rules: () => options.source.rules(), measurement: () => options.source.measurement() },
-    playerSight: () => {
-      const state = options.state();
-      if (!state.lighting.enabled) return undefined;
-      const built = model();
-      return tokenPerception(built.sight, built.ambient, built.reaches, state.objects.tokens, { conditions: options.source.rules().conditions, held: heldForSight(state) });
-    },
   };
   const sprites = (): Record<string, DrawnToken> => Object.fromEntries(Object.values(options.state().objects.tokens).map((token) => [token.id, { x: token.x, y: token.y, tokenSize: options.tokenSize ?? 70 }]));
   const playerFramePerception = (lit?: TokenPerception): TokenPerception | undefined => {
@@ -118,12 +120,16 @@ export function fakeAtlasTab(options: FakeTabOptions): { readonly renderer: MapC
       return token === undefined || fog.covers(token) ? 'unseen' : lit(id);
     };
   };
-  const tokens = fakeTokens({ playerFramePerception, getTokenSprites: sprites });
+  const tokens = fakeTokens({ getTokenSprites: sprites });
+  const sight = canvasSightSource({ lighting: () => lighting, tokens: () => ({ playerFramePerception, getTokenSprites: sprites }) });
+  const party = new PlayersPerception(PLAYER_SIGHT_POLICY, { state: () => options.state(), rules: () => options.source.rules() });
   const renderer = fakeCanvas({
     getLightingController: () => lighting,
     getTokenRenderer: () => tokens,
     getGridOptions: () => (options.grid?.() ?? null) as GridOptions | null,
-    playerRollTokens: (mapPath, tokenIds) => shownRollTokens(options.state(), mapPath, sprites(), () => playerFramePerception(lighting.playerSight()), tokenIds),
+    playerRollTokens: (mapPath, tokenIds) => party.shown(sight, mapPath, tokenIds),
+    sightSource: () => sight,
+    playersPerception: () => party,
   });
   const serviceManager: MapServices = {
     getAssetService: () => options.collections ?? null,

@@ -6,7 +6,7 @@ import { mapTokens } from '../../tokens/offMap';
 import type { EventEmitter } from '../../utils/typedEmitter';
 import type { TokenSeen } from '../../vision/measureOrigin';
 import type { TokenPerception } from '../../vision/tokenPerception';
-import { NOTHING_SEEN, seenByPlayers } from '../token-renderer/PlayerSightTokens';
+import { NOTHING_SEEN, seenByPlayers } from '../../perception/framePerception';
 
 export interface CanvasAudienceDeps {
   store: Pick<StoreApi<ViewAtlasState>, 'getState' | 'subscribe'>;

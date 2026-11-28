@@ -37,7 +37,7 @@ import { followLightingTool } from './followLightingTool';
 import { showExploredTravelNotice, showSurfacesFullNotice, showZonesFullNotice } from './lightingNotices';
 import { closeStalePopovers } from './popoverGuards';
 import { playerDoorSight, playerLightingLayers, playerTokenSight, type GmOverlays } from './playerLightingLayers';
-import { PerceptionMemo, type TokenPerception } from '../../vision/tokenPerception';
+import type { PerceptionMemo, TokenPerception } from '../../vision/tokenPerception';
 import type { SceneLightingView } from './sceneLightingView';
 import { SessionLighting } from './SessionLighting';
 import { SightRulesWatch } from './SightRulesWatch';
@@ -74,6 +74,8 @@ export interface LightingControllerDeps {
   quality?: LightingQualitySource;
   /** Where gliding tokens are drawn: sight and light read them there. */
   shown?: ShownPlaces;
+  /** What the players perceive of each token, kept between frames while sight and light stay: the view's, which also tells players what they see. */
+  perceptions?: PerceptionMemo;
   /** What the levels below the view need of it (`createBelowLevelsHost`); without it the openings show nothing below. */
   below?: BelowLevelsHost;
   /** The roof of the level shown (`ViewRoofs`): it shows the players' picture with the lighting's, and covers doors. */
@@ -102,8 +104,6 @@ export class LightingController {
   private readonly session: SessionLighting;
   private readonly cleanups: Array<() => void> = [];
   private tokens: TokenRenderer | null = null;
-  /** What the players perceive of each token, kept between frames while sight and light stay. */
-  private readonly perceptions = new PerceptionMemo();
   /** The sight rules of the map's collection; sight is worked out anew when they differ. */
   private readonly rules: SightRulesWatch;
   /**
@@ -240,7 +240,7 @@ export class LightingController {
   /** How the players perceive each token, for their frame and for session view; sight hides nothing in an unlit scene. */
   playerSight(): TokenPerception | undefined {
     const state = this.deps.store.getState();
-    return playerTokenSight(this.renderer, mapTokens(levelObjects(state)), perceptionOptions(this.rules.current(), heldForSight(state)), this.perceptions);
+    return playerTokenSight(this.renderer, mapTokens(levelObjects(state)), perceptionOptions(this.rules.current(), heldForSight(state)), this.deps.perceptions);
   }
 
   /** The window the canvas is in: a popout has its own frames. */

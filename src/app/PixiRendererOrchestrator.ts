@@ -72,7 +72,6 @@ import { onMapRulesChange, rulesLookup } from './services/mapRules';
 import { findAtlasLeafByViewId } from './utils/atlasLeafLookup';
 import { addBeforeRender, BEFORE_RENDER_ORDER, requestRender } from './pixi/RenderScheduler';
 import { MAP_LAYER_Z } from './pixi/mapLayerOrder';
-import { shownRollTokens } from './pixi/playerRollTokens';
 import type { PlayerBadgeNumbers } from './pixi/token-renderer/PlayerBadgeNumbers';
 import type { ShownRollToken } from './services/playerRollSource';
 import { t } from './i18n';
@@ -94,7 +93,6 @@ import { playerWindowStore } from './stores/playerWindowStore';
 import { PlayerWindowService } from './services/PlayerWindowService';
 import { fitZoomRange } from './pixi/fitMapRect';
 import { viewCentreInClient, worldToClient, type ClientPoint } from './pixi/utils/worldToClient';
-import { playerPointSight } from './pixi/lighting/playerLightingLayers';
 import type { Point } from './types/visionTypes';
 import { mapTokens } from './tokens/offMap';
 import { installFoggedPartyRings } from './pixi/token-renderer/FoggedPartyRings';
@@ -103,6 +101,10 @@ import { PlacementHand } from './pixi/tokenPlacement/placementHand';
 import { MapPointer } from './pixi/pointer/MapPointer';
 import { listenToViewport } from './pixi/pointer/viewportPointer';
 import { CanvasAudience } from './pixi/audience/CanvasAudience';
+import { canvasSightSource } from './perception/canvasSight';
+import { PlayersPerception, type SightSource } from './perception/playersPerception';
+import { PerceptionMemo } from './vision/tokenPerception';
+import { PLAYER_SIGHT_POLICY } from './vision/tokenSightPolicy';
 
 /** How long a reveal waits at most for the lighting a load traces ahead (`scene-hydrated`), in ms. */
 const SCENE_PREPARE_WAIT_MS = 1000;
@@ -149,6 +151,12 @@ export class PixiRendererOrchestrator { // Renamed class
   private roofs?: ViewRoofs;
   /** Where gliding tokens are drawn: the token renderer notes them, the lighting reads its tokens there. */
   private readonly shownPlaces = new ShownPlaces();
+  /** What the tokens are perceived as by the players' sight: kept once for the lighting's own view and for what players are told. */
+  private readonly perceptions = new PerceptionMemo();
+  /** The canvas as the source of the players' picture of the floor it shows. */
+  private readonly sight: SightSource = canvasSightSource({ lighting: () => this.lighting ?? null, tokens: () => this.tokenRenderer ?? null });
+  /** What the players' frame shows of the floor: what rolls name, the pins it shows and what a table reads of this canvas. */
+  private readonly players = new PlayersPerception(PLAYER_SIGHT_POLICY, { state: () => this.store.getState(), rules: () => this.lighting?.sightAids.rules() }, this.perceptions);
   /** The players' frame, rendered at the player window's size; made when this view is first presented. */
   private playerFrames?: Pick<PlayerFrameTexture, 'canRender' | 'render' | 'copy' | 'release' | 'destroy'>;
   private audioRenderer?: AudioRenderer;
@@ -547,6 +555,7 @@ export class PixiRendererOrchestrator { // Renamed class
         grid: () => this.gridSystem ?? null,
         fogCoverage: () => this.fogRenderer!.getCommittedCoverage(),
         shown: this.shownPlaces,
+        perceptions: this.perceptions,
         ...(this.roofs && { roofs: this.roofs }),
         below: createBelowLevelsHost({
           obsApp: this.obsApp,
@@ -1079,16 +1088,9 @@ export class PixiRendererOrchestrator { // Renamed class
     viewport.addChildAt(layer, Math.max(map, grid) + 1);
   }
 
-  /**
-   * Which of `points` the players' picture shows the map at now, the online table's rule for pins
-   * shown to players: a lit scene's sight with its door badges' rule, else where committed fog does
-   * not cover them. Null (nothing shown) while a lit scene's sight is another scene's.
-   */
+  /** Which of `points` the players' frame shows the map at now (`PlayersPerception.places`): the pins it shows. */
   private playersSeeMapAt(points: readonly Point[]): readonly boolean[] | null {
-    const fog = this.fogRenderer?.getCommittedCoverage() ?? null;
-    const lighting = this.lighting?.renderer;
-    if (lighting?.isEnabled()) return lighting.sightIsCurrent() ? playerPointSight(lighting, points, fog) : null;
-    return points.map((point) => fog !== null && !fog.covers(point));
+    return this.players.places(this.sight, points, this.fogRenderer?.getCommittedCoverage() ?? null);
   }
 
   /** Whether a players' frame can be rendered now: not while the graphics context is lost. */
@@ -1104,16 +1106,19 @@ export class PixiRendererOrchestrator { // Renamed class
     this.lighting?.renderer.releaseBelowPicture?.();
   }
 
-  /**
-   * The tokens a players' frame of `mapPath` shows now, among `tokenIds` (all without), by
-   * the perception `withPlayerSafeFrame` composes: for rolls to name. Nothing once the view
-   * holds another scene, or none loaded, and nothing while a lit scene's sight is another scene's
-   * or from before a lost graphics context, as for the doors and places.
-   */
+  /** The tokens a players' frame of `mapPath` shows now, among `tokenIds` (all without): what rolls name (`PlayersPerception.shown`). */
   public playerRollTokens(mapPath: string, tokenIds?: readonly string[]): ReadonlyMap<string, ShownRollToken> {
-    const tokens = this.tokenRenderer;
-    if (!tokens || this._isDestroyed || this.lighting?.renderer.sightIsCurrent() === false) return new Map();
-    return shownRollTokens(this.store.getState(), mapPath, tokens.getTokenSprites(), () => tokens.playerFramePerception(this.lighting?.playerSight()), tokenIds);
+    return this._isDestroyed ? new Map() : this.players.shown(this.sight, mapPath, tokenIds);
+  }
+
+  /** The canvas as the source of the players' picture of the floor it shows. */
+  public sightSource(): SightSource {
+    return this.sight;
+  }
+
+  /** What the players' frame of this canvas shows: the party's perception of the floor it shows. */
+  public playersPerception(): PlayersPerception {
+    return this.players;
   }
 
   /** Whether the canvas shows the token, so it may be selected; none is shown while there is no token renderer. */

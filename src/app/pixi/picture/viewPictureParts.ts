@@ -8,7 +8,7 @@ import type { MosaicCanvas } from '../mosaicCanvas/MosaicCanvas';
 import type { PinRenderer } from '../PinRenderer';
 import type { HideableLayer } from '../playerSafeFrame';
 import type { ViewRoofs } from '../roofs/ViewRoofs';
-import { NOTHING_SEEN } from '../token-renderer/PlayerSightTokens';
+import { NOTHING_SEEN } from '../../perception/framePerception';
 import type { TokenRenderer } from '../TokenRenderer';
 import type { Picture, PicturePart } from './picture';
 

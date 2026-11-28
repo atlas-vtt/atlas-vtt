@@ -8,6 +8,7 @@ import type { MapCanvas, MapView } from '../../../../src/app/online/gm/mapView.t
 import { fakeAtlasTab } from './fakeAtlasTab.ts';
 import { GENERIC_SOURCE } from './gmLighting.ts';
 import { sceneState } from './shareHarness.ts';
+import { UNLIT } from '../../../../src/app/perception/playersPerception';
 
 /*
  * The binding names the source of each floor at each read: the GM's renderer for the floor its view shows once
@@ -20,7 +21,7 @@ const LEVELS: SceneLevel[] = [
 ];
 
 /** A floor worked out on the CPU. */
-const cpu: FloorSource = cpuFloorSource({ lighting: () => null, frame: (lit) => lit, roofed: () => false, drawn: () => ({}), outline: () => null }, { tokenSource: () => null, mapLayers: () => null, seen: () => null });
+const cpu: FloorSource = cpuFloorSource({ light: () => UNLIT, frame: (lit) => lit, roofed: () => false, drawn: () => ({}), outline: () => null }, { tokenSource: () => null, mapLayers: () => null, seen: () => null });
 
 const marks = { source: () => null, showPlayers: () => undefined, showPlayerDrags: () => undefined, showPlayerCursors: () => undefined, showPlayerStrokes: () => undefined };
 

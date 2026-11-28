@@ -99,7 +99,7 @@ class GmRenderer {
       sensed: (all) => Object.entries(all).flatMap(([id, entry]) => (perception(id) === 'sensed' ? [{ x: entry.x, y: entry.y, size: 70 }] : [])),
     };
     const basis: PictureBasis = {
-      lighting: () => ({ sight: model.sight, ambient: model.ambient, reaches: model.reaches }),
+      light: () => ({ lit: true, lighting: { sight: model.sight, ambient: model.ambient, reaches: model.reaches } }),
       frame: (lit) => lit,
       roofed: () => false,
       drawn: () => tokens,
