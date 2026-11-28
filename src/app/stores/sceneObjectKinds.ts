@@ -28,8 +28,6 @@ export type SceneObjectRecords = { [Collection in ObjectCollection]?: ViewState[
 interface KindRules {
   /** The popover that may stand open on one of them: it closes when that one goes. */
   readonly popover?: ObjectPopover;
-  /** Spatial audio works out again when one is added, changed or removed: what sounds, what muffles sound, who hears it. */
-  readonly heard?: true;
   /** A locked one stays when it is removed by id; only a clear takes it (`annotationLock.ts`). */
   readonly lockable?: true;
   /** What goes with those of `ids` that are gone, in the same write: a token's auras and the measurements grouped with it. */
@@ -37,13 +35,13 @@ interface KindRules {
 }
 
 export const OBJECT_KINDS: Readonly<Record<ObjectCollection, KindRules>> = {
-  tokens: { heard: true, takes: (objects, ids) => aurasOf(objects.measures, ids, true) },
+  tokens: { takes: (objects, ids) => aurasOf(objects.measures, ids, true) },
   pins: {},
   texts: { lockable: true },
   drawings: { lockable: true },
-  walls: { heard: true },
+  walls: {},
   lights: { popover: 'lightPopover' },
-  audios: { heard: true },
+  audios: {},
   lightZones: { popover: 'lightZonePopover' },
   levelLinks: { popover: 'levelLinkPopover' },
   levelSurfaces: { popover: 'levelSurfacePopover' },

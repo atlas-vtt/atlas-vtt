@@ -81,21 +81,19 @@ describe('pilePlaces', () => {
 });
 
 describe('placeTokens', () => {
-  const scene = (): { objects: { tokens: Record<string, TokenEntity> }; heldTokens: Record<string, { x: number; y: number }>; _audioDirty: boolean } => ({
+  const scene = (): { objects: { tokens: Record<string, TokenEntity> }; heldTokens: Record<string, { x: number; y: number }> } => ({
     objects: { tokens: record(token('a', ELSEWHERE), token('b', SQUARE, 3), token('c', ELSEWHERE, 1)) },
     heldTokens: { a: ELSEWHERE },
-    _audioDirty: false,
   });
 
-  it('puts each token at its place and the group on top, and flags the move for spatial audio', () => {
+  it('puts each token at its place and the group on top', () => {
     const placed = produce(scene(), (draft) => placeTokens(draft, [{ id: 'c', ...SQUARE }, { id: 'a', ...SQUARE }, { id: 'drawing_1', x: 0, y: 0 }]));
     expect(placed.objects.tokens.a).toMatchObject(SQUARE);
     expect(placed.objects.tokens.c).toMatchObject(SQUARE);
     expect(stack(placed.objects.tokens)).toEqual(['b', 'a', 'c']);
-    expect(placed._audioDirty).toBe(true);
   });
 
-  it('changes nothing but the listed tokens and the audio flag', () => {
+  it('changes nothing but the listed tokens', () => {
     const before = scene();
     const placed = produce(before, (draft) => placeTokens(draft, [{ id: 'a', ...SQUARE }]));
     expect(placed.heldTokens).toBe(before.heldTokens);
