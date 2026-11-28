@@ -101,10 +101,21 @@ function applyCamera({ target, camera, screen }: PlayerFrameCamera): () => void 
   };
 }
 
+/** Runs every step, the later ones also after one throws, and adds what each throws to `errors` in order. */
+export function runEach(steps: Iterable<() => void>, errors: unknown[]): void {
+  for (const step of steps) {
+    try {
+      step();
+    } catch (error) {
+      errors.push(error);
+    }
+  }
+}
+
 /**
  * Apply a picture's visibility, opacity and (optionally) its camera. Of two entries for one layer
  * that differ from it, the later decides. Returns the function that restores the DM's, and
- * whether anything differs from the DM's frame.
+ * whether anything differs from the DM's frame; that restore throws the first error of its steps after all of them.
  */
 export function applyLayerVisibility(layers: readonly LayerVisibility[], camera?: PlayerFrameCamera): { differs: boolean; restore: () => void } {
   const changed = layers.filter(({ layer, visible, alpha }) =>
@@ -118,11 +129,15 @@ export function applyLayerVisibility(layers: readonly LayerVisibility[], camera?
   return {
     differs: changed.length > 0 || !!camera,
     restore: (): void => {
-      restoreCamera?.();
-      for (const { layer, previous, alpha, previousAlpha } of changed) {
-        layer.visible = previous;
-        if (alpha !== undefined) layer.alpha = previousAlpha;
-      }
+      const errors: unknown[] = [];
+      runEach([
+        ...(restoreCamera ? [restoreCamera] : []),
+        ...changed.map(({ layer, previous, alpha, previousAlpha }) => (): void => {
+          layer.visible = previous;
+          if (alpha !== undefined) layer.alpha = previousAlpha;
+        }),
+      ], errors);
+      if (errors.length > 0) throw errors[0];
     },
   };
 }

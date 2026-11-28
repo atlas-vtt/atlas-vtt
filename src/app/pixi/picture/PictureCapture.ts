@@ -1,5 +1,5 @@
 import type { TesseraView } from '../mosaicCanvas/levelOfDetail';
-import { applyLayerVisibility, frameCamera, type CameraTarget, type PlayerFrameCamera } from '../playerSafeFrame';
+import { applyLayerVisibility, frameCamera, runEach, type CameraTarget, type PlayerFrameCamera } from '../playerSafeFrame';
 import type { Picture, PicturePart } from './picture';
 
 /**
@@ -43,7 +43,7 @@ export class PictureCapture {
    * Runs `render` with the stage as `picture` shows it, and returns its result. Every part is put
    * back on its own, also when the render, a part's change or another part's restore throws; after
    * a players' frame that no render of the GM's follows, the GM's frame is rendered on the canvas
-   * again, since the frame went through it. Then the first error, if any, is thrown.
+   * again, since the frame went through it. Then the first error in time, if any, is thrown.
    */
   capture<T>(picture: Picture, render: () => T): T {
     const restores: Array<() => void> = [];
@@ -54,14 +54,8 @@ export class PictureCapture {
     } catch (error) {
       errors.push(error);
     }
-    for (const restore of restores.reverse()) {
-      try {
-        restore();
-      } catch (error) {
-        errors.push(error);
-      }
-    }
-    if (picture.kind === 'players' && !picture.renderFollows) this.deps.renderGmFrame();
+    runEach(restores.reverse(), errors);
+    if (picture.kind === 'players' && !picture.renderFollows) runEach([() => this.deps.renderGmFrame()], errors);
     if (errors.length > 0 || rendered === null) throw errors[0];
     return rendered.value;
   }

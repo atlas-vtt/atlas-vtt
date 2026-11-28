@@ -174,6 +174,60 @@ describe('a players\' frame', () => {
       expect(events).not.toContain('gm');
       expect(events.slice(-2)).toEqual(['back:drawings', 'back:map']);
     });
+
+    it('throws the first error in time when the GM\'s re-render throws too, and the re-render\'s when it alone throws', () => {
+      const parts = { mapImage: noting('map', []) };
+      const failingGm = { renderGmFrame: () => { throw new Error('canvas lost'); } };
+      expect(() => picturesOf(parts, failingGm).capture(playersFrame(PLAYER_FRAME), () => { throw new Error('failed'); })).toThrow('failed');
+      expect(() => picturesOf(parts, failingGm).capture(playersFrame(PLAYER_FRAME), () => 'frame')).toThrow('canvas lost');
+    });
+
+    it('throws the first of two restores that throw, the later part\'s, which is put back first', () => {
+      const stuck = (message: string): PicturePart => ({ showFor: () => () => { throw new Error(message); } });
+      const { events, pictures } = failing({ roofs: stuck('roof stuck'), liquids: stuck('liquids stuck') });
+      expect(() => pictures.capture(playersFrame(PLAYER_FRAME), () => events.push('render'))).toThrow('liquids stuck');
+      expect(events.slice(-3)).toEqual(['back:drawings', 'back:map', 'gm']);
+    });
+
+    it('puts every layer back when the players\' camera cannot be, and the camera and the other layers when a layer cannot be', () => {
+      const events: string[] = [];
+      const viewport = fakeViewport();
+      const setScale = viewport.scale.set.bind(viewport.scale);
+      let sets = 0;
+      // The first set turns the camera to the frame; the second, putting the GM's back, fails.
+      viewport.scale.set = (x, y): void => {
+        if (++sets === 2) throw new Error('camera stuck');
+        setScale(x, y);
+      };
+      const shown = { visible: true };
+      const pictures = picturesOf({ mapImage: noting('map', events), tokens: { layersFor: () => [{ layer: shown, visible: false }] } }, { camera: () => viewport, renderGmFrame: () => events.push('gm') });
+      expect(() => pictures.capture(playersFrame(PLAYER_FRAME), () => undefined)).toThrow('camera stuck');
+      expect(shown.visible).toBe(true);
+      expect(events.slice(-2)).toEqual(['back:map', 'gm']);
+
+      let locked = false;
+      const lockable = { get visible(): boolean { return !locked; }, set visible(value: boolean) { if (value && locked) throw new Error('layer stuck'); locked = !value; } };
+      const other = { visible: true };
+      const camera = fakeViewport();
+      camera.position.set(-40, 30);
+      const layered = picturesOf({ tokens: { layersFor: () => [{ layer: lockable, visible: false }, { layer: other, visible: false }] } }, { camera: () => camera });
+      expect(() => layered.capture(playersFrame(PLAYER_FRAME), () => undefined)).toThrow('layer stuck');
+      expect(other.visible).toBe(true);
+      expect([camera.position.x, camera.position.y]).toEqual([-40, 30]);
+    });
+
+    it('puts every part back after a picture of the scene that fails, in a part\'s change or in the render, and renders no frame of the GM\'s', () => {
+      const { events, layer, pictures } = failing({ liquids: { showFor: (picture) => (picture.kind === 'scene' ? (() => { throw new Error('no stage'); })() : () => undefined) } });
+      expect(() => pictures.capture({ kind: 'scene', frame: FRAME, view: null }, () => events.push('render'))).toThrow('no stage');
+      expect(events).toEqual(['show:map', 'back:map']);
+
+      events.length = 0;
+      const { events: rendered, layer: hidden, pictures: plain } = failing();
+      expect(() => plain.capture({ kind: 'scene', frame: FRAME, view: null }, () => { throw new Error('failed'); })).toThrow('failed');
+      expect(rendered.slice(-2)).toEqual(['back:drawings', 'back:map']);
+      expect(rendered).not.toContain('gm');
+      expect([layer.visible, hidden.visible]).toEqual([true, true]);
+    });
   });
 
   it('renders through its own camera, centred in its own size, and puts the GM\'s camera back', () => {
