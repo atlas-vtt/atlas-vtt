@@ -134,6 +134,39 @@ describe('Atlas settings in the plugin data', () => {
     }
   });
 
+  /** Another device's file lands while this device's save waits; what reads then, and what the save writes. */
+  async function arriving(file: Record<string, unknown>, here: (settings: SettingsService) => void, other: Record<string, unknown>): Promise<{ settings: SettingsService; saved: Record<string, unknown> }> {
+    vi.useFakeTimers();
+    try {
+      const { settings, data } = await loaded(file);
+      here(settings);
+      data.set(other);
+      await settings.reload();
+      await vi.runAllTimersAsync();
+      return { settings, saved: data.stored() as Record<string, unknown> };
+    } finally {
+      vi.useRealTimers();
+    }
+  }
+
+  it('keeps only the key changed here when another device\'s settings arrive, also where the file lacked both', async () => {
+    const { settings, saved } = await arriving({}, (here) => here.set('diceLook', { colour: 'dark' }), { diceColour: 'light', diceFont: 'scifi' });
+    expect(settings.get('diceLook')).toEqual({ colour: 'dark', font: 'scifi' });
+    expect(saved).toMatchObject({ diceColour: 'dark', diceFont: 'scifi' });
+  });
+
+  it('keeps the turn banner switched off here and takes moving on the turn from another device, the file lacking both', async () => {
+    const { settings, saved } = await arriving({}, (here) => here.set('initiativeTurnOptions', { banner: false }), { initiativeBanner: true, initiativeMovesOnTurn: true });
+    expect(settings.get('initiativeTurnOptions')).toEqual({ banner: false, movesOnTurn: true });
+    expect(saved).toMatchObject({ initiativeBanner: false, initiativeMovesOnTurn: true });
+  });
+
+  it.each([['lacks the key', {}], ['holds the default', { diceVolume: 1 }]])('takes another device\'s dice volume over one changed here and back, where the file %s', async (_name, file) => {
+    const { settings, saved } = await arriving(file, (here) => { here.set('diceVolume', 0.5); here.set('diceVolume', 1); }, { diceVolume: 0.3 });
+    expect(settings.get('diceVolume')).toBe(0.3);
+    expect(saved).toMatchObject({ diceVolume: 0.3 });
+  });
+
   it('keeps the settings when the file reads as nothing, as while a sync tool rewrites it', async () => {
     const { settings, data } = await loaded({ diceColour: 'dark', experimental: { statblockEditor: true } });
     const heard = vi.fn();
