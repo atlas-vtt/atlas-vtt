@@ -66,6 +66,8 @@ describe('a thousand drag writes on a three-floor dungeon', () => {
   // Measured on the workstation at load 3 to 6, medians of 5: 220 ms for the thousand writes with
   // nothing open, 223 with a light's popover, 218 with Position floor (before the rules said what
   // they read, 313 and 243). The bound leaves three times the first, and an open surface 15 % and 20 ms.
+  // Only the light's case guards that old cost (+44 %): Position floor's was +12 %, and at load 9 one
+  // run of the fixed code put the light 11 % over nothing open, so a bound that tight would flake.
   it('cost no more with a popover or Position floor open than with nothing open', () => {
     const times = middles();
     console.info(Object.entries(times).map(([name, ms]) => `${name} ${ms.toFixed(0)} ms`).join(', '));
