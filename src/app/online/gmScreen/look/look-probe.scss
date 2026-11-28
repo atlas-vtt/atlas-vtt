@@ -1,0 +1,4 @@
+// A colour `readLook` has the browser resolve, through a mix of itself in sRGB, which every colour form computes to.
+.atlas-look-probe {
+  background-color: color-mix(in srgb, var(--atlas-look-probe), var(--atlas-look-probe));
+}

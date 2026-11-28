@@ -612,6 +612,23 @@ export const CONVENTIONS = [
     ],
   },
   {
+    name: 'directory-review-styles',
+    selectors: [
+      "CallExpression[callee.property.name='createEl'][arguments.0.value=/^(style|link)$/]",
+      "CallExpression[callee.property.name=/^setCss(Props|Styles)$/] > ObjectExpression.arguments > Property[key.type='Literal']:not([key.value=/^--/])",
+    ],
+    message: 'Style through a class in the SCSS and pass dynamic values as custom properties (`setCssProps({ \'--atlas-x\': value })`); a shadow root adopts a constructed stylesheet (src/app/ui/overlayScrollbars/OverlayScrollbar.ts).',
+    why: "Obsidian's directory review runs an older obsidianmd rule set than this repo's, which reports these even in a shadow root or with a dynamic value, and a release it reports is taken out of the community directory.",
+    bad: [
+      "export const motion = (root: ShadowRoot, css: string): HTMLStyleElement => root.createEl('style', { text: css });",
+      "export const tint = (el: HTMLElement, colour: string): void => el.setCssProps({ 'background-color': colour });",
+    ],
+    good: [
+      "export const tint = (el: HTMLElement, colour: string): void => el.setCssProps({ '--atlas-tint': colour });",
+      "export const probe = (el: HTMLElement): HTMLElement => el.createEl('span', { cls: 'atlas-look-probe' });",
+    ],
+  },
+  {
     name: 'intl-locale',
     // A value of `undefined` is written out by its node type: a selector reads a missing name as the text "undefined".
     selectors: ["NewExpression[callee.object.name='Intl']:matches([arguments.length=0], [arguments.0.type='Identifier'][arguments.0.name='undefined'], [arguments.0.type='Literal'], [arguments.0.type='ArrayExpression'])"],
