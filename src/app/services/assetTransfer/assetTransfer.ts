@@ -1,5 +1,6 @@
 import type { App } from 'obsidian';
 import { AssetService, type Asset } from '../AssetService';
+import { tokenArtwork } from '../assetBelongings';
 import { refersToFiles, rewriteText, toBuffer } from '../collectionBundle/bundleContent';
 import type { BundleFile } from '../collectionBundle/bundleFormat';
 import { CollectionReferenceCollector } from '../collectionBundle/collectionReferences';
@@ -11,7 +12,7 @@ import { snapshotOwnerOf } from '../../snapshots/snapshotPaths';
 import { dropSceneLinksFromJson } from '../sceneLinks';
 import { sceneAdoption, unlessUnreadable, type SceneAdoption, type TextRewrite } from './sceneAdoption';
 import { TransferFiles } from './transferFiles';
-import { planTransfer, tokenArtwork, type TransferMode, type TransferStep } from './transferPlan';
+import { planTransfer, type TransferMode, type TransferStep } from './transferPlan';
 import { tagsToRegister, transferredRecord } from './transferRecords';
 
 export interface AssetTransferRequest {
