@@ -22,7 +22,7 @@ export type Surface =
   | 'isHotkeyHelpOpen' | 'isDocsOpen' | 'isAssetManagerOpen' | 'isCommandPaletteOpen' | 'isDiceTrayOpen'
   | MapPopover | 'isToolbarEditing' | 'dungeonGenerator' | 'tableMode';
 
-/** The popovers that stand on one object of the map. */
+/** The popovers that stand on one object of the map: one at a time. */
 type MapPopover = 'lightPopover' | 'lightZonePopover' | 'levelLinkPopover' | 'levelSurfacePopover' | 'measurePopover';
 
 /** What a surface's closing writes besides its own field. */
@@ -43,11 +43,13 @@ interface SurfaceRow {
 
 type StaysWhile = (state: ViewAtlasState, open: string) => boolean;
 
-/** A map popover: it closes itself once its object can no longer be edited. */
-function popover(surface: MapPopover, closes: readonly MapPopover[], staysWhile: StaysWhile, leavesWithLevel: boolean): SurfaceRow {
+const MAP_POPOVERS: readonly MapPopover[] = ['lightPopover', 'lightZonePopover', 'levelLinkPopover', 'levelSurfacePopover', 'measurePopover'];
+
+/** A map popover: it closes the others, and closes itself once its object can no longer be edited. */
+function popover(surface: MapPopover, staysWhile: StaysWhile, leavesWithLevel: boolean): SurfaceRow {
   return {
     closed: { [surface]: null },
-    closes,
+    closes: MAP_POPOVERS.filter((other) => other !== surface),
     staysWhile,
     ...(leavesWithLevel && { leavesWithLevel: true }),
   };
@@ -76,19 +78,19 @@ const SURFACES: Readonly<Record<Surface, SurfaceRow>> = {
   },
   isCommandPaletteOpen: { closed: { isCommandPaletteOpen: false, commandPalettePage: null }, closes: ENDS_TOOLBAR_EDITING },
   isDiceTrayOpen: flag('isDiceTrayOpen', ENDS_TOOLBAR_EDITING),
-  lightPopover: popover('lightPopover', ['lightZonePopover', 'measurePopover'], (state, id) => (
+  lightPopover: popover('lightPopover', (state, id) => (
     !!readLight(levelObjects(state).lights[id]) && state.isGMView && !state.isMapLoading && lightMarkersShown(state)
   ), true),
-  lightZonePopover: popover('lightZonePopover', ['lightPopover', 'measurePopover'], (state, id) => (
+  lightZonePopover: popover('lightZonePopover', (state, id) => (
     !!levelObjects(state).lightZones?.[id] && state.activeTool === 'wall' && state.isGMView && !state.isMapLoading
   ), true),
-  levelLinkPopover: popover('levelLinkPopover', [], (state, id) => (
+  levelLinkPopover: popover('levelLinkPopover', (state, id) => (
     stairsShown(state) && state.activeTool === 'stairs' && levelLinkList(levelObjects(state).levelLinks).some((link) => link.id === id)
   ), true),
-  levelSurfacePopover: popover('levelSurfacePopover', [], (state, id) => (
+  levelSurfacePopover: popover('levelSurfacePopover', (state, id) => (
     !!levelObjects(state).levelSurfaces?.[id] && state.activeTool === 'wall' && state.isGMView && !state.isMapLoading
   ), false),
-  measurePopover: popover('measurePopover', ['lightPopover', 'lightZonePopover'], (state, id) => mayEditMeasure(state, id), true),
+  measurePopover: popover('measurePopover', (state, id) => mayEditMeasure(state, id), true),
   // The editor's tray hangs where the dice tray goes.
   isToolbarEditing: flag('isToolbarEditing', ['isDiceTrayOpen']),
   dungeonGenerator: { closed: { dungeonGenerator: null }, closes: ENDS_TOOLBAR_EDITING },
