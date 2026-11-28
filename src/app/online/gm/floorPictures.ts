@@ -1,7 +1,7 @@
 import type { GmMessage } from '../protocol/index.ts';
 import type { TokenSeen } from '../../vision/measureOrigin';
 import { ownPolicy, PLAYER_SIGHT_POLICY, type SightPolicy } from '../../vision/tokenSightPolicy';
-import type { SceneStore } from './atlasView.ts';
+import { playable, type SceneStore } from './atlasView.ts';
 import type { SavedMemory } from './ExploredShare.ts';
 import { ExploredRemovals } from './exploredRemovals.ts';
 import { eyesKey, PARTY_EYES, playerEyesKey, sightHides, type Eyes } from './floorEyes.ts';
@@ -133,7 +133,7 @@ export class FloorPictures {
   private observeRemovals(): void {
     if (this.scene?.lit !== true) return;
     const state = this.store.getState();
-    if (!state.mapLoaded || state.isMapLoading) return this.removals.loading();
+    if (!playable(state)) return this.removals.loading();
     const removals = this.removals.observe(state);
     if (removals.length > 0) this.memories?.removed(removals);
   }

@@ -2,7 +2,7 @@ import { COLLECTION_FOLDER, type CollectionLookup } from '../../../gameSystems/m
 import type { ResourceDefinition } from '../../../resources/resourceTypes';
 import type { ShownRollToken } from '../../../services/playerRollSource';
 import type { TokenEntity } from '../../../types';
-import type { PlayerTokenSource, SceneState } from '../atlasView.ts';
+import { playable, type PlayerTokenSource, type SceneState } from '../atlasView.ts';
 import type { TokenRules } from '../tokenUI.ts';
 import { NO_COLLECTION } from './bookStore.ts';
 
@@ -41,7 +41,7 @@ export function bookSceneOf(
   state: SceneState, source: PlayerTokenSource | null, rules: TokenRules | null, collections: CollectionLookup | null, listedToken: BookScene['listedToken'],
 ): BookScene | null {
   const { mapPath } = state;
-  if (!state.mapLoaded || state.isMapLoading || mapPath === null || source === null) return null;
+  if (!playable(state) || mapPath === null || source === null) return null;
   const collection = collectionOf(collections, mapPath);
   if (collection === null) return null;
   return {

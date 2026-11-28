@@ -1,7 +1,7 @@
 import type { App, WorkspaceLeaf } from 'obsidian';
 import type { PresentedScene } from '../../services/presentedScene';
+import { presentedTabIn, standingOf, type Standing, type ViewFacts } from '../../services/presentedSceneTracker';
 import type { TabMetaState } from '../../stores/tabMetaStore';
-import { type SceneState } from './atlasView.ts';
 import { mapViewOf } from './mapViewOf.ts';
 
 /** Atlas's command that shows the active map tab's scene on the player view, as the eye on a scene tab does. */
@@ -24,33 +24,24 @@ export interface PresentedTab {
   readonly levelId?: string;
 }
 
-/**
- * The open Atlas tab Atlas presents: the tab with the presented id, else (tab ids made anew) the first
- * tab of the presented file, as Atlas reconnects its player window; null when no open view has it.
- */
+/** The open Atlas tab Atlas presents (`presentedTabIn`), as the table reads it; null when no open view has it. */
 export function findPresentedTab(leaves: readonly WorkspaceLeaf[], presented: PresentedScene | null): PresentedTab | null {
-  if (presented === null) return null;
-  let byFile: PresentedTab | null = null;
-  for (const leaf of leaves) {
+  const views = leaves.flatMap((leaf) => {
     const view = mapViewOf(leaf);
-    if (view === null || view.atlasStore.getState().isPlayerView === true) continue;
-    const tabs = view.tabMetaStore;
-    for (const tab of tabs.getState().tabs) {
-      const found = { leaf, tabs, tabId: tab.id, filePath: tab.filePath, name: tab.displayName, ...(presented.levelId ? { levelId: presented.levelId } : {}) };
-      if (tab.id === presented.tabId) return found;
-      if (byFile === null && tab.filePath === presented.filePath) byFile = found;
-    }
-  }
-  return byFile;
+    return view === null ? [] : [{ leaf, view, tabs: view.tabMetaStore.getState().tabs, isPlayerView: view.atlasStore.getState().isPlayerView === true }];
+  });
+  const found = presentedTabIn(views, presented);
+  if (found === null) return null;
+  const { leaf, view } = found.view;
+  return { leaf, tabs: view.tabMetaStore, tabId: found.tab.id, filePath: found.tab.filePath, name: found.tab.displayName, ...(presented?.levelId ? { levelId: presented.levelId } : {}) };
 }
 
 /**
- * Whether a view's store holds the presented tab's scene now: the tab is active and its scene loaded.
- * Whichever of its levels the GM looks at, online players go on seeing theirs: each the floor their
- * token stands on, those without one the presented level (`SceneShare`).
+ * Where the presented tab stands in the view whose store is `store`. Whichever of its levels the GM looks at, online
+ * players go on seeing theirs: each the floor their token stands on, those without one the presented level (`SceneShare`).
  */
-export function showsPresented(state: Pick<SceneState, 'mapPath' | 'mapLoaded' | 'isMapLoading'>, presented: PresentedTab): boolean {
-  return presented.tabs.getState().activeTabId === presented.tabId && state.mapPath === presented.filePath && state.mapLoaded && !state.isMapLoading;
+export function presentedStanding(store: ViewFacts['store'], presented: PresentedTab): Standing {
+  return standingOf({ tabs: presented.tabs, store }, { id: presented.tabId, filePath: presented.filePath });
 }
 
 interface Commands {

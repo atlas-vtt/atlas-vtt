@@ -1,0 +1,255 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the presented scene, in the player window and at a running table > answers generated walks as recorded 1`] = `
+[
+  [
+    "the eye on v1's Cave | window: live v1 v1:Cave | table: live v1, sent scene maps/cave.png, scene maps/cave.png",
+    "v1's map image starts loading slowly | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v1 replaces the map of the level it shows with maps/hall.png | window: live v1 v1:Cave | table: live v1, sent scene maps/hall.png, scene maps/hall.png",
+    "v1's map image starts loading slowly | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v1 opens its Cave tab | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v1 closes its Cave tab | window: held | table: none, sent scene none",
+    "the eye on v1's Cave, upper level | window: held | table: none, sent nothing",
+    "v1 starts loading its Hall tab | window: held | table: none, sent nothing",
+    "v1 starts loading its Hall tab | window: held | table: none, sent nothing",
+  ],
+  [
+    "the eye on v1's Cave | window: live v1 v1:Cave | table: live v1, sent scene maps/cave.png, scene maps/cave.png",
+    "v1 finishes its load | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v1's map image starts loading slowly | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v1 closes its Hall tab | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v1's map image finishes its loads | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "Atlas presents nothing | window: live v1 v1:Cave | table: none, sent scene none",
+    "v1 opens its Hall tab | window: live v1 v1:Cave | table: none, sent nothing",
+    "the eye on v1's Cave, upper level | window: live v1 v1:Cave | table: live v1, sent scene maps/upper.png",
+    "the eye on v1's Cave, ground level | window: live v1 v1:Cave | table: live v1, sent scene maps/cave.png",
+  ],
+  [
+    "the eye on v1's Cave | window: live v1 v1:Cave | table: live v1, sent scene maps/cave.png, scene maps/cave.png",
+    "the eye on v1's Cave, ground level | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v1's map image starts loading slowly | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v1 starts loading its Cave tab | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v1 closes its Hall tab | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v1 finishes its load | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v1's map image finishes its loads | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v2 opens on the Hall | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v1 loads its scene again | window: live v1 v1:Cave | table: held, sent nothing",
+  ],
+  [
+    "the eye on v1's Cave | window: live v1 v1:Cave | table: live v1, sent scene maps/cave.png, scene maps/cave.png",
+    "v1 starts loading its Hall tab | window: held | table: held, sent nothing",
+    "v1 opens its Cave tab | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v1 closes its Hall tab | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v1's map image starts loading slowly | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v1 loads its scene again | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v1 shows the upper level | window: held | table: live v1, sent nothing",
+    "v1's map image starts loading slowly | window: held | table: live v1, sent nothing",
+    "v1's map image starts loading slowly | window: held | table: live v1, sent nothing",
+  ],
+  [
+    "the eye on v1's Cave | window: live v1 v1:Cave | table: live v1, sent scene maps/cave.png, scene maps/cave.png",
+    "v1 starts loading its Hall tab | window: held | table: held, sent nothing",
+    "v1 loads its scene again | window: held | table: held, sent nothing",
+    "v1 closes its Hall tab | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "the eye on v1's Cave, ground level | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v1 loads its scene again | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v1 closes its Cave tab | window: held | table: none, sent scene none",
+    "the eye on v1's Cave, upper level | window: held | table: none, sent nothing",
+    "v1 closes | window: held, its view gone | table: none, sent nothing",
+  ],
+  [
+    "the eye on v1's Cave | window: live v1 v1:Cave | table: live v1, sent scene maps/cave.png, scene maps/cave.png",
+    "v1 deletes its upper level | window: live v1 v1:Cave | table: live v1, sent scene maps/cave.png",
+    "v2 opens on the Cave | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v3 opens on the Hall | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "the eye on v1's Cave | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v2's map image starts loading slowly | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "Atlas presents nothing | window: live v1 v1:Cave | table: none, sent scene none",
+    "Atlas presents nothing | window: live v1 v1:Cave | table: none, sent nothing",
+    "Atlas presents nothing | window: live v1 v1:Cave | table: none, sent nothing",
+  ],
+  [
+    "the eye on v1's Cave | window: live v1 v1:Cave | table: live v1, sent scene maps/cave.png, scene maps/cave.png",
+    "Atlas presents nothing | window: live v1 v1:Cave | table: none, sent scene none",
+    "the eye on v1's Cave, ground level | window: live v1 v1:Cave | table: live v1, sent scene maps/cave.png",
+    "v1 finishes its load | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v1 starts loading its Hall tab | window: held | table: held, sent nothing",
+    "v1 shows the upper level | window: held | table: held, sent nothing",
+    "v1 starts loading its Cave tab | window: held | table: held, sent nothing",
+    "v1's map image finishes its loads | window: held | table: held, sent nothing",
+    "v1's map image finishes its loads | window: held | table: held, sent nothing",
+  ],
+  [
+    "the eye on v1's Cave | window: live v1 v1:Cave | table: live v1, sent scene maps/cave.png, scene maps/cave.png",
+    "v1 shows the upper level | window: held | table: live v1, sent nothing",
+    "v1 closes its Hall tab | window: held | table: live v1, sent nothing",
+    "v1's map image starts loading slowly | window: held | table: live v1, sent nothing",
+    "v1 opens its Hall tab | window: held | table: live v1, sent nothing",
+    "v1 opens its Hall tab | window: held | table: live v1, sent nothing",
+    "v1 loads its scene again | window: held | table: live v1, sent nothing",
+    "v1 shows the upper level | window: held | table: live v1, sent nothing",
+    "v1 opens its Cave tab | window: held | table: live v1, sent nothing",
+  ],
+  [
+    "the eye on v1's Cave | window: live v1 v1:Cave | table: live v1, sent scene maps/cave.png, scene maps/cave.png",
+    "v1 opens its Cave tab | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v1 finishes its load | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v1 deletes its upper level | window: live v1 v1:Cave | table: live v1, sent scene maps/cave.png",
+    "v1 loads its scene again | window: live v1 v1:Cave | table: live v1, sent scene maps/cave.png",
+    "v2 opens on the Cave | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v1 closes | window: held, its view gone | table: live v2, sent scene none, scene maps/cave.png",
+    "the eye on v2's Hall | window: live v2 v2:Hall | table: live v2, sent scene maps/hall.png, scene maps/hall.png",
+    "v2's map image starts loading slowly | window: live v2 v2:Hall | table: live v2, sent nothing",
+  ],
+  [
+    "the eye on v1's Cave | window: live v1 v1:Cave | table: live v1, sent scene maps/cave.png, scene maps/cave.png",
+    "v1 deletes its upper level | window: live v1 v1:Cave | table: live v1, sent scene maps/cave.png",
+    "v1 opens its Cave tab | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v1 opens its Hall tab | window: held | table: held, sent nothing",
+    "v2 opens on the Cave | window: held | table: held, sent nothing",
+    "v3 opens on the Cave | window: held | table: held, sent nothing",
+    "v2 deletes its upper level | window: held | table: held, sent nothing",
+    "v2 shows the upper level | window: held | table: held, sent nothing",
+    "the eye on v2's Cave | window: live v2 v2:Cave | table: live v2, sent scene maps/cave.png",
+  ],
+  [
+    "the eye on v1's Cave | window: live v1 v1:Cave | table: live v1, sent scene maps/cave.png, scene maps/cave.png",
+    "v1 replaces the map of the level it shows with maps/upper.png | window: live v1 v1:Cave | table: live v1, sent scene maps/upper.png",
+    "v1's map image finishes its loads | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v1 closes | window: held, its view gone | table: none, sent scene none",
+    "v2 opens on the Hall | window: held, its view gone | table: none, sent nothing",
+    "v2 starts loading its Hall tab | window: held, its view gone | table: none, sent nothing",
+    "v2's map image finishes its loads | window: held, its view gone | table: none, sent nothing",
+    "the eye on v2's Cave, upper level | window: held, its view gone | table: none, sent nothing",
+    "v2 shows the upper level | window: held, its view gone | table: none, sent nothing",
+  ],
+  [
+    "the eye on v1's Cave | window: live v1 v1:Cave | table: live v1, sent scene maps/cave.png, scene maps/cave.png",
+    "v1's map image finishes its loads | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v1 deletes its upper level | window: live v1 v1:Cave | table: live v1, sent scene maps/cave.png",
+    "v2 opens on the Hall | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v2 loads its scene again | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "Atlas presents nothing | window: live v1 v1:Cave | table: none, sent scene none",
+    "v2 shows the ground level | window: live v1 v1:Cave | table: none, sent nothing",
+    "v1 shows the ground level | window: live v1 v1:Cave | table: none, sent nothing",
+    "v1 shows the ground level | window: live v1 v1:Cave | table: none, sent nothing",
+  ],
+  [
+    "the eye on v1's Cave | window: live v1 v1:Cave | table: live v1, sent scene maps/cave.png, scene maps/cave.png",
+    "v1 opens its Hall tab | window: held | table: held, sent nothing",
+    "v1 opens its Cave tab | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v1 deletes its upper level | window: live v1 v1:Cave | table: live v1, sent scene maps/cave.png",
+    "v1 shows the upper level | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v1 replaces the map of the level it shows with maps/hall.png | window: live v1 v1:Cave | table: live v1, sent scene maps/hall.png, scene maps/hall.png",
+    "v1 loads its scene again | window: live v1 v1:Cave | table: live v1, sent scene maps/cave.png",
+    "the eye on v1's Cave | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v1 shows the upper level | window: held | table: live v1, sent nothing",
+  ],
+  [
+    "the eye on v1's Cave | window: live v1 v1:Cave | table: live v1, sent scene maps/cave.png, scene maps/cave.png",
+    "v1's map image starts loading slowly | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v1 deletes its upper level | window: live v1 v1:Cave | table: live v1, sent scene maps/cave.png",
+    "v1 opens its Hall tab | window: held | table: held, sent nothing",
+    "v1 shows the ground level | window: held | table: held, sent nothing",
+    "v1 replaces the map of the level it shows with maps/upper.png | window: held | table: held, sent nothing",
+    "v1 deletes its upper level | window: held | table: held, sent nothing",
+    "the eye on v1's Cave | window: live v1 v1:Cave | table: live v1, sent scene maps/cave.png",
+    "v1's map image finishes its loads | window: live v1 v1:Cave | table: live v1, sent nothing",
+  ],
+  [
+    "the eye on v1's Cave | window: live v1 v1:Cave | table: live v1, sent scene maps/cave.png, scene maps/cave.png",
+    "v1 shows the ground level | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v2 opens on the Cave | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v1 shows the ground level | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v1 loads its scene again | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "Atlas presents nothing | window: live v1 v1:Cave | table: none, sent scene none",
+    "the eye on v1's Hall | window: live v1 v1:Hall | table: live v1, sent scene maps/hall.png, scene maps/hall.png",
+    "v1 opens its Cave tab | window: held | table: held, sent nothing",
+    "v2 shows the upper level | window: held | table: held, sent nothing",
+  ],
+  [
+    "the eye on v1's Cave | window: live v1 v1:Cave | table: live v1, sent scene maps/cave.png, scene maps/cave.png",
+    "v1 loads its scene again | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v2 opens on the Cave | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v3 opens on the Hall | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v1 finishes its load | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v3 shows the ground level | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "v1 deletes its upper level | window: live v1 v1:Cave | table: live v1, sent scene maps/cave.png",
+    "v2's map image starts loading slowly | window: live v1 v1:Cave | table: live v1, sent nothing",
+    "the eye on v1's Hall | window: live v1 v1:Hall | table: live v1, sent scene maps/hall.png, scene maps/hall.png",
+  ],
+]
+`;
+
+exports[`the presented scene, in the player window and at a running table > follows a reload of the presented tab, a note and back, and the presented tab closed 1`] = `
+[
+  "the eye on the Cave | window: live v1 v1:Cave | table: live v1, sent scene maps/cave.png, scene maps/cave.png",
+  "Atlas loads the Cave again, slowly | window: live v1 v1:Cave | table: held, sent nothing",
+  "the load ends | window: live v1 v1:Cave | table: live v1, sent nothing",
+  "the GM opens a note | window: live v1 v1:Cave | table: live v1, sent nothing",
+  "the GM goes back to the map | window: live v1 v1:Cave | table: live v1, sent nothing",
+  "the GM closes the Cave tab | window: held | table: none, sent scene none",
+]
+`;
+
+exports[`the presented scene, in the player window and at a running table > follows the GM replacing the presented level's map, on the first level, an upper level and a scene without levels 1`] = `
+[
+  "the eye on the Cave | window: live v1 v1:Cave | table: live v1, sent scene maps/cave.png, scene maps/cave.png",
+  "the GM replaces the ground level's map, the new one still loading | window: live v1 v1:Cave | table: live v1, sent scene maps/crypt.png, scene maps/crypt.png",
+  "the new map has loaded | window: live v1 v1:Cave | table: live v1, sent nothing",
+  "the eye on the upper level | window: live v1 v1:Cave | table: live v1, sent scene maps/upper.png",
+  "the GM replaces the upper level's map, the new one still loading | window: live v1 v1:Cave | table: live v1, sent scene maps/hall.png, scene maps/hall.png",
+  "the new map has loaded | window: live v1 v1:Cave | table: live v1, sent nothing",
+  "the eye on the Hall | window: live v1 v1:Hall | table: live v1, sent scene maps/hall.png",
+  "the GM replaces the Hall's map, the new one still loading | window: live v1 v1:Hall | table: live v1, sent scene maps/crypt.png",
+  "the new map has loaded | window: live v1 v1:Hall | table: live v1, sent nothing",
+]
+`;
+
+exports[`the presented scene, in the player window and at a running table > follows the presented level deleted, while the window is held on another level and while the GM is on it 1`] = `
+[
+  "the eye on the Tower, attic level | window: live v1 v1:Tower | table: live v1, sent scene maps/hall.png, scene maps/hall.png",
+  "the GM looks at the upper level | window: held | table: live v1, sent nothing",
+  "the presented attic is deleted while the window is held on the upper level, players shown the upper level instead | window: held | table: live v1, sent scene maps/upper.png",
+  "the GM looks at the ground level | window: held | table: live v1, sent nothing",
+  "the GM looks at the upper level again | window: live v1 v1:Tower | table: live v1, sent nothing",
+  "the presented upper level is deleted while the GM is on it | window: live v1 v1:Tower | table: live v1, sent scene maps/crypt.png",
+]
+`;
+
+exports[`the presented scene, in the player window and at a running table > holds a restored window on another level while the presented level's map still loads 1`] = `
+[
+  "Obsidian restores the player window, the upper level's map still loading | window: live v1 v1:Cave | table: live v1, sent nothing",
+  "the GM looks at the ground level | window: held | table: live v1, sent nothing",
+  "the maps finish loading | window: held | table: live v1, sent nothing",
+  "the GM looks at the upper level again | window: live v1 v1:Cave | table: live v1, sent nothing",
+]
+`;
+
+exports[`the presented scene, in the player window and at a running table > holds the window at the next tab change after the GM left the tab while it was being presented 1`] = `
+[
+  "the eye on the Cave | window: live v1 v1:Cave | table: live v1, sent scene maps/cave.png, scene maps/cave.png",
+  "the eye on the Hall, the GM opening the Crypt before it is drawn | window: live v1 v1:Hall | table: held, sent nothing",
+  "the GM opens the Cave tab | window: held | table: held, sent nothing",
+  "the GM opens the Hall tab | window: live v1 v1:Hall | table: live v1, sent scene maps/hall.png, scene maps/hall.png",
+]
+`;
+
+exports[`the presented scene, in the player window and at a running table > holds the window on another level while the presented level's map still loads 1`] = `
+[
+  "the eye on the Cave | window: live v1 v1:Cave | table: live v1, sent scene maps/cave.png, scene maps/cave.png",
+  "the eye on the upper level, whose map still loads | window: live v1 v1:Cave | table: live v1, sent scene maps/upper.png",
+  "the GM looks at the ground level | window: held | table: live v1, sent nothing",
+  "the maps finish loading | window: held | table: live v1, sent nothing",
+  "the GM looks at the upper level again | window: live v1 v1:Cave | table: live v1, sent nothing",
+]
+`;
+
+exports[`the presented scene, in the player window and at a running table > keeps the window held on another level once Atlas presents nothing 1`] = `
+[
+  "the eye on the Cave | window: live v1 v1:Cave | table: live v1, sent scene maps/cave.png, scene maps/cave.png",
+  "the GM looks at the upper level | window: held | table: live v1, sent nothing",
+  "Atlas presents nothing | window: held | table: none, sent scene none",
+  "the GM edits the map | window: held | table: none, sent nothing",
+]
+`;

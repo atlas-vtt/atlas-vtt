@@ -5,7 +5,7 @@ import type { ViewState } from '../../types/viewState';
 import { ArtRefs } from './artRefs.ts';
 import type { AssetStoring } from './assets/assetUses.ts';
 import type { MapLayerSource } from './atlasMapLayers.ts';
-import type { SceneState, SceneStore } from './atlasView.ts';
+import { playable, type SceneState, type SceneStore } from './atlasView.ts';
 import { AnnotationTelling } from './annotationTelling.ts';
 import type { MaskDecoder } from './exploredMaskAlpha.ts';
 import { Feed, type FeedPorts, type FeedScene } from './feed/Feed.ts';
@@ -148,7 +148,7 @@ export class MapLayerShare {
   private build(scene: FeedScene, out: FeedOut): void {
     const state: LayerState = this.store.getState();
     const source = this.ports.mapLayers();
-    if (source === null || !state.mapLoaded || state.isMapLoading) return;
+    if (source === null || !playable(state)) return;
     const { settings } = this.ports.atlas();
     out.send({ t: 'grid', scene: scene.id, grid: sharedGrid(source.grid()) });
     this.publishLiquids(scene.id, levelObjects(state).liquids, out);
@@ -181,7 +181,7 @@ export class MapLayerShare {
     const state: LayerState = this.store.getState();
     const source = this.ports.mapLayers();
     const map = state.mapPath;
-    if (this.feed.scene?.id !== sceneId || source === null || map === null || !state.mapLoaded || state.isMapLoading) return null;
+    if (this.feed.scene?.id !== sceneId || source === null || map === null || !playable(state)) return null;
     const listed = this.readablePins(state, source, this.fog.get(levelObjects(state).fog, levelMapKey(map, state)))?.find((pin) => pin.alias === alias);
     return listed === undefined ? null : { ...listed, map };
   }

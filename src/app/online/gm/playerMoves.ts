@@ -5,9 +5,10 @@ import type { ViewState } from '../../types/viewState';
 import { checkMove, dropPlace, insideMap, MoveRate, refusalReason, samePlace, type MoveContext } from './moveCheck.ts';
 import { PlayerDrags } from './playerDrags.ts';
 import { mapTokens } from '../../tokens/offMap';
+import { playable, type SceneLoad } from './atlasView.ts';
 
 /** What player moves read and write of an Atlas tab's store. */
-export type MoveState = PlacedTokensState & TurnMovesDraft & Pick<ViewState, 'objects' | 'grid' | 'mapLoaded' | 'isMapLoading' | 'isDragging' | 'heldTokens'>;
+export type MoveState = PlacedTokensState & TurnMovesDraft & Pick<ViewState, 'objects' | 'grid' | 'isDragging' | 'heldTokens'> & SceneLoad;
 
 export interface MoveStore {
   getState(): MoveState;
@@ -102,7 +103,7 @@ export class PlayerMoves {
 
   receive(from: string, move: PlayerMove): void {
     const state = this.store.getState();
-    if (!this.rate.take(from, this.ports.now()) || !state.mapLoaded || state.isMapLoading) return this.refuse(from, move);
+    if (!this.rate.take(from, this.ports.now()) || !playable(state)) return this.refuse(from, move);
     const dropped = this.drags.drop(from, move);
     if (dropped === 'turn' || dropped === 'paused') return this.refuse(from, move, dropped);
     if (dropped !== null) return dropped !== false && samePlace(dropped, move) ? undefined : this.refuse(from, move);
@@ -131,7 +132,7 @@ export class PlayerMoves {
     this.waiting.clear();
     for (const { from, move, x, y } of waiting) {
       const now = this.store.getState();
-      const verdict = now.mapLoaded && !now.isMapLoading ? checkMove(from, move, this.context(now, from)) : null;
+      const verdict = playable(now) ? checkMove(from, move, this.context(now, from)) : null;
       const token = verdict?.ok === true ? mapTokens(now.objects)[verdict.tokenId] : undefined;
       if (verdict?.ok !== true || token === undefined || token.x !== x || token.y !== y) this.refuse(from, move, verdict === null ? undefined : refusalReason(verdict));
       else this.apply(from, verdict.tokenId, move);
