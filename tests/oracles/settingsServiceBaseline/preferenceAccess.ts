@@ -1,4 +1,4 @@
-// Frozen from 7730d0c26 tests/unit/settings/preferenceAccess.ts (the pin's accessors of the settings before #871). Only import paths are adapted.
+// Frozen from 7730d0c26 tests/unit/settings/preferenceAccess.ts (the pin's accessors of the settings before #871). Import paths are adapted, and `onboarding` is read and written as the callers before #871 did.
 import type { App } from 'obsidian';
 import type { SettingsService } from './SettingsService';
 import {
@@ -54,8 +54,12 @@ export const PREFERENCE_ACCESS = {
   },
   onboarding: {
     store: 'synced', keys: ['onboarding'],
-    read: ({ settings }) => settings.getSetting('onboarding'),
-    write: value<{ enabled: boolean; completed: Record<string, boolean>; tokenImported: boolean }>(({ settings }, next) => settings.setSetting('onboarding', next)),
+    // As the settings' callers before #871 read and wrote it: field by field, the stored record spread under a change
+    read: ({ settings }) => {
+      const { enabled, completed, tokenImported } = settings.getSetting('onboarding') as unknown as Record<string, unknown>;
+      return { enabled, completed, tokenImported };
+    },
+    write: value<{ enabled: boolean; completed: Record<string, boolean>; tokenImported: boolean }>(({ settings }, next) => settings.setSetting('onboarding', { ...settings.getSetting('onboarding'), ...next })),
   },
   hotkeys: {
     store: 'synced', keys: ['hotkeys'],
