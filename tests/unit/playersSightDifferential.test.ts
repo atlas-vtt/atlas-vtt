@@ -24,8 +24,8 @@ import { genericLight } from '../mocks/lights';
  * The players' picture of a floor worked out two ways, held to the same answers over generated scenes: by the GM's
  * canvas (Atlas's lighting view, its sight worked out as on the GPU path, with the canvas's players' frame) and by the
  * floor model the table works out on the CPU for a floor the GM does not look at. What each floor's players are told
- * of tokens, sensed tokens, doors and the places pins stand at is compared. Where the two disagree, the kind of
- * disagreement is counted and the counts are pinned. Two rules of one side cause them all: the CPU reads a floor with
+ * of tokens, sensed tokens, doors and the places pins stand at is compared. Where the two disagree, each
+ * disagreement is pinned by seed, floor, kind and id. Two rules of one side cause them all: the CPU reads a floor with
  * a roof failing closed (only the party's own tokens), where the canvas reads the roof it draws for tokens and none
  * for doors and pins; and the CPU builds lights without the light walls reflect, so what only reflected light lights
  * is seen from the canvas alone.
@@ -151,7 +151,8 @@ function answersOf(view: BareMapView, floor: string): Answers {
   const seen = ports.mapLayers()?.pointsSeen(pins.map(({ x, y }) => ({ x, y })), fog) ?? null;
   return {
     tokens: [...(ports.tokenSource()?.playerRollTokens(state().mapPath!).keys() ?? [])].sort(),
-    sensed: (ports.mapLayers()?.sensed(mapTokens(objects)) ?? []).map(({ x, y }) => `${x},${y}`).sort(),
+    // A sensed token by the token at its outline's place: both ways outline a token where it stands here.
+    sensed: (ports.mapLayers()?.sensed(mapTokens(objects)) ?? []).map(({ x, y }) => Object.values(mapTokens(objects)).find((token) => Math.round(token.x) === Math.round(x) && Math.round(token.y) === Math.round(y))?.id ?? `${x},${y}`).sort(),
     doors: [...(ports.mapLayers()?.doorsSeen(objects.walls, fog) ?? [])].sort(),
     pins: seen === null ? ['(cannot tell)'] : pins.filter((_, index) => seen[index]).map(({ id }) => id).sort(),
   };
@@ -167,7 +168,7 @@ describe('the players\' picture of a floor, from the GM\'s canvas and worked out
   it(`gives the same answers but where a rule of one side differs (${SCENES} generated scenes of two floors)`, async () => {
     const view = await bareMapView({ whole: {}, grid: { size: 70, enabled: true, color: 0xffffff } });
     views.push(view);
-    const disagreements: Record<string, number> = {};
+    const disagreements: Record<string, Record<string, string[]>> = {};
     const shown: Record<string, number> = {};
     let compared = 0;
     for (let seed = 1; seed <= SCENES; seed++) {
@@ -186,8 +187,10 @@ describe('the players\' picture of a floor, from the GM\'s canvas and worked out
         compared += 1;
         for (const kind of ['tokens', 'sensed', 'doors', 'pins'] as const) {
           shown[`${floor}: ${kind} the canvas shows`] = (shown[`${floor}: ${kind} the canvas shows`] ?? 0) + gpu[kind].length;
-          for (const item of gpu[kind]) if (!cpu[kind].includes(item)) disagreements[`${floor}: ${kind} the canvas shows and the CPU does not`] = (disagreements[`${floor}: ${kind} the canvas shows and the CPU does not`] ?? 0) + 1;
-          for (const item of cpu[kind]) if (!gpu[kind].includes(item)) disagreements[`${floor}: ${kind} the CPU shows and the canvas does not`] = (disagreements[`${floor}: ${kind} the CPU shows and the canvas does not`] ?? 0) + 1;
+          const canvasOnly = gpu[kind].filter((item) => !cpu[kind].includes(item));
+          const cpuOnly = cpu[kind].filter((item) => !gpu[kind].includes(item));
+          if (canvasOnly.length > 0) (disagreements[`seed ${seed} ${floor}`] ??= {})[`${kind} the canvas shows and the CPU does not`] = canvasOnly;
+          if (cpuOnly.length > 0) (disagreements[`seed ${seed} ${floor}`] ??= {})[`${kind} the CPU shows and the canvas does not`] = cpuOnly;
         }
       }
     }
