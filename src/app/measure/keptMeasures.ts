@@ -172,7 +172,7 @@ export function measureMovedWithMap<T>(measure: T, move: (point: Point) => Point
 }
 
 /** What says whether a kept measurement can be edited. */
-export type MeasureEditState = Pick<ViewState, 'objects' | 'levels' | 'viewedLevel' | 'isGMView' | 'isMapLoading' | 'isPlayerView'>;
+export type MeasureEditState = Pick<ViewState, 'levels' | 'viewedLevel' | 'isGMView' | 'isMapLoading' | 'isPlayerView'> & { objects: Pick<ViewState['objects'], 'measures'> };
 
 /** The kept measurement `id` on the level shown, as it is read; null when it is gone or is none. */
 export function keptMeasure(state: Pick<MeasureEditState, 'objects' | 'levels' | 'viewedLevel'>, id: string): KeptMeasure | null {

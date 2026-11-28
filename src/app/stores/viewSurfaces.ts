@@ -37,11 +37,52 @@ interface SurfaceRow {
   readonly closes?: readonly Surface[];
   /** A level switch closes it, also where its object stands on the level shown next. */
   readonly leavesWithLevel?: true;
-  /** It stays open only while this holds; `open` is what its field holds. */
   readonly staysWhile?: StaysWhile;
 }
 
-type StaysWhile = (state: ViewAtlasState, open: string) => boolean;
+type Objects = ViewAtlasState['objects'];
+
+/** A key of the state a rule reads, or one kind of its objects: a token's move is no change to a light. */
+type Read = Exclude<keyof ViewAtlasState, 'objects'> | `objects.${keyof Objects}`;
+
+type KindOf<R> = R extends `objects.${infer Kind}` ? Kind & keyof Objects : never;
+
+/** The state a rule that reads `R` is handed: those keys, and those kinds of objects, alone. */
+type ReadState<R extends Read> = Pick<ViewAtlasState, Exclude<R, `objects.${string}`>>
+  & ([KindOf<R>] extends [never] ? unknown : { objects: Pick<Objects, KindOf<R>> });
+
+/**
+ * It stays open only while `rule` holds of what it `reads` (`open` is what its field holds). The
+ * rule's state holds nothing else in its type, so a key it does not declare does not compile.
+ */
+interface StaysWhile {
+  readonly reads: readonly Read[];
+  readonly rule: (state: object, open: string) => boolean;
+}
+
+function staysWhile<R extends Read>(reads: readonly R[], rule: (state: ReadState<R>, open: string) => boolean): StaysWhile {
+  return { reads, rule: rule as StaysWhile['rule'] };
+}
+
+/** Whether what a rule reads is the same in both states. */
+function readsSame(reads: readonly Read[], value: (key: keyof ViewAtlasState) => unknown, previous: ViewAtlasState): boolean {
+  return reads.every((read) => {
+    if (!read.startsWith('objects.')) return value(read as keyof ViewAtlasState) === previous[read as keyof ViewAtlasState];
+    const kind = read.slice('objects.'.length) as keyof Objects;
+    return (value('objects') as Objects | undefined)?.[kind] === previous.objects?.[kind];
+  });
+}
+
+/** What a rule is handed: the keys it reads, and the whole of `objects` where it reads a kind of them. */
+function inputsOf(reads: readonly Read[], value: (key: keyof ViewAtlasState) => unknown): object {
+  return Object.fromEntries(reads.map((read) => {
+    const key = (read.startsWith('objects.') ? 'objects' : read) as keyof ViewAtlasState;
+    return [key, value(key)];
+  }));
+}
+
+/** What a map popover's object is read from: the level shown, in the GM's view of a loaded scene. */
+const ON_THE_MAP = ['levels', 'viewedLevel', 'isGMView', 'isMapLoading'] as const;
 
 const MAP_POPOVERS: readonly MapPopover[] = ['lightPopover', 'lightZonePopover', 'levelLinkPopover', 'levelSurfacePopover', 'measurePopover'];
 
@@ -66,7 +107,9 @@ const SURFACES: Readonly<Record<Surface, SurfaceRow>> = {
   // Placing a floor needs another floor to place it against, and grid alignment takes the map's presses.
   isFloorPositioning: {
     closed: { isFloorPositioning: false },
-    staysWhile: (state) => !state.isMapLoading && (state.levels?.length ?? 0) > 1 && !state.isGridAlignmentOpen,
+    staysWhile: staysWhile(['isMapLoading', 'levels', 'isGridAlignmentOpen'], (state) => (
+      !state.isMapLoading && (state.levels?.length ?? 0) > 1 && !state.isGridAlignmentOpen
+    )),
   },
   isDiceLogOpen: flag('isDiceLogOpen'),
   isHotkeyHelpOpen: flag('isHotkeyHelpOpen'),
@@ -78,19 +121,19 @@ const SURFACES: Readonly<Record<Surface, SurfaceRow>> = {
   },
   isCommandPaletteOpen: { closed: { isCommandPaletteOpen: false, commandPalettePage: null }, closes: ENDS_TOOLBAR_EDITING },
   isDiceTrayOpen: flag('isDiceTrayOpen', ENDS_TOOLBAR_EDITING),
-  lightPopover: popover('lightPopover', (state, id) => (
+  lightPopover: popover('lightPopover', staysWhile([...ON_THE_MAP, 'objects.lights', 'lighting', 'activeTool'], (state, id) => (
     !!readLight(levelObjects(state).lights[id]) && state.isGMView && !state.isMapLoading && lightMarkersShown(state)
-  ), true),
-  lightZonePopover: popover('lightZonePopover', (state, id) => (
+  )), true),
+  lightZonePopover: popover('lightZonePopover', staysWhile([...ON_THE_MAP, 'objects.lightZones', 'activeTool'], (state, id) => (
     !!levelObjects(state).lightZones?.[id] && state.activeTool === 'wall' && state.isGMView && !state.isMapLoading
-  ), true),
-  levelLinkPopover: popover('levelLinkPopover', (state, id) => (
+  )), true),
+  levelLinkPopover: popover('levelLinkPopover', staysWhile([...ON_THE_MAP, 'objects.levelLinks', 'isPlayerView', 'activeTool'], (state, id) => (
     stairsShown(state) && state.activeTool === 'stairs' && levelLinkList(levelObjects(state).levelLinks).some((link) => link.id === id)
-  ), true),
-  levelSurfacePopover: popover('levelSurfacePopover', (state, id) => (
+  )), true),
+  levelSurfacePopover: popover('levelSurfacePopover', staysWhile([...ON_THE_MAP, 'objects.levelSurfaces', 'activeTool'], (state, id) => (
     !!levelObjects(state).levelSurfaces?.[id] && state.activeTool === 'wall' && state.isGMView && !state.isMapLoading
-  ), false),
-  measurePopover: popover('measurePopover', (state, id) => mayEditMeasure(state, id), true),
+  )), false),
+  measurePopover: popover('measurePopover', staysWhile([...ON_THE_MAP, 'objects.measures', 'isPlayerView'], (state, id) => mayEditMeasure(state, id)), true),
   // The editor's tray hangs where the dice tray goes.
   isToolbarEditing: flag('isToolbarEditing', ['isDiceTrayOpen']),
   dungeonGenerator: { closed: { dungeonGenerator: null }, closes: ENDS_TOOLBAR_EDITING },
@@ -102,7 +145,7 @@ const SURFACES: Readonly<Record<Surface, SurfaceRow>> = {
 };
 
 const SURFACE_LIST = Object.entries(SURFACES) as Array<[Surface, SurfaceRow]>;
-const STAYING = SURFACE_LIST.filter(([, row]) => row.staysWhile);
+const STAYING = SURFACE_LIST.flatMap(([surface, { staysWhile }]) => (staysWhile ? [[surface, { staysWhile }] as const] : []));
 const LEAVING_WITH_LEVEL = SURFACE_LIST.flatMap(([surface, row]) => (row.leavesWithLevel ? [surface] : []));
 
 /** Every surface closed: how a view starts. */
@@ -133,19 +176,21 @@ export function leaveLevelIn(draft: SurfaceDraft): void {
   for (const surface of LEAVING_WITH_LEVEL) closeIn(draft, surface);
 }
 
-/** `next` as it may stand: what can no longer stay open in it, closed. Returned as given when nothing closes. */
+/**
+ * `next` as it may stand: what can no longer stay open in it, closed. Returned as given when
+ * nothing closes. `previous` stood, so a surface whose field and declared keys are as they were
+ * still stands, and its rule is not asked again.
+ */
 function settled(previous: ViewAtlasState, next: Partial<ViewAtlasState>, replace: boolean): Partial<ViewAtlasState> {
-  const value = (surface: Surface): unknown => (replace || Object.hasOwn(next, surface) ? next[surface] : previous[surface]);
-  if (!STAYING.some(([surface]) => value(surface))) return next;
-  const state = (replace ? next : { ...previous, ...next }) as ViewAtlasState;
-  const stale = STAYING.filter(([surface, row]) => {
-    const open = state[surface];
-    return open && !row.staysWhile!(state, open as string);
-  });
-  if (stale.length === 0) return next;
-  const closed = { ...next };
-  for (const [surface] of stale) closeIn(closed, surface);
-  return closed;
+  const value = <K extends keyof ViewAtlasState>(key: K): ViewAtlasState[K] | undefined => (replace || Object.hasOwn(next, key) ? next[key] : previous[key]);
+  let closed: Partial<ViewAtlasState> | null = null;
+  for (const [surface, { staysWhile: { reads, rule } }] of STAYING) {
+    const open = value(surface);
+    if (!open || (open === previous[surface] && readsSame(reads, value, previous))) continue;
+    if (rule(inputsOf(reads, value), open as string)) continue;
+    closeIn(closed ??= { ...next }, surface);
+  }
+  return closed ?? next;
 }
 
 type SetState = (partial: unknown, replace?: boolean) => void;
