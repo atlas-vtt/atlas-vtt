@@ -218,6 +218,25 @@ describe('true scale', () => {
     expect(frame.scale).toBeCloseTo(3);
   });
 
+  it('glides players to a frame at the TV\'s own zoom: the centre moves, the scale stays the fit\'s', () => {
+    const rig = atTrueScale();
+    rig.view.look({ centerX: 10, centerY: 20, scale: 1 });
+    rig.frame(0);
+    rig.service.framePlayersOn('scene-a', 300, 400);
+    rig.frame(400);
+    rig.frame(416);
+    const between = rig.view.rendered.at(-1)!;
+    expect(between.centerX).toBeGreaterThan(10);
+    expect(between.centerX).toBeLessThan(300);
+    expect(between.scale).toBeCloseTo(3);
+    rig.frame(800);
+    rig.frame(816);
+    const landed = rig.view.rendered.at(-1)!;
+    expect(landed).toMatchObject({ centerX: 300, centerY: 400 });
+    expect(landed.scale).toBeCloseTo(3);
+    expect(rig.session).toMatchObject({ frozen: true, camera: { centerX: 300, centerY: 400 } });
+  });
+
   it('leaves players framed as they are when the GM pauses, and a pin on its frame is no pause', () => {
     const rig = atTrueScale();
     rig.frame(0);
