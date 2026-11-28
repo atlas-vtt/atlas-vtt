@@ -1498,14 +1498,6 @@ export class AssetService {
     if (changed) await this.saveMetadata();
   }
 
-  async deleteTokenAsset(id: string): Promise<void> {
-    await this.deleteAsset(id);
-  }
-
-  async updateTokenAsset(id: string, updates: Partial<Omit<TokenAsset, 'id' | 'createdAt' | 'type' | 'collection'>>): Promise<void> {
-    await this.updateAsset(id, updates);
-  }
-
   async createEncounter(encounterData: Omit<EncounterAsset, 'id' | 'createdAt' | 'modifiedAt' | 'type'>): Promise<EncounterAsset> {
     const encounter: EncounterAsset = {
       ...encounterData,
