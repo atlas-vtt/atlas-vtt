@@ -280,12 +280,13 @@ function watchPresentedTab(view: AtlasView, service: PlayerWindowService, resume
     const { shownTabId } = playerWindowStore.getState();
     return shownTabId ? findTab(view, shownTabId) ?? null : null;
   };
-  // Players see the tab shown on its level only: leaving it, or another level of it, holds their frame at once,
-  // before the canvas changes. A tab that loads keeps what it has; it is shown live again once loaded, on their level.
-  const tracker = trackPresentedScene({ ...sceneOf(view), level: levelOf(view) }, shownTab, ({ now, before }) => {
-    if (now === before) return;
-    if (now === 'away' || now === 'other-level') service.holdCurrentFrame();
-    else if (now === 'shown') resume();
+  // Players see the tab shown on its level only: every change of the active tab away from it, and every change of
+  // level off theirs, holds their frame at once, before the canvas changes, also where the tab or level shown before
+  // was not theirs either. A tab that loads keeps what it has; it is shown live again once loaded, on their level.
+  const tracker = trackPresentedScene({ ...sceneOf(view), level: levelOf(view) }, shownTab, ({ now, before, tabChanged, levelChanged }) => {
+    const moved = now !== before;
+    if ((now === 'away' && (moved || tabChanged)) || (now === 'other-level' && (moved || levelChanged))) service.holdCurrentFrame();
+    else if (now === 'shown' && (moved || levelChanged)) resume();
   });
   function resume(): void {
     void waitForRenderedFrameSource(view).then((source) => {
@@ -305,6 +306,7 @@ function watchPresentedTab(view: AtlasView, service: PlayerWindowService, resume
 /** Whether `view` shows players' level of the presented scene, which a level switch changes, and its map image loading that level's background. */
 const levelOf = (view: AtlasView): NonNullable<TrackedSources['level']> => ({
   shows: () => showsPresentedLevel(view),
+  viewed: () => viewedLevelId(view.atlasStore.getState()),
   follow: (listener) => MapController.onBackgroundLoaded((mapImage) => {
     if (mapImage === view.serviceManager.getRendererService().getRenderer()?.getMapImage()) listener();
   }),

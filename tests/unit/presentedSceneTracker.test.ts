@@ -13,7 +13,7 @@ interface Load {
 }
 
 /** A view with a Tavern and a Dungeon tab, the Tavern shown and loaded, and players' level shown unless a test says otherwise. */
-function view(): { sources: Required<TrackedSources>; tavern: string; dungeon: string; level: { shown: boolean; changed(): void } } {
+function view(): { sources: Required<TrackedSources>; tavern: string; dungeon: string; level: { shown: boolean; viewed: string; changed(): void } } {
   const tabs = createTabMetaStore();
   const tavern = tabs.getState().addTab(TAVERN, 'Tavern');
   const dungeon = tabs.getState().addTab(DUNGEON, 'Dungeon');
@@ -22,11 +22,12 @@ function view(): { sources: Required<TrackedSources>; tavern: string; dungeon: s
   const listeners = new Set<() => void>();
   const level = {
     shown: true,
+    viewed: 'ground',
     changed: () => listeners.forEach((listener) => listener()),
   };
   const sources = {
     tabs, store,
-    level: { shows: () => level.shown, follow: (listener: () => void) => (listeners.add(listener), () => void listeners.delete(listener)) },
+    level: { shows: () => level.shown, viewed: () => level.viewed, follow: (listener: () => void) => (listeners.add(listener), () => void listeners.delete(listener)) },
   };
   return { sources, tavern, dungeon, level };
 }
@@ -121,9 +122,31 @@ describe('following the presented tab', () => {
     tab = null;
     tracker.check();
     expect(heard).toEqual([
-      { now: 'shown', before: 'shown', changed: true },
-      { now: 'shown', before: 'shown', changed: true },
-      { now: 'away', before: 'shown', changed: false },
+      { now: 'shown', before: 'shown', changed: true, tabChanged: false, levelChanged: false },
+      { now: 'shown', before: 'shown', changed: true, tabChanged: false, levelChanged: false },
+      { now: 'away', before: 'shown', changed: false, tabChanged: false, levelChanged: false },
+    ]);
+  });
+
+  it('tells a change of the active tab and of the level shown where the standing stayed', () => {
+    const { sources, tavern, dungeon, level } = view();
+    const crypt = sources.tabs.getState().addTab('maps/crypt.md', 'Crypt');
+    sources.tabs.getState().setActiveTab(dungeon);
+    const heard: StandingChange[] = [];
+    trackPresentedScene(sources, () => ({ id: tavern, filePath: TAVERN }), (change) => heard.push(change));
+    // Away from the Tavern on the Dungeon, then on the Crypt: still away.
+    sources.tabs.getState().setActiveTab(crypt);
+    sources.tabs.getState().setActiveTab(tavern);
+    level.shown = false;
+    sources.store.setState({});
+    // On another level, then on a third: still another level.
+    level.viewed = 'upper';
+    sources.store.setState({});
+    expect(heard.map(({ now, before, tabChanged, levelChanged }) => [before, now, tabChanged, levelChanged])).toEqual([
+      ['away', 'away', true, false],
+      ['away', 'shown', true, false],
+      ['shown', 'other-level', false, false],
+      ['other-level', 'other-level', false, true],
     ]);
   });
 });

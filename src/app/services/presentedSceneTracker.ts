@@ -50,15 +50,23 @@ export interface ViewFacts {
 export interface TrackedSources extends ViewFacts {
   readonly tabs: ViewFacts['tabs'] & { subscribe(listener: () => void): () => void };
   readonly store: ViewFacts['store'] & { subscribe(listener: () => void): () => void };
-  readonly level?: NonNullable<ViewFacts['level']> & { follow(listener: () => void): () => void };
+  /** `viewed`: the level the view shows, whose change a reader that follows levels hears of. */
+  readonly level?: NonNullable<ViewFacts['level']> & { viewed(): string | null; follow(listener: () => void): () => void };
 }
 
-/** A change of the presented scene's standing in the tracked view, or of its store while the standing stayed. */
+/**
+ * A change of the presented scene's standing in the tracked view, or of the view while the standing stayed: a
+ * reader may hold or show its picture again at a change of the active tab or of the level shown, whatever the standing was.
+ */
 export interface StandingChange {
   readonly now: Standing;
   readonly before: Standing;
   /** Whether the view's store changed, or what the reader shows of the tab (`check(true)`): a reader shown the scene hears of it even where the standing stayed. */
   readonly changed: boolean;
+  /** Whether the view's active tab changed. */
+  readonly tabChanged: boolean;
+  /** Whether the level the view shows changed. */
+  readonly levelChanged: boolean;
 }
 
 /** The presented scene's standing in one view, as it follows the view. */
@@ -80,14 +88,18 @@ export function standingOf(sources: ViewFacts, tab: TrackedTab | null): Standing
 
 /**
  * Follows where the presented tab `tab()` stands in one view: every change of the view's tabs, store and level
- * is read, and `listener` hears each change of the standing, and each change of the store, with the standing before.
+ * is read, and `listener` hears each change of the standing, of the store, of the active tab and of the level shown, with the standing before.
  */
 export function trackPresentedScene(sources: TrackedSources, tab: () => TrackedTab | null, listener: (change: StandingChange) => void): PresentedSceneTracker {
   let last = standingOf(sources, tab());
+  let activeTab = sources.tabs.getState().activeTabId;
+  let viewed = sources.level?.viewed() ?? null;
   const check = (changed = false): void => {
     const before = last;
     last = standingOf(sources, tab());
-    if (last !== before || changed) listener({ now: last, before, changed });
+    const tabChanged = activeTab !== (activeTab = sources.tabs.getState().activeTabId);
+    const levelChanged = viewed !== (viewed = sources.level?.viewed() ?? null);
+    if (last !== before || changed || tabChanged || levelChanged) listener({ now: last, before, changed, tabChanged, levelChanged });
   };
   const stops = [sources.tabs.subscribe(() => check()), sources.store.subscribe(() => check(true)), ...(sources.level ? [sources.level.follow(() => check())] : [])];
   return {
