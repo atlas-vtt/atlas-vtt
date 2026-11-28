@@ -8,6 +8,7 @@ import { measureList } from "../../../measure/keptMeasures"
 import { colourWithEffect } from "../../../measure/measureLights"
 import { DEFAULT_MEASURE_TOOL } from "../../../measure/measureTypes"
 import { useAtlasStore } from "../../../react/ViewStoreContext"
+import { barShown } from "../../../stores/viewSurfaces"
 import { DropdownMenu } from "../primitives/DropdownMenu"
 import { DropdownSwatchGrid } from "../primitives/DropdownSwatchGrid"
 import { ToolButton } from "../primitives/ToolButton"
@@ -30,7 +31,7 @@ interface MeasureToolBarProps {
  * there. Hidden while the toolbar is arranged.
  */
 export function MeasureToolBar({ playerView }: MeasureToolBarProps): React.ReactElement {
-  const shown = useAtlasStore((state) => state.activeTool === 'measure' && state.heldRulerFrom === undefined && !state.isToolbarEditing && !state.isMapLoading)
+  const shown = useAtlasStore((state) => barShown(state, 'measure'))
   return <ToolOptionsBars shown={shown}><MeasureBars playerView={playerView} /></ToolOptionsBars>
 }
 

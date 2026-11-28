@@ -18,7 +18,7 @@ import { MEASURE_COLOR_SWATCHES, measureColorOfSwatch, swatchOfMeasureColor } fr
 import { useFocusWhileOpen } from '../../../pixi/lighting/LightPopover';
 import { useMapPopoverPosition } from '../../../pixi/lighting/useLightPopoverPosition';
 import { MEASURE_HANDLE_RADIUS, measureHandlePoint } from '../../../pixi/measure/measureHandle';
-import { keptMeasure } from '../../../pixi/measure/measurePopoverGuard';
+import { keptMeasure } from '../../../measure/keptMeasures';
 import { mapMarkerScale } from '../../../pixi/utils/mapMarkerScale';
 import { mapMeasurementSettings } from '../../../services/mapMeasurementSettings';
 import { rulesLookup } from '../../../services/mapRules';

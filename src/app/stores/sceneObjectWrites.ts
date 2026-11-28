@@ -12,15 +12,14 @@ import { isRecord } from '../utils/guards';
 import { newId } from '../utils/ids';
 import {
   ADDED, OBJECT_COLLECTIONS, OBJECT_KINDS,
-  type AddedKind, type ObjectChanges, type ObjectInputs, type ObjectPopover, type PatchedKind, type SceneObjectRecords,
+  type AddedKind, type ObjectChanges, type ObjectInputs, type PatchedKind, type SceneObjectRecords,
 } from './sceneObjectKinds';
 
 /**
- * A draft of a store's scene, as far as object writes reach it. A draft without a selection or
- * popovers (an action's narrower one, a store online players write through) has nothing of them to
- * change.
+ * A draft of a store's scene, as far as object writes reach it. A draft without a selection (an
+ * action's narrower one, a store online players write through) has nothing of it to change.
  */
-export type ObjectsDraft = LevelView & { [Popover in ObjectPopover]?: string | null } & {
+export type ObjectsDraft = LevelView & {
   objects: SceneObjectRecords;
   selectedIds?: string[];
 };
@@ -58,9 +57,6 @@ export function patchObjectIn<K extends PatchedKind>(draft: ObjectsDraft, kind: 
   if (kind === 'pins' && draft.objects.pins) relabelPin(draft.objects.pins, object as unknown as NotePin, iconBefore as string | undefined);
 }
 
-/** The popovers that may stand open on an object. */
-const POPOVERS = OBJECT_COLLECTIONS.flatMap((collection) => OBJECT_KINDS[collection].popover ?? []);
-
 /** Removes the objects of `ids` and what goes with them, adding their ids to `removed`. */
 function take(objects: SceneObjectRecords, ids: readonly string[], locked: LockedObjects, removed: Set<string>): void {
   for (const collection of OBJECT_COLLECTIONS) {
@@ -80,15 +76,12 @@ function take(objects: SceneObjectRecords, ids: readonly string[], locked: Locke
 
 /**
  * Removes the objects of `ids`, of whatever kind, with all that follows: what goes with them (a
- * token's auras), and the selection and any popover on them.
+ * token's auras), and the selection of them. A popover on one closes as the view's surfaces say
+ * (`viewSurfaces.ts`).
  */
 export function removeObjectsIn(draft: ObjectsDraft, ids: Iterable<string>, locked: LockedObjects): void {
   const removed = new Set<string>();
   take(draft.objects, [...ids], locked, removed);
   if (removed.size === 0) return;
-  for (const popover of POPOVERS) {
-    const open = draft[popover];
-    if (typeof open === 'string' && removed.has(open)) draft[popover] = null;
-  }
   if (draft.selectedIds?.some((id) => removed.has(id))) draft.selectedIds = draft.selectedIds.filter((id) => !removed.has(id));
 }

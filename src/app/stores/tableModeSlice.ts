@@ -5,6 +5,7 @@
  */
 
 import type { ViewState } from '../types/viewState';
+import { closeIn, openIn } from './viewSurfaces';
 
 /** What the GM comes back to when Table mode ends. */
 export interface TableModeReturn {
@@ -21,22 +22,7 @@ export interface TableModeSlice {
   leaveTableMode: () => void;
 }
 
-type TableDraft = Pick<TableModeSlice, 'tableMode'> & Pick<
-  ViewState,
-  | 'activeTool'
-  | 'isGMView'
-  | 'selectedIds'
-  | 'selectMore'
-  | 'heldTokens'
-  | 'isAssetManagerOpen'
-  | 'isCommandPaletteOpen'
-  | 'commandPalettePage'
-  | 'isDiceTrayOpen'
-  | 'isToolbarEditing'
-  | 'isHotkeyHelpOpen'
-  | 'isGridSettingsOpen'
-  | 'isGridAlignmentOpen'
->;
+type TableDraft = Pick<TableModeSlice, 'tableMode'> & Pick<ViewState, 'activeTool' | 'isGMView' | 'selectedIds' | 'selectMore' | 'heldTokens' | 'isAssetManagerOpen'>;
 
 type ImmerSet = (fn: (draft: TableDraft) => void) => void;
 
@@ -44,25 +30,18 @@ export function createTableModeActions(set: ImmerSet): Omit<TableModeSlice, 'tab
   return {
     enterTableMode: () => set((draft) => {
       if (draft.tableMode || draft.isAssetManagerOpen) return;
-      draft.tableMode = { activeTool: draft.activeTool, isGMView: draft.isGMView };
-      // Session view is the players' picture; a tool, a selection or an open editor would draw the GM's marks into it
+      openIn(draft, 'tableMode', { activeTool: draft.activeTool, isGMView: draft.isGMView });
+      // Session view is the players' picture; a tool or a selection would draw the GM's marks into it
       draft.isGMView = false;
       draft.activeTool = 'move';
       draft.selectedIds = [];
       draft.selectMore = false;
       draft.heldTokens = {};
-      draft.isCommandPaletteOpen = false;
-      draft.commandPalettePage = null;
-      draft.isDiceTrayOpen = false;
-      draft.isToolbarEditing = false;
-      draft.isHotkeyHelpOpen = false;
-      draft.isGridSettingsOpen = false;
-      draft.isGridAlignmentOpen = false;
     }),
     leaveTableMode: () => set((draft) => {
       const back = draft.tableMode;
       if (!back) return;
-      draft.tableMode = null;
+      closeIn(draft, 'tableMode');
       draft.activeTool = back.activeTool;
       draft.isGMView = back.isGMView;
     }),

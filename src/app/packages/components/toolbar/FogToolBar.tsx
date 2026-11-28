@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from "react"
 import { CloudOff, LayoutGrid, MoreHorizontal, PaintBucket } from "lucide-react"
 import { hasCells } from "../../../fog/fogCells"
 import { hasRoomWalls } from "../../../fog/fogRooms"
-import { DEFAULT_FOG_TOOL, FOG_BRUSH_SIZES, isFogTool, type FogShape } from "../../../fog/fogToolChoices"
+import { DEFAULT_FOG_TOOL, FOG_BRUSH_SIZES, type FogShape } from "../../../fog/fogToolChoices"
 import { DEFAULT_GM_FOG_OPACITY, GM_FOG_OPACITY_RANGE } from "../../../fog/gmFogOpacity"
 import { t } from "../../../i18n"
 import { useAtlasSettings, useHotkeyLabels } from "../../../keyboard/useMapHotkeys"
@@ -10,6 +10,7 @@ import { levelObjects } from "../../../levels/levelObjects"
 import { hasLevels } from "../../../levels/sceneLevels"
 import { useAtlasUI } from "../../../react/root/AtlasUIContext"
 import { useAtlasStore } from "../../../react/ViewStoreContext"
+import { barShown } from "../../../stores/viewSurfaces"
 import { showNotice } from "../../../ui/notice"
 import { wallList } from "../../../vision/wallList"
 import { DropdownMenu } from "../primitives/DropdownMenu"
@@ -33,8 +34,7 @@ const SIZE_DOT = { min: 4, max: 16 } as const
  * its reason. The GM's alone; hidden while the toolbar is arranged.
  */
 export function FogToolBar(): React.ReactElement {
-  const shown = useAtlasStore((state) => isFogTool(shownTool(state)) && !state.isPlayerView
-    && !state.isToolbarEditing && !state.isMapLoading)
+  const shown = useAtlasStore((state) => barShown(state, 'fog'))
   return <ToolOptionsBars shown={shown}><FogBars /></ToolOptionsBars>
 }
 

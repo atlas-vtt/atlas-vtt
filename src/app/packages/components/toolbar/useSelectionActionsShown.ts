@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react"
-import { toolSelects } from "../../../annotations/selectMore"
 import { portalHost } from "../../../host/portalHost"
 import { useAtlasSettings } from "../../../keyboard/useMapHotkeys"
 import type { SelectionBarSource } from "../../../pixi/selection/selectionBarSource"
 import { useCoarsePointer } from "../../../platform/useCoarsePointer"
 import { useAtlasStore } from "../../../react/ViewStoreContext"
+import { barShown, type BarState } from "../../../stores/viewSurfaces"
 import { useAtlasUI } from "../../../react/root/AtlasUIContext"
-import type { ViewAtlasState } from "../../../storeFactory"
 
 /** What stands over the map for what is selected, or over all of it: a context menu, a dialog, the popover of a token's value. */
 const COVERING = '.atlas-ctx-menu[data-state="open"], .atlas-modal-overlay, .atlas-token-value-editor'
@@ -31,17 +30,9 @@ export function mayUncover(record: MutationRecord): boolean {
   return record.type === 'attributes' ? isElement(record.target) && record.target.matches(MENU) : record.removedNodes.length > 0
 }
 
-/** What of a view's state decides whether the bar may show. */
-export type BarOfferState = Pick<ViewAtlasState, 'selectedIds' | 'activeTool' | 'isGMView' | 'isPlayerView' | 'isToolbarEditing' | 'isMapLoading'>
-
-/**
- * Whether the view offers the bar a place: something is selected with a tool that selects, in the
- * GM's view of a loaded map (never the players' view or the session view), while the toolbar is
- * not being arranged. `wanted` says the device shows the bar at all.
- */
-export function barOffered(state: BarOfferState, wanted: boolean): boolean {
-  return wanted && state.selectedIds.length > 0 && toolSelects(state.activeTool)
-    && state.isGMView && !state.isPlayerView && !state.isToolbarEditing && !state.isMapLoading
+/** Whether the view offers the bar a place (`barShown`); `wanted` says the device shows the bar at all. */
+export function barOffered(state: BarState, wanted: boolean): boolean {
+  return wanted && barShown(state, 'selectionActions')
 }
 
 /**

@@ -1,4 +1,5 @@
 import type { TapPlacing } from '../types/tapPlacing';
+import type { ViewState } from '../types/viewState';
 
 /** How the lighting tool draws walls: corner by corner, or as a stroke. */
 export type WallToolMode = 'point-to-point' | 'freeform';
@@ -30,4 +31,9 @@ export function lightingTapPlacing({ mode, drawMode }: LightingToolOptions, unde
   if (underWay) return 'taps';
   if (mode === 'rooms' || mode === 'explored-memory' || (mode === 'draw' && drawMode === 'freeform')) return null;
   return 'press';
+}
+
+/** Lit scenes show their lights' markers, and the lighting tool shows them in any scene. */
+export function lightMarkersShown({ lighting, activeTool }: Pick<ViewState, 'lighting' | 'activeTool'>): boolean {
+  return lighting.enabled || activeTool === 'wall';
 }

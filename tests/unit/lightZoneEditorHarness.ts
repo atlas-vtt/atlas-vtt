@@ -41,6 +41,8 @@ export function setup(ambient = 1): Setup {
   store.getState().setPersistenceEnabled(false);
   store.getState().setMapPath('maps/zones.atlasmap');
   store.getState().setSceneLighting({ enabled: true, ambient });
+  // Zones are one of the lighting tool's modes.
+  store.getState().setActiveTool('wall');
   const bus = new EventEmitter();
   const full = vi.fn();
   const editor = new LightZoneEditor({ viewport, canvas, store, eventBus: bus, onActiveChange: () => undefined, onFull: full });

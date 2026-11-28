@@ -3,7 +3,7 @@ import type { Container } from 'pixi.js';
 import { afterEach, describe, expect, it } from 'vitest';
 import { auraBadgePoint } from '../../../src/app/measure/auraArea';
 import type { KeptMeasure } from '../../../src/app/measure/measureTypes';
-import { mayEditMeasure } from '../../../src/app/pixi/measure/measurePopoverGuard';
+import { mayEditMeasure } from '../../../src/app/measure/keptMeasures';
 import { getHistoryStore } from '../../../src/app/stores/history';
 import type { TokenEntity } from '../../../src/app/types';
 import { GRID, measureFrom, measureScene, type MeasureScene } from '../../helpers/measureScene';

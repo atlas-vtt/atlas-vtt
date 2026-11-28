@@ -4,6 +4,7 @@ import type { DrawMode } from "../../../annotations/annotationTypes"
 import { t } from "../../../i18n"
 import { useHotkeyLabels } from "../../../keyboard/useMapHotkeys"
 import { useAtlasStore } from "../../../react/ViewStoreContext"
+import { barShown } from "../../../stores/viewSurfaces"
 import { MOTION_FAST_MS, easeOut } from "../../../utils/motion"
 import { TooltipProvider } from "../primitives/tooltip"
 import { DrawModeTool } from "./DrawModeTools"
@@ -11,7 +12,6 @@ import { PlacingMenu } from "./DrawToolMenus"
 import { DRAW_MODE_CHOICES, drawModeChoice, drawModeTools, drawModeUnavailable } from "./drawToolChoices"
 import { ChoiceButtons, GroupBreak, ToolOptionsBars } from "./ToolOptionsBar"
 import { useDrawStyle } from "./useDrawStyle"
-import { shownTool } from "../../../measure/heldRuler"
 
 /** Why the bars take no choice now, or null: drawing is done in the GM's view, and the session view shows the players'. */
 function useLockedReason(): string | null {
@@ -31,8 +31,7 @@ function useLockedReason(): string | null {
  * while the toolbar is arranged.
  */
 export function DrawToolBar(): React.ReactElement {
-  const shown = useAtlasStore((state) => shownTool(state) === 'draw' && !state.isPlayerView
-    && !state.isToolbarEditing && !state.isMapLoading)
+  const shown = useAtlasStore((state) => barShown(state, 'draw'))
   return <ToolOptionsBars shown={shown}><DrawBars /></ToolOptionsBars>
 }
 

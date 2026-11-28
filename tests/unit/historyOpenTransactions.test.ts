@@ -3,7 +3,6 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { act, fireEvent, renderHook } from '@testing-library/react';
 import { openAudioConfigPanel } from '../../src/app/pixi/audio/AudioConfigPanel';
 import { useGestureTransactions } from '../../src/app/pixi/lighting/useGestureTransactions';
-import { closeStalePopovers } from '../../src/app/pixi/lighting/popoverGuards';
 import type { SoundRegistry } from '../../src/app/audio/SoundRegistry';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import { getHistoryStore, runUntracked, type HistoryState } from '../../src/app/stores/history';
@@ -107,7 +106,6 @@ describe('undo and redo during a light\'s ring drag', () => {
   it('bring back a light that the undo took away under the drag, as it was dragged', async () => {
     const { store, press, move } = setup();
     const history = getHistoryStore(store)!;
-    store.subscribe(closeStalePopovers);
     const lantern = store.getState().addObject('lights', { x: 400, y: 300, emission: { ...genericLight('torch'), kind: 'torch' } });
     store.getState().openLightPopover(lantern);
     press(400, 20);

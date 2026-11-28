@@ -6,6 +6,7 @@
  */
 
 import type { LevelLink, LevelLinkDirection } from '../types/sceneLevelTypes';
+import type { ViewState } from '../types/viewState';
 import type { Point } from '../types/visionTypes';
 import { isRecord } from '../utils/guards';
 import { hasArea } from '../vision/polygonArea';
@@ -45,6 +46,11 @@ function readLink(id: string, value: unknown): LevelLink | null {
     ...(DIRECTIONS.includes(direction as LevelLinkDirection) && direction !== 'both' && { direction: direction as LevelLinkDirection }),
     ...(flight && { flight }),
   };
+}
+
+/** Whether the GM sees stairs at all: in the GM's view of a loaded scene with several levels. */
+export function stairsShown(state: Pick<ViewState, 'levels' | 'isGMView' | 'isPlayerView' | 'isMapLoading'>): boolean {
+  return hasLevels(state.levels) && state.isGMView && !state.isPlayerView && !state.isMapLoading;
 }
 
 /**

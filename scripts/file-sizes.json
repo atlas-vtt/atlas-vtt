@@ -115,7 +115,7 @@
     "src/app/statblocks/editor/statblock-pane/EntryInlineEditor.tsx": 350,
     "src/app/statblocks/editor/template-editor/TemplateEditor.tsx": 350,
     "src/app/statblocks/model/templateTypes.ts": 400,
-    "src/app/storeFactory.ts": 1050,
+    "src/app/storeFactory.ts": 1000,
     "src/app/tools/NotePinTool.ts": 500,
     "src/app/tools/pinNoteSearch.ts": 350,
     "src/app/utils/dataFileMigration.ts": 350,

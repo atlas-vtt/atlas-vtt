@@ -18,6 +18,7 @@ import { levelLinkList, MAX_LEVEL_LINKS } from '../levels/levelLinks';
 import { placedLevelLink } from '../levels/levelLinkCopies';
 import { isRecord } from '../utils/guards';
 import { newId } from '../utils/ids';
+import { openIn } from './viewSurfaces';
 import { placedAnnotationCopies } from '../annotations/annotationCopies';
 import { annotationRoom } from '../annotations/annotationList';
 import { orderOnTop } from '../annotations/annotationStack';
@@ -45,7 +46,6 @@ interface MapObjectsStoreState {
   viewedLevel?: string | null | undefined;
   activeTool: string;
   levelLinkPopover: string | null;
-  measurePopover: string | null;
 }
 
 type ImmerSet = (fn: (draft: MapObjectsStoreState) => void) => void;
@@ -63,7 +63,7 @@ function addLinkCopies(draft: MapObjectsStoreState, content: MapObjectContent, r
     draft.objects.levelLinks[id] = { id, kind: 'level-link', ...placed };
     ids.push(id);
   }
-  if (ids.length > 0 && draft.activeTool === 'stairs') draft.levelLinkPopover = ids[ids.length - 1]!;
+  if (ids.length > 0 && draft.activeTool === 'stairs') openIn(draft, 'levelLinkPopover', ids[ids.length - 1]!);
   return ids;
 }
 
