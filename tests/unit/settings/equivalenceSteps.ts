@@ -93,13 +93,40 @@ export type Step =
   | { kind: 'restart' }
   | { kind: 'arrive'; file: unknown };
 
-export function randomStep(random: () => number, names: readonly PreferenceName[], syncedKeys: readonly string[]): Step {
+type Record_ = Record<string, unknown>;
+interface OtherDeviceChange { key: string; change: (file: Record_) => Record_ }
+const field = (key: string, name: string, value: unknown): OtherDeviceChange =>
+  ({ key, change: (file) => ({ ...file, [key]: { ...((typeof file[key] === 'object' && file[key] !== null ? file[key] : {}) as Record_), [name]: value } }) });
+const key = (name: string, value: unknown): OtherDeviceChange => ({ key: name, change: (file) => ({ ...file, [name]: value }) });
+
+/** What another device changes in a file it shares with this one: one key, or one field of one key. */
+const OTHER_DEVICE: readonly OtherDeviceChange[] = [
+  field('hotkeys', 'futureAction', 'F9'), field('hotkeys', 'futureAction', 'F10'), field('hotkeys', 'measure', 'k'),
+  key('diceColour', 'dark'), key('diceFont', 'scifi'), key('diceVolume', 0.3), key('diceDisplay', 'card'),
+  key('initiativeBanner', false), key('initiativeMovesOnTurn', true), key('initiativeDock', 'top'), key('initiativeFacesPlayers', true),
+  field('sound', 'musicDb', -9), field('laserPointer', 'color', '#00a9ff'), field('fogEdge', 'style', 'soft'),
+  field('localPlayerView', 'showToolbar', true), field('tableTv', 'futureField', 3), field('dungeonGenerator', 'fiveRoom', true),
+  field('onboarding', 'tokenImported', true), field('experimental', 'statblockEditor', true), field('toolbar', 'order', ['fog', 'move']),
+  key('hiddenStarterOffers', ['zzz']), key('futureSetting', 'kept'),
+];
+
+/**
+ * One step. Half of the files that arrive are the file this device holds with one thing another
+ * device changed, half of those beside a key this device just changed (`touched`); the other half
+ * a fixture, as after a long time apart.
+ */
+export function randomStep(random: () => number, names: readonly PreferenceName[], syncedKeys: readonly string[], current: unknown, touched: readonly string[]): Step {
   const roll = random();
-  if (roll < 0.75) {
+  if (roll < 0.72) {
     const name = pick(random, names);
     return { kind: 'write', name, value: pick(random, VALUES[name]) };
   }
-  if (roll < 0.85) return { kind: 'wait' };
-  if (roll < 0.93) return { kind: 'restart' };
+  if (roll < 0.82) return { kind: 'wait' };
+  if (roll < 0.88) return { kind: 'restart' };
+  if (random() < 0.5) {
+    const near = OTHER_DEVICE.filter((other) => touched.includes(other.key));
+    const other = near.length > 0 && random() < 0.5 ? pick(random, near) : pick(random, OTHER_DEVICE);
+    return { kind: 'arrive', file: other.change({ ...(current as Record_ | null) }) };
+  }
   return { kind: 'arrive', file: randomFile(random, syncedKeys) };
 }
