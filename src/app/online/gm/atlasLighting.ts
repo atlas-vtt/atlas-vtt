@@ -159,9 +159,3 @@ export const LIGHTING_REFUSAL = 'Atlas Online cannot read this scene\'s lighting
 export function isLit(state: SceneState): boolean {
   return state.lighting.enabled;
 }
-
-/** The version of the Atlas plugin loaded now, or null. */
-export function atlasVersion(app: App): string | null {
-  const version = field(field(field(field(field(app, 'plugins'), 'plugins'), ATLAS_PLUGIN_ID), 'manifest'), 'version');
-  return typeof version === 'string' && /^[\w.+-]{1,30}$/.test(version) ? version : null;
-}
