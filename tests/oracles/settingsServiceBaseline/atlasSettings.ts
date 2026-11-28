@@ -1,0 +1,239 @@
+// Frozen from c8f9dd659 src/app/services/atlasSettings.ts (the settings before #871). Only import paths are adapted.
+import { Platform } from 'obsidian';
+import { keptHotkeys, readHotkeyOverrides, type HotkeyOverrides } from '../../../src/app/keyboard/hotkeyOverrides';
+import { DEFAULT_LASER_POINTER_SETTINGS, type LaserPointerSettings } from '../../../src/app/tools/laserPointerSettings';
+import type { DiceDisplay } from '../../../src/app/dice3d/diceDisplay';
+import type { ExperimentalFeatureId } from '../../../src/app/experimental/experimentalFeatures';
+import { DEFAULT_DICE_LOOK, type DiceColour, type DiceFont } from '../../../src/app/dice3d/diceLook';
+import { readToolbarLayout, type StoredToolbarLayout } from '../../../src/app/toolbar/toolbarLayout';
+import type { PlayersListEdge } from '../../../src/app/initiative/initiativeLayout';
+import { DEFAULT_DUNGEON_GENERATOR_SETTINGS, type DungeonGeneratorSettings } from '../../../src/app/dungeons/generatorSettings';
+import { DEFAULT_SOUND_SETTINGS, type SoundSettings } from '../../../src/app/services/soundSettings';
+import type { SharedSoundRoots } from '../../../src/app/soundLibrary/soundRootsStore';
+import { DEFAULT_TABLE_TV_SETTINGS, readTableTvSettings, type TableTvSettings } from '../../../src/app/services/tableTvSettings';
+import { readGmScreenKeys, type GmScreenKeys } from '../../../src/app/services/gmScreenKeysSettings';
+import { DEFAULT_FOG_EDGE, type FogEdge } from '../../../src/app/fog/fogEdge';
+import { DEFAULT_DRAG_DISTANCE, type DragDistance } from '../../../src/app/measure/dragDistance';
+import { isRecord } from '../../../src/app/utils/guards';
+
+/**
+ * How wheel events drive the map viewport.
+ * - `mouse`: the wheel always zooms; right-drag pans.
+ * - `trackpad`: two-finger scroll pans; pinch (Ctrl/Cmd + wheel) zooms.
+ */
+export type NavigationInputMode = 'mouse' | 'trackpad';
+
+export interface NavigationSettings {
+  inputMode: NavigationInputMode;
+}
+
+/** Every tutorial Atlas has; the settings list those the user finished or skipped. */
+export const TUTORIAL_IDS = ['welcome', 'dashboard', 'map', 'online', 'tableLog', 'assets', 'palette', 'tokenStatblocks', 'lootSettings', 'lootRoller', 'lootResults', 'savedRolls'] as const;
+export type TutorialId = typeof TUTORIAL_IDS[number];
+
+export interface AtlasSettings {
+  showChangelogOnUpdate: boolean;
+  changelogMajorUpdatesOnly: boolean;
+  /** Whether Atlas looks for a newer version of itself at start and hourly (`registerUpdateWatch`). */
+  checkForUpdates: boolean;
+  /** Only the bindings the user changed; read the effective ones with `getHotkeys`. */
+  hotkeys: HotkeyOverrides;
+  onboarding: { enabled: boolean; completed: Partial<Record<TutorialId, boolean>>; tokenImported: boolean };
+  /** The starter tokens were added to the default collection once; deleted ones stay deleted. */
+  starterTokensAdded: boolean;
+  /**
+   * Uids of the collections whose sidebar no longer offers the starter tokens: a uid outlives a rename of the
+   * collection's folder. Absent while none is hidden. Read with `isStarterOfferHidden`.
+   */
+  hiddenStarterOffers?: readonly string[] | undefined;
+  /**
+   * Ids of the Sound page's download offers the GM dismissed (`starter-ambience`, `starter-music`; ids never
+   * change). Absent while none is. Read with `isSoundOfferHidden`; the root's ⋯ menu still offers them.
+   */
+  hiddenSoundOffers?: readonly string[] | undefined;
+  /** A fact about this device, kept in its local storage and never in the plugin's data (`deviceSettings.ts`). */
+  navigation: NavigationSettings;
+  laserPointer: LaserPointerSettings;
+  /** How rolls show: a result card, or 3D dice at double or normal speed. Read with `getDiceDisplay`. */
+  diceDisplay: DiceDisplay;
+  /** Loudness of dice sounds, 0 (silent) to 1. Read with `getDiceVolume`. */
+  diceVolume: number;
+  /** Levels, default fade and following scenes for music and ambience. Read with `getSoundSettings`. */
+  sound: SoundSettings;
+  /** The sound library's linked folders, as far as devices share them. Read with `getSoundRoots`. */
+  soundRoots?: SharedSoundRoots;
+  /** Whether a new scene looks for the grid of its map. Off for tables that play without one. Read with `detectsGridOnNewScenes`. */
+  detectGridOnNewScenes: boolean;
+  /** How the fog's edge looks, on the GM's map and the players'. Read with `getFogEdge`. */
+  fogEdge: FogEdge;
+  /** When a dragged token shows how far it has moved: always, only while a fight runs, or never. Read with `getDragDistance`. */
+  dragDistance: DragDistance;
+  /** Colour of the dice: card stock, dark, the accent colour or a colour of the Appearance page. Read with `getDiceLook`. */
+  diceColour: DiceColour;
+  /** Face of the dice numerals and roll totals. Read with `getDiceLook`. */
+  diceFont: DiceFont;
+  /** The GM's tracker is a compact list without portraits. Read with `showsCompactInitiative`. */
+  initiativeCompact?: boolean;
+  /** The edge the players' list stands at; `top` and `bottom` run it as a row. Read with `initiativeLayout`. */
+  initiativeDock: PlayersListEdge;
+  /** Every edge the players' list stands at; unset, `initiativeDock` alone, which stays the first of them for older versions. */
+  initiativeEdges?: PlayersListEdge[];
+  /** Whether each copy of the players' list turns to face its edge; unset, upright. */
+  initiativeFacesPlayers?: boolean;
+  /** Whether a turn change shows the turn banner. Read with `initiativeTurnOptions`. */
+  initiativeBanner: boolean;
+  /** Whether online players move their tokens in a fight only on their turn. Read with `initiativeTurnOptions`. */
+  initiativeMovesOnTurn: boolean;
+  /** Experimental features the GM switched on. Read with `isExperimentalOn`. */
+  experimental: Partial<Record<ExperimentalFeatureId, boolean>>;
+  /** The GM's toolbar layout, only what differs from the default; read with `getToolbarLayout`. */
+  toolbar: StoredToolbarLayout;
+  /** Whether the bars along the bottom and the level switcher show only while the pointer is near them; unset, always shown. Read with `isToolbarAutoHide`. */
+  toolbarAutoHide?: boolean;
+  /** The GM screen's grids of keys, by kind of device, each only once the GM changed it. Read with `getGmScreenKeys`. */
+  gmScreenKeys?: GmScreenKeys | undefined;
+  /** The dungeon generator's style, view and last tags. Read with `getDungeonGenerator`. */
+  dungeonGenerator: DungeonGeneratorSettings;
+  localPlayerView: {
+    // UI element visibility toggles
+    showToolbar: boolean;
+    showTokenNameplates: boolean;
+    showNotePreviews: boolean;
+    showWidgets: boolean;
+    showInitiative: boolean;
+    /** Show the DM's dice rolls to players as toasts in the player window. */
+    showDiceRolls: boolean;
+    showCommandPalette: boolean;
+    /** Online play: everyone at the table sees everyone else's cursor on the shared map. */
+    showCursors: boolean;
+    /** How large the initiative list is drawn, 1 to `MAX_INITIATIVE_SCALE`. Read with `initiativeScaleOf`. */
+    initiativeScale: number;
+    /** The border of the combatant whose turn it is pulses instead of standing still. */
+    initiativePulse: boolean;
+    /** The turn banner stands just above each initiative list, turned with it, instead of in the middle. */
+    turnBannerAtLists: boolean;
+    /** A turn dims the table instead of showing its banner, the initiative lists left lit. A fight's start and end keep theirs. */
+    turnDim: boolean;
+    /** The most cards each initiative list shows, 0 for all. Read with `initiativeMaxCardsOf`. */
+    initiativeMaxCards: number;
+    /** Online play: players draw and write on the shared map with a Draw tool of their own. */
+    playersDraw: boolean;
+    /** Online play: players at a closed door may ask the GM to open it. */
+    playersOpenDoors: boolean;
+    /** Online play: every player sees through every player character's vision; off, each through their own characters' alone. */
+    sharedVision: boolean;
+  };
+  /** The player view on a TV lying on the table (TrueScale). Read with `getTableTvSettings`. */
+  tableTv: TableTvSettings;
+}
+
+/** The input mode a device starts with: Macs mostly have a trackpad, other computers a mouse. */
+export const defaultInputMode = (): NavigationInputMode => (Platform.isMacOS ? 'trackpad' : 'mouse');
+
+export const DEFAULT_SETTINGS: AtlasSettings = {
+  showChangelogOnUpdate: true,
+  changelogMajorUpdatesOnly: false,
+  checkForUpdates: true,
+  hotkeys: {},
+  onboarding: { enabled: true, completed: {}, tokenImported: false },
+  starterTokensAdded: false,
+  navigation: { inputMode: defaultInputMode() },
+  laserPointer: DEFAULT_LASER_POINTER_SETTINGS,
+  diceDisplay: 'full',
+  diceVolume: 1,
+  sound: DEFAULT_SOUND_SETTINGS,
+  detectGridOnNewScenes: true,
+  fogEdge: DEFAULT_FOG_EDGE,
+  dragDistance: DEFAULT_DRAG_DISTANCE,
+  diceColour: DEFAULT_DICE_LOOK.colour,
+  diceFont: DEFAULT_DICE_LOOK.font,
+  initiativeDock: 'right',
+  initiativeBanner: true,
+  initiativeMovesOnTurn: false,
+  experimental: {},
+  toolbar: {},
+  dungeonGenerator: DEFAULT_DUNGEON_GENERATOR_SETTINGS,
+  localPlayerView: {
+    // UI element visibility defaults
+    showToolbar: false, // Hide toolbar by default in player view
+    showTokenNameplates: false, // Hide nameplates
+    showNotePreviews: false, // Hide note previews
+    showWidgets: true,
+    showInitiative: true,
+    showDiceRolls: false,
+    showCommandPalette: false, // Hide command palette
+    showCursors: false,
+    initiativeScale: 1,
+    initiativePulse: false,
+    turnBannerAtLists: false,
+    turnDim: false,
+    initiativeMaxCards: 0,
+    playersDraw: false,
+    playersOpenDoors: false,
+    sharedVision: false,
+  },
+  tableTv: DEFAULT_TABLE_TV_SETTINGS,
+};
+
+/**
+ * Keys that are not the GM's preferences and so never go into the plugin's data: the input mode
+ * is the device's (local storage), the user's game system presets are vault files.
+ */
+const NOT_PREFERENCES = ['navigation', 'systemPresets'] as const;
+
+/** `target` with `source`'s values on top, records merged key by key; keys only `source` has are kept. */
+function deepMerge<T extends object>(target: T, source: Partial<T>): T {
+  const result: Record<string, unknown> = { ...(target as Record<string, unknown>) };
+  for (const [key, sourceValue] of Object.entries(source)) {
+    const targetValue = (target as Record<string, unknown>)[key];
+    if (isRecord(sourceValue) && isRecord(targetValue)) result[key] = deepMerge(targetValue, sourceValue);
+    else if (sourceValue !== undefined) result[key] = sourceValue;
+  }
+  return result as T;
+}
+
+/** What Atlas reads from stored settings. */
+export interface ReadSettings {
+  settings: AtlasSettings;
+  /** Bindings this Atlas does not apply (another version's actions or defaults), written back as they were. */
+  foreignHotkeys: Record<string, string>;
+}
+
+/**
+ * The settings as stored, over the defaults. Every key Atlas does not know, at any depth, is kept,
+ * so settings a newer Atlas wrote survive a save by this one.
+ */
+export function readStoredSettings(stored: unknown, inputMode: NavigationInputMode): ReadSettings {
+  const record: Partial<AtlasSettings> = isRecord(stored) ? stored : {};
+  const merged = deepMerge(DEFAULT_SETTINGS, record);
+  const hotkeys = readHotkeyOverrides(record.hotkeys);
+  return {
+    settings: {
+      ...merged,
+      hotkeys,
+      navigation: { inputMode },
+      experimental: isRecord(record.experimental) ? merged.experimental : {},
+      toolbar: readToolbarLayout(record.toolbar),
+      gmScreenKeys: readGmScreenKeys(record.gmScreenKeys),
+      tableTv: readTableTvSettings(record.tableTv),
+      hiddenStarterOffers: readIdList(record.hiddenStarterOffers),
+      hiddenSoundOffers: readIdList(record.hiddenSoundOffers),
+    },
+    // Never rewritten on reading: the settings are shared with devices that may run another version.
+    foreignHotkeys: keptHotkeys(record.hotkeys),
+  };
+}
+
+/** A list of ids as stored (collection uids, offer ids); anything else reads as none. */
+function readIdList(value: unknown): readonly string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const uids = value.filter((uid): uid is string => typeof uid === 'string' && uid !== '');
+  return uids.length > 0 ? [...new Set(uids)] : undefined;
+}
+
+/** What goes into the plugin's data: the preferences, with the bindings of a newer Atlas kept. */
+export function storedSettings(settings: AtlasSettings, foreign: Record<string, string>): Record<string, unknown> {
+  const stored: Record<string, unknown> = { ...settings, hotkeys: { ...foreign, ...settings.hotkeys } };
+  for (const key of NOT_PREFERENCES) delete stored[key];
+  return stored;
+}
