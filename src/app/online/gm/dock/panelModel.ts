@@ -8,6 +8,7 @@ import type { OnlineControl } from '../OnlineControl.ts';
 import { closingText, type LostTable } from '../tableEnd.ts';
 import type { CampaignPick } from './campaignPicker.ts';
 import { t } from '../../../i18n';
+import { hiddenFromPlayers } from '../../../perception/framePerception';
 
 /**
  * What the control on the map reads of online play, and what it shows from that. The control reads
@@ -349,7 +350,7 @@ export function groupsOf(snapshot: OnlineSnapshot, scene: SceneFacts): PlayerGro
     const token = scene.tokens[seat.tokenId];
     if (token === undefined) return [];
     const owner = seat.ownerId === null ? null : known.get(seat.ownerId) ?? null;
-    return [{ tokenId: seat.tokenId, label: seat.label, imagePath: token.imagePath, showRing: token.showRing !== false, ringColor: token.ringColor ?? null, hidden: token.isHidden === true, owner }];
+    return [{ tokenId: seat.tokenId, label: seat.label, imagePath: token.imagePath, showRing: token.showRing !== false, ringColor: token.ringColor ?? null, hidden: hiddenFromPlayers(token), owner }];
   });
   const groups: PlayerGroup[] = players.map((player) => {
     const [face = null, ...tokens] = rows.filter((row) => row.owner?.id === player.id);

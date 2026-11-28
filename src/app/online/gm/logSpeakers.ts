@@ -5,6 +5,7 @@ import { tokenLabel } from './atlasView.ts';
 import type { SpokenAs } from './log/TableLog.ts';
 import { ringColour } from './scenePicture.ts';
 import type { VaultImage } from './TokenShare.ts';
+import { hiddenFromPlayers } from '../../perception/framePerception';
 
 /** What a speaker is looked up in: the shared scene's tokens and the list players were last sent. */
 export interface SpeakerScene {
@@ -34,7 +35,7 @@ export class LogSpeakers {
     const tokenId = who === GM_AUTHOR ? (Object.hasOwn(scene.tokens, key) ? key : undefined) : scene.listedToken(key);
     const token = tokenId === undefined ? undefined : scene.tokens[tokenId];
     if (tokenId === undefined || token === undefined) return null;
-    if (who !== GM_AUTHOR && (token.isHidden === true || scene.ownerOf(tokenId) !== who)) return null;
+    if (who !== GM_AUTHOR && (hiddenFromPlayers(token) || scene.ownerOf(tokenId) !== who)) return null;
     const name = shownLine(tokenLabel(token), MAX_SPEAKER_NAME);
     if (name === null) return null;
     const path = token.imagePath !== undefined && token.imagePath !== '' && token.imagePath.length <= MAX_ART_PATH ? token.imagePath : null;

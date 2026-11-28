@@ -9,6 +9,7 @@ import { patchObjectIn } from '../../../stores/sceneObjectWrites';
 import type { SceneState, SceneStore } from '../atlasView.ts';
 import { tokenLabel } from '../atlasView.ts';
 import { MoveRate } from '../moveCheck.ts';
+import { hiddenFromPlayers } from '../../../perception/framePerception';
 
 /** How far from a door a token may ask to open it: its own radius and this many cells (a little more than a page offers, for a token on its way). */
 export const ASK_REACH_CELLS = 1.5;
@@ -96,7 +97,7 @@ export class PlayerDoorAsks {
     if (scene !== this.ports.scene()) return null;
     const id = this.ports.listedToken(alias);
     const token = id === undefined ? undefined : mapTokens(levelObjects(this.store.getState()))[id];
-    return id === undefined || token === undefined || token.isHidden === true || this.ports.ownerOf(id) !== from ? null : { id, token };
+    return id === undefined || token === undefined || hiddenFromPlayers(token) || this.ports.ownerOf(id) !== from ? null : { id, token };
   }
 
   receive(from: string, message: PlayerDoorAsk | PlayerBump): void {
