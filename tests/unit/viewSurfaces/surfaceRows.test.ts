@@ -35,7 +35,7 @@ const CLOSED_BY: Readonly<Record<SurfaceName, readonly EventName[]>> = {
   gridSettings: ['tableMode'],
   dmScreen: [],
   gridAlignment: ['tableMode'],
-  floorPositioning: ['mapLoading', 'gridAlignment', 'oneLevel'],
+  floorPositioning: ['tableMode', 'mapLoading', 'gridAlignment', 'oneLevel'],
   diceLog: [],
   hotkeyHelp: ['tableMode'],
   docs: [],
@@ -73,7 +73,7 @@ const CLOSES: Readonly<Record<SurfaceName, readonly SurfaceName[]>> = {
   measurePopover: ['lightPopover', 'zonePopover', 'stairsPopover', 'openingPopover'],
   toolbarEditing: ['diceTray'],
   dungeonGenerator: ['toolbarEditing'],
-  tableMode: ['palette', 'diceTray', 'toolbarEditing', 'hotkeyHelp', 'gridSettings', 'gridAlignment', ...POPOVERS],
+  tableMode: ['palette', 'diceTray', 'toolbarEditing', 'hotkeyHelp', 'gridSettings', 'gridAlignment', 'floorPositioning', ...POPOVERS],
 };
 
 /** What keeps a surface from opening at all. */
