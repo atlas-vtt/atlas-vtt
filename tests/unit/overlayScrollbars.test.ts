@@ -98,6 +98,9 @@ describe('OverlayScrollbars', () => {
     // The area's own children stay as they are; they render through the shadow root's slot.
     expect(element.children).toHaveLength(1);
     expect(element.shadowRoot?.querySelector('slot')).not.toBeNull();
+    // The thumbs' motion is an adopted stylesheet: Obsidian's review refuses a `<style>` element.
+    expect(element.shadowRoot?.querySelector('style')).toBeNull();
+    expect(element.shadowRoot?.adoptedStyleSheets).toHaveLength(1);
     vi.advanceTimersToNextFrame();
     expect(parts(element)).toBe('frame shown');
     const thumb = element.shadowRoot!.querySelector<HTMLElement>('[part~="thumb-y"]')!;
@@ -149,6 +152,7 @@ describe('OverlayScrollbars', () => {
     scrollbars.destroy();
     expect(element.hasAttribute('data-atlas-scrollbar')).toBe(false);
     expect(frame(element)).toBeNull();
+    expect(element.shadowRoot?.adoptedStyleSheets).toHaveLength(0);
     // A new start (Atlas reloaded) finds the shadow root it made before.
     scrollbars = new OverlayScrollbars(document);
     element.dispatchEvent(new Event('scroll'));

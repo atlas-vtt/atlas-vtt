@@ -19,6 +19,23 @@ let anchorsMade = 0;
 const SLOT_MARK = 'data-atlas-scrollbar-slot';
 /** Presses on the thumbs stay with them: the area under them (a grid's marquee, a list's click) never sees them. */
 const KEPT_EVENTS = ['pointerdown', 'pointerup', 'mousedown', 'mouseup', 'click', 'dblclick', 'auxclick', 'contextmenu'] as const;
+/**
+ * The motion stylesheet, one per document: a constructed sheet can only be adopted in the document whose window made
+ * it, and the player view's pop-out is a document of its own. Adopted, not a `<style>` element, which Obsidian's
+ * review refuses.
+ */
+const motionSheets = new WeakMap<Document, CSSStyleSheet>();
+
+function motionSheet(doc: Document): CSSStyleSheet | null {
+  const known = motionSheets.get(doc);
+  if (known) return known;
+  const win = doc.defaultView;
+  if (!win) return null;
+  const sheet = new win.CSSStyleSheet();
+  sheet.replaceSync(motion);
+  motionSheets.set(doc, sheet);
+  return sheet;
+}
 
 export interface OverlayScrollbarHost {
   shown(bar: OverlayScrollbar): void;
@@ -32,7 +49,7 @@ export interface OverlayScrollbarHost {
  * root), so scrolling runs no script; this only sizes them, shows them for a moment and lets them be dragged.
  */
 export class OverlayScrollbar {
-  private readonly motion: HTMLStyleElement;
+  private readonly motion: CSSStyleSheet | null;
   private readonly frame: HTMLElement;
   private readonly thumbs: Record<Axis, HTMLElement>;
   private readonly travel: Record<Axis, number> = { y: 0, x: 0 };
@@ -54,8 +71,9 @@ export class OverlayScrollbar {
     root.createEl('slot', { attr: { [SLOT_MARK]: '' } });
   }
 
-  constructor(readonly area: HTMLElement, root: ShadowRoot, private readonly host: OverlayScrollbarHost) {
-    this.motion = root.createEl('style', { text: motion });
+  constructor(readonly area: HTMLElement, private readonly root: ShadowRoot, private readonly host: OverlayScrollbarHost) {
+    this.motion = motionSheet(root.ownerDocument);
+    if (this.motion) root.adoptedStyleSheets = [...root.adoptedStyleSheets, this.motion];
     this.frame = root.createDiv({ attr: { part: 'frame', 'aria-hidden': 'true' } });
     this.thumbs = {
       y: this.frame.createDiv({ attr: { part: 'thumb thumb-y', hidden: '' } }),
@@ -135,7 +153,7 @@ export class OverlayScrollbar {
 
   destroy(): void {
     this.area.win.clearTimeout(this.hideTimer);
-    this.motion.remove();
+    this.root.adoptedStyleSheets = this.root.adoptedStyleSheets.filter((sheet) => sheet !== this.motion);
     this.frame.remove();
     this.area.removeAttribute('data-atlas-scrollbar');
     this.area.setCssProps({ [ANCHOR_PROP]: '' });
