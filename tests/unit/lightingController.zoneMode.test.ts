@@ -2,7 +2,8 @@
 // The harness first: it mocks what the controller imports.
 import { event, setup, type Setup } from './lightingControllerHarness';
 import { describe, expect, it, vi } from 'vitest';
-import { captureSceneFrame } from '../../src/app/pixi/sceneFrameCapture';
+import { lightingPicture } from '../../src/app/pixi/picture/viewPictureParts';
+import { scenePicture } from '../helpers/pictures';
 import { getHistoryStore } from '../../src/app/stores/history';
 
 describe('the lighting tool\'s zone mode', () => {
@@ -13,7 +14,7 @@ describe('the lighting tool\'s zone mode', () => {
     expect(shown()).toBe(false);
     store.getState().setActiveTool('wall');
     expect(shown()).toBe(true);
-    expect(captureSceneFrame({ gmViewLayers: [], markerLayers: [], lighting: controller }, { x: 0, y: 0, resolution: 0.5 }, shown)).toBe(false);
+    expect(scenePicture({ lighting: lightingPicture(controller) }, { x: 0, y: 0, resolution: 0.5 }, shown)).toBe(false);
     store.getState().setGMView(false);
     expect(shown()).toBe(false);
     store.getState().setGMView(true);

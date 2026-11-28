@@ -5,7 +5,7 @@ import { contextLost } from '../pixi/lighting/engine/gpu';
 import { requestRender } from '../pixi/RenderScheduler';
 import { pictureView } from '../pixi/mosaicCanvas/levelOfDetail';
 import type { PixelRect } from '../pixi/mosaicCanvas/pyramid';
-import type { SceneFrameCapture } from '../pixi/sceneFrameCapture';
+import type { SceneFrame } from '../pixi/lighting/engine/types';
 import { trashHiddenPath } from '../utils/hiddenVaultFiles';
 
 /** The bytes of a base64 data URL, such as the JPEG `renderThumbnail` returns. */
@@ -30,6 +30,9 @@ export interface ThumbnailSize {
 export const MAP_THUMBNAIL_SIZE: ThumbnailSize = { width: 400, height: 300 };
 /** Scene snapshot cards: 16:9 and sharp enough for their larger preview. */
 export const SNAPSHOT_THUMBNAIL_SIZE: ThumbnailSize = { width: 640, height: 360 };
+
+/** Runs the off-screen render of a picture of the scene with what the scene needs around it, and returns its result. */
+export type SceneFrameCapture = <T>(frame: SceneFrame, render: () => T) => T;
 
 /** A map view without lighting or GM overlays to take care of: the render is the picture. */
 const PLAIN_CAPTURE: SceneFrameCapture = (_frame, render) => render();

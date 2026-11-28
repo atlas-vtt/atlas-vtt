@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { PixiRendererOrchestrator } from '../../src/app/PixiRendererOrchestrator';
+import { afterEach, describe, expect, it } from 'vitest';
+import type { PictureCapture } from '../../src/app/pixi/picture/PictureCapture';
+import { annotationsPicture } from '../../src/app/pixi/picture/viewPictureParts';
 import type { DrawingStroke, TextElement } from '../../src/app/types';
+import type { PlayerFrame } from '../../src/app/types/playerFrame';
 import { drawScene, type DrawScene } from '../helpers/drawScene';
-import { FRAME, fakePlayerFrames, fakeViewport } from '../mocks/playerFrameSource';
-
-const SETTINGS = { showTokenNameplates: true } as never;
+import { picturesOf, playersFrame } from '../helpers/pictures';
+import { FRAME } from '../mocks/playerFrameSource';
 
 let scene: DrawScene | null = null;
 afterEach(() => {
@@ -18,8 +19,22 @@ const pen = (id: string, more: Partial<DrawingStroke> = {}): DrawingStroke =>
 const label = (id: string, more: Partial<TextElement> = {}): TextElement =>
   ({ id, kind: 'text', x: 50, y: 50, text: 'Trap', fontSize: 24, fontFamily: 'Arial', color: '#ffffff', ...more });
 
-/** The orchestrator with only what a players' frame and a picture of the scene read, over a real view of drawings. */
-function harness(): { renderer: PixiRendererOrchestrator; s: DrawScene; shown(): Record<string, boolean> } {
+/** What a players' frame and a picture of the scene show of a real view of drawings, its part of the view's captures alone. */
+interface Pictures {
+  /** Runs `during` while a players' frame of `frame` renders. */
+  frame(during: () => void, frame?: PlayerFrame): void;
+  /** `render`'s result while a picture of the scene renders. */
+  picture<T>(render: () => T): T;
+}
+
+function picturesOfDrawings(pictures: PictureCapture): Pictures {
+  return {
+    frame: (during, frame = FRAME) => pictures.capture(playersFrame(frame), during),
+    picture: (render) => pictures.capture({ kind: 'scene', frame: { x: 0, y: 0, resolution: 1 }, view: null }, render),
+  };
+}
+
+function harness(): { renderer: Pictures; s: DrawScene; shown(): Record<string, boolean> } {
   const s = scene = drawScene();
   s.store.setState({
     objects: {
@@ -35,13 +50,7 @@ function harness(): { renderer: PixiRendererOrchestrator; s: DrawScene; shown():
       texts: { note: label('note', { hidden: true }), sign: label('sign', { x: 300 }) },
     },
   });
-  const renderer = Object.assign(Object.create(PixiRendererOrchestrator.prototype) as PixiRendererOrchestrator, {
-    pixiAppManager: { getApp: () => ({ renderer: { render: vi.fn() }, stage: {} }), getViewport: fakeViewport, getGestures: () => null },
-    playerFrames: fakePlayerFrames(),
-    annotations: s.renderer,
-    dmScreenOverlays: new Set(),
-    playerFrameOnly: new Set(),
-  });
+  const renderer = picturesOfDrawings(picturesOf({ annotations: annotationsPicture(s.renderer) }));
   /** Whether a render now would draw each annotation: its node is there and shown, and so is every layer above it. */
   const shown = (): Record<string, boolean> => Object.fromEntries(
     ([['drawing', 'shown'], ['drawing', 'secret'], ['drawing', 'floor'], ['drawing', 'trap'], ['drawing', 'far'], ['text', 'note'], ['text', 'sign']] as const).map(([kind, id]) => {
@@ -59,10 +68,10 @@ describe('a players\' frame and the drawings', () => {
     const chrome = s.viewport.children.find((child) => child.label === 'annotation-chrome');
     const during: Record<string, boolean>[] = [];
     let chromeDuring: boolean | undefined;
-    renderer.withPlayerSafeFrame(() => {
+    renderer.frame(() => {
       during.push(shown());
       chromeDuring = chrome?.visible;
-    }, SETTINGS, FRAME);
+    });
     expect(during).toEqual([expect.objectContaining({ shown: true, floor: true, sign: true, secret: false, trap: false, note: false })]);
     expect(chromeDuring).toBe(false);
     // The GM's canvas has all of it again.
@@ -75,11 +84,11 @@ describe('a players\' frame and the drawings', () => {
     // The camera shows the map's corner (800 × 600 and a margin): the far drawing was never drawn.
     expect(shown().far).toBe(false);
     let during: boolean | undefined;
-    renderer.withPlayerSafeFrame(() => { during = shown().far; }, SETTINGS, { ...FRAME, centerX: 5050, centerY: 5000 });
+    renderer.frame(() => { during = shown().far; }, { ...FRAME, centerX: 5050, centerY: 5000 });
     expect(during).toBe(true);
     expect(shown().far).toBe(false);
     // A frame within what the camera shows changes nothing.
-    renderer.withPlayerSafeFrame(() => { during = shown().far; }, SETTINGS, { ...FRAME, width: 400, height: 300, centerX: 400, centerY: 300 });
+    renderer.frame(() => { during = shown().far; }, { ...FRAME, width: 400, height: 300, centerX: 400, centerY: 300 });
     expect(during).toBe(false);
   });
 });
@@ -88,7 +97,7 @@ describe('a picture of the scene and the drawings', () => {
   it('is the GM\'s picture without what the GM keeps from the players, and with every drawing of the scene', () => {
     const { renderer, shown } = harness();
     expect(shown().far).toBe(false);
-    const during = renderer.captureSceneFrame({} as never, shown);
+    const during = renderer.picture(shown);
     expect(during).toMatchObject({ shown: true, floor: true, sign: true, far: true, secret: false, trap: false, note: false });
     expect(shown()).toMatchObject({ secret: true, trap: true, note: true });
   });
@@ -116,9 +125,9 @@ describe('the canvas in the players\' picture and the drawings', () => {
     s.store.getState().setSelection(['note']);
     expect(handles()).toBe(true);
     let during: boolean | undefined;
-    renderer.withPlayerSafeFrame(() => { during = handles(); }, SETTINGS, FRAME);
+    renderer.frame(() => { during = handles(); });
     expect(during).toBe(false);
-    expect(renderer.captureSceneFrame({} as never, handles)).toBe(false);
+    expect(renderer.picture(handles)).toBe(false);
     expect(handles()).toBe(true);
     // In session view the hidden text is not there to be selected, and no handle shows for anything.
     s.store.getState().setGMView(false);
@@ -145,9 +154,9 @@ describe('the canvas in the players\' picture and the drawings', () => {
       expect(s.hover(500, 400)).toBe('none');
       expect(placing(kind)()).toBe(true);
       let during: boolean | undefined;
-      renderer.withPlayerSafeFrame(() => { during = placing(kind)(); }, SETTINGS, FRAME);
+      renderer.frame(() => { during = placing(kind)(); });
       expect(during, mode).toBe(false);
-      expect(renderer.captureSceneFrame({} as never, placing(kind)), mode).toBe(false);
+      expect(renderer.picture(placing(kind)), mode).toBe(false);
       // The GM's canvas has it again, until it shows the players' picture itself.
       expect(placing(kind)()).toBe(true);
       s.store.getState().setGMView(false);

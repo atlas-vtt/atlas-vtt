@@ -1,69 +1,60 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from 'vitest';
-import { Container, Sprite, Texture } from 'pixi.js';
-import { GridSystem } from '../../src/app/grid/GridSystem';
-import { mapImageViewOf } from '../helpers/fakeMapImageView';
-import { PixiRendererOrchestrator } from '../../src/app/PixiRendererOrchestrator';
-import { FRAME, fakePlayerFrames, fakeViewport } from '../mocks/playerFrameSource';
+import { bareMapView, type BareMapView } from '../helpers/bareMapView';
+import { FRAME } from '../mocks/playerFrameSource';
 
 /** Settings an older Atlas saved, with its own grid switch for players: no longer read. */
 const OLD_SETTINGS = { showGrid: true, showTokenNameplates: true } as never;
 
-const grids: GridSystem[] = [];
+const views: BareMapView[] = [];
 afterEach(() => {
-  grids.splice(0).forEach((grid) => grid.destroy());
+  views.splice(0).forEach((view) => view.destroy());
   vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 
-/** A map with its grid, and the orchestrator with only what a player frame reads. */
-function mapWithGrid(enabled: boolean): { grid: GridSystem; renderer: PixiRendererOrchestrator } {
-  const viewport = new Container();
-  const background = new Sprite(Texture.WHITE); background.width = 500; background.height = 500;
-  viewport.addChild(background);
-  const grid = new GridSystem({ renderer: { resolution: 1 } } as never, viewport as never, mapImageViewOf(background), { size: 70, enabled, color: 0xff0000 });
-  grids.push(grid);
-  const renderer = Object.assign(Object.create(PixiRendererOrchestrator.prototype) as PixiRendererOrchestrator, {
-    pixiAppManager: { getApp: () => ({ renderer: { render: vi.fn() }, stage: {} }), getViewport: fakeViewport, getGestures: () => null },
-    playerFrames: fakePlayerFrames(),
-    gridSystem: grid,
-    tokenRenderer: { getPlayerViewLayers: () => [] },
-    dmScreenOverlays: new Set(),
-    playerFrameOnly: new Set(),
-  });
-  return { grid, renderer };
+/** A map view with its grid, as Atlas builds it, the GM showing or hiding the grid. */
+async function mapWithGrid(enabled: boolean): Promise<BareMapView> {
+  // jsdom has no canvas; the token and text renderers built with the grid only need it for icons
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
+  const view = await bareMapView({ grid: { size: 70, enabled, color: 0xff0000 } });
+  views.push(view);
+  view.renderer.getGridSystem()!.setEnabled(enabled);
+  return view;
 }
 
 /** Whether the players' frame shows the grid, and the grid it shows. */
-function playersSee(renderer: PixiRendererOrchestrator, grid: GridSystem, settings = OLD_SETTINGS): { shown: boolean; sprite: Container | null } {
-  let seen = { shown: false, sprite: null as Container | null };
+function playersSee({ renderer }: BareMapView, settings = OLD_SETTINGS): { shown: boolean; sprite: unknown } | null {
+  let seen: { shown: boolean; sprite: unknown } | null = null;
   renderer.withPlayerSafeFrame(() => {
-    const sprite = grid.getGridSprite();
+    const sprite = renderer.getGridSystem()?.getGridSprite();
     seen = { shown: sprite?.visible === true, sprite };
   }, settings, FRAME);
   return seen;
 }
 
-it('shows players no grid while the GM hides it, whatever an older player view switch says', () => {
-  const { grid, renderer } = mapWithGrid(false);
-  expect(playersSee(renderer, grid).shown).toBe(false);
-  expect(grid.getGridSprite()?.visible).toBe(false);
+it('shows players no grid while the GM hides it, whatever an older player view switch says', async () => {
+  const view = await mapWithGrid(false);
+  expect(playersSee(view)?.shown).toBe(false);
+  expect(view.renderer.getGridSystem()?.getGridSprite()?.visible).toBe(false);
 });
 
-it('shows players the grid while the GM shows it, also where an older switch hid it for them', () => {
-  const { grid, renderer } = mapWithGrid(true);
-  expect(playersSee(renderer, grid, { showGrid: false, showTokenNameplates: true } as never).shown).toBe(true);
+it('shows players the grid while the GM shows it, also where an older switch hid it for them', async () => {
+  const view = await mapWithGrid(true);
+  expect(playersSee(view, { showGrid: false, showTokenNameplates: true } as never)?.shown).toBe(true);
 });
 
-it('follows the GM switching the grid and changing its look', () => {
+it('follows the GM switching the grid and changing its look', async () => {
+  const view = await mapWithGrid(true);
   vi.useFakeTimers();
-  const { grid, renderer } = mapWithGrid(true);
+  const grid = view.renderer.getGridSystem()!;
   grid.setEnabled(false);
-  expect(playersSee(renderer, grid).shown).toBe(false);
+  expect(playersSee(view)?.shown).toBe(false);
 
   grid.setEnabled(true);
   grid.updateOptions({ color: 0x00ff00, alpha: 0.4, lineType: 'dashed' });
   vi.runAllTimers();
-  const { shown, sprite } = playersSee(renderer, grid);
+  const { shown, sprite } = playersSee(view)!;
   expect(shown).toBe(true);
   // The players' frame draws the GM's own grid, so it has the GM's look
   expect(sprite).toBe(grid.getGridSprite());

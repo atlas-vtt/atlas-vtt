@@ -5,7 +5,7 @@ import { MapThumbnailService, SNAPSHOT_THUMBNAIL_SIZE, type ThumbnailSize } from
 import * as renderScheduler from '../../src/app/pixi/RenderScheduler';
 import type { PixelRect } from '../../src/app/pixi/mosaicCanvas/pyramid';
 import type { SceneFrame } from '../../src/app/pixi/lighting/engine/types';
-import type { SceneFrameCapture } from '../../src/app/pixi/sceneFrameCapture';
+import type { SceneFrameCapture } from '../../src/app/services/MapThumbnailService';
 
 afterEach(() => vi.restoreAllMocks());
 

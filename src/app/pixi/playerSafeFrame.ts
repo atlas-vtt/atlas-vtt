@@ -102,10 +102,11 @@ function applyCamera({ target, camera, screen }: PlayerFrameCamera): () => void 
 }
 
 /**
- * Apply the player frame's visibility, opacity and (optionally) its camera. Returns the
- * function that restores the DM's, and whether anything differs from the DM's frame.
+ * Apply a picture's visibility, opacity and (optionally) its camera. Of two entries for one layer
+ * that differ from it, the later decides. Returns the function that restores the DM's, and
+ * whether anything differs from the DM's frame.
  */
-function applyPlayerFrame(layers: readonly LayerVisibility[], camera?: PlayerFrameCamera): { differs: boolean; restore: () => void } {
+export function applyLayerVisibility(layers: readonly LayerVisibility[], camera?: PlayerFrameCamera): { differs: boolean; restore: () => void } {
   const changed = layers.filter(({ layer, visible, alpha }) =>
     layer.visible !== visible || (alpha !== undefined && layer.alpha !== alpha))
     .map(entry => ({ ...entry, previous: entry.layer.visible, previousAlpha: entry.layer.alpha }));
@@ -136,7 +137,7 @@ export function captureWithLayerVisibility(
   capture: () => void,
   camera?: PlayerFrameCamera,
 ): void {
-  const { differs, restore } = applyPlayerFrame(layers, camera);
+  const { differs, restore } = applyLayerVisibility(layers, camera);
   if (!differs) {
     capture();
     return;
@@ -161,7 +162,7 @@ export function captureBeforeRender(
   capture: () => void,
   camera?: PlayerFrameCamera,
 ): void {
-  const { restore } = applyPlayerFrame(layers, camera);
+  const { restore } = applyLayerVisibility(layers, camera);
   try {
     render();
     capture();
