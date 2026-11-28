@@ -39,6 +39,7 @@ describe('Sidekick\'s panel in each of its states', () => {
     expect(within(panel()).queryByRole('button', { name: 'Close' })).toBeNull();
     const icon = control.querySelector('img')!.getAttribute('src');
     expect(icon).toMatch(/^data:image\/webp;base64,/);
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Show QR code' }));
     expect(within(panel()).getByRole('img', { name: 'QR code of the Sidekick link' }).querySelector('image')?.getAttribute('href')).toBe(icon);
   });
 

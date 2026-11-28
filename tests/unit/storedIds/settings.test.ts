@@ -129,6 +129,7 @@ const GM_SCREEN_KEY_COMMAND_IDS = [
   'nextMood',
   'nextTrack',
   'pause',
+  'playerWindow',
   'present',
   'previousTrack',
   'repeat',

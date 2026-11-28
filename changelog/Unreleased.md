@@ -6,6 +6,9 @@
 - While a campaign is played, its world map shows faintly behind Sidekick's screens
 - Statblocks slide in, a key's options move from step to step, and panels look like your phone's own
 - Sidekick's panel in Atlas shows a bigger QR code, easier to scan from across the table
+- A new Sidekick key opens and closes the player view
+- Sidekick's QR code stays blurred until you click it, so it never shows on a stream
+- The device list in Sidekick's panel stays closed until you open it
 
 ## Fixed
 

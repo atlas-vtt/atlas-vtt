@@ -7,6 +7,7 @@ import { ARM_MS } from '../../../../src/app/online/gm/armedCards.ts';
 import { gmScreenControlShown, setGmScreenHost } from '../../../../src/app/online/gmScreen/gmScreenSlot.ts';
 import { noticeKnocks } from '../../../../src/app/online/gmScreen/knockNotice.ts';
 import { GmScreenControl } from '../../../../src/app/online/gmScreen/ui/GmScreenControl';
+import { QR_SHOWN_MS } from '../../../../src/app/online/gmScreen/ui/GmScreenQr';
 import { shownLink } from '../../../../src/app/online/gmScreen/ui/LinkCopy';
 import { armed, connects, hosted, panel, shown, startedFromPanel } from './controlRig.tsx';
 import { deviceId, RelaySocket, sessionRig } from './sessionRig.ts';
@@ -29,6 +30,35 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+describe('the QR code on a shared screen', () => {
+  const drawn = (): string => panel().querySelector('.atlas-gm-screen-qr > svg path')?.getAttribute('d') ?? '';
+
+  it('opens hidden, as the code of no link, shows the link\'s on a press, and hides again after a while and with a new link', async () => {
+    const rig = await shown();
+    await startedFromPanel(rig);
+    expect(within(panel()).queryByRole('img', { name: 'QR code of the Sidekick link' })).toBeNull();
+    const standIn = drawn();
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      fireEvent.click(within(panel()).getByRole('button', { name: 'Show QR code' }));
+      expect(within(panel()).getByRole('img', { name: 'QR code of the Sidekick link' })).toBeTruthy();
+      expect(drawn(), 'the link\'s own code, never drawn while hidden').not.toBe(standIn);
+      act(() => vi.advanceTimersByTime(QR_SHOWN_MS - 1));
+      expect(within(panel()).queryByRole('button', { name: 'Show QR code' })).toBeNull();
+      act(() => vi.advanceTimersByTime(1));
+      expect(within(panel()).getByRole('button', { name: 'Show QR code' })).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Show QR code' }));
+    await act(async () => {
+      fireEvent.click(within(panel()).getByRole('button', { name: 'New link' }));
+      await rig.settle();
+    });
+    expect(within(panel()).getByRole('button', { name: 'Show QR code' }), 'a new link starts hidden').toBeTruthy();
+  });
+});
+
 describe('the DM screen\'s control for the GM screen', () => {
   it('is not there while online play is off', () => {
     render(<GmScreenControl />);
@@ -40,6 +70,7 @@ describe('the DM screen\'s control for the GM screen', () => {
     await startedFromPanel(rig);
     const link = rig.session.view().link ?? '';
     expect(link).toContain(`#${rig.saved.at(-1)?.link.code}.${rig.saved.at(-1)?.link.key}`);
+    fireEvent.click(screen.getByRole('button', { name: 'Show QR code' }));
     expect(screen.getByRole('img', { name: 'QR code of the Sidekick link' })).toBeTruthy();
     const copy = screen.getByRole('button', { name: 'Copy link' });
     const { host, rest } = shownLink(link);

@@ -69,7 +69,7 @@ function RunningBody({ session, view, fold, locked }: { session: GmScreenSession
       {view.link !== null && (
         <>
           <div className="atlas-gm-screen-code" data-status={view.status}>
-            <GmScreenQr link={view.link} />
+            <GmScreenQr key={view.link} link={view.link} />
             <p className="atlas-gm-screen-caption">{view.status === 'online' ? t('gmScreen.scan') : t('gmScreen.connecting')}</p>
           </div>
           <LinkCopy key={view.link} link={view.link} />
@@ -93,7 +93,7 @@ export function GmScreenPanel({ session, view, account, onClose }: GmScreenPanel
   // this opening, however often they come and go (Stop and Start) meanwhile.
   const [openedForKnock] = useState(view.knock !== null);
   const settled = useArmed('opened', !openedForKnock);
-  const fold = useDeviceFold(view.devices);
+  const fold = useDeviceFold();
   const variants = leaving(useAnchoredPopoverVariants());
   useLightDismiss(root, useIsPresent(), () => escapes.undo(), onClose);
   const running = view.status === 'connecting' || view.status === 'online';

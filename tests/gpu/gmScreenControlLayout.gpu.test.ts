@@ -42,8 +42,8 @@ const rect = (element: Element): DOMRect => element.getBoundingClientRect();
 /** Whether `element` shows all its words: nothing cut and nothing run past its box. */
 const whole = (element: HTMLElement): boolean => element.scrollWidth <= element.clientWidth + 0.5 && element.scrollHeight <= element.clientHeight + 0.5;
 
-/** The panel running, with one device connected and one asking. */
-async function running(theme: Theme): Promise<HTMLElement> {
+/** The panel running, with one device connected and one asking, its devices section opened and its code shown or still hidden. */
+async function running(theme: Theme, code: 'shown' | 'hidden' = 'shown'): Promise<HTMLElement> {
   const view = await dmScreen(theme);
   teardown = view.remove;
   const timers = handTimers();
@@ -66,6 +66,8 @@ async function running(theme: Theme): Promise<HTMLElement> {
       relay.events?.joined({ id, name });
     });
   }
+  act(() => document.querySelector<HTMLButtonElement>('.atlas-gm-screen-devices__toggle')!.click());
+  if (code === 'shown') act(() => document.querySelector<HTMLButtonElement>('.atlas-gm-screen-qr__reveal')!.click());
   await Promise.all(document.getAnimations().filter((animation) => animation.effect?.getTiming().iterations !== Infinity).map((animation) => animation.finished));
   return document.querySelector<HTMLElement>('.atlas-gm-screen-panel')!;
 }
@@ -119,6 +121,19 @@ describe.each<Theme>(['dark', 'light'])('Sidekick\'s panel laid out by the real 
     expect(icon.width).toBeGreaterThanOrEqual(24);
     expect(icon.width * 3).toBeLessThanOrEqual(128);
     expect(svg.querySelector('clipPath rect')?.getAttribute('rx')).not.toBe('0');
+  });
+
+  it.each(LANGUAGES)('hides the code until pressed, blurred past reading under a press whose words stay whole, in %s', async (_, texts) => {
+    const panel = await running(theme, 'hidden');
+    const card = panel.querySelector<HTMLElement>('.atlas-gm-screen-qr')!;
+    expect(getComputedStyle(card.querySelector(':scope > svg')!).filter).toMatch(/^blur\(\d+px\)$/);
+    const press = card.querySelector<HTMLElement>('.atlas-gm-screen-qr__reveal')!;
+    expect([rect(press).width, rect(press).height].map(Math.round)).toEqual([rect(card).width, rect(card).height].map(Math.round));
+    const label = press.querySelector<HTMLElement>('.atlas-gm-screen-qr__reveal-label')!;
+    label.lastChild!.textContent = said(texts, 'gmScreen.showQr');
+    expect(whole(label), label.textContent ?? '').toBe(true);
+    expect(rect(label).width).toBeLessThan(rect(card).width * 0.8);
+    expect(getComputedStyle(label.querySelector('svg')!).filter, 'the eye stays sharp').toBe('none');
   });
 
   it.each(LANGUAGES)('keeps the line under the code to one line and every label whole in %s', async (_, texts, common) => {

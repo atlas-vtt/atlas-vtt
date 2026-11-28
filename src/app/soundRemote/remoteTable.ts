@@ -7,7 +7,7 @@ import type { DicePreset } from '../types/dicePresetTypes';
 import type { InitiativeRules } from '../types/initiativeRulesTypes';
 import type { RemoteCombat, RemoteCommand, RemotePlayer } from './remoteProtocol';
 
-const TABLE_COMMAND_TYPES = ['combat', 'rollInitiative', 'present', 'freeze', 'curtain', 'takeBackHandout', 'showHoveredImage', 'roll', 'dice', 'shareRolls'] as const;
+const TABLE_COMMAND_TYPES = ['combat', 'rollInitiative', 'present', 'playerWindow', 'freeze', 'curtain', 'takeBackHandout', 'showHoveredImage', 'roll', 'dice', 'shareRolls'] as const;
 const TABLE_COMMANDS: ReadonlySet<string> = new Set(TABLE_COMMAND_TYPES);
 
 /** The commands that act on the table (the fight and the player window), not on sound. */
@@ -17,8 +17,11 @@ export function isTableCommand(command: RemoteCommand): command is TableCommand 
   return TABLE_COMMANDS.has(command.type);
 }
 
-/** Why a table command did nothing. `bad-formula`: the dice tool would not roll it (`diceKeyRolls`). */
-export type TableRefusal = 'no-scene' | 'no-combatants' | 'no-rolls' | 'cards-short' | 'no-player-window' | 'true-scale' | 'no-handout' | 'no-image' | 'no-roll' | 'bad-formula';
+/**
+ * Why a table command did nothing. `bad-formula`: the dice tool would not roll it (`diceKeyRolls`). `desktop-only`:
+ * Atlas runs on a phone or tablet, which opens no second window.
+ */
+export type TableRefusal = 'desktop-only' | 'no-scene' | 'no-combatants' | 'no-rolls' | 'cards-short' | 'no-player-window' | 'true-scale' | 'no-handout' | 'no-image' | 'no-roll' | 'bad-formula';
 
 /** The map the GM has in front (`remoteMapView`), and the tracker's and the scene tab's own actions on it. */
 export interface TableMap {
@@ -44,6 +47,12 @@ export interface TableMap {
 /** The player window and the online table, as the player window's bar reads and presses them. */
 export interface TablePlayerWindow {
   isOpen(): boolean;
+  /** This device opens a player window: a computer, not Obsidian on a phone or tablet. */
+  opens(): boolean;
+  /** Opens it, as the command does (`openPlayerWindow`); false where there is no scene to open it on, presented or in front. */
+  open(): boolean;
+  /** Closes it, as its bar's Close does. */
+  close(): void;
   /** An online table runs: the curtain and the pause reach its players without a player window. */
   isOnline(): boolean;
   /** Play is paused for everyone at the table (`isTablePaused`). */
@@ -146,6 +155,15 @@ function runPresent(map: TableMap): null {
   return null;
 }
 
+function runPlayerWindow(player: TablePlayerWindow): TableRefusal | null {
+  if (player.isOpen()) {
+    player.close();
+    return null;
+  }
+  if (!player.opens()) return 'desktop-only';
+  return player.open() ? null : 'no-scene';
+}
+
 /**
  * Whether a dice key's formula rolls exactly as it stands: the one check its placing and its press share. It is
  * at most the dice grammar's length as a whole, a side written last counted; it writes its dice (`rollableFormula`);
@@ -174,6 +192,8 @@ export function runTableCommand(source: TableSource, command: TableCommand): Tab
       return onMap(source, runInitiativeRoll);
     case 'present':
       return onMap(source, runPresent);
+    case 'playerWindow':
+      return runPlayerWindow(player);
     case 'freeze':
       if (!reachesPlayers(player)) return 'no-player-window';
       if (pinnedByTrueScale(player)) return 'true-scale';

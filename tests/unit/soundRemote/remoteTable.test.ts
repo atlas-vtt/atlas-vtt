@@ -58,6 +58,23 @@ describe('the remote\'s player window keys', () => {
     expect(remotePlayer(table).presented).toBe(true);
   });
 
+  it('opens the player window where it is closed and closes it where it is open, refusing on a phone or tablet and without a scene', () => {
+    const { table, player, window } = fakeTable();
+    window.open = false;
+    expect(runTableCommand(table, { type: 'playerWindow' })).toBeNull();
+    expect(player.open).toHaveBeenCalledOnce();
+    expect(remotePlayer(table).open).toBe(true);
+    expect(runTableCommand(table, { type: 'playerWindow' })).toBeNull();
+    expect(player.close).toHaveBeenCalledOnce();
+    expect(remotePlayer(table).open).toBe(false);
+    window.scene = false;
+    expect(runTableCommand(table, { type: 'playerWindow' })).toBe('no-scene');
+    window.opens = false;
+    expect(runTableCommand(table, { type: 'playerWindow' })).toBe('desktop-only');
+    expect(player.open).toHaveBeenCalledTimes(2);
+    expect(isTableCommand({ type: 'playerWindow' })).toBe(true);
+  });
+
   it('freezes and lowers the curtain only in an open window, and not while TrueScale pins the camera', () => {
     const { table, player, window } = fakeTable();
     expect(runTableCommand(table, { type: 'freeze' })).toBeNull();

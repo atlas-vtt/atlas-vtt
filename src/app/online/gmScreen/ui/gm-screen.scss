@@ -113,11 +113,66 @@
     box-shadow: 0 0 0 $border-width-s rgba(0, 0, 0, 0.1);
   }
 
-  svg {
+  > svg {
     display: block;
     width: 100%;
     height: 100%;
     fill: currentColor;
+    transition: filter $transition-normal $transition-ease, opacity $transition-normal $transition-ease;
+  }
+
+  // Hidden: the stand-in code blurred past reading, so it only says that a code waits there
+  &[data-hidden] > svg {
+    filter: blur(12px);
+    opacity: 0.55;
+  }
+}
+
+// The press that shows the code: the whole card, its word on a dark pill in the middle
+.atlas-gm-screen-qr {
+  position: relative;
+}
+
+.atlas-gm-screen-qr__reveal {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: inherit;
+  background: none;
+  box-shadow: none;
+  cursor: pointer;
+
+  &:hover {
+    background: none;
+    box-shadow: none;
+  }
+}
+
+.atlas-gm-screen-qr__reveal-label {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-xs;
+  padding: $spacing-xs $spacing-m;
+  border-radius: $radius-full;
+  background: rgb(0 0 0 / 0.78);
+  color: #fff;
+  font-size: $font-ui-small;
+  font-weight: $font-weight-semibold;
+  transition: transform $transition-press $transition-ease-out;
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
+
+  .atlas-gm-screen-qr__reveal:active & {
+    transform: scale(0.96);
   }
 }
 
@@ -173,7 +228,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .atlas-gm-screen-qr {
+  .atlas-gm-screen-qr,
+  .atlas-gm-screen-qr > svg {
     transition: none;
   }
 }
