@@ -1,6 +1,12 @@
 {
-  "version": "0.21.2",
+  "version": "0.21.3",
   "releases": [
+    {
+      "version": "0.21.3",
+      "date": "2026-11-28",
+      "title": "Back in the Community Store",
+      "markdown": "## Fixed\n\n- Atlas passes Obsidian's automated plugin review again and is back in the Community Store"
+    },
     {
       "version": "0.21.2",
       "date": "2026-11-28",
