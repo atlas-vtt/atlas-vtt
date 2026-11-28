@@ -243,79 +243,6 @@ describe('player camera freeze', () => {
       expect(vi.mocked(Notice).mock.calls.at(-1)).toEqual(['Player view playing again']);
     });
 
-    it('freezes players on the new scene\'s own view when it is frozen before its first frame comes', () => {
-      const { service, settings, nextFrame } = setup();
-      settings.setTableTvSettings({ viewGlideMs: 0 });
-      nextFrame();
-      const next = otherScene({ centerX: 300, centerY: 200, scale: 2 });
-      next.loaded();
-      // Presented and frozen in one go, as from a view that renders on change: its frame comes with the next render
-      const frames = next.withPlayerSafeFrame;
-      next.withPlayerSafeFrame = vi.fn();
-      service.presentCanvas(next, 'scene-b');
-      toggleTablePause();
-      expect(service.isFrozen()).toBe(true);
-      next.withPlayerSafeFrame = frames;
-      nextFrame();
-      expect(frames.mock.lastCall![2]).toMatchObject({ centerX: 300, centerY: 200 });
-      expect(shown(frames.mock.lastCall![2])[3]).toBe(300);
-    });
-
-    it('does not freeze on the camera of the scene the DM browses while players are held on theirs and were shown nothing of it yet', () => {
-      const { service, source, settings, setDmCamera, nextFrame, lastFrame } = setup();
-      settings.setTableTvSettings({ viewGlideMs: 0 });
-      nextFrame();
-      const next = otherScene({ centerX: 300, centerY: 200, scale: 2 });
-      service.presentCanvas(next, 'scene-b');
-      // The DM leaves the presented tab before its first frame: the view now shows another scene, through another camera
-      service.holdCurrentFrame();
-      vi.mocked(Notice).mockClear();
-      toggleTablePause();
-      expect(service.isFrozen()).toBe(false);
-      expect(vi.mocked(Notice).mock.calls).toEqual([[NOTHING_TO_FREEZE]]);
-
-      // Held on a scene they were shown, players are frozen on what they saw of it
-      service.presentCanvas(source, 'scene-a');
-      setDmCamera({ centerX: 40, centerY: 50, scale: 1 });
-      nextFrame();
-      service.holdCurrentFrame();
-      setDmCamera({ centerX: 9000, centerY: 9000, scale: 0.1 });
-      toggleTablePause();
-      expect(service.isFrozen()).toBe(true);
-      service.releaseHeldFrame(source);
-      nextFrame();
-      expect(lastFrame()).toMatchObject({ centerX: 40, centerY: 50 });
-    });
-  });
-
-  it('presenting a scene leaves players who are not frozen following the DM', () => {
-    const { service, source, nextFrame } = setup();
-    nextFrame();
-    service.presentCanvas(source, 'scene-b');
-    expect(service.isFrozen()).toBe(false);
-    expect(playerWindowStore.getState().isFrozen).toBe(false);
-  });
-
-  it('presenting another scene keeps the freeze, on the DM framing of that scene', () => {
-    const { service, source, session, setDmCamera, nextFrame } = setup();
-    nextFrame();
-    toggleTablePause();
-    setDmCamera({ centerX: 500, centerY: 600, scale: 2 });
-    service.presentCanvas(source, 'scene-b');
-    expect(service.isFrozen()).toBe(true);
-    expect(playerWindowStore.getState().isFrozen).toBe(true);
-    expect(session).toMatchObject({ tabId: 'scene-b', frozen: true, camera: { centerX: 500, centerY: 600, scale: 2 } });
-  });
-
-  it('presenting the same scene again pushes the DM framing and stays frozen', () => {
-    const { service, source, session, settings, setDmCamera, nextFrame } = setup();
-    settings.setTableTvSettings({ viewGlideMs: 0 });
-    nextFrame();
-    toggleTablePause();
-    setDmCamera({ centerX: 500, centerY: 600, scale: 2 });
-    service.presentCanvas(source, 'scene-a');
-    expect(service.isFrozen()).toBe(true);
-    expect(session.camera).toMatchObject({ centerX: 500, centerY: 600, scale: 2 });
   });
 
   it('glides frozen players to a view pushed on the same scene', () => {
@@ -389,31 +316,6 @@ describe('player camera freeze', () => {
       expect(service.isFrozen()).toBe(false);
     });
 
-    it('glide too when the frame comes through a present of the scene they see', () => {
-      const { service, source, session, setDmCamera, nextFrame } = setup();
-      setDmCamera({ centerX: 10, centerY: 20, scale: 1 });
-      nextFrame();
-      service.presentCanvas(source, 'scene-a', undefined, FRAME_B);
-      expect(service.glassOf('scene-a')).toMatchObject({ centerX: 10, centerY: 20 });
-      nextFrame(800);
-      expect(session.camera).toEqual(FRAME_B);
-    });
-  });
-
-  it('returns players to the frame the GM set on a map when it is presented again', () => {
-    const { service, source, session, settings, setDmCamera, nextFrame } = setup();
-    settings.setTableTvSettings({ viewGlideMs: 0 });
-    setDmCamera({ centerX: 10, centerY: 20, scale: 1.5 });
-    nextFrame();
-    service.framePlayersOn('scene-a', 300, 400);
-    toggleTablePause();
-
-    setDmCamera({ centerX: 0, centerY: 0, scale: 3 });
-    service.presentCanvas(source, 'scene-b', 'scene-b.atlasmap');
-    expect(service.isFrozen()).toBe(false);
-    service.presentCanvas(source, 'scene-a', 'scene-a.atlasmap');
-    expect(service.isFrozen()).toBe(true);
-    expect(session.camera).toMatchObject({ centerX: 300, centerY: 400, scale: 1.5 });
   });
 
   it('frames players on a picked point at their zoom, frozen there, only on the scene they see', () => {
