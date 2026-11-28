@@ -64,10 +64,12 @@ function createView(camera: PlayerCameraState = { centerX: 0, centerY: 0, scale:
 
 /**
  * A player window of 1280 × 720 open on scene-a, whose view's pane measures 800 × 600. Display
- * frames queue as a browser queues them: every callback asked for runs at the next frame, in order.
+ * frames queue as a browser queues them: every callback asked for and not cancelled runs at the next frame, in order.
  */
 export function openPlayerWindowRig(): PlayerWindowRig {
-  let queue: FrameRequestCallback[] = [];
+  let queue = new Map<number, FrameRequestCallback>();
+  let due = new Map<number, FrameRequestCallback>();
+  let lastId = 0;
   let now = 0;
   vi.spyOn(performance, 'now').mockImplementation(() => now);
   const drawing = Object.fromEntries(['save', 'restore', 'fillRect', 'clearRect', 'drawImage', 'fillText', 'beginPath', 'moveTo', 'lineTo', 'arcTo', 'closePath', 'fill', 'stroke'].map((name) => [name, vi.fn()]));
@@ -81,8 +83,14 @@ export function openPlayerWindowRig(): PlayerWindowRig {
   Object.defineProperty(doc, 'readyState', { value: 'complete' });
   const win = {
     document: doc, closed: false, addEventListener: vi.fn(), removeEventListener: vi.fn(), close: vi.fn(),
-    requestAnimationFrame: (callback: FrameRequestCallback): number => queue.push(callback),
-    cancelAnimationFrame: vi.fn(), devicePixelRatio: 1, performance: { now: () => now }, screen: { width: 1280, height: 720 },
+    requestAnimationFrame: (callback: FrameRequestCallback): number => {
+      queue.set(++lastId, callback);
+      return lastId;
+    },
+    cancelAnimationFrame: (id: number): void => {
+      queue.delete(id);
+      due.delete(id);
+    }, devicePixelRatio: 1, performance: { now: () => now }, screen: { width: 1280, height: 720 },
     innerWidth: 1280, innerHeight: 720,
   };
   Object.defineProperty(doc.body, 'win', { value: win });
@@ -98,9 +106,12 @@ export function openPlayerWindowRig(): PlayerWindowRig {
     service, settings, session, view, createView,
     frame: (time) => {
       now = time;
-      const due = queue;
-      queue = [];
-      due.forEach((callback) => callback(time));
+      due = queue;
+      queue = new Map();
+      for (const [id, callback] of due) {
+        due.delete(id);
+        callback(time);
+      }
     },
     presentLevel: (tabId, levelId) => presentedSceneOf(app).set({ tabId, filePath: `${tabId}.atlasmap`, levelId }),
     pausedLabel: () => doc.getElementById('atlas-player-freeze-indicator')?.style.display === 'flex',
