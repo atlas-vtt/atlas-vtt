@@ -54,7 +54,7 @@ afterEach(() => {
 
 function appShowing(display: 'card' | 'full'): App {
   const { app } = createInMemoryApp({ files: { 'tokens/canary-raw.webp': '', 'tokens/map-art.webp': '' } });
-  new SettingsService(app).setDiceDisplay(display);
+  new SettingsService(app).set('diceDisplay', display);
   return app;
 }
 

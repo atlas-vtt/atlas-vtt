@@ -4,6 +4,7 @@ import type { MeasurementSettings } from '../../grid/measurementFormat';
 import type { AreaMap } from '../../measure/areaOnMap';
 import { resolveLaserPointerSettings, type LaserPointerSettings } from '../../tools/laserPointerSettings';
 import type { SightRules } from '../../vision/sightRules';
+import type { PreferenceName } from '../../services/SettingsService';
 import type { SceneState } from './atlasView.ts';
 
 /** The plugin id of Atlas, whose instance holds its settings. */
@@ -31,13 +32,13 @@ export interface AtlasPlayerSettings {
   readonly showWidgets: boolean;
   /** Whether everyone at the table sees everyone else's cursor (the player view's setting); false when it cannot be read. */
   readonly showCursors: boolean;
-  /** Whether the GM's initiative lists start at the turn during a fight (`initiativeLayout`); false when it cannot be read. */
+  /** Whether the GM's initiative lists start at the turn during a fight (the `initiativeLayout` preference); false when it cannot be read. */
   readonly initiativeFromTurn?: boolean;
-  /** The edge the GM docked the initiative lists at (`initiativeLayout`); the right one when it cannot be read. */
+  /** The edge the GM docked the initiative lists at (the `initiativeLayout` preference); the right one when it cannot be read. */
   readonly initiativeDock?: 'left' | 'right';
-  /** Whether a turn change shows the turn banner (`initiativeTurnOptions`); on when it cannot be read. */
+  /** Whether a turn change shows the turn banner (the `initiativeTurnOptions` preference); on when it cannot be read. */
   readonly turnBanner?: boolean;
-  /** Whether players move tokens that fight only on their turn (`initiativeTurnOptions`); off when it cannot be read. */
+  /** Whether players move tokens that fight only on their turn (the `initiativeTurnOptions` preference); off when it cannot be read. */
   readonly movesOnTurn?: boolean;
   /** Whether players may draw on the map (the player view's setting); off when it cannot be read. */
   readonly playersDraw?: boolean;
@@ -79,18 +80,21 @@ export function followAtlasSettings(app: App, listener: () => void): () => void 
   return typeof stop === 'function' ? () => void (stop as () => unknown)() : () => undefined;
 }
 
+/** A preference as Atlas's settings service reads it (`SettingsService.get`), unchecked; undefined where the service has none. */
+function preferenceOf(settings: unknown, name: PreferenceName): unknown {
+  const read = field(settings, 'get');
+  return typeof read === 'function' ? (read as (name: PreferenceName) => unknown).call(settings, name) : undefined;
+}
+
 /** Atlas's own settings as its plugin instance holds them (`settingsService`). */
 export function atlasPlayerSettings(app: App): AtlasPlayerSettings {
   // Obsidian keeps the loaded plugins by id in `app.plugins.plugins`.
   const settings = settingsServiceOf(app);
-  const playerView = field(settings, 'getLocalPlayerViewSettings');
-  const view: unknown = typeof playerView === 'function' ? (playerView as () => unknown).call(settings) : undefined;
-  const readLayout = field(settings, 'initiativeLayout');
-  const layout: unknown = typeof readLayout === 'function' ? (readLayout as () => unknown).call(settings) : undefined;
-  const readTurn = field(settings, 'initiativeTurnOptions');
-  const turn: unknown = typeof readTurn === 'function' ? (readTurn as () => unknown).call(settings) : undefined;
-  const readEdge = field(settings, 'getFogEdge');
-  const fogEdge = typeof readEdge === 'function' ? readFogEdge((readEdge as () => unknown).call(settings)) : undefined;
+  const view = preferenceOf(settings, 'localPlayerView');
+  const layout = preferenceOf(settings, 'initiativeLayout');
+  const turn = preferenceOf(settings, 'initiativeTurnOptions');
+  const edge = preferenceOf(settings, 'fogEdge');
+  const fogEdge = edge === undefined ? undefined : readFogEdge(edge);
   return {
     showNames: field(view, 'showTokenNameplates') === true,
     showDiceRolls: field(view, 'showDiceRolls') === true,
@@ -110,9 +114,7 @@ export function atlasPlayerSettings(app: App): AtlasPlayerSettings {
 
 /** The GM's laser colour and size from Atlas's settings, as Atlas reads them (its default when they cannot be read). */
 export function atlasLaserLook(app: App): LaserPointerSettings {
-  const settings = settingsServiceOf(app);
-  const read = field(settings, 'getLaserPointerSettings');
-  const raw: unknown = typeof read === 'function' ? (read as () => unknown).call(settings) : undefined;
+  const raw = preferenceOf(settingsServiceOf(app), 'laserPointer');
   return resolveLaserPointerSettings(typeof raw === 'object' && raw !== null ? raw : undefined);
 }
 

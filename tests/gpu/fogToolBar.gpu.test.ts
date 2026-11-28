@@ -190,7 +190,7 @@ describe('the fog tool\'s bars above the toolbar', () => {
       expect(action.getBoundingClientRect().right - across.right).toBeCloseTo(across.left - action.getBoundingClientRect().left, 1);
     }
     expect(document.querySelector(`${TOOLS} .atlas-dropdown-slider-row__value`)!.textContent).toBe('50%');
-    act(() => settings.setGmFogOpacity(0.8));
+    act(() => settings.set('gmFogOpacity', 0.8));
     expect(document.querySelector(`${TOOLS} .atlas-dropdown-slider-row__value`)!.textContent).toBe('80%');
   });
 

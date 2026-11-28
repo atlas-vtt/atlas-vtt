@@ -112,8 +112,8 @@ export function onboardingSettingsSection(settings: SettingsService): AtlasSetti
         render: (setting) => {
           setting.addToggle(toggle => {
             tutorialToggle = toggle;
-            toggle.setValue(settings.getSetting('onboarding').enabled).onChange(enabled => {
-              settings.setSetting('onboarding', { ...settings.getSetting('onboarding'), enabled });
+            toggle.setValue(settings.get('onboarding').enabled).onChange(enabled => {
+              settings.set('onboarding', { ...settings.get('onboarding'), enabled });
             });
           });
         },

@@ -48,7 +48,7 @@ async function show(names: boolean, art?: Blob): Promise<HTMLElement> {
     await expect.poll(() => app.vault.getAbstractFileByPath('goblin.png')).toBeTruthy();
   }
   settings = new SettingsService(app);
-  settings.setCompactInitiative(names);
+  settings.set('initiativeCompact', names);
   store = createViewAtlasStore(app, `initiative-layout-${Math.random()}`);
   store.setState({
     persistenceEnabled: false,

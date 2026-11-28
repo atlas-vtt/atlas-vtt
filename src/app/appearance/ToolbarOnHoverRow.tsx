@@ -8,7 +8,7 @@ import { t } from '../i18n';
 /** Whether the map's bars hide until the pointer comes near them (`useChromeAutoHide`), for every map of the vault. */
 export function ToolbarOnHoverRow({ app }: { app: App }): React.JSX.Element {
   const settings = useAtlasSettings(SettingsService.forApp(app));
-  const on = settings?.isToolbarAutoHide() === true;
+  const on = settings?.get('toolbarAutoHide') === true;
   return (
     <div className="atlas-appearance-toggle">
       <SettingToggleRow
@@ -16,7 +16,7 @@ export function ToolbarOnHoverRow({ app }: { app: App }): React.JSX.Element {
         hint={t('appearance.toolbarOnHoverHint')}
         value={on}
         disabled={!settings}
-        onToggle={() => settings?.setToolbarAutoHide(!on)}
+        onToggle={() => settings?.set('toolbarAutoHide', !on)}
       />
     </div>
   );

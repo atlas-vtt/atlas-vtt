@@ -1,4 +1,5 @@
-import type { NavigationInputMode, SettingsService } from '../services/SettingsService';
+import type { SettingsService } from '../services/SettingsService';
+import type { NavigationInputMode } from '../services/deviceSettings';
 import type { AtlasSettingRow, AtlasSettingSection } from './settingSections';
 import type { FingerUse } from '../services/deviceSettings';
 import { t } from '../i18n';
@@ -74,16 +75,16 @@ export function navigationSettingsSection(settingsService: SettingsService, fing
     heading: t('settings.navigation.heading'),
     rows: [...(fingers?.penSeen ? [fingerRow(fingers)] : []), ...(zoomButtons?.offered ? [zoomButtonsRow(zoomButtons)] : []), {
       name: t('settings.navigation.inputDevice'),
-      desc: MODE_HINTS[settingsService.getNavigationSettings().inputMode],
+      desc: MODE_HINTS[settingsService.get('inputMode')],
       aliases: ['mouse', 'trackpad', 'zoom', 'pan'],
       render: (setting) => {
         setting.addDropdown((dropdown) => {
           dropdown
             .addOptions(MODE_LABELS)
-            .setValue(settingsService.getNavigationSettings().inputMode)
+            .setValue(settingsService.get('inputMode'))
             .onChange((value) => {
               const inputMode = value as NavigationInputMode;
-              settingsService.setNavigationSettings({ inputMode });
+              settingsService.set('inputMode', inputMode);
               setting.setDesc(MODE_HINTS[inputMode]);
             });
         });

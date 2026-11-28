@@ -1,4 +1,3 @@
-import type { App } from 'obsidian';
 import { isRecord } from '../utils/guards';
 import { TV_ROTATIONS, type TvRotation } from './tableTvSettings';
 
@@ -36,8 +35,6 @@ export interface TableTvDevice {
 
 export const DEFAULT_TABLE_TV_DEVICE: TableTvDevice = { trueScale: false, cellMm: 25.4, screens: {} };
 
-type DeviceStorage = Pick<App, 'loadLocalStorage' | 'saveLocalStorage'>;
-
 /** A screen by its size in device pixels, which is what tells TVs apart: Chromium reports no more of them. */
 export function screenKey(width: number, height: number): string {
   return `${Math.round(width)}x${Math.round(height)}`;
@@ -74,25 +71,6 @@ function readScreen(stored: unknown): TvScreenRecord | null {
   if (positive(stored.pxPerMm)) screen.pxPerMm = stored.pxPerMm;
   else delete screen.pxPerMm;
   return screen;
-}
-
-export function loadTableTvDevice(storage: DeviceStorage): TableTvDevice {
-  try {
-    const stored: unknown = storage.loadLocalStorage(TABLE_TV_STORAGE_KEY);
-    return readTableTvDevice(typeof stored === 'string' ? JSON.parse(stored) : stored);
-  } catch (error) {
-    console.error('[Atlas] Could not read the table TVs of this device', error);
-    return readTableTvDevice(null);
-  }
-}
-
-export function saveTableTvDevice(storage: DeviceStorage, device: TableTvDevice): void {
-  try {
-    // As JSON: a string that is never empty, so Obsidian keeps it
-    storage.saveLocalStorage(TABLE_TV_STORAGE_KEY, JSON.stringify(device));
-  } catch (error) {
-    console.error('[Atlas] Could not save the table TVs of this device', error);
-  }
 }
 
 function positive(value: unknown): value is number {

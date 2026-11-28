@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { preferenceReader } from '../../../mocks/preferenceReader';
 import { defaultLayout } from '../../../../src/app/online/gmScreen/keys/defaultLayouts.ts';
 import { LayoutScreen } from '../../../../src/app/online/gmScreen/keys/LayoutScreen.ts';
 import { LAYOUT_SAVE_QUIET_MS, settingsLayouts } from '../../../../src/app/online/gmScreen/keys/settingsLayouts.ts';
@@ -182,12 +183,12 @@ describe("the Keys screen's grid on Atlas's side", () => {
     const rig = await layoutRig();
     const phone = await joinedDevice(rig, PHONE);
     await rig.ask(phone, 'phone');
-    const before = JSON.stringify(rig.settings.getGmScreenKeys());
+    const before = JSON.stringify(rig.settings.get('gmScreenKeys'));
     expect(await phone.say({ t: 'layout-edit', id: 1, edit: { op: 'remove', at: [0], padding: 'x'.repeat(3000) } })).toBe(false);
     // A frame sealed past the limit is dropped by the wire's reader before anything is opened.
     rig.socket().receive({ t: 'game', from: PHONE, body: { t: 'sealed', n: 99, d: 'A'.repeat(8000) } });
     await rig.settle();
-    expect(JSON.stringify(rig.settings.getGmScreenKeys())).toBe(before);
+    expect(JSON.stringify(rig.settings.get('gmScreenKeys'))).toBe(before);
     expect(layoutHeard(phone).filter((message) => message.t === 'layout-answer')).toEqual([]);
   });
 
@@ -208,7 +209,7 @@ describe("the Keys screen's grid on Atlas's side", () => {
     expect(lastLayout(phone)).toEqual(defaultLayout('phone'));
     // Back at the default, nothing of the grid is stored.
     rig.timers.advance(LAYOUT_SAVE_QUIET_MS);
-    expect(rig.settings.getGmScreenKeys()).toEqual({});
+    expect(rig.settings.get('gmScreenKeys')).toEqual({});
   });
 
   it('sends phones the grid a change on another computer brought into the settings, and the tablet nothing', async () => {
@@ -250,7 +251,7 @@ describe("a device's kind", () => {
     expect(await phone.say({ t: 'layout-ask', device: 'tablet' })).toBe(true);
     expect(await rig.edit(phone, 1, { op: 'remove', at: [0] })).toBeNull();
     await rig.settle();
-    expect(rig.settings.getGmScreenKeys().tablet).toBeUndefined();
+    expect(rig.settings.get('gmScreenKeys').tablet).toBeUndefined();
     expect(layoutHeard(tablet)).toHaveLength(tabletHeard);
     expect(at(lastLayout(phone), 0)).toBeNull();
     expect(lastLayout(phone)?.slots).toHaveLength(GRID_SLOTS.phone);
@@ -273,7 +274,7 @@ describe('a page that knows no grid', () => {
   it('gets the Keys screen as before and no layout message, beside a device that asks', async () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
     const rig = await keysRig();
-    const store = settingsLayouts({ getGmScreenKeys: () => ({}), setGmScreenKeys: () => undefined, onChange: () => () => undefined }, rig.timers);
+    const store = settingsLayouts({ get: preferenceReader({ gmScreenKeys: () => ({}) }), set: () => undefined, onChange: () => () => undefined }, rig.timers);
     rig.session.plug(new LayoutScreen({ store, library: () => worldLibrary(rig.world), outlet: rig.session, timers: rig.timers }));
     const older = await allowedDevice(rig, PHONE);
     const newer = await allowedDevice(rig, TABLET);

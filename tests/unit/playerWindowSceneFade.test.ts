@@ -168,7 +168,7 @@ describe('letting frozen players follow the GM again', () => {
 
     const off = openWindow();
     off.at(0);
-    off.settings.setTableTvSettings({ viewGlideMs: 0 });
+    off.settings.set('tableTv', { viewGlideMs: 0 });
     off.service.freezeCamera({ centerX: 500, centerY: 300, scale: 2 });
     off.service.unfreezeCamera();
     expect(off.sheetDown()).toBe(false);
@@ -258,7 +258,7 @@ describe('a change of the presented scene', () => {
 
     const off = openWindow();
     off.at(0);
-    off.settings.setTableTvSettings({ viewGlideMs: 0 });
+    off.settings.set('tableTv', { viewGlideMs: 0 });
     off.service.presentCanvas(off.next, 'scene-b', 'scene-b.atlasmap');
     expect(off.sheetDown()).toBe(false);
     expect(off.capture).toHaveBeenCalled();

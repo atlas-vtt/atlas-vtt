@@ -50,10 +50,10 @@ export function MeasureToolGroup({ activeTool, selectTool, menuOpen, toggleMenu,
         <div className="atlas-dropdown-section">
           <div className="atlas-dropdown-stack">
             <SegmentedControl<DragDistance>
-              value={settings?.getDragDistance() ?? DEFAULT_DRAG_DISTANCE}
+              value={settings?.get('dragDistance') ?? DEFAULT_DRAG_DISTANCE}
               options={DRAG_DISTANCE_OPTIONS}
               ariaLabel={t('toolbar.dragDistance')}
-              onChange={(choice) => settings?.setDragDistance(choice)}
+              onChange={(choice) => settings?.set('dragDistance', choice)}
             />
             <p className="atlas-dropdown-hint" aria-hidden="true">{t('toolbar.dragDistance')}</p>
           </div>

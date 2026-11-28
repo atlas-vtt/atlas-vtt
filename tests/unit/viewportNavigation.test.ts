@@ -8,19 +8,6 @@ import { App } from 'obsidian';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { INPUT_MODE_STORAGE_KEY } from '../../src/app/services/deviceSettings';
 
-function createMockApp() {
-  return {
-    vault: {
-      adapter: {
-        exists: async () => false,
-        read: async () => '{}',
-        write: async () => undefined,
-        mkdir: async () => undefined,
-      },
-    },
-  } as any;
-}
-
 const viewports: Viewport[] = [];
 
 function createViewport(): Viewport {
@@ -55,34 +42,34 @@ describe('applyNavigationMode', () => {
 
 describe('bindViewportNavigation', () => {
   it('applies the stored mode immediately and follows later changes', () => {
-    const settings = new SettingsService(createMockApp());
-    settings.setNavigationSettings({ inputMode: 'mouse' });
+    const settings = new SettingsService(new App());
+    settings.set('inputMode', 'mouse');
     const viewport = createViewport();
 
     const unbind = bindViewportNavigation(viewport, settings);
     expect(wheelOptions(viewport)).toEqual({ wheelZoom: true, trackpadPinch: false });
 
-    settings.setNavigationSettings({ inputMode: 'trackpad' });
+    settings.set('inputMode', 'trackpad');
     expect(wheelOptions(viewport)).toEqual({ wheelZoom: false, trackpadPinch: true });
 
     unbind();
-    settings.setNavigationSettings({ inputMode: 'mouse' });
+    settings.set('inputMode', 'mouse');
     expect(wheelOptions(viewport)).toEqual({ wheelZoom: false, trackpadPinch: true });
   });
 
-  it('takes the stored mode when the settings finish loading after the viewport was bound', async () => {
+  it('takes the mode this device stored at once, also before the plugin data was read', async () => {
     let finishMigration!: () => void;
     const storageReady = new Promise<void>((resolve) => { finishMigration = resolve; });
     const app = new App();
     const settings = new SettingsService(app, storageReady);
-    settings.setNavigationSettings({ inputMode: 'trackpad' });
+    settings.set('inputMode', 'trackpad');
     // The startup migration carries this device's mode over from the old settings file.
     app.saveLocalStorage(INPUT_MODE_STORAGE_KEY, 'mouse');
     const viewport = createViewport();
 
-    // A map tab restored at startup binds while the service still holds the defaults.
+    // A map tab restored at startup binds before the plugin data is read: the device's mode is read where it is stored.
     bindViewportNavigation(viewport, settings);
-    expect(wheelOptions(viewport)).toEqual({ wheelZoom: false, trackpadPinch: true });
+    expect(wheelOptions(viewport)).toEqual({ wheelZoom: true, trackpadPinch: false });
 
     finishMigration();
     await settings.initialize();
@@ -90,12 +77,12 @@ describe('bindViewportNavigation', () => {
   });
 
   it('ignores settings changes that do not alter the navigation mode', () => {
-    const settings = new SettingsService(createMockApp());
+    const settings = new SettingsService(new App());
     const viewport = createViewport();
 
     bindViewportNavigation(viewport, settings);
     const installed = viewport.plugins.get('wheel');
-    settings.setLocalPlayerViewSettings({ showWidgets: false });
+    settings.set('localPlayerView', { showWidgets: false });
 
     expect(viewport.plugins.get('wheel')).toBe(installed);
   });

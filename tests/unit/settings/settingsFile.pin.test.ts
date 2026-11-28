@@ -25,48 +25,30 @@ const fixture = (name: string): Record<string, unknown> => structuredClone(FILES
 /** The file as Obsidian writes it (`saveData`: two-space JSON). */
 const text = (data: unknown): string => JSON.stringify(data, null, 2);
 
-/** Paths at which `after` differs from `before`, a record's fields one by one. */
-function changedPaths(before: unknown, after: unknown, at = ''): string[] {
-  const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
-  if (isRecord(before) && isRecord(after)) {
-    const keys = [...new Set([...Object.keys(before), ...Object.keys(after)])];
-    return keys.flatMap((key) => changedPaths(before[key], after[key], at ? `${at}.${key}` : key));
-  }
-  return JSON.stringify(before) === JSON.stringify(after) ? [] : [at];
-}
-
 /** Reads `file`, changes the dice volume to a quarter and saves: what lands in `data.json`. */
 async function savedAfterOneChange(file: Record<string, unknown>): Promise<Record<string, unknown>> {
   const data = memoryPluginData(structuredClone(file));
   const settings = new SettingsService(new App(), undefined, data);
   await settings.initialize();
-  settings.setDiceVolume(0.25);
+  settings.set('diceVolume', 0.25);
   await settings.saveSettingsNow();
   return data.stored() as Record<string, unknown>;
 }
 
 describe("data.json from other versions, read and written back with one preference changed", () => {
-  it.each(['data-0.21.2-defaults.json', 'data-0.21.2-filled.json'])('%s comes back byte for byte but for that preference', async (name) => {
+  it.each(Object.keys(FILES))('%s comes back byte for byte but for that preference', async (name) => {
     const file = fixture(name);
     expect(text(await savedAfterOneChange(file))).toBe(text({ ...file, diceVolume: 0.25 }));
   });
 
-  it("0.12.0's file gains the defaults of every key it lacks, and keeps its own", async () => {
+  it("0.12.0's file gains only the key of a preference it never held, with only the field changed", async () => {
     const file = fixture('data-0.12.0.json');
-    const saved = await savedAfterOneChange(file);
-    expect(changedPaths(file, saved)).toEqual([
-      'diceVolume',
-      'dungeonGenerator.theme', 'dungeonGenerator.floors',
-      'localPlayerView.initiativeScale', 'localPlayerView.initiativePulse', 'localPlayerView.turnBannerAtLists', 'localPlayerView.turnDim',
-      'localPlayerView.initiativeMaxCards', 'localPlayerView.playersDraw', 'localPlayerView.playersOpenDoors', 'localPlayerView.sharedVision',
-      'sound', 'fogEdge', 'dragDistance',
-    ]);
-  });
-
-  it("a newer Atlas's file keeps its unknown keys and fields, but for the toolbar's", async () => {
-    const file = fixture('data-newer.json');
-    const saved = await savedAfterOneChange(file);
-    expect(changedPaths(file, saved)).toEqual(['diceVolume', 'toolbar.pinned']);
+    const data = memoryPluginData(structuredClone(file));
+    const settings = new SettingsService(new App(), undefined, data);
+    await settings.initialize();
+    settings.set('fogEdge', { width: 30 });
+    await settings.saveSettingsNow();
+    expect(text(data.stored())).toBe(text({ ...file, fogEdge: { width: 30 } }));
   });
 });
 
@@ -100,8 +82,8 @@ describe("the device's local storage from other versions, read and written back 
     const settings = new SettingsService(app, undefined, memoryPluginData(null));
     await settings.initialize();
     settings.getGraphics();
-    settings.getTableTvDevice();
-    settings.setPlayerView4k(true);
+    settings.get('tableTvDevice');
+    settings.set('playerView4k', true);
     await settings.saveSettingsNow();
     const after = Object.fromEntries([...Object.keys(device), 'atlas-vtt:player-view-4k'].map((key) => [key, app.loadLocalStorage(key)]));
     expect(after).toEqual({ ...device, 'atlas-vtt:player-view-4k': '4k' });

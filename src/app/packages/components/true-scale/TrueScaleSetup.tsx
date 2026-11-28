@@ -40,7 +40,7 @@ interface TrueScaleSetupProps {
  * Looks right, and leaving any other way puts the turn back as it was.
  */
 export function TrueScaleSetup({ settings, host, screenKey, onDone }: TrueScaleSetupProps): React.ReactElement {
-  const device = settings.getTableTvDevice()
+  const device = settings.get('tableTvDevice')
   const setup = setupOf(device, screenKey)
   const rotation: TvRotation = device.screens[screenKey]?.rotation ?? 0
   const [step, setStep] = useState<"orientation" | "fit">(setup ? "fit" : "orientation")
@@ -63,7 +63,7 @@ export function TrueScaleSetup({ settings, host, screenKey, onDone }: TrueScaleS
   const commit = (): void => {
     leaving.current.committed = true
     settings.setTvScreenSetup(screenKey, { pxPerMm })
-    settings.setTableTvDevice({ trueScale: true })
+    settings.set('tableTvDevice', { trueScale: true })
     onDone()
   }
 

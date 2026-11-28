@@ -52,7 +52,7 @@ const shareSwitch = (root: HTMLElement): HTMLElement => within(root).getByRole('
 
 it('starts from the player view setting, off by default', () => {
   const { tray, panel } = renderBoth();
-  expect(settings.getLocalPlayerViewSettings().showDiceRolls).toBe(false);
+  expect(settings.get('localPlayerView').showDiceRolls).toBe(false);
   expect(shareSwitch(tray).getAttribute('aria-checked')).toBe('false');
   expect(shareSwitch(panel).getAttribute('aria-checked')).toBe('false');
 });
@@ -60,7 +60,7 @@ it('starts from the player view setting, off by default', () => {
 it('the tray switch writes the one setting, and the settings page follows', () => {
   const { tray, panel } = renderBoth();
   fireEvent.click(shareSwitch(tray));
-  expect(settings.getLocalPlayerViewSettings().showDiceRolls).toBe(true);
+  expect(settings.get('localPlayerView').showDiceRolls).toBe(true);
   expect(shareSwitch(panel).getAttribute('aria-checked')).toBe('true');
   expect(shareSwitch(tray).getAttribute('aria-checked')).toBe('true');
 });
@@ -68,16 +68,16 @@ it('the tray switch writes the one setting, and the settings page follows', () =
 it('the settings page switch writes the one setting, and the tray follows', () => {
   const { tray, panel } = renderBoth();
   fireEvent.click(shareSwitch(panel));
-  expect(settings.getLocalPlayerViewSettings().showDiceRolls).toBe(true);
+  expect(settings.get('localPlayerView').showDiceRolls).toBe(true);
   expect(shareSwitch(tray).getAttribute('aria-checked')).toBe('true');
   fireEvent.click(shareSwitch(panel));
-  expect(settings.getLocalPlayerViewSettings().showDiceRolls).toBe(false);
+  expect(settings.get('localPlayerView').showDiceRolls).toBe(false);
   expect(shareSwitch(tray).getAttribute('aria-checked')).toBe('false');
 });
 
 it('follows the player view settings changed elsewhere', () => {
   const { tray, panel } = renderBoth();
-  act(() => settings.setLocalPlayerViewSettings({ showDiceRolls: true }));
+  act(() => settings.set('localPlayerView', { showDiceRolls: true }));
   expect(shareSwitch(tray).getAttribute('aria-checked')).toBe('true');
   expect(shareSwitch(panel).getAttribute('aria-checked')).toBe('true');
 });

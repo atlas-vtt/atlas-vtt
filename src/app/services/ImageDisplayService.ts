@@ -378,7 +378,7 @@ export class ImageDisplayService {
     closeButton.addEventListener('click', () => this.closeImageDisplay());
 
     const settings = SettingsService.forApp(this.app);
-    const turnOf = (): number => (settings ? tableTvOf(playerWindow, settings.getTableTvSettings(), settings.getTableTvDevice()).rotation : 0);
+    const turnOf = (): number => (settings ? tableTvOf(playerWindow, settings.get('tableTv'), settings.get('tableTvDevice')).rotation : 0);
     this.controls = new ImageOverlayControls(this.imageContainer, this.currentImage, playerWindow, () => this.closeImageDisplay(), turnOf);
 
     // A replaced image leaves above the new one, so the scrim stays dark while they crossfade

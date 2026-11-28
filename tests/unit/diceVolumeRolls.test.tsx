@@ -39,9 +39,9 @@ describe('dice volume and thrown dice', () => {
     const roll = (id: string): void => act(() => onRoll?.({ id, formula: '1d20', rolls: [], crit: null, total: 1 } as unknown as DiceRollResult, { muted: false }));
 
     roll('loud');
-    act(() => settings.setDiceVolume(0));
+    act(() => settings.set('diceVolume', 0));
     roll('quiet');
-    act(() => settings.setDiceVolume(0.5));
+    act(() => settings.set('diceVolume', 0.5));
 
     const last = stacks[stacks.length - 1]!;
     expect(last.muted).toBe(false);

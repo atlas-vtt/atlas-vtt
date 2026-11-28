@@ -5,12 +5,12 @@ import { SettingsService } from '../../services/SettingsService';
 /** Whether players see the DM's dice rolls ("Show dice rolls"), kept current as the setting changes. */
 export function useShowDiceRolls(app: App | undefined): boolean {
   const settings = SettingsService.forApp(app);
-  const [show, setShow] = useState(() => settings?.getLocalPlayerViewSettings().showDiceRolls ?? false);
+  const [show, setShow] = useState(() => settings?.get('localPlayerView').showDiceRolls ?? false);
 
   useEffect(() => {
     if (!settings) return;
-    setShow(settings.getLocalPlayerViewSettings().showDiceRolls);
-    return settings.onChange(() => setShow(settings.getLocalPlayerViewSettings().showDiceRolls));
+    setShow(settings.get('localPlayerView').showDiceRolls);
+    return settings.onChange(() => setShow(settings.get('localPlayerView').showDiceRolls));
   }, [settings]);
 
   return show;

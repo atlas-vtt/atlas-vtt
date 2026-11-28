@@ -48,11 +48,11 @@ export function updateSettingsRows(settings: SettingsService, watch: UpdateWatch
       render: setting => {
         let unsubscribe: (() => void) | undefined;
         setting.addToggle(toggle => {
-          toggle.setValue(settings.getSetting('checkForUpdates'))
+          toggle.setValue(settings.get('checkForUpdates'))
             .onChange(enabled => {
-              if (settings.getSetting('checkForUpdates') !== enabled) settings.setSetting('checkForUpdates', enabled);
+              if (settings.get('checkForUpdates') !== enabled) settings.set('checkForUpdates', enabled);
             });
-          unsubscribe = settings.onChange(value => { toggle.setValue(value.checkForUpdates); });
+          unsubscribe = settings.onChange(() => { toggle.setValue(settings.get('checkForUpdates')); });
         });
         return unsubscribe;
       },

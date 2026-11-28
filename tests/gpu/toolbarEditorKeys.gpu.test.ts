@@ -74,7 +74,7 @@ describe('the toolbar editor\'s keys and menus in a real browser', () => {
     await eachFrame(30, () => { widest = Math.max(widest, Math.abs(translateX(content('palette')))); });
     expect(widest).toBeGreaterThan(1);
     expect(translateX(content('palette'))).toBe(0);
-    expect(harness.settings.getToolbarLayout()).toEqual({});
+    expect(harness.settings.get('toolbar')).toEqual({});
   });
 
   it('with reduced motion, rings the Command palette in the error colour for a moment instead', async () => {

@@ -26,12 +26,12 @@ it('gives the fog the look\'s edge at the width the GM set, and the GM\'s own lo
   const host = app();
   const settings = new SettingsService(host);
   const looks = LookService.forApp(host, settings);
-  settings.setFogEdge({ width: 15 });
+  settings.set('fogEdge', { width: 15 });
   looks.set('scifi');
-  expect(settings.getFogEdge()).toEqual({ style: 'soft', width: 15 });
-  settings.setFogEdge({ width: 40 });
+  expect(settings.get('fogEdge')).toEqual({ style: 'soft', width: 15 });
+  settings.set('fogEdge', { width: 40 });
   looks.set('mediaeval');
-  expect(settings.getFogEdge()).toEqual({ style: 'crackle', width: 40 });
+  expect(settings.get('fogEdge')).toEqual({ style: 'crackle', width: 40 });
   looks.set('own');
-  expect(settings.getFogEdge()).toEqual({ style: 'crackle', width: 40 });
+  expect(settings.get('fogEdge')).toEqual({ style: 'crackle', width: 40 });
 });

@@ -174,7 +174,7 @@ export function playerViewScenes(): { scene: (options?: PlayerViewSceneOptions) 
         if (!hold) pointer('pointerup', x1, y1);
       },
       canvas: () => read([]),
-      frameLayers: () => playerFrameLayers({ measure, tokens, fog, settings: settings.getLocalPlayerViewSettings(), lighting: lighting.perception }),
+      frameLayers: () => playerFrameLayers({ measure, tokens, fog, settings: settings.get('localPlayerView'), lighting: lighting.perception }),
       frame(): Uint8ClampedArray { return read(this.frameLayers()); },
       thumbnail(): Uint8ClampedArray {
         let result: Uint8ClampedArray = new Uint8ClampedArray();

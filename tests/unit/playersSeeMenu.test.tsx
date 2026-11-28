@@ -16,7 +16,7 @@ afterEach(() => { cleanup(); context.resources = []; context.updateCollectionSet
 
 const menu = (props: { windowOpen: boolean; online: boolean }): void => {
   const settings = new SettingsService({} as never);
-  settings.setExperimental('onlinePlay', props.online);
+  settings.set('experimental', { onlinePlay: props.online });
   render(<TooltipProvider><PlayersSeeMenu open onToggle={() => {}} settings={settings} windowOpen={props.windowOpen} /></TooltipProvider>);
 };
 const group = (name: string): HTMLElement => screen.getByRole('region', { name });
@@ -41,7 +41,7 @@ it('shows the player window\'s group only while it is open, and online play\'s o
 
 it('lays the initiative list out on the player window only, its switches disabled while players see no list', () => {
   const settings = new SettingsService({} as never);
-  settings.setLocalPlayerViewSettings({ showInitiative: false });
+  settings.set('localPlayerView', { showInitiative: false });
   render(<TooltipProvider><PlayersSeeMenu open onToggle={() => {}} settings={settings} windowOpen /></TooltipProvider>);
   expect(within(group('Player window')).getByRole('switch', { name: 'Horizontal initiative' })).toBeTruthy();
   expect(within(group('Player window and online')).queryByRole('switch', { name: 'Horizontal initiative' })).toBeNull();

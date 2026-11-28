@@ -209,7 +209,7 @@ describe('player camera freeze', () => {
     it('does not freeze players on the rectangle they saw of the scene before, nor on a camera read while the new scene loads', () => {
       const { service, session, settings, setDmCamera, nextFrame } = setup();
       // No dip to black: the frame comes with the next display frame
-      settings.setTableTvSettings({ viewGlideMs: 0 });
+      settings.set('tableTv', { viewGlideMs: 0 });
       // Zoomed far out on the first scene: a rectangle much larger than the next scene's view
       setDmCamera({ centerX: 5000, centerY: 5000, scale: 0.1 });
       nextFrame();
@@ -244,7 +244,7 @@ describe('player camera freeze', () => {
 
     it('freezes players on the new scene\'s own view when it is frozen before its first frame comes', () => {
       const { service, settings, nextFrame } = setup();
-      settings.setTableTvSettings({ viewGlideMs: 0 });
+      settings.set('tableTv', { viewGlideMs: 0 });
       nextFrame();
       const next = otherScene({ centerX: 300, centerY: 200, scale: 2 });
       next.loaded();
@@ -262,7 +262,7 @@ describe('player camera freeze', () => {
 
     it('does not freeze on the camera of the scene the DM browses while players are held on theirs and were shown nothing of it yet', () => {
       const { service, source, settings, setDmCamera, nextFrame, lastFrame } = setup();
-      settings.setTableTvSettings({ viewGlideMs: 0 });
+      settings.set('tableTv', { viewGlideMs: 0 });
       nextFrame();
       const next = otherScene({ centerX: 300, centerY: 200, scale: 2 });
       service.presentCanvas(next, 'scene-b');
@@ -308,7 +308,7 @@ describe('player camera freeze', () => {
 
   it('presenting the same scene again pushes the DM framing and stays frozen', () => {
     const { service, source, session, settings, setDmCamera, nextFrame } = setup();
-    settings.setTableTvSettings({ viewGlideMs: 0 });
+    settings.set('tableTv', { viewGlideMs: 0 });
     nextFrame();
     service.toggleCameraFreeze();
     setDmCamera({ centerX: 500, centerY: 600, scale: 2 });
@@ -358,7 +358,7 @@ describe('player camera freeze', () => {
 
     it('jump with no glide time, with reduced motion, and under the curtain', () => {
       const off = setup();
-      off.settings.setTableTvSettings({ viewGlideMs: 0 });
+      off.settings.set('tableTv', { viewGlideMs: 0 });
       off.nextFrame();
       off.service.playersToCamera('scene-a', FRAME_B);
       expect(off.session.camera).toEqual(FRAME_B);
@@ -401,7 +401,7 @@ describe('player camera freeze', () => {
 
   it('returns players to the frame the GM set on a map when it is presented again', () => {
     const { service, source, session, settings, setDmCamera, nextFrame } = setup();
-    settings.setTableTvSettings({ viewGlideMs: 0 });
+    settings.set('tableTv', { viewGlideMs: 0 });
     setDmCamera({ centerX: 10, centerY: 20, scale: 1.5 });
     nextFrame();
     service.framePlayersOn('scene-a', 300, 400);
@@ -502,7 +502,7 @@ describe('player camera freeze', () => {
 
     it('is what players see, following or pinned, and none on another tab', () => {
       const { service, settings, setDmCamera, nextFrame } = setup();
-      settings.setTableTvSettings({ viewGlideMs: 0 });
+      settings.set('tableTv', { viewGlideMs: 0 });
       setDmCamera({ centerX: 10, centerY: 20, scale: 1 });
       nextFrame();
       const size = { width: 600 * 1280 / 720, height: 600 };
@@ -520,7 +520,7 @@ describe('player camera freeze', () => {
 
     it('goes with the GM between frames while players follow, and stays on what they were shown while the scene loads', () => {
       const { service, source, settings, setDmCamera, nextFrame } = setup();
-      settings.setTableTvSettings({ viewGlideMs: 0 });
+      settings.set('tableTv', { viewGlideMs: 0 });
       setDmCamera({ centerX: 10, centerY: 20, scale: 1 });
       nextFrame();
       // The GM pans before the next frame is mirrored: the outline is drawn through this camera, so the glass must be too
@@ -608,14 +608,14 @@ describe('player camera freeze', () => {
 
       settings.setTvScreenSetup(key, { rotation: 90 });
       expect(doc.body.dataset.tvRotation).toBe('90');
-      expect(settings.getTableTvDevice().screens[key]).toEqual({ rotation: 90 });
+      expect(settings.get('tableTvDevice').screens[key]).toEqual({ rotation: 90 });
 
       settings.setTvScreenSetup(key, { pxPerMm: 0 });
-      settings.setTableTvDevice({ trueScale: true, cellMm: 30 });
+      settings.set('tableTvDevice', { trueScale: true, cellMm: 30 });
       nextFrame();
       const unfitted = lastFrame().scale;
       settings.setTvScreenSetup(key, { pxPerMm: 7 });
-      expect(settings.getTableTvDevice().screens[key]).toEqual({ rotation: 90, pxPerMm: 7 });
+      expect(settings.get('tableTvDevice').screens[key]).toEqual({ rotation: 90, pxPerMm: 7 });
       nextFrame();
       expect(lastFrame().scale).not.toBe(unfitted);
       // 30 mm of 7 device pixels each over a cell of 70 world pixels

@@ -23,7 +23,7 @@ import { followTokensInTracker } from './stores/combatantTokens';
 import { createSceneObjectsActions, type SceneObjectsSlice } from './stores/sceneObjectsSlice';
 import type { InitiativeTurnActions } from './stores/initiativeTurnActions';
 import { createInitialUIState, createUIActions, type UISlice } from './stores/uiSlice';
-import { loadDrawTool, saveDrawTool } from './services/deviceSettings';
+import { DEVICE_PREFERENCES, readDevice, writeDevice } from './services/deviceSettings';
 import { loadStabilizer, saveStabilizer } from './services/roomToolMemory';
 import { createPinnedNotePreviewActions, type PinnedNotePreviewSlice } from './stores/pinnedNotePreviewSlice';
 import { createLootRollerActions, type LootRollerSlice } from './stores/lootRollerSlice';
@@ -967,8 +967,8 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           setSceneSound: (sound) => set((draft) => { draft.sound = readSceneSound(sound); }),
 
           // --- Per-view UI visibility (from uiSlice.ts) ---
-          ...createInitialUIState(loadDrawTool(app)),
-          ...createUIActions(set, (choices) => saveDrawTool(app, choices)),
+          ...createInitialUIState(readDevice(app, DEVICE_PREFERENCES.drawTool)),
+          ...createUIActions(set, (choices) => writeDevice(app, DEVICE_PREFERENCES.drawTool, choices)),
 
         })),
         {

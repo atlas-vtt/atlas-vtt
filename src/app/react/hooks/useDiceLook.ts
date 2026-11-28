@@ -6,12 +6,12 @@ import { SettingsService } from '../../services/SettingsService';
 /** The dice look from Atlas' settings, kept current as it changes. */
 export function useDiceLook(app: App | undefined): DiceLook {
   const settings = SettingsService.forApp(app);
-  const [look, setLook] = useState<DiceLook>(() => settings?.getDiceLook() ?? { ...DEFAULT_DICE_LOOK });
+  const [look, setLook] = useState<DiceLook>(() => settings?.get('diceLook') ?? { ...DEFAULT_DICE_LOOK });
 
   useEffect(() => {
     if (!settings) return;
     const update = (): void => {
-      const next = settings.getDiceLook();
+      const next = settings.get('diceLook');
       setLook((prev) => (prev.colour === next.colour && prev.font === next.font ? prev : next));
     };
     update();

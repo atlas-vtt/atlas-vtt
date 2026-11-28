@@ -45,7 +45,7 @@ interface MapTourProps {
 /** The first of the map's tours this GM has not taken yet, if any. */
 function MapTour({ settings, root, keyLabel: key, hasDock, hasLog }: MapTourProps): React.JSX.Element | null {
   if (settings.shouldShowTutorial('map')) {
-    const trackpad = settings.getNavigationSettings().inputMode === 'trackpad';
+    const trackpad = settings.get('inputMode') === 'trackpad';
     return <Tutorial settings={settings} id="map" root={root} label={t('tour.map.label')} steps={mapSteps(key, trackpad)} />;
   }
   if (hasDock && settings.shouldShowTutorial('online')) {

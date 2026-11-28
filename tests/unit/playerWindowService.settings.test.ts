@@ -38,18 +38,18 @@ describe('live player settings', () => {
     expect(doc.getElementById('atlas-player-fps')).toBeNull();
     const widgets = doc.getElementById('atlas-player-widgets')!;
     expect(widgets.textContent).toContain('Counter');
-    settings.setLocalPlayerViewSettings({ showWidgets: false });
+    settings.set('localPlayerView', { showWidgets: false });
     // The bar leaves towards its edge, taking no pointer, and is gone once it has
     expect(widgets.querySelectorAll('.atlas-widget-bar:not(.atlas-widget-bar--leaving)')).toHaveLength(0);
     expect(widgets.querySelector('.atlas-widget-bar--leaving')).not.toBeNull();
     await Promise.resolve();
     await Promise.resolve();
     expect(widgets.childElementCount).toBe(0);
-    settings.setLocalPlayerViewSettings({ showWidgets: true });
+    settings.set('localPlayerView', { showWidgets: true });
     expect(widgets.textContent).toContain('Counter');
     expect(widgets.querySelectorAll('.atlas-widget-bar')).toHaveLength(1);
     service.destroy();
-    settings.setLocalPlayerViewSettings({ showWidgets: false });
+    settings.set('localPlayerView', { showWidgets: false });
     expect(widgets.textContent).toContain('Counter');
   });
 
@@ -157,12 +157,12 @@ describe('live player settings', () => {
     (service as any).streamSource = frameSource({ withPlayerSafeFrame: capture });
     (service as any).startMirroring();
     vi.mocked(requestAnimationFrame).mock.calls.at(-1)![0](40);
-    expect(capture).toHaveBeenLastCalledWith(expect.any(Function), settings.getLocalPlayerViewSettings(), expect.objectContaining({ width: 1280, height: 720 }));
-    settings.setLocalPlayerViewSettings({ showWidgets: false, showTokenNameplates: true });
+    expect(capture).toHaveBeenLastCalledWith(expect.any(Function), settings.get('localPlayerView'), expect.objectContaining({ width: 1280, height: 720 }));
+    settings.set('localPlayerView', { showWidgets: false, showTokenNameplates: true });
     const nextFrame = vi.mocked(requestAnimationFrame).mock.calls.at(-1)![0];
     capture.mockClear();
     nextFrame(56);
     expect(capture).toHaveBeenCalledTimes(1);
-    expect(capture).toHaveBeenLastCalledWith(expect.any(Function), settings.getLocalPlayerViewSettings(), expect.objectContaining({ width: 1280, height: 720 }));
+    expect(capture).toHaveBeenLastCalledWith(expect.any(Function), settings.get('localPlayerView'), expect.objectContaining({ width: 1280, height: 720 }));
   });
 });

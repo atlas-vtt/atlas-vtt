@@ -17,20 +17,20 @@ describe('the GM\'s fog opacity, a setting of this device', () => {
   it('is half until chosen, and survives a reload once it is', async () => {
     const app = new App();
     const before = await reloaded(app);
-    expect(before.getGmFogOpacity()).toBe(DEFAULT_GM_FOG_OPACITY);
-    before.setGmFogOpacity(0.8);
-    expect((await reloaded(app)).getGmFogOpacity()).toBe(0.8);
+    expect(before.get('gmFogOpacity')).toBe(DEFAULT_GM_FOG_OPACITY);
+    before.set('gmFogOpacity', 0.8);
+    expect((await reloaded(app)).get('gmFogOpacity')).toBe(0.8);
     // Every opacity it can take is stored: none is a value Obsidian's storage drops.
     for (const opacity of [0.1, 0.5, 1]) {
-      before.setGmFogOpacity(opacity);
-      expect((await reloaded(app)).getGmFogOpacity()).toBe(opacity);
+      before.set('gmFogOpacity', opacity);
+      expect((await reloaded(app)).get('gmFogOpacity')).toBe(opacity);
     }
   });
 
   it('stays out of the synced settings', async () => {
     const data = memoryPluginData({});
     const settings = await reloaded(new App(), data);
-    settings.setGmFogOpacity(0.3);
+    settings.set('gmFogOpacity', 0.3);
     expect(data.saveData).not.toHaveBeenCalled();
   });
 
@@ -38,22 +38,22 @@ describe('the GM\'s fog opacity, a setting of this device', () => {
     const settings = await reloaded(new App());
     const listener = vi.fn();
     settings.onChange(listener);
-    settings.setGmFogOpacity(0.7);
+    settings.set('gmFogOpacity', 0.7);
     expect(listener).toHaveBeenCalledTimes(1);
-    settings.setGmFogOpacity(0.7);
+    settings.set('gmFogOpacity', 0.7);
     expect(listener).toHaveBeenCalledTimes(1);
     // Out of range is the nearest opacity fog can take.
-    settings.setGmFogOpacity(4);
-    expect(settings.getGmFogOpacity()).toBe(1);
-    settings.setGmFogOpacity(-1);
-    expect(settings.getGmFogOpacity()).toBe(0.1);
+    settings.set('gmFogOpacity', 4);
+    expect(settings.get('gmFogOpacity')).toBe(1);
+    settings.set('gmFogOpacity', -1);
+    expect(settings.get('gmFogOpacity')).toBe(0.1);
   });
 
   it('reads whatever else is stored as the default', async () => {
     const app = new App();
     for (const stored of ['dark', {}, true, 'NaN']) {
       app.saveLocalStorage(GM_FOG_OPACITY_STORAGE_KEY, stored);
-      expect((await reloaded(app)).getGmFogOpacity()).toBe(DEFAULT_GM_FOG_OPACITY);
+      expect((await reloaded(app)).get('gmFogOpacity')).toBe(DEFAULT_GM_FOG_OPACITY);
     }
   });
 });

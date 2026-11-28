@@ -21,8 +21,8 @@ const vaultFolderOf = (app: App): string | null => (app.vault.adapter instanceof
 function rootFacts(app: App): SoundRootFacts {
   const settings = (): SettingsService | undefined => SettingsService.forApp(app);
   return {
-    shared: () => settings()?.getSoundRoots() ?? {},
-    setShared: (roots) => settings()?.setSoundRoots(roots),
+    shared: () => settings()?.get('soundRoots') ?? {},
+    setShared: (roots) => settings()?.set('soundRoots', roots),
     onSharedChange: (listener) => settings()?.onChange(listener) ?? (() => undefined),
     local: (kind) => {
       const path: unknown = app.loadLocalStorage(localKey(kind));

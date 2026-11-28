@@ -19,14 +19,14 @@ describe('SettingsService toolbar layout', () => {
   afterEach(() => { vi.useRealTimers(); });
 
   it('reads a damaged layout as a valid one', async () => {
-    expect((await settingsFrom({ toolbar: 'x' })).settings.getToolbarLayout()).toEqual({});
+    expect((await settingsFrom({ toolbar: 'x' })).settings.get('toolbar')).toEqual({});
     const { settings } = await settingsFrom({ toolbar: { order: [1, 'fog', 'fog'], hidden: ['palette', 'future'] } });
-    expect(settings.getToolbarLayout()).toEqual({ order: ['fog'], hidden: ['future'] });
+    expect(settings.get('toolbar')).toEqual({ order: ['fog'], hidden: ['future'] });
   });
 
   it('has no layout in a file without one, and does not rewrite the file for it', async () => {
     const { settings, write } = await settingsFrom({ navigation: { inputMode: 'mouse' } });
-    expect(settings.getToolbarLayout()).toEqual({});
+    expect(settings.get('toolbar')).toEqual({});
     await vi.runAllTimersAsync();
     expect(write).not.toHaveBeenCalled();
   });
@@ -36,8 +36,8 @@ describe('SettingsService toolbar layout', () => {
     const listener = vi.fn();
     settings.onChange(listener);
 
-    settings.setToolbarLayout({ hidden: ['fog', 'palette'] });
-    expect(settings.getToolbarLayout()).toEqual({ hidden: ['fog'] });
+    settings.set('toolbar', { hidden: ['fog', 'palette'] });
+    expect(settings.get('toolbar')).toEqual({ hidden: ['fog'] });
     expect(listener).toHaveBeenCalledOnce();
 
     await vi.runAllTimersAsync();
@@ -50,7 +50,7 @@ describe('SettingsService toolbar layout', () => {
     const listener = vi.fn();
     settings.onChange(listener);
 
-    settings.setToolbarLayout({ hidden: ['fog'] });
+    settings.set('toolbar', { hidden: ['fog'] });
     await vi.runAllTimersAsync();
     expect(listener).not.toHaveBeenCalled();
     expect(write).not.toHaveBeenCalled();
@@ -58,7 +58,7 @@ describe('SettingsService toolbar layout', () => {
 
   it('goes back to the default layout', async () => {
     const { settings } = await settingsFrom({ toolbar: { order: ['palette'], hidden: ['fog'] } });
-    settings.setToolbarLayout({});
-    expect(settings.getToolbarLayout()).toEqual({});
+    settings.set('toolbar', {});
+    expect(settings.get('toolbar')).toEqual({});
   });
 });

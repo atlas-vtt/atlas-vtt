@@ -5,13 +5,13 @@ import { SettingsService } from '../../services/SettingsService';
 /** Whether new scenes look for the grid of their map, kept current as the setting changes, and its switch. */
 export function useDetectGridOnNewScenes(app: App | undefined): { detects: boolean; toggle: () => void } {
   const settings = SettingsService.forApp(app);
-  const [detects, setDetects] = useState(() => settings?.detectsGridOnNewScenes() ?? true);
+  const [detects, setDetects] = useState(() => settings?.get('detectGridOnNewScenes') ?? true);
 
   useEffect(() => {
     if (!settings) return;
-    setDetects(settings.detectsGridOnNewScenes());
-    return settings.onChange(() => setDetects(settings.detectsGridOnNewScenes()));
+    setDetects(settings.get('detectGridOnNewScenes'));
+    return settings.onChange(() => setDetects(settings.get('detectGridOnNewScenes')));
   }, [settings]);
 
-  return { detects, toggle: () => settings?.setDetectGridOnNewScenes(!detects) };
+  return { detects, toggle: () => settings?.set('detectGridOnNewScenes', !detects) };
 }

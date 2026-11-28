@@ -68,7 +68,7 @@ describe('the turn banner in the player window', () => {
     turnTo('ogre');
     // Names only where the player view shows nameplates
     expect(shown()).toBe('Turn');
-    settings.setLocalPlayerViewSettings({ showTokenNameplates: true });
+    settings.set('localPlayerView', { showTokenNameplates: true });
     turnTo('hero', 2);
     expect(shown()).toBe('Round 2hero card');
     // A combatant whose nameplate the GM's map does not show goes unnamed
@@ -80,11 +80,11 @@ describe('the turn banner in the player window', () => {
     const { settings, turnTo, shown } = setup();
     turnTo('ghost');
     expect(shown()).toBeNull();
-    settings.setLocalPlayerViewSettings({ showInitiative: false });
+    settings.set('localPlayerView', { showInitiative: false });
     turnTo('ogre');
     expect(shown()).toBeNull();
-    settings.setLocalPlayerViewSettings({ showInitiative: true });
-    settings.setInitiativeTurnOptions({ banner: false });
+    settings.set('localPlayerView', { showInitiative: true });
+    settings.set('initiativeTurnOptions', { banner: false });
     turnTo('hero');
     expect(shown()).toBeNull();
     const closed = setup(false);
@@ -93,7 +93,7 @@ describe('the turn banner in the player window', () => {
   });
   it('stands at every players\' list with the player view\'s switch, else in the middle', () => {
     const { settings, turnTo } = setup();
-    settings.setLocalPlayerViewSettings({ turnBannerAtLists: true });
+    settings.set('localPlayerView', { turnBannerAtLists: true });
     for (const edge of ['bottom', 'top']) document.body.createDiv({ cls: 'atlas-player-initiative', attr: { 'data-edge': edge } });
     turnTo('ogre');
     const anchors = [...document.body.querySelectorAll('.atlas-player-turn-banner__anchor')];
@@ -101,7 +101,7 @@ describe('the turn banner in the player window', () => {
     // A row along the top without turning has its banner below it; only the first is announced
     expect(anchors.map((anchor) => anchor.getAttribute('data-side'))).toEqual(['above', 'below']);
     expect(anchors[1]?.getAttribute('aria-hidden')).toBe('true');
-    settings.setLocalPlayerViewSettings({ turnBannerAtLists: false });
+    settings.set('localPlayerView', { turnBannerAtLists: false });
     turnTo('hero');
     expect(document.body.querySelectorAll('.atlas-player-turn-banner__anchor')).toHaveLength(0);
     expect(document.body.querySelectorAll('.atlas-turn-banner')).toHaveLength(1);
@@ -209,9 +209,9 @@ describe('the tracker\'s turn options', () => {
 
   it('are kept in Atlas\' settings: the banner on unless switched off, moving on one\'s turn off unless switched on', () => {
     const settings = new SettingsService(createInMemoryApp().app);
-    expect(settings.initiativeTurnOptions()).toEqual({ banner: true, movesOnTurn: false });
-    settings.setInitiativeTurnOptions({ movesOnTurn: true });
-    expect(settings.initiativeTurnOptions()).toEqual({ banner: true, movesOnTurn: true });
+    expect(settings.get('initiativeTurnOptions')).toEqual({ banner: true, movesOnTurn: false });
+    settings.set('initiativeTurnOptions', { movesOnTurn: true });
+    expect(settings.get('initiativeTurnOptions')).toEqual({ banner: true, movesOnTurn: true });
   });
 });
 

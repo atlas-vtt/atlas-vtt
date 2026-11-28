@@ -75,8 +75,8 @@ export class LookService {
         this.save(PREVIOUS_THEME_STORAGE_KEY, JSON.stringify(this.theme()));
         this.app.customCss?.setTheme?.(DEFAULT_THEME);
       }
-      this.settings.setFogEdge({ style: LOOK_FOG_EDGE_STYLE[choice] });
-      this.settings.setDiceLook({ font: LOOK_DICE_FONT[choice] });
+      this.settings.set('fogEdge', { style: LOOK_FOG_EDGE_STYLE[choice] });
+      this.settings.set('diceLook', { font: LOOK_DICE_FONT[choice] });
     } else {
       this.restoreTheme();
     }

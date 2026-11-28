@@ -43,22 +43,22 @@ const boolean = (key: string, empty: boolean): Expected => ({
 });
 
 const EXPECTED: Record<PreferenceName, Expected> = {
-  showChangelogOnUpdate: { ...boolean('showChangelogOnUpdate', true), malformed: { stored: { showChangelogOnUpdate: 'yes' }, reads: 'yes' }, again: { saves: true, notifies: 1 } },
-  changelogMajorUpdatesOnly: { ...boolean('changelogMajorUpdatesOnly', false), malformed: { stored: { changelogMajorUpdatesOnly: 'yes' }, reads: 'yes' }, again: { saves: true, notifies: 1 } },
-  checkForUpdates: { ...boolean('checkForUpdates', true), malformed: { stored: { checkForUpdates: 'yes' }, reads: 'yes' }, again: { saves: true, notifies: 1 } },
-  starterTokensAdded: { ...boolean('starterTokensAdded', false), malformed: { stored: { starterTokensAdded: 'yes' }, reads: 'yes' }, again: { saves: true, notifies: 1 } },
+  showChangelogOnUpdate: boolean('showChangelogOnUpdate', true),
+  changelogMajorUpdatesOnly: boolean('changelogMajorUpdatesOnly', false),
+  checkForUpdates: boolean('checkForUpdates', true),
+  starterTokensAdded: boolean('starterTokensAdded', false),
   onboarding: {
     empty: { enabled: true, completed: {}, tokenImported: false },
-    malformed: { stored: { onboarding: 'none' }, reads: 'none' },
+    malformed: { stored: { onboarding: 'none' }, reads: { enabled: true, completed: {}, tokenImported: false } },
     change: { enabled: false, completed: { map: true }, tokenImported: true },
     reads: { enabled: false, completed: { map: true }, tokenImported: true },
     stores: { onboarding: { enabled: false, completed: { map: true }, tokenImported: true } },
-    again: { saves: true, notifies: 1 },
-    newerField: false,
+    again: { saves: false, notifies: 0 },
+    newerField: true,
   },
   hotkeys: {
     empty: 'm', malformed: { stored: { hotkeys: 'all' }, reads: 'm' },
-    change: 'j', reads: 'j', stores: { hotkeys: { measure: 'j' } }, again: { saves: true, notifies: 1 }, newerField: true,
+    change: 'j', reads: 'j', stores: { hotkeys: { measure: 'j' } }, again: { saves: false, notifies: 0 }, newerField: true,
   },
   hiddenStarterOffers: {
     empty: false, malformed: { stored: { hiddenStarterOffers: 'collection-1' }, reads: false },
@@ -70,7 +70,7 @@ const EXPECTED: Record<PreferenceName, Expected> = {
   },
   laserPointer: {
     empty: { color: '#ff0059', size: 16 }, malformed: { stored: { laserPointer: { color: 'red', size: 'big' } }, reads: { color: '#ff0059', size: 16 } },
-    change: { size: 40 }, reads: { color: '#ff0059', size: 40 }, stores: { laserPointer: { color: '#ff0059', size: 40 } }, again: { saves: true, notifies: 1 }, newerField: true,
+    change: { size: 40 }, reads: { color: '#ff0059', size: 40 }, stores: { laserPointer: { size: 40 } }, again: { saves: false, notifies: 0 }, newerField: true,
   },
   diceDisplay: {
     empty: 'full', malformed: { stored: { diceDisplay: 'huge' }, reads: 'full' },
@@ -82,17 +82,17 @@ const EXPECTED: Record<PreferenceName, Expected> = {
   },
   sound: {
     empty: DEFAULT_SOUND, malformed: { stored: { sound: { musicDb: 'loud', followScenes: 'no' } }, reads: DEFAULT_SOUND },
-    change: { musicDb: -3 }, reads: { ...DEFAULT_SOUND, musicDb: -3 }, stores: { sound: { ...DEFAULT_SOUND, musicDb: -3 } }, again: { saves: false, notifies: 0 }, newerField: true,
+    change: { musicDb: -3 }, reads: { ...DEFAULT_SOUND, musicDb: -3 }, stores: { sound: { musicDb: -3 } }, again: { saves: false, notifies: 0 }, newerField: true,
   },
   soundRoots: {
     empty: {}, malformed: { stored: { soundRoots: { music: { type: 'vault' } } }, reads: {} },
     change: { music: { type: 'vault', path: 'Music' } }, reads: { music: { type: 'vault', path: 'Music' } },
-    stores: { soundRoots: { music: { type: 'vault', path: 'Music' } } }, again: { saves: true, notifies: 1 }, newerField: false,
+    stores: { soundRoots: { music: { type: 'vault', path: 'Music' } } }, again: { saves: false, notifies: 0 }, newerField: false,
   },
   detectGridOnNewScenes: { ...boolean('detectGridOnNewScenes', true), malformed: { stored: { detectGridOnNewScenes: 'no' }, reads: true } },
   fogEdge: {
     empty: { style: 'crackle', width: 15 }, malformed: { stored: { fogEdge: { style: 'wavy', width: -1 } }, reads: { style: 'crackle', width: 15 } },
-    change: { width: 30 }, reads: { style: 'crackle', width: 30 }, stores: { fogEdge: { style: 'crackle', width: 30 } }, again: { saves: true, notifies: 1 }, newerField: false,
+    change: { width: 30 }, reads: { style: 'crackle', width: 30 }, stores: { fogEdge: { width: 30 } }, again: { saves: false, notifies: 0 }, newerField: true,
   },
   dragDistance: {
     empty: 'always', malformed: { stored: { dragDistance: 'sometimes' }, reads: 'always' },
@@ -130,29 +130,29 @@ const EXPECTED: Record<PreferenceName, Expected> = {
   },
   dungeonGenerator: {
     empty: DEFAULT_DUNGEON, malformed: { stored: { dungeonGenerator: { style: 'nope', floors: 'many' } }, reads: DEFAULT_DUNGEON },
-    change: { floors: 2 }, reads: { ...DEFAULT_DUNGEON, floors: 2 }, stores: { dungeonGenerator: { ...DEFAULT_DUNGEON, floors: 2 } }, again: { saves: true, notifies: 1 }, newerField: true,
+    change: { floors: 2 }, reads: { ...DEFAULT_DUNGEON, floors: 2 }, stores: { dungeonGenerator: { floors: 2 } }, again: { saves: false, notifies: 0 }, newerField: true,
   },
   localPlayerView: {
     empty: DEFAULT_PLAYER_VIEW, malformed: { stored: { localPlayerView: { showToolbar: 'yes' } }, reads: { ...DEFAULT_PLAYER_VIEW, showToolbar: 'yes' } },
-    change: { showWidgets: false }, reads: { ...DEFAULT_PLAYER_VIEW, showWidgets: false }, stores: { localPlayerView: { ...DEFAULT_PLAYER_VIEW, showWidgets: false } },
-    again: { saves: true, notifies: 1 }, newerField: true,
+    change: { showWidgets: false }, reads: { ...DEFAULT_PLAYER_VIEW, showWidgets: false }, stores: { localPlayerView: { showWidgets: false } },
+    again: { saves: false, notifies: 0 }, newerField: true,
   },
   tableTv: {
     empty: { viewGlideMs: 800 }, malformed: { stored: { tableTv: { viewGlideMs: -5 } }, reads: { viewGlideMs: 800 } },
-    change: { viewGlideMs: 0 }, reads: { viewGlideMs: 0 }, stores: { tableTv: { viewGlideMs: 0 } }, again: { saves: true, notifies: 1 }, newerField: true,
+    change: { viewGlideMs: 0 }, reads: { viewGlideMs: 0 }, stores: { tableTv: { viewGlideMs: 0 } }, again: { saves: false, notifies: 0 }, newerField: true,
   },
   inputMode: {
     empty: 'mouse', malformed: { stored: { 'atlas-vtt:input-mode': 'joystick' }, reads: 'mouse' },
-    change: 'trackpad', reads: 'trackpad', stores: { 'atlas-vtt:input-mode': 'trackpad' }, again: { saves: true, notifies: 1 },
+    change: 'trackpad', reads: 'trackpad', stores: { 'atlas-vtt:input-mode': 'trackpad' }, again: { saves: false, notifies: 0 },
   },
   graphics: {
     empty: { preset: 'high', overrides: {} }, malformed: { stored: { 'atlas-vtt:graphics': '{"preset":"ultra"}', 'atlas-vtt:lighting-quality': 'ultra' }, reads: { preset: 'high', overrides: {} } },
     change: { preset: 'saver', overrides: {} }, reads: { preset: 'saver', overrides: {} },
-    stores: { 'atlas-vtt:graphics': '{"preset":"saver","overrides":{}}', 'atlas-vtt:lighting-quality': 'saver' }, again: { saves: true, notifies: 0 },
+    stores: { 'atlas-vtt:graphics': '{"preset":"saver","overrides":{}}', 'atlas-vtt:lighting-quality': 'saver' }, again: { saves: false, notifies: 0 },
   },
   pickedLightingQuality: {
     empty: null, malformed: { stored: { 'atlas-vtt:lighting-quality-picked': 'ultra' }, reads: null },
-    change: 'balanced', reads: 'balanced', stores: { 'atlas-vtt:lighting-quality-picked': 'balanced' }, again: { saves: true, notifies: 0 },
+    change: 'balanced', reads: 'balanced', stores: { 'atlas-vtt:lighting-quality-picked': 'balanced' }, again: { saves: false, notifies: 0 },
   },
   animateMaps: {
     empty: null, malformed: { stored: { 'atlas-vtt:animate-maps': 'maybe' }, reads: null },
@@ -168,29 +168,29 @@ const EXPECTED: Record<PreferenceName, Expected> = {
   },
   gmFogOpacity: {
     empty: 0.5, malformed: { stored: { 'atlas-vtt:gm-fog-opacity': 'thick' }, reads: 0.5 },
-    change: 0.8, reads: 0.8, stores: { 'atlas-vtt:gm-fog-opacity': '0.8' }, again: { saves: true, notifies: 0 },
+    change: 0.8, reads: 0.8, stores: { 'atlas-vtt:gm-fog-opacity': '0.8' }, again: { saves: false, notifies: 0 },
   },
   tableTvDevice: {
     empty: { trueScale: false, cellMm: 25.4, screens: {} }, malformed: { stored: { 'atlas-vtt:table-tv': '{"trueScale":"yes","cellMm":-1}' }, reads: { trueScale: false, cellMm: 25.4, screens: {} } },
     change: { trueScale: true }, reads: { trueScale: true, cellMm: 25.4, screens: {} },
-    stores: { 'atlas-vtt:table-tv': '{"trueScale":true,"cellMm":25.4,"screens":{}}' }, again: { saves: true, notifies: 1 }, newerField: true,
+    stores: { 'atlas-vtt:table-tv': '{"trueScale":true}' }, again: { saves: false, notifies: 0 }, newerField: true,
   },
   drawTool: {
     empty: DEFAULT_DRAW_TOOL, malformed: { stored: { 'atlas-vtt:draw-tool': '{"color":"teal","size":"huge"}' }, reads: DEFAULT_DRAW_TOOL },
     change: { ...DEFAULT_DRAW_TOOL, color: '#123456' }, reads: { ...DEFAULT_DRAW_TOOL, color: '#123456' },
-    stores: { 'atlas-vtt:draw-tool': JSON.stringify({ ...REMEMBERED_DRAW_TOOL, color: '#123456' }) }, again: { saves: true, notifies: 0 }, newerField: false,
+    stores: { 'atlas-vtt:draw-tool': JSON.stringify({ ...REMEMBERED_DRAW_TOOL, color: '#123456' }) }, again: { saves: false, notifies: 0 }, newerField: false,
   },
   penSeen: {
     empty: false, malformed: { stored: { 'atlas-vtt:pen-seen': 'yes' }, reads: false },
-    change: true, reads: true, stores: { 'atlas-vtt:pen-seen': 'seen' }, again: { saves: true, notifies: 0 },
+    change: true, reads: true, stores: { 'atlas-vtt:pen-seen': 'seen' }, again: { saves: false, notifies: 0 },
   },
   fingerUse: {
     empty: null, malformed: { stored: { 'atlas-vtt:finger-use': 'feet' }, reads: null },
-    change: 'pan', reads: 'pan', stores: { 'atlas-vtt:finger-use': 'pan' }, again: { saves: true, notifies: 0 },
+    change: 'pan', reads: 'pan', stores: { 'atlas-vtt:finger-use': 'pan' }, again: { saves: false, notifies: 0 },
   },
   zoomButtons: {
     empty: false, malformed: { stored: { 'atlas-vtt:zoom-buttons': 'yes' }, reads: false },
-    change: true, reads: true, stores: { 'atlas-vtt:zoom-buttons': 'shown' }, again: { saves: true, notifies: 0 },
+    change: true, reads: true, stores: { 'atlas-vtt:zoom-buttons': 'shown' }, again: { saves: false, notifies: 0 },
   },
 };
 

@@ -25,10 +25,10 @@ it('updates every supported setting and follows settings changed elsewhere', () 
     ['Show nameplates', 'showTokenNameplates'], ['Show dice rolls', 'showDiceRolls'],
   ] as const) {
     const toggle = screen.getByRole('switch', { name: label });
-    const before = settings.getLocalPlayerViewSettings()[key];
+    const before = settings.get('localPlayerView')[key];
     fireEvent.click(toggle);
-    expect(settings.getLocalPlayerViewSettings()[key]).toBe(!before);
-    act(() => settings.setLocalPlayerViewSettings({ [key]: before }));
+    expect(settings.get('localPlayerView')[key]).toBe(!before);
+    act(() => settings.set('localPlayerView', { [key]: before }));
     expect(toggle.getAttribute('aria-checked')).toBe(String(before));
   }
   expect(screen.queryByRole('switch', { name: 'Show note previews' })).toBeNull();
@@ -46,13 +46,13 @@ it('offers the cursor switch only while online play is switched on, in a section
   expect(screen.getByRole('heading', { name: 'Player window' })).toBeTruthy();
   expect(screen.queryByRole('heading', { name: 'Online play' })).toBeNull();
   unmount();
-  settings.setExperimental('onlinePlay', true);
+  settings.set('experimental', { onlinePlay: true });
   render(<PlayerViewSettingsPanel />);
   expect(screen.getByRole('heading', { name: 'Online play' })).toBeTruthy();
   const toggle = screen.getByRole('switch', { name: 'Show everyone\'s cursors' });
   expect(toggle.getAttribute('aria-checked')).toBe('false');
   fireEvent.click(toggle);
-  expect(settings.getLocalPlayerViewSettings().showCursors).toBe(true);
+  expect(settings.get('localPlayerView').showCursors).toBe(true);
 });
 
 it('offers Players may draw only while online play is switched on, off until the GM switches it on, and says what it does', () => {
@@ -61,13 +61,13 @@ it('offers Players may draw only while online play is switched on, off until the
   const { unmount } = render(<PlayerViewSettingsPanel />);
   expect(screen.queryByRole('switch', { name: 'Players may draw' })).toBeNull();
   unmount();
-  settings.setExperimental('onlinePlay', true);
+  settings.set('experimental', { onlinePlay: true });
   render(<PlayerViewSettingsPanel />);
   const toggle = screen.getByRole('switch', { name: 'Players may draw' });
   expect(toggle.getAttribute('aria-checked')).toBe('false');
   expect(screen.getByText('Online players get a Draw tool of their own. You can change and clear what they draw.')).toBeTruthy();
   fireEvent.click(toggle);
-  expect(settings.getLocalPlayerViewSettings().playersDraw).toBe(true);
+  expect(settings.get('localPlayerView').playersDraw).toBe(true);
   expect(screen.getByRole('switch', { name: 'Players may draw' }).getAttribute('aria-checked')).toBe('true');
 });
 
@@ -116,9 +116,9 @@ it('lays the players\' initiative list out across the table from its switch, as 
   const toggle = screen.getByRole('switch', { name: 'Horizontal initiative' });
   expect(toggle.getAttribute('aria-checked')).toBe('false');
   fireEvent.click(toggle);
-  expect(settings.initiativeLayout()).toMatchObject({ edges: ['bottom'], facesPlayers: true });
+  expect(settings.get('initiativeLayout')).toMatchObject({ edges: ['bottom'], facesPlayers: true });
   fireEvent.click(screen.getByRole('switch', { name: 'Horizontal initiative' }));
-  expect(settings.initiativeLayout()).toMatchObject({ edges: ['right'], facesPlayers: false });
+  expect(settings.get('initiativeLayout')).toMatchObject({ edges: ['right'], facesPlayers: false });
 });
 
 it('mirrors the players\' initiative list for the far side of the table, as a column or a row, keeping the other switch', () => {
@@ -128,12 +128,12 @@ it('mirrors the players\' initiative list for the far side of the table, as a co
   const mirrored = (): HTMLElement => screen.getByRole('switch', { name: 'Mirrored initiative' });
   expect(mirrored().getAttribute('aria-checked')).toBe('false');
   fireEvent.click(mirrored());
-  expect(settings.initiativeLayout()).toMatchObject({ edges: ['right', 'left'], facesPlayers: false });
+  expect(settings.get('initiativeLayout')).toMatchObject({ edges: ['right', 'left'], facesPlayers: false });
   // Turned horizontal, it stays mirrored: a row at the top and one at the bottom
   fireEvent.click(screen.getByRole('switch', { name: 'Horizontal initiative' }));
-  expect(settings.initiativeLayout()).toMatchObject({ edges: ['top', 'bottom'], facesPlayers: true });
+  expect(settings.get('initiativeLayout')).toMatchObject({ edges: ['top', 'bottom'], facesPlayers: true });
   fireEvent.click(mirrored());
-  expect(settings.initiativeLayout()).toMatchObject({ edges: ['bottom'], facesPlayers: true });
+  expect(settings.get('initiativeLayout')).toMatchObject({ edges: ['bottom'], facesPlayers: true });
 });
 
 it('offers Players move only on their turn among online play\'s settings, off until the GM switches it on', () => {
@@ -142,10 +142,10 @@ it('offers Players move only on their turn among online play\'s settings, off un
   const { unmount } = render(<PlayerViewSettingsPanel />);
   expect(screen.queryByRole('switch', { name: 'Players move only on their turn' })).toBeNull();
   unmount();
-  settings.setExperimental('onlinePlay', true);
+  settings.set('experimental', { onlinePlay: true });
   render(<PlayerViewSettingsPanel />);
   const toggle = screen.getByRole('switch', { name: 'Players move only on their turn' });
   expect(toggle.getAttribute('aria-checked')).toBe('false');
   fireEvent.click(toggle);
-  expect(settings.initiativeTurnOptions().movesOnTurn).toBe(true);
+  expect(settings.get('initiativeTurnOptions').movesOnTurn).toBe(true);
 });

@@ -24,6 +24,7 @@ import { memoryPresets } from '../../mocks/memoryPresets';
 import { fakeLayers } from '../online/gm/fakeAtlasTab.ts';
 import { GENERIC_SOURCE, PLAYER_SETTINGS } from '../online/gm/gmLighting.ts';
 import { sceneState, shareHarness } from '../online/gm/shareHarness.ts';
+import { preferenceReader } from '../../mocks/preferenceReader';
 
 /** The user's preset: three sides, the hirelings between the party and its foes. */
 const HOMEBREW_SIDES: InitiativeRules = {
@@ -271,10 +272,12 @@ const sceneOf = (row: Row): Pick<ViewAtlasState, 'initiative' | 'initiativeTrack
 /** The player window's list of the row's scene, drawn at true scale so every card shows its conditions as online players are sent them. */
 function windowOf(app: App, row: Row): Listed | null {
   const settings = {
-    getLocalPlayerViewSettings: () => ({ showInitiative: row.shown ?? true, showTokenNameplates: true }),
+    get: preferenceReader({
+      localPlayerView: () => ({ showInitiative: row.shown ?? true, showTokenNameplates: true }),
+      initiativeLayout: () => ({ fromTurn: false, dock: 'right', edges: ['right'], facesPlayers: false }),
+      initiativeTurnOptions: () => ({ banner: false }),
+    }),
     onChange: () => () => undefined,
-    initiativeLayout: () => ({ fromTurn: false, dock: 'right', edges: ['right'], facesPlayers: false }),
-    initiativeTurnOptions: () => ({ banner: false }),
   } as unknown as SettingsService;
   const host = document.body.createDiv();
   const panel = new PlayerInitiativePanel(app, settings, () => true);

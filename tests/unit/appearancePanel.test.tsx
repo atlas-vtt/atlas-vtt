@@ -102,5 +102,5 @@ it('switches square corners and the toolbar shown on hover from Appearance setti
   expect(onHover().getAttribute('aria-checked')).toBe('false');
   act(() => { fireEvent.click(onHover()); });
   expect(onHover().getAttribute('aria-checked')).toBe('true');
-  expect(SettingsService.forApp(created)?.isToolbarAutoHide()).toBe(true);
+  expect(SettingsService.forApp(created)?.get('toolbarAutoHide')).toBe(true);
 });

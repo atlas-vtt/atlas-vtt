@@ -166,7 +166,7 @@ describe('PlayerWindowPresenter', () => {
     const source = shownSource();
     expect(source.diceEvents).toBe(view.serviceManager.getEventBus());
     const capture = vi.fn();
-    const settings = new SettingsService({} as any).getLocalPlayerViewSettings();
+    const settings = new SettingsService({} as any).get('localPlayerView');
     source.withPlayerSafeFrame(capture, settings, FRAME);
     expect(withPlayerSafeFrame).toHaveBeenCalledWith(capture, settings, FRAME);
     expect(capture).toHaveBeenCalledTimes(1);
@@ -225,7 +225,7 @@ describe('PlayerWindowPresenter', () => {
     expect(listener).toHaveBeenCalledWith(48);
 
     const capture = vi.fn();
-    const settings = new SettingsService({} as any).getLocalPlayerViewSettings();
+    const settings = new SettingsService({} as any).get('localPlayerView');
     beforeRender.withPlayerSafeFrame(capture, settings, FRAME);
     expect(withPlayerSafeFrame).toHaveBeenCalledWith(capture, settings, FRAME, true);
 

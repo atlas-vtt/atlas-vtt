@@ -54,12 +54,12 @@ describe('the lighting quality setting', () => {
   it('is high until chosen, kept on this device only, and tells every listener', async () => {
     const app = new App();
     const { settings, write } = await settingsOn(app);
-    expect(settings.getLightingQuality()).toBe('high');
+    expect(settings.getGraphics().preset).toBe('high');
     const listener = vi.fn();
     settings.onChange(listener);
 
     settings.setLightingQuality('saver');
-    expect(settings.getLightingQuality()).toBe('saver');
+    expect(settings.getGraphics().preset).toBe('saver');
     expect(app.loadLocalStorage(LIGHTING_QUALITY_STORAGE_KEY)).toBe('saver');
     expect(listener).toHaveBeenCalledOnce();
     settings.setLightingQuality('saver');
@@ -72,7 +72,7 @@ describe('the lighting quality setting', () => {
   it('reads a stored value it does not know as high', async () => {
     const app = new App();
     app.saveLocalStorage(LIGHTING_QUALITY_STORAGE_KEY, 'ultra');
-    expect((await settingsOn(app)).settings.getLightingQuality()).toBe('high');
+    expect((await settingsOn(app)).settings.getGraphics().preset).toBe('high');
   });
 
   it('is offered on the Graphics page as three presets, each telling what it draws', async () => {

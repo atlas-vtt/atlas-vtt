@@ -16,41 +16,41 @@ async function loaded(stored: unknown = null, app = new App()): Promise<{ settin
 describe('Atlas settings in the plugin data', () => {
   it('saves the preferences into the plugin data and reads them back', async () => {
     const { settings, data, app } = await loaded();
-    settings.setDiceLook({ colour: 'dark' });
-    settings.setExperimental('statblockEditor', true);
+    settings.set('diceLook', { colour: 'dark' });
+    settings.set('experimental', { statblockEditor: true });
     settings.setHotkey('assets', 'q');
     await settings.saveSettingsNow();
     expect(data.stored()).toMatchObject({ diceColour: 'dark', experimental: { statblockEditor: true }, hotkeys: { assets: 'q' } });
 
     const reopened = new SettingsService(app, undefined, data);
     await reopened.initialize();
-    expect(reopened.getDiceLook().colour).toBe('dark');
-    expect(reopened.isExperimentalOn('statblockEditor')).toBe(true);
+    expect(reopened.get('diceLook').colour).toBe('dark');
+    expect(reopened.get('experimental').statblockEditor === true).toBe(true);
     expect(reopened.getHotkeys().assets).toBe('q');
   });
 
   it('shows no cursors to an online table until the GM says so, also in a vault whose settings an older Atlas wrote', async () => {
-    expect((await loaded()).settings.getLocalPlayerViewSettings().showCursors).toBe(false);
+    expect((await loaded()).settings.get('localPlayerView').showCursors).toBe(false);
     const older = await loaded({ localPlayerView: { showWidgets: false, showDiceRolls: true, showTokenHP: true } });
-    expect(older.settings.getLocalPlayerViewSettings()).toMatchObject({ showCursors: false, showWidgets: false, showDiceRolls: true });
-    older.settings.setLocalPlayerViewSettings({ showCursors: true });
+    expect(older.settings.get('localPlayerView')).toMatchObject({ showCursors: false, showWidgets: false, showDiceRolls: true });
+    older.settings.set('localPlayerView', { showCursors: true });
     await older.settings.saveSettingsNow();
     // What the older version stored beside it is still there for it.
     expect(older.data.stored()).toMatchObject({ localPlayerView: { showCursors: true, showWidgets: false, showDiceRolls: true, showTokenHP: true } });
     const reopened = new SettingsService(older.app, undefined, older.data);
     await reopened.initialize();
-    expect(reopened.getLocalPlayerViewSettings().showCursors).toBe(true);
+    expect(reopened.get('localPlayerView').showCursors).toBe(true);
   });
 
   it('lets no online player draw until the GM says so, also in a vault whose settings an older Atlas wrote', async () => {
-    expect((await loaded()).settings.getLocalPlayerViewSettings().playersDraw).toBe(false);
+    expect((await loaded()).settings.get('localPlayerView').playersDraw).toBe(false);
     const older = await loaded({ localPlayerView: { showWidgets: false, showCursors: true } });
-    expect(older.settings.getLocalPlayerViewSettings()).toMatchObject({ playersDraw: false, showCursors: true });
-    older.settings.setLocalPlayerViewSettings({ playersDraw: true });
+    expect(older.settings.get('localPlayerView')).toMatchObject({ playersDraw: false, showCursors: true });
+    older.settings.set('localPlayerView', { playersDraw: true });
     await older.settings.saveSettingsNow();
     const reopened = new SettingsService(older.app, undefined, older.data);
     await reopened.initialize();
-    expect(reopened.getLocalPlayerViewSettings().playersDraw).toBe(true);
+    expect(reopened.get('localPlayerView').playersDraw).toBe(true);
   });
 
   it('keeps what a newer Atlas stored when it saves', async () => {
@@ -61,7 +61,7 @@ describe('Atlas settings in the plugin data', () => {
       hotkeys: { assets: 'q', futureAction: 'k', help: DEFAULT_MAP_HOTKEYS.help },
       experimental: { futureFeature: true },
     });
-    settings.setLaserPointerSettings({ size: 30 });
+    settings.set('laserPointer', { size: 30 });
     settings.setHotkey('help', '');
     await settings.saveSettingsNow();
     expect(data.stored()).toMatchObject({
@@ -86,8 +86,8 @@ describe('Atlas settings in the plugin data', () => {
 
   it('never writes the input mode or presets into the plugin data', async () => {
     const { settings, data } = await loaded({ navigation: { inputMode: 'mouse' }, systemPresets: [{ id: 'p1' }], diceDisplay: 'card' });
-    settings.setNavigationSettings({ inputMode: 'trackpad' });
-    settings.setDiceDisplay('fast');
+    settings.set('inputMode', 'trackpad');
+    settings.set('diceDisplay', 'fast');
     await settings.saveSettingsNow();
     expect(data.stored()).not.toHaveProperty('navigation');
     expect(data.stored()).not.toHaveProperty('systemPresets');
@@ -95,14 +95,14 @@ describe('Atlas settings in the plugin data', () => {
 
   it('looks for the grid of new scenes unless the GM switched that off', async () => {
     const { settings, data } = await loaded();
-    expect(settings.detectsGridOnNewScenes()).toBe(true);
+    expect(settings.get('detectGridOnNewScenes')).toBe(true);
 
-    settings.setDetectGridOnNewScenes(false);
+    settings.set('detectGridOnNewScenes', false);
     await settings.saveSettingsNow();
-    expect(settings.detectsGridOnNewScenes()).toBe(false);
+    expect(settings.get('detectGridOnNewScenes')).toBe(false);
     expect(data.stored()).toMatchObject({ detectGridOnNewScenes: false });
     // Anything but a plain false, as another version may write, reads as on.
-    expect((await loaded({ detectGridOnNewScenes: 'no' })).settings.detectsGridOnNewScenes()).toBe(true);
+    expect((await loaded({ detectGridOnNewScenes: 'no' })).settings.get('detectGridOnNewScenes')).toBe(true);
   });
 
   it('reads the plugin data again when it changed on disk and tells every listener', async () => {
@@ -112,10 +112,9 @@ describe('Atlas settings in the plugin data', () => {
     data.set({ diceColour: 'dark', hotkeys: { assets: 'q' }, experimental: { statblockEditor: true } });
     await settings.reload();
     expect(heard).toHaveBeenCalledOnce();
-    expect(heard.mock.calls[0]![0]).toMatchObject({ diceColour: 'dark', experimental: { statblockEditor: true } });
-    expect(settings.getDiceLook().colour).toBe('dark');
+    expect(settings.get('diceLook').colour).toBe('dark');
     expect(settings.getHotkeys().assets).toBe('q');
-    expect(settings.isExperimentalOn('statblockEditor')).toBe(true);
+    expect(settings.get('experimental').statblockEditor === true).toBe(true);
     expect(data.saveData).not.toHaveBeenCalled();
   });
 
@@ -123,10 +122,10 @@ describe('Atlas settings in the plugin data', () => {
     vi.useFakeTimers();
     try {
       const { settings, data } = await loaded({ diceColour: 'light', diceFont: 'medieval' });
-      settings.setDiceLook({ colour: 'dark' });
+      settings.set('diceLook', { colour: 'dark' });
       data.set({ diceColour: 'light', diceFont: 'scifi' });
       await settings.reload();
-      expect(settings.getDiceLook()).toMatchObject({ colour: 'dark', font: 'scifi' });
+      expect(settings.get('diceLook')).toMatchObject({ colour: 'dark', font: 'scifi' });
 
       await vi.runAllTimersAsync();
       expect(data.stored()).toMatchObject({ diceColour: 'dark', diceFont: 'scifi' });
@@ -141,8 +140,8 @@ describe('Atlas settings in the plugin data', () => {
     settings.onChange(heard);
     data.set(null);
     await settings.reload();
-    expect(settings.getDiceLook().colour).toBe('dark');
-    expect(settings.isExperimentalOn('statblockEditor')).toBe(true);
+    expect(settings.get('diceLook').colour).toBe('dark');
+    expect(settings.get('experimental').statblockEditor === true).toBe(true);
     expect(heard).not.toHaveBeenCalled();
   });
 
@@ -155,17 +154,17 @@ describe('Atlas settings in the plugin data', () => {
     expect(data.loadData).not.toHaveBeenCalled();
     finish();
     await reloading;
-    expect(settings.getDiceDisplay()).toBe('card');
+    expect(settings.get('diceDisplay')).toBe('card');
   });
 });
 
 describe('the input mode', () => {
   it('is kept in this device\'s local storage, not in the synced settings', async () => {
     const { settings, data, app } = await loaded();
-    settings.setNavigationSettings({ inputMode: 'mouse' });
-    expect(app.loadLocalStorage(INPUT_MODE_STORAGE_KEY)).toBe('mouse');
-    settings.setNavigationSettings({ inputMode: 'trackpad' });
+    settings.set('inputMode', 'trackpad');
     expect(app.loadLocalStorage(INPUT_MODE_STORAGE_KEY)).toBe('trackpad');
+    settings.set('inputMode', 'mouse');
+    expect(app.loadLocalStorage(INPUT_MODE_STORAGE_KEY)).toBe('mouse');
     await settings.saveSettingsNow();
     expect(data.stored()).not.toHaveProperty('navigation');
   });
@@ -174,22 +173,22 @@ describe('the input mode', () => {
     const app = new App();
     app.saveLocalStorage(INPUT_MODE_STORAGE_KEY, 'mouse');
     const { settings } = await loaded({ navigation: { inputMode: 'trackpad' } }, app);
-    expect(settings.getNavigationSettings().inputMode).toBe('mouse');
-    expect(settings.getAllSettings().navigation.inputMode).toBe('mouse');
+    expect(settings.get('inputMode')).toBe('mouse');
   });
 
   it('tells listeners when it changes', async () => {
     const { settings } = await loaded();
     const heard = vi.fn();
     settings.onChange(heard);
-    settings.setNavigationSettings({ inputMode: 'mouse' });
-    expect(heard.mock.calls.at(-1)![0].navigation.inputMode).toBe('mouse');
+    settings.set('inputMode', 'trackpad');
+    expect(heard).toHaveBeenCalledOnce();
+    expect(settings.get('inputMode')).toBe('trackpad');
   });
 
   it('ignores a stored value it does not know', async () => {
     const app = new App();
     app.saveLocalStorage(INPUT_MODE_STORAGE_KEY, 'joystick');
     const { settings } = await loaded(null, app);
-    expect(['mouse', 'trackpad']).toContain(settings.getNavigationSettings().inputMode);
+    expect(['mouse', 'trackpad']).toContain(settings.get('inputMode'));
   });
 });

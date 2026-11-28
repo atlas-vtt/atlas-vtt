@@ -87,7 +87,7 @@ describe('player window mirroring', () => {
     renders.requestRender.mockClear();
     vi.spyOn(performance, 'now').mockReturnValue(performance.now() + 100);
 
-    settings.setLocalPlayerViewSettings({ showWidgets: false });
+    settings.set('localPlayerView', { showWidgets: false });
     nextFrame();
 
     expect(renders.requestRender).toHaveBeenCalled();

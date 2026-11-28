@@ -36,7 +36,7 @@ export function registerOnlinePlay(plugin: Plugin, settings: SettingsService, ac
   let feature: OnlineFeature | null = null;
   let toldTooOld = false;
   const sync = (): void => {
-    const wanted = settings.isExperimentalOn('onlinePlay');
+    const wanted = settings.get('experimental').onlinePlay === true;
     const on = wanted && requireApiVersion(SECRET_STORAGE_VERSION);
     if (wanted && !on && !toldTooOld) {
       toldTooOld = true;

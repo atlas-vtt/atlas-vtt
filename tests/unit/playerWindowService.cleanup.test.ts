@@ -2,6 +2,7 @@
 import { describe, expect, test, vi, beforeEach } from 'vitest';
 import { DEFAULT_TABLE_TV_SETTINGS } from '../../src/app/services/tableTvSettings';
 import { DEFAULT_TABLE_TV_DEVICE } from '../../src/app/services/tableTvDevice';
+import { preferenceReader } from '../mocks/preferenceReader';
 
 
 import { PlayerWindowService } from '../../src/app/services/PlayerWindowService';
@@ -39,11 +40,13 @@ describe('PlayerWindowService cleanup', () => {
     };
 
     const settings = {
-      getLocalPlayerViewSettings: () => ({ showWidgets: true }),
-      getTableTvSettings: () => DEFAULT_TABLE_TV_SETTINGS,
-      getTableTvDevice: () => DEFAULT_TABLE_TV_DEVICE,
+      get: preferenceReader({
+        localPlayerView: () => ({ showWidgets: true }),
+        tableTv: () => DEFAULT_TABLE_TV_SETTINGS,
+        tableTvDevice: () => DEFAULT_TABLE_TV_DEVICE,
+        initiativeLayout: () => ({ fromTurn: true, dock: 'right', edges: ['right'], facesPlayers: false }),
+      }),
       onChange: () => vi.fn(),
-      initiativeLayout: () => ({ fromTurn: true, dock: 'right', edges: ['right'], facesPlayers: false }),
     };
     const service = new PlayerWindowService({ workspace: { containerEl: document.body, on: () => ({}), offref: () => {} } } as any, store as any, settings as any);
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);

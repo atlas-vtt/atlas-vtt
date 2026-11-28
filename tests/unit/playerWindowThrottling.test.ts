@@ -6,6 +6,7 @@ import { PlayerWindowService } from '../../src/app/services/PlayerWindowService'
 import { keepPlayerWindowAwake } from '../../src/app/services/playerWindowThrottling';
 import { playerWindowStore } from '../../src/app/stores/playerWindowStore';
 import { attachFakePlayerWindow } from '../mocks/playerPopout';
+import { preferenceReader } from '../mocks/preferenceReader';
 
 /** What the popout's own `require('electron')` answers: its `BrowserWindow` through `remote`, with `webContents` as given. */
 function electronOf(webContents: unknown): { require: (id: string) => unknown } {
@@ -64,11 +65,13 @@ describe('PlayerWindowService and background throttling', () => {
   function service(): PlayerWindowService {
     const store = { getState: () => ({}), subscribe: vi.fn(() => vi.fn()) };
     const settings = {
-      getLocalPlayerViewSettings: () => ({}),
-      getTableTvSettings: () => DEFAULT_TABLE_TV_SETTINGS,
-      getTableTvDevice: () => DEFAULT_TABLE_TV_DEVICE,
+      get: preferenceReader({
+        localPlayerView: () => ({}),
+        tableTv: () => DEFAULT_TABLE_TV_SETTINGS,
+        tableTvDevice: () => DEFAULT_TABLE_TV_DEVICE,
+        initiativeLayout: () => ({ fromTurn: true, dock: 'right', edges: ['right'], facesPlayers: false }),
+      }),
       onChange: () => vi.fn(),
-      initiativeLayout: () => ({ fromTurn: true, dock: 'right', edges: ['right'], facesPlayers: false }),
     };
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
     // Test doubles: the service reads only what these give

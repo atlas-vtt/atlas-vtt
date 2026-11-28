@@ -31,7 +31,7 @@ const state = vi.hoisted(() => ({
   showCombatantConditions: vi.fn(),
   hideCombatantConditions: vi.fn(),
 }));
-const settings = vi.hoisted(() => ({ compact: false, setCompactInitiative: vi.fn() }));
+const settings = vi.hoisted(() => ({ compact: false, set: vi.fn() }));
 
 const opened = vi.hoisted(() => ({ entries: [] as ContextMenuEntry[] }));
 vi.mock('../../src/app/react/root/ContextMenuContext', () => ({
@@ -44,9 +44,13 @@ vi.mock('../../src/app/react/root/AtlasUIContext', async () => ({
 }));
 vi.mock('../../src/app/keyboard/useMapHotkeys', () => ({
   useAtlasSettings: () => ({
-    showsCompactInitiative: () => settings.compact, setCompactInitiative: settings.setCompactInitiative,
-    initiativeLayout: () => ({ fromTurn: false, dock: 'right', edges: ['right'], facesPlayers: false }), setInitiativeLayout: vi.fn(),
-    initiativeTurnOptions: () => ({ banner: true, followTurn: false, movesOnTurn: false }), setInitiativeTurnOptions: vi.fn(), isExperimentalOn: () => false,
+    get: (name: string): unknown => ({
+      initiativeCompact: settings.compact,
+      initiativeLayout: { fromTurn: false, dock: 'right', edges: ['right'], facesPlayers: false },
+      initiativeTurnOptions: { banner: true, movesOnTurn: false },
+      experimental: {},
+    })[name],
+    set: settings.set,
   }),
 }));
 vi.mock('../../src/app/react/ViewStoreContext', () => ({

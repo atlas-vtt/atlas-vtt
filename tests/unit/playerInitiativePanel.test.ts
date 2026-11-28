@@ -4,16 +4,19 @@ import { PlayerInitiativePanel } from '../../src/app/services/PlayerInitiativePa
 import type { SettingsService } from '../../src/app/services/SettingsService';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { preferenceReader } from '../mocks/preferenceReader';
 
 function setup(): { store: ReturnType<typeof createViewAtlasStore>; panel: PlayerInitiativePanel } {
   const { app } = createInMemoryApp({ files: {} });
   const store = createViewAtlasStore(app, 'player-initiative-panel');
   store.getState().setPersistenceEnabled(false);
   const settings = {
-    getLocalPlayerViewSettings: () => ({ showInitiative: true }),
+    get: preferenceReader({
+      localPlayerView: () => ({ showInitiative: true }),
+      initiativeLayout: () => ({ fromTurn: false, dock: 'right', edges: ['right'], facesPlayers: false }),
+      initiativeTurnOptions: () => ({ banner: true }),
+    }),
     onChange: () => () => undefined,
-    initiativeLayout: () => ({ fromTurn: false, dock: 'right', edges: ['right'], facesPlayers: false }),
-    initiativeTurnOptions: () => ({ banner: true }),
   } as unknown as SettingsService;
   const panel = new PlayerInitiativePanel(app, settings);
   panel.mount(document.body);
@@ -120,10 +123,12 @@ describe('the players\' list laid out anew', () => {
     let layout = { fromTurn: true, dock: 'right', edges: ['right'], facesPlayers: false };
     const listeners: (() => void)[] = [];
     const settings = {
-      getLocalPlayerViewSettings: () => ({ showInitiative: true }),
+      get: preferenceReader({
+        localPlayerView: () => ({ showInitiative: true }),
+        initiativeLayout: () => layout,
+        initiativeTurnOptions: () => ({ banner: false }),
+      }),
       onChange: (listener: () => void) => { listeners.push(listener); return () => undefined; },
-      initiativeLayout: () => layout,
-      initiativeTurnOptions: () => ({ banner: false }),
     } as unknown as SettingsService;
     const panel = new PlayerInitiativePanel(app, settings);
     panel.mount(document.body);

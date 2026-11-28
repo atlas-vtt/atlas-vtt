@@ -579,7 +579,7 @@ export class PixiRendererOrchestrator { // Renamed class
       viewport, this.app, createSceneSource(this.store, state => state.activeTool),
       this.pixiAppManager.getCanvasElement(),
       // Looked up on every draw: a plugin reload replaces the settings service.
-      () => SettingsService.forApp(this.obsApp)?.getLaserPointerSettings() ?? DEFAULT_LASER_POINTER_SETTINGS,
+      () => SettingsService.forApp(this.obsApp)?.get('laserPointer') ?? DEFAULT_LASER_POINTER_SETTINGS,
     );
     const laserPointerContainer = this.laserPointerRenderer.getContainer();
     viewport.addChild(laserPointerContainer);
@@ -740,8 +740,8 @@ export class PixiRendererOrchestrator { // Renamed class
     if (!settings) return;
     let edge = HARD_FOG_EDGE;
     const follow = (): void => {
-      this.fogRenderer?.setGmOpacity(settings.getGmFogOpacity());
-      const next = settings.getFogEdge();
+      this.fogRenderer?.setGmOpacity(settings.get('gmFogOpacity'));
+      const next = settings.get('fogEdge');
       if (sameFogEdge(next, edge)) return;
       edge = next;
       this.fogRenderer?.setEdge(next);
@@ -775,7 +775,7 @@ export class PixiRendererOrchestrator { // Renamed class
         shown: () => PlayerWindowService.getInstance()?.mirrors(this.store) ?? false,
         subscribe: (listener) => playerWindowStore.subscribe(listener),
       },
-      animate: settings ? { get: () => settings.getAnimateMaps(), onChange: (listener) => settings.onChange(listener) } : null,
+      animate: settings ? { get: () => settings.get('animateMaps'), onChange: (listener) => settings.onChange(listener) } : null,
     });
   }
 

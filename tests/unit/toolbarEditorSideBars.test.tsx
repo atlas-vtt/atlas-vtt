@@ -36,13 +36,13 @@ describe('the keyboard shortcuts button in the toolbar editor', () => {
     const help = handle(harness.container, 'help');
     act(() => { help.focus(); });
     fireEvent.keyDown(help, { key: 'Delete' });
-    expect(harness.settings.getToolbarLayout()).toEqual({ hidden: ['help'] });
+    expect(harness.settings.get('toolbar')).toEqual({ hidden: ['help'] });
     expect(sideSlot(harness.container, 'help').hidden).toBe(true);
     expect(trayIds(harness.container)).toEqual(['help']);
     expect(liveRegion(harness.container)).toBe('Keyboard shortcuts hidden. ? still opens them.');
 
     fireEvent.keyDown(handle(harness.container, 'help', 'tray'), { key: 'Enter' });
-    expect(harness.settings.getToolbarLayout()).toEqual({});
+    expect(harness.settings.get('toolbar')).toEqual({});
     expect(sideSlot(harness.container, 'help').hidden).toBe(false);
   });
 
@@ -78,14 +78,14 @@ describe('online play\'s button in the toolbar editor', () => {
 
     fireEvent.contextMenu(handle(harness.container, 'online'), { clientX: 10, clientY: 10 });
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Hide' }));
-    expect(harness.settings.getToolbarLayout()).toEqual({ hidden: ['online'] });
+    expect(harness.settings.get('toolbar')).toEqual({ hidden: ['online'] });
     expect(sideSlot(harness.container, 'online').hidden).toBe(true);
     expect(harness.container.querySelector('.atlas-online-room')).toBeNull();
     expect(trayIds(harness.container)).toEqual(['online']);
     expect(liveRegion(harness.container)).toBe('Online play hidden.');
 
     fireEvent.keyDown(handle(harness.container, 'online', 'tray'), { key: 'Enter' });
-    expect(harness.settings.getToolbarLayout()).toEqual({});
+    expect(harness.settings.get('toolbar')).toEqual({});
     expect(sideSlot(harness.container, 'online').hidden).toBe(false);
   });
 });

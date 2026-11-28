@@ -6,7 +6,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import { DEFAULT_DRAW_TOOL } from '../../src/app/annotations/annotationTypes';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import type { StoredToolbarLayout } from '../../src/app/toolbar/toolbarLayout';
-import { DEFAULT_LASER_POINTER_SETTINGS, type LaserPointerSettings } from '../../src/app/tools/laserPointerSettings';
+import { DEFAULT_LASER_POINTER_SETTINGS } from '../../src/app/tools/laserPointerSettings';
 
 const setActiveTool = vi.fn();
 const setSelectionMode = vi.fn();
@@ -24,19 +24,16 @@ let capturedShortcuts: Record<string, (event: KeyboardEvent) => void> = {};
 let visibleTokenIds: string[] = [];
 /** Atlas' settings as the toolbar reads them; undefined where they cannot be reached. */
 let settings: {
-  getToolbarLayout: () => StoredToolbarLayout;
-  isExperimentalOn: () => boolean;
-  getLaserPointerSettings: () => LaserPointerSettings;
-  getLightingQuality: () => 'high';
+  get: (name: string) => unknown;
+  set: () => void;
   isLightingQualityPicked: () => boolean;
   setLightingQuality: () => void;
-  getDragDistance: () => 'always';
-  setDragDistance: () => void;
 } | undefined;
 let viewType = 'atlas-vtt';
 
 function settingsWithLayout(layout: StoredToolbarLayout): typeof settings {
-  return { getToolbarLayout: () => layout, isExperimentalOn: () => false, getLaserPointerSettings: () => DEFAULT_LASER_POINTER_SETTINGS, getLightingQuality: () => 'high', isLightingQualityPicked: () => false, setLightingQuality: () => undefined, getDragDistance: () => 'always', setDragDistance: () => undefined };
+  const preferences: Record<string, unknown> = { toolbar: layout, experimental: {}, laserPointer: DEFAULT_LASER_POINTER_SETTINGS, dragDistance: 'always' };
+  return { get: (name) => preferences[name], set: () => undefined, isLightingQualityPicked: () => false, setLightingQuality: () => undefined };
 }
 
 const storeState = {

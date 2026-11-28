@@ -59,7 +59,7 @@ function sized(tags: readonly DungeonTag[]): DungeonTag[] {
 }
 
 function readSettings(app: App): DungeonGeneratorSettings {
-  return SettingsService.forApp(app)?.getDungeonGenerator() ?? DEFAULT_DUNGEON_GENERATOR_SETTINGS;
+  return SettingsService.forApp(app)?.get('dungeonGenerator') ?? DEFAULT_DUNGEON_GENERATOR_SETTINGS;
 }
 
 /** The floor shown: the one picked, or the deepest there is where the dungeon has fewer. */
@@ -93,7 +93,7 @@ export function useDungeonState(app: App, initialName = ''): DungeonState {
   const persist = useCallback((changes: Partial<DungeonGeneratorSettings>): void => {
     settingsRef.current = { ...settingsRef.current, ...changes };
     setSettings(settingsRef.current);
-    SettingsService.forApp(app)?.setDungeonGenerator(changes);
+    SettingsService.forApp(app)?.set('dungeonGenerator', changes);
   }, [app]);
 
 

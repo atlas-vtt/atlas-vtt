@@ -58,7 +58,7 @@ export async function addStarterTokens(app: App, assets: AssetService, settings:
   await assets.vaultChecked();
   if (await assets.starterTokensAdded()) return;
   // Versions before the flag synced kept it in Atlas' settings.
-  const addedBefore = settings.getSetting('starterTokensAdded');
+  const addedBefore = settings.get('starterTokensAdded');
   await assets.markStarterTokensAdded();
   if (addedBefore) return;
 

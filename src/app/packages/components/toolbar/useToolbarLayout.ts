@@ -18,17 +18,17 @@ const NO_STORED_LAYOUT: StoredToolbarLayout = {}
 /** The GM's toolbar layout, resolved; the default where Atlas' settings cannot be reached (tests). */
 export function useToolbarLayout(): ToolbarLayoutAccess {
   const settings = useAtlasSettings()
-  const stored = settings?.getToolbarLayout() ?? NO_STORED_LAYOUT
+  const stored = settings?.get('toolbar') ?? NO_STORED_LAYOUT
   const layout = useMemo(() => resolveToolbarLayout(stored), [stored])
 
   // Read the stored layout at write time: two writes before a re-render must not lose the first.
   const commit = useCallback((next: ToolbarLayout | ((latest: ToolbarLayout) => ToolbarLayout)): void => {
     if (!settings) return
-    const latest = settings.getToolbarLayout()
-    settings.setToolbarLayout(storedToolbarLayout(latest, typeof next === "function" ? next(resolveToolbarLayout(latest)) : next))
+    const latest = settings.get('toolbar')
+    settings.set('toolbar', storedToolbarLayout(latest, typeof next === "function" ? next(resolveToolbarLayout(latest)) : next))
   }, [settings])
-  const reset = useCallback((): void => settings?.setToolbarLayout({}), [settings])
-  const restore = useCallback((previous: StoredToolbarLayout): void => settings?.setToolbarLayout(previous), [settings])
+  const reset = useCallback((): void => settings?.set('toolbar', {}), [settings])
+  const restore = useCallback((previous: StoredToolbarLayout): void => settings?.set('toolbar', previous), [settings])
 
   return { layout, stored, commit, reset, restore }
 }

@@ -1,5 +1,5 @@
 import type { App } from 'obsidian';
-import { loadFingerUse, loadPenSeen, saveFingerUse, savePenSeen, type FingerUse } from '../services/deviceSettings';
+import { DEVICE_PREFERENCES, readDevice, writeDevice, type FingerUse } from '../services/deviceSettings';
 
 type DeviceStorage = Pick<App, 'loadLocalStorage' | 'saveLocalStorage'>;
 
@@ -23,8 +23,8 @@ export class FingerSettings {
   private chosen: FingerUse | null;
 
   constructor(private readonly storage: DeviceStorage) {
-    this.seen = loadPenSeen(storage);
-    this.chosen = loadFingerUse(storage);
+    this.seen = readDevice(storage, DEVICE_PREFERENCES.penSeen);
+    this.chosen = readDevice(storage, DEVICE_PREFERENCES.fingerUse);
   }
 
   /** A pen has touched a map on this device: the choice is offered in the settings. */
@@ -40,11 +40,11 @@ export class FingerSettings {
   notePen(): void {
     if (this.seen) return;
     this.seen = true;
-    savePenSeen(this.storage);
+    writeDevice(this.storage, DEVICE_PREFERENCES.penSeen, true);
   }
 
   setUse(use: FingerUse): void {
     this.chosen = use;
-    saveFingerUse(this.storage, use);
+    writeDevice(this.storage, DEVICE_PREFERENCES.fingerUse, use);
   }
 }

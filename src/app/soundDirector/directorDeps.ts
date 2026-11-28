@@ -91,8 +91,8 @@ export function realDirectorDeps(app: App): SoundDirectorDeps {
   return {
     storage: app,
     settings: {
-      getSoundSettings: () => settings()?.getSoundSettings() ?? DEFAULT_SOUND_SETTINGS,
-      setSoundSettings: (changes) => settings()?.setSoundSettings(changes),
+      getSoundSettings: () => settings()?.get('sound') ?? DEFAULT_SOUND_SETTINGS,
+      setSoundSettings: (changes) => settings()?.set('sound', changes),
       // ponytail: sound is no longer switched off; the seam stays for the tests' off state and the unload.
       isOn: () => true,
       onChange: (listener) => settings()?.onChange(listener) ?? (() => undefined),

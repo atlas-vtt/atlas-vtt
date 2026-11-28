@@ -117,7 +117,7 @@ export function soundSettingsSection(settings: SettingsService, director: SoundD
         desc: t('audio.settings.followHint'),
         aliases: ['sound', 'music', 'ambience', 'mood', 'scene', 'combat'],
         render: (setting) => {
-          setting.addToggle((toggle) => toggle.setValue(settings.getSoundSettings().followScenes).onChange((followScenes) => settings.setSoundSettings({ followScenes })));
+          setting.addToggle((toggle) => toggle.setValue(settings.get('sound').followScenes).onChange((followScenes) => settings.set('sound', { followScenes })));
         },
       },
       {
@@ -127,8 +127,8 @@ export function soundSettingsSection(settings: SettingsService, director: SoundD
         render: (setting) => {
           setting.addSlider((slider) => slider
             .setLimits(0, MAX_FADE_SECONDS, 1)
-            .setValue(settings.getSoundSettings().fadeSeconds)
-            .onChange((fadeSeconds) => settings.setSoundSettings({ fadeSeconds })));
+            .setValue(settings.get('sound').fadeSeconds)
+            .onChange((fadeSeconds) => settings.set('sound', { fadeSeconds })));
         },
       },
       {
@@ -138,8 +138,8 @@ export function soundSettingsSection(settings: SettingsService, director: SoundD
         render: (setting) => {
           setting.addSlider((slider) => slider
             .setLimits(0, MAX_CROSSFADE_SECONDS, 1)
-            .setValue(settings.getSoundSettings().crossfadeSeconds)
-            .onChange((crossfadeSeconds) => settings.setSoundSettings({ crossfadeSeconds })));
+            .setValue(settings.get('sound').crossfadeSeconds)
+            .onChange((crossfadeSeconds) => settings.set('sound', { crossfadeSeconds })));
         },
       },
       levelRow(director, t('audio.music'), 'musicDb'),

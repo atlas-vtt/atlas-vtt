@@ -9,6 +9,7 @@ import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { playerWindowStore, resetPlayerWindowStore } from '../../src/app/stores/playerWindowStore';
 import { tableControlsStore } from '../../src/app/stores/tableControlsStore';
+import { switchOn } from '../mocks/experimentalFeatures';
 
 const context = vi.hoisted(() => ({
   settings: null as unknown,
@@ -120,7 +121,7 @@ describe('the player window bar', () => {
 
   it('says how online players play in what players see, with online play\'s own switches, and drops the window\'s rows while it is closed', () => {
     playerWindowStore.setState({ isOpen: false });
-    vi.spyOn(context.settings as SettingsService, 'isExperimentalOn').mockReturnValue(true);
+    switchOn(context.settings as SettingsService, 'onlinePlay');
     act(() => tableControlsStore.setState({ online: true }));
     render(<PlayerWindowBar view={null} />);
     fireEvent.click(screen.getByRole('button', { name: 'Table settings' }));
@@ -134,7 +135,7 @@ describe('the player window bar', () => {
   });
 
   it('lets the GM set the play mode before a table runs, while online play is switched on', () => {
-    vi.spyOn(context.settings as SettingsService, 'isExperimentalOn').mockReturnValue(true);
+    switchOn(context.settings as SettingsService, 'onlinePlay');
     render(<PlayerWindowBar view={null} />);
     fireEvent.click(screen.getByRole('button', { name: 'Table settings' }));
     expect(screen.getByRole('radiogroup', { name: 'Play mode' })).toBeTruthy();
@@ -227,9 +228,9 @@ describe('the player window bar', () => {
     render(<PlayerWindowBar view={null} />);
     fireEvent.click(screen.getByRole('button', { name: 'Table settings' }));
     const settings = context.settings as SettingsService;
-    const before = settings.getLocalPlayerViewSettings().showInitiative;
+    const before = settings.get('localPlayerView').showInitiative;
     fireEvent.click(screen.getByRole('switch', { name: 'Show initiative panel' }));
-    expect(settings.getLocalPlayerViewSettings().showInitiative).toBe(!before);
+    expect(settings.get('localPlayerView').showInitiative).toBe(!before);
 
     fireEvent.keyDown(document, { key: 'Escape' });
     fireEvent.click(screen.getByRole('button', { name: 'Close player window' }));
