@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { captureBeforeRender, captureWithLayerVisibility } from '../playerSafeFrame';
+import { captureBeforeRender, captureWithLayerVisibility } from '../helpers/layerCapture';
 
 describe('captureWithLayerVisibility', () => {
   it('renders opaque fog for players even when no visibility flags change, then restores the DM preview', () => {

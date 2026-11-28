@@ -38,7 +38,8 @@ import { fogRectangle } from '../../helpers/fogOperations';
 import { stubJsdomGraphics } from '../../mocks/jsdomGraphics';
 import { wirePlayerMeasurements } from '../../helpers/playerMeasureWiring';
 import { viewAudience, type ViewAudience } from '../../helpers/viewAudience';
-import { captureWithLayerVisibility, type LayerVisibility } from '../../../src/app/pixi/playerSafeFrame';
+import type { LayerVisibility } from '../../../src/app/pixi/playerSafeFrame';
+import { captureWithLayerVisibility } from '../../helpers/layerCapture';
 import type { TokenEntity } from '../../../src/app/types';
 
 const openContextMenuGlobal = vi.hoisted(() => vi.fn());

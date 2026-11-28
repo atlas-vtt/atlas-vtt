@@ -10,7 +10,7 @@ import type { RendererService } from '../../../src/app/services/RendererService'
 import { createViewAtlasStore, type ViewAtlasStore } from '../../../src/app/storeFactory';
 import { pinsPicture } from '../../../src/app/pixi/picture/viewPictureParts';
 import { scenePicture } from '../../helpers/pictures';
-import { captureWithLayerVisibility } from '../../../src/app/pixi/playerSafeFrame';
+import { captureWithLayerVisibility } from '../../helpers/layerCapture';
 import { levelObjects } from '../../../src/app/levels/levelObjects';
 import { showNotice } from '../../../src/app/ui/notice';
 import type { NotePin } from '../../../src/app/types';

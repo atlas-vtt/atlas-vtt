@@ -7,7 +7,7 @@ import { drawHexGrid } from '../../src/app/grid/hexGridDrawer';
 import { createHexLayout, hexCellExtent, isHexGridType } from '../../src/app/grid/hexGeometry';
 import { drawSquareGrid } from '../../src/app/grid/squareGridDrawer';
 import type { GridBounds, GridLineType, GridPath } from '../../src/app/grid/gridLineStyle';
-import { captureBeforeRender } from '../../src/app/pixi/playerSafeFrame';
+import { captureBeforeRender } from '../helpers/layerCapture';
 import { mapImageViewOf } from '../helpers/fakeMapImageView';
 
 const VIEW = 300;

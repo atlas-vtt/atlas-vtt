@@ -5,7 +5,7 @@ import { MEASURE_EFFECTS, type MeasureEffect } from '../../src/app/measure/measu
 import { toolLook } from '../../src/app/measure/measureLights';
 import { viewPlayback } from '../../src/app/pixi/liquids/viewLiquids';
 import { MeasureRenderer, type MeasureGrid } from '../../src/app/pixi/measure/MeasureRenderer';
-import { captureWithLayerVisibility } from '../../src/app/pixi/playerSafeFrame';
+import { captureWithLayerVisibility } from '../helpers/layerCapture';
 import { requestRender } from '../../src/app/pixi/RenderScheduler';
 import { openLitView } from '../helpers/litView';
 import { gpuMs } from './measureEffectsHarness';

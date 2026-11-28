@@ -1,7 +1,8 @@
 import { Application, Container, Graphics } from 'pixi.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RenderScheduler, hasPendingChanges, requestRender, setBeforeRender } from '../RenderScheduler';
-import { captureBeforeRender, frameCamera } from '../playerSafeFrame';
+import { frameCamera } from '../playerSafeFrame';
+import { captureBeforeRender } from '../../../../tests/helpers/layerCapture';
 import { PlayerFrameTexture } from '../PlayerFrameTexture';
 import { copiedPixel } from '../lighting/engine/__tests__/gpuTestUtils';
 import type { PlayerFrame } from '../../types/playerFrame';
