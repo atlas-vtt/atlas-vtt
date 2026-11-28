@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { TokenEntity } from '../../../../src/app/types';
 import type { SceneLevel } from '../../../../src/app/types/sceneLevelTypes';
 import type { WallSegment } from '../../../../src/app/types/wallTypes';
@@ -83,10 +84,27 @@ function cave(lit: boolean, floors = false): SceneState {
   return { ...base, objects: { ...base.objects, tokens, walls } };
 }
 
+/**
+ * A reference to one of the vault's files, by the file's path instead of its hash, size and id. The test's images are
+ * deflated by Node's zlib, whose output differs from one Node version to the next; which file a page is sent does not.
+ * A reference to anything else (what the table makes itself) stays as it is.
+ */
+function byFile(text: string): string {
+  const paths = new Map<string, string>();
+  for (const [path, bytes] of workspace.files) {
+    const hash = createHash('sha256').update(bytes).digest('hex');
+    if (!paths.has(hash)) paths.set(hash, path);
+  }
+  return text.replace(/"hash":"([0-9a-f]{64})","size":\d+,"mime":"([^"]*)"(?:,"id":"[0-9a-f]{64}")?/g, (ref, hash: string, mime: string) => {
+    const path = paths.get(hash);
+    return path === undefined ? ref : `"file":"${path}","mime":"${mime}"`;
+  });
+}
+
 /** The last message of each kind a page read, ids numbered in the order they first appear; when it came is left out. */
 function holds(pages: PlayerPages, player: string): Record<string, string> {
   const known = new Map<string, string>();
-  const numbered = (text: string): string => text.replace(/\b[0-9a-f]{24}\b/g, (id) => {
+  const numbered = (text: string): string => byFile(text).replace(/\b[0-9a-f]{24}\b/g, (id) => {
     if (!known.has(id)) known.set(id, `#${known.size}`);
     return known.get(id)!;
   });
