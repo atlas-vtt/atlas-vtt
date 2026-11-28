@@ -2,6 +2,14 @@
 
 <!-- Generated from changelog/*.md. Run npm run changelog:generate. -->
 
+## 0.21.3 — Back in the Community Store
+
+2026-11-28
+
+### Fixed
+
+- Atlas passes Obsidian's automated plugin review again and is back in the Community Store
+
 ## 0.21.2 — Sidekick polish
 
 2026-11-28
