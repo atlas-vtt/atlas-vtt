@@ -98,7 +98,7 @@ function randomStep(random: () => number, views: RigView[], made: { count: numbe
   const file = pick([CAVE, HALL]);
   const short = file === CAVE ? 'Cave' : 'Hall';
   const view = views.length > 0 ? pick(views) : null;
-  const kind = view === null ? 'reopen' : pick(['eye', 'open', 'open', 'slow', 'finish', 'level', 'level', 'eye level', 'slow images', 'images', 'reload', 'close tab', 'close', 'reopen', 'unpresent']);
+  const kind = view === null ? 'reopen' : pick(['eye', 'open', 'open', 'slow', 'finish', 'level', 'level', 'eye level', 'slow images', 'images', 'replace map', 'reload', 'close tab', 'close', 'reopen', 'unpresent']);
   if (view === null || kind === 'reopen') {
     const name = `v${++made.count}`;
     return [`${name} opens on the ${short}`, () => views.push(openView(name, [CAVE, HALL], file))];
@@ -113,6 +113,10 @@ function randomStep(random: () => number, views: RigView[], made: { count: numbe
     case 'eye level': return [`the eye on ${view.name}'s Cave, ${level} level`, () => eye(view, CAVE, level)];
     case 'slow images': return [`${view.name}'s map image starts loading slowly`, () => view.loadImagesSlowly()];
     case 'images': return [`${view.name}'s map image finishes its loads`, () => view.finishImages()];
+    case 'replace map': {
+      const image = pick(['maps/crypt.png', 'maps/hall.png', 'maps/upper.png']);
+      return [`${view.name} replaces the map of the level it shows with ${image}`, () => view.replaceMap(image)];
+    }
     case 'reload': return [`${view.name} loads its scene again`, () => void view.reload()];
     case 'close tab': return [`${view.name} closes its ${short} tab`, () => void view.closeTab(file)];
     case 'close': return [`${view.name} closes`, () => { closeView(view); views.splice(views.indexOf(view), 1); }];
@@ -298,6 +302,17 @@ describe('the presented scene, in the player window and at a running table', () 
     await table.step('the eye on the Hall', () => eye(v1, HALL));
     await table.step('the GM replaces the Hall\'s map, the new one still loading', () => { v1.loadImagesSlowly(); v1.replaceMap('maps/crypt.png'); });
     await table.step('the new map has loaded', () => v1.finishImages());
+    table.stop();
+    expect(table.rows).toMatchSnapshot();
+  });
+
+  it('keeps the window held on another level once Atlas presents nothing', async () => {
+    const v1 = openView('v1', [CAVE, HALL], CAVE);
+    const table = await sideBySide();
+    await table.step('the eye on the Cave', () => eye(v1, CAVE));
+    await table.step('the GM looks at the upper level', () => v1.store.getState().setViewedLevel('upper'));
+    await table.step('Atlas presents nothing', () => { presentedSceneOf(app).set(null); });
+    await table.step('the GM edits the map', () => v1.store.setState({}));
     table.stop();
     expect(table.rows).toMatchSnapshot();
   });
