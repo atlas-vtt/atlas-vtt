@@ -2,7 +2,7 @@ import type { SceneLighting } from '../../../types/lightingTypes';
 import { exploredShapes, type ExploredShapes } from '../../../vision/exploredShapes';
 import type { AmbientLight, LightReach, SightRegion } from '../../../vision/sight';
 import { toBase64 } from '../../../utils/base64';
-import type { PartyLighting } from '../eyesSight.ts';
+import type { PartyLighting } from '../../../perception/playersPerception';
 import type { MemoryPng, MemoryRaster } from './memoryPorts.ts';
 
 /** What the last stamp was worked out from: the same again records nothing new. */

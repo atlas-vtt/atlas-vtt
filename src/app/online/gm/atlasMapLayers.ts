@@ -1,7 +1,6 @@
 import type { SensedMark } from '../protocol/index.ts';
 import type { FogCoverage } from '../../fog/fogCoverage';
 import type { GridOptions } from '../../grid/GridSystem';
-import { playerDoorSight, playerPointSight } from '../../pixi/lighting/playerLightingLayers';
 import { PlayedRules } from '../../campaigns/playedRules';
 import { systemPresetsOf } from '../../services/mapCollectionRules';
 import type { SystemPreset } from '../../types/systemPresetTypes';
@@ -11,7 +10,7 @@ import type { Point } from '../../types/visionTypes';
 import type { WallSegment } from '../../types/wallTypes';
 import { MapController } from '../../MapController';
 import type { SceneState } from './atlasView.ts';
-import type { DrawnToken, MapCanvas, MapLighting, MapServices, MapView } from './mapView.ts';
+import type { DrawnToken, MapCanvas, MapServices, MapView } from './mapView.ts';
 import type { PictureBasis } from './eyesSight.ts';
 import { roundPlace } from './scenePicture.ts';
 
@@ -27,7 +26,10 @@ export interface MapLayerSource {
    * scene's lighting cannot be read or its sight is not yet the scene's.
    */
   doorsSeen(walls: Readonly<Record<string, WallSegment>>, fog: FogCoverage | null): ReadonlySet<string> | null;
-  /** Which of `points` the players' picture of a lit scene shows now (the doors' rule, with the committed fog); null as for the doors. */
+  /**
+   * Which of `points` the players' picture shows the map at now: a lit scene's sight by the doors' rule, an unlit
+   * scene wherever committed fog does not cover them (fog that cannot be read covers all); null as for the doors.
+   */
   pointsSeen(points: readonly Point[], fog: FogCoverage | null): boolean[] | null;
   /**
    * What the players' sight is worked out from now (its sight, its ambient light, its lights'
@@ -46,12 +48,6 @@ export interface MapLayerSource {
 /** What the map layers read of a map view: where its map's rules are looked up. */
 type RulesView = Pick<MapView, 'app'> & { readonly serviceManager: Pick<MapServices, 'getAssetService'> };
 
-/** The canvas's lighting while its scene is lit and its sight is the scene's, else null. */
-function currentLighting(canvas: MapCanvas): MapLighting | null {
-  const lighting = canvas.getLightingController();
-  return lighting !== null && lighting.renderer.isEnabled() && lighting.renderer.sightIsCurrent() ? lighting : null;
-}
-
 /** A sprite's place and diameter as the token renderer holds it. */
 function spritePlace(sprite: DrawnToken | null | undefined): SensedMark | null {
   if (sprite === undefined || sprite === null) return null;
@@ -64,36 +60,20 @@ function spritePlace(sprite: DrawnToken | null | undefined): SensedMark | null {
 const spriteOf = (sprites: Readonly<Record<string, DrawnToken | null>>, tokenId: string): DrawnToken | null | undefined => (Object.hasOwn(sprites, tokenId) ? sprites[tokenId] : undefined);
 
 /**
- * The map layers' source of an Atlas tab's canvas and view, read anew at each call: the canvas's grid, its
- * lighting (lit scenes only) and token renderer (the players' frame, the sprites), and the view's rules.
+ * The map layers' source of an Atlas tab's canvas and view, read anew at each call: the canvas's grid, what its players'
+ * frame shows (`MapCanvas.playersPerception`: doors, places and the tokens players only sense, outlined where their
+ * sprites stand), and the view's rules.
  */
 export function mapLayerSourceOf(canvas: MapCanvas, view: RulesView): MapLayerSource {
   return {
     grid: () => canvas.getGridOptions(),
-    doorsSeen: (walls, fog) => {
-      const lighting = currentLighting(canvas);
-      return lighting === null ? null : playerDoorSight(lighting.renderer, { ...walls }, fog);
-    },
-    pointsSeen: (points, fog) => {
-      const lighting = currentLighting(canvas);
-      return lighting === null ? null : playerPointSight(lighting.renderer, points, fog);
-    },
-    sightParts: () => {
-      const lighting = currentLighting(canvas)?.renderer;
-      return lighting === undefined ? null : [lighting.currentSight(), lighting.ambientLight(), lighting.lightReaches()];
-    },
+    doorsSeen: (walls, fog) => canvas.playersPerception().doors(canvas.sightSource(), walls, fog),
+    pointsSeen: (points, fog) => canvas.playersPerception().places(canvas.sightSource(), points, fog),
+    sightParts: () => canvas.playersPerception().sightParts(canvas.sightSource()),
     sensed: (tokens) => {
-      const lighting = currentLighting(canvas);
-      const players = canvas.getTokenRenderer();
-      if (lighting === null || players === null) return null;
-      const perception = players.playerFramePerception(lighting.playerSight());
-      if (perception === undefined) return [];
-      const sprites = players.getTokenSprites();
-      return Object.entries(tokens).flatMap(([id, token]) => {
-        if (token.isHidden === true || perception(id) !== 'sensed') return [];
-        const place = spritePlace(spriteOf(sprites, id));
-        return place === null ? [] : [place];
-      });
+      const sensed = canvas.playersPerception().sensed(canvas.sightSource(), tokens);
+      const sprites = canvas.getTokenRenderer()?.getTokenSprites() ?? {};
+      return sensed?.flatMap((id) => spritePlace(spriteOf(sprites, id)) ?? []) ?? null;
     },
     rules: () => rulesLookupOf(view),
     presets: () => systemPresetsOf(view.app),
@@ -101,23 +81,14 @@ export function mapLayerSourceOf(canvas: MapCanvas, view: RulesView): MapLayerSo
 }
 
 /**
- * The canvas of the GM's view as the basis a player's own picture of the level it shows is cut from
- * (`EyesSight`), read anew at each call: its lighting's sight, the players' frame of its token renderer
- * (committed fog, the roof drawn) and its sprites. Null for a canvas without a token renderer.
+ * The canvas of the GM's view as the basis a player's own picture of the level it shows is cut from (`EyesSight`):
+ * the canvas as the source of the players' picture, with its sprites as the outlines' places. Null for a canvas
+ * without a token renderer.
  */
 export function pictureBasisOf(canvas: MapCanvas): PictureBasis | null {
   const players = canvas.getTokenRenderer();
   if (players === null) return null;
-  return {
-    lighting: () => {
-      const lighting = currentLighting(canvas)?.renderer;
-      return lighting === undefined ? null : { sight: lighting.currentSight(), ambient: lighting.ambientLight(), reaches: lighting.lightReaches() };
-    },
-    frame: (lit) => players.playerFramePerception(lit),
-    roofed: () => false,
-    drawn: () => players.getTokenSprites(),
-    outline: (tokenId) => spritePlace(spriteOf(players.getTokenSprites(), tokenId)),
-  };
+  return { ...canvas.sightSource(), outline: (tokenId) => spritePlace(spriteOf(players.getTokenSprites(), tokenId)) };
 }
 
 /**

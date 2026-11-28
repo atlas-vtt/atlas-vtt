@@ -148,8 +148,9 @@ describe('what a running table shares of the scene Atlas presents', () => {
     workspace.leaves = [];
     workspace.presented = null;
     notices.length = 0;
-    workspace.files = new Map([['maps/cave.png', png(700, 700)], ['maps/upper.png', png(350, 350)], ['maps/roof.png', png(350, 350)]]);
-    for (const name of ['ana', 'ogre', 'goblin', 'ben', 'wight']) workspace.files.set(`art/${name}.webp`, png(4, 4));
+    // Each file has bytes of its own, so a reference names the file it is of and no other with the same bytes.
+    workspace.files = new Map([['maps/cave.png', png(700, 700)], ['maps/upper.png', png(350, 350)], ['maps/roof.png', png(351, 351)]]);
+    ['ana', 'ogre', 'goblin', 'ben', 'wight'].forEach((name, index) => workspace.files.set(`art/${name}.webp`, png(4 + index, 4 + index)));
   });
   afterEach(() => {
     vi.useRealTimers();

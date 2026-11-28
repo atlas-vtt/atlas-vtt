@@ -6,7 +6,7 @@ import { PixiRendererOrchestrator } from '../../src/app/PixiRendererOrchestrator
 import type { GridOptions } from '../../src/app/grid/GridSystem';
 import { MosaicCanvas } from '../../src/app/pixi/mosaicCanvas/MosaicCanvas';
 import type { MosaicCanvasOpener } from '../../src/app/pixi/mosaicCanvas/mosaicCanvasTypes';
-import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
+import { createViewAtlasStore, type ViewAtlasState, type ViewAtlasStore } from '../../src/app/storeFactory';
 import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { stubJsdomGraphics } from '../mocks/jsdomGraphics';
@@ -36,6 +36,8 @@ export interface BareMapViewOptions {
   whole?: { gestures?: unknown };
   /** What the vault holds (`createInMemoryApp`). */
   vault?: Parameters<typeof createInMemoryApp>[0];
+  /** What the view's store holds besides its scene as the view opens: a player view (`isPlayerView`) builds no lighting. */
+  state?: Partial<ViewAtlasState>;
 }
 
 /**
@@ -69,7 +71,7 @@ export async function bareMapView(options: BareMapViewOptions = {}): Promise<Bar
   const obsidian = createInMemoryApp(options.vault).app;
   const store = createViewAtlasStore(obsidian, `bare-map-view-${Math.random()}`);
   store.getState().setPersistenceEnabled(false);
-  store.setState({ mapPath: 'maps/bare.atlasmap', mapLoaded: true, isMapLoading: false, isGMView: true });
+  store.setState({ mapPath: 'maps/bare.atlasmap', mapLoaded: true, isMapLoading: false, isGMView: true, ...options.state });
   const bus = new EventEmitter();
   const renderer = new PixiRendererOrchestrator(obsidian, manager as never, bus, store, 'bare-map-view');
   if (options.whole) await renderer.init(document.createElement('div'));

@@ -8,6 +8,7 @@ import type { WallSegment } from '../../types/wallTypes';
 import { wallList } from '../../vision/wallList';
 import { snapGridOf } from './scenePicture.ts';
 import { stairSides, withStairSides, type StairsOfTokens } from './stairSides.ts';
+import { hiddenFromPlayers } from '../../perception/framePerception';
 
 /** The map's size in world pixels, from (0, 0): its image's own size, or the box Atlas draws it into turned, stretched and placed (`floorWorldSize`). */
 export interface MapSize {
@@ -62,7 +63,7 @@ export function checkMove(from: string, move: Omit<PlayerMove, 't'>, context: Mo
   if (context.scene === null || move.scene !== context.scene) return { ok: false, reason: 'scene' };
   const tokenId = context.listedToken(move.id);
   const token = tokenId === undefined ? undefined : context.tokens[tokenId];
-  if (tokenId === undefined || token === undefined || token.isHidden === true) return { ok: false, reason: 'token' };
+  if (tokenId === undefined || token === undefined || hiddenFromPlayers(token)) return { ok: false, reason: 'token' };
   if (context.ownerOf(tokenId) !== from) return { ok: false, reason: 'owner' };
   if (context.paused?.() === true) return { ok: false, reason: 'paused' };
   if (context.outOfTurn?.(tokenId) === true) return { ok: false, reason: 'turn' };

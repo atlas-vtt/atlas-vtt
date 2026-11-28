@@ -7,7 +7,7 @@ import type { TokenPerception } from '../vision/tokenPerception';
 import type { CanvasAudience } from './audience/CanvasAudience';
 import type { MeasurePlayersView } from './measurePartsVisibility';
 import type { TokenRenderer } from './TokenRenderer';
-import { NOTHING_SEEN } from './token-renderer/PlayerSightTokens';
+import { NOTHING_SEEN } from '../perception/framePerception';
 import { mapTokens } from '../tokens/offMap';
 
 /** What a measurement asks of the tokens. */

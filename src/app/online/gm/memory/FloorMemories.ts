@@ -4,7 +4,7 @@ import type { ExploredShapes } from '../../../vision/exploredShapes';
 import type { Sight } from '../../../vision/sight';
 import type { MapBounds } from '../../../vision/visibility';
 import { Pacer, type PacerClock } from '../../marks/index.ts';
-import type { PartyLighting } from '../eyesSight.ts';
+import type { PartyLighting } from '../../../perception/playersPerception';
 import { EXPLORED_INTERVAL_MS, type SavedMemory } from '../ExploredShare.ts';
 import type { Removal } from '../exploredRemovals.ts';
 import type { MemoryFloor, MemoryGrid, MemoryPng, MemoryPorts } from './memoryPorts.ts';

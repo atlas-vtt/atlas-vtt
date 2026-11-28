@@ -4,6 +4,7 @@ import { mapTokens } from '../../tokens/offMap';
 import type { TokenEntity } from '../../types';
 import type { SharedFloor } from '../protocol/index.ts';
 import type { SceneState } from './atlasView.ts';
+import { hiddenFromPlayers } from '../../perception/framePerception';
 
 /** A floor of the shared scene, by its level id; null is the first floor, and a scene without levels' only one. */
 export type Floor = string | null;
@@ -28,7 +29,7 @@ function floorsByOwner(inputs: FloorInputs): Map<string, Map<string, Floor>> {
   const owned = new Map<string, Map<string, Floor>>();
   for (const [id, token] of Object.entries(mapTokens(everyLevelObjects(state)))) {
     // A hidden token is not shown to its player: it takes them nowhere.
-    if (token.isHidden === true) continue;
+    if (hiddenFromPlayers(token)) continue;
     const owner = inputs.ownerOf(id, token);
     if (owner === undefined) continue;
     let places = owned.get(owner);

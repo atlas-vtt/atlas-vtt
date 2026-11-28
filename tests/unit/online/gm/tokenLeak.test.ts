@@ -3,6 +3,7 @@ import type { TokenEntity } from '../../../../src/app/types';
 import type { Perception } from '../../../../src/app/vision/perception';
 import { describe, expect, it } from 'vitest';
 import { sha256Hex } from '../../../../src/app/online/gm/assetServe.ts';
+import { seenByPlayers } from '../../../../src/app/perception/framePerception';
 import { TOKEN_INTERVAL_MS } from '../../../../src/app/online/gm/TokenShare.ts';
 import { sceneState, shareHarness, token, tokenLists, type Sent } from './shareHarness.ts';
 
@@ -81,7 +82,9 @@ describe('what players are sent of the tokens', () => {
         table.perception = (id) => (visible.get(id) === true ? 'seen' : PERCEPTIONS[1 + Math.floor(random() * 2)] ?? 'unseen');
         await table.set(next);
         await table.advance(random() < 0.5 ? TOKEN_INTERVAL_MS : 1000);
-        const expected = generated.filter((entry) => visible.get(entry.id) === true && next.objects.tokens[entry.id]?.isHidden !== true).map((entry) => entry.name);
+        // Whom players see is the players' perception's to say (tests/unit/perception/): the share sends exactly those.
+        const seen = seenByPlayers(next.objects.tokens, table.perception);
+        const expected = generated.filter((entry) => seen(entry.id)).map((entry) => entry.name);
         expect(tokenLists(table.sent).at(-1)?.tokens.map((entry) => entry.name).sort(), `trial ${trial} step ${step}: the players' tokens`).toEqual(expected.sort());
       }
 

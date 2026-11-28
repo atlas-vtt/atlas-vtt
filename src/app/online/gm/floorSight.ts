@@ -1,9 +1,10 @@
 import type { SensedMark } from '../protocol/index.ts';
-import { fogSparesToken } from '../../characters/partyTokens';
 import { FogCoverageCache } from '../../fog/FogCoverageCache';
 import { levelObjects } from '../../levels/levelObjects';
 import { levelForeground } from '../../levels/levelEdits';
 import { levelMapKey, viewedLevelId } from '../../levels/sceneLevels';
+import { FogMembership, framePerception } from '../../perception/framePerception';
+import { CANNOT_TELL, UNLIT, type FloorLight } from '../../perception/playersPerception';
 import { mapTokens } from '../../tokens/offMap';
 import type { TokenEntity } from '../../types';
 import { SceneModelBuilder } from '../../vision/sceneModel';
@@ -11,7 +12,7 @@ import type { TokenPerception } from '../../vision/tokenPerception';
 import type { SightPolicy } from '../../vision/tokenSightPolicy';
 import { isLit, type LightingSource } from './atlasLighting.ts';
 import type { SceneState } from './atlasView.ts';
-import type { PartyLighting, PictureBasis } from './eyesSight.ts';
+import type { PictureBasis } from './eyesSight.ts';
 import type { MapSize } from './moveCheck.ts';
 import { roundPlace } from './scenePicture.ts';
 
@@ -32,41 +33,34 @@ export interface FloorSightPorts {
 
 /**
  * The players' picture of a floor the GM's view does not show, worked out on the CPU as Atlas's own
- * lighting works it out (`SceneModelBuilder`; `EyesSight` reads it as `tokenPerception`) with the floor's
- * committed fog. A floor with a roof is read failing closed, since the roof's pieces are known only where
- * the GM's view draws it: players see the tokens their eyes always see there and nothing else of what a
- * roof could hide.
+ * lighting works it out (`SceneModelBuilder`, without the light walls reflect) with the floor's committed
+ * fog: the CPU source of the players' perception (`PlayersPerception`). A floor with a roof is read failing
+ * closed, since the roof's pieces are known only where the GM's view draws it.
  */
 export class FloorSight implements PictureBasis {
   private readonly builder = new SceneModelBuilder({ reflectedLight: false });
   private readonly fog = new FogCoverageCache();
+  private readonly membership = new FogMembership();
 
   constructor(private readonly ports: FloorSightPorts) {}
 
-  /** The floor's lighting worked out now, or null while the scene is unlit or its rules cannot be read. */
-  lighting(): PartyLighting | null {
+  /** The floor's lighting worked out now; it cannot tell while the floor's rules cannot be read. */
+  light(): FloorLight {
     const state = this.ports.state();
     const source = this.ports.lightingSource();
-    if (!isLit(state) || source === null) return null;
+    if (!isLit(state)) return UNLIT;
+    if (source === null) return CANNOT_TELL;
     const { model } = this.builder.update(state, this.ports.map() ?? UNKNOWN_MAP, () => source.measurement(), () => source.rules());
-    return { sight: model.sight, ambient: model.ambient, reaches: model.reaches };
+    return { lit: true, lighting: { sight: model.sight, ambient: model.ambient, reaches: model.reaches } };
   }
 
-  /** `lit` under the floor's committed fog, which never takes a token of the party's, failing closed under a roof. */
+  /** `lit` under the floor's committed fog and, where the floor has one, a roof it cannot read. */
   frame(lit: TokenPerception | undefined, policy: SightPolicy): TokenPerception | undefined {
     const state = this.ports.state();
     const objects = levelObjects(state);
     const tokens = mapTokens(objects);
-    const coverage = this.fog.get(objects.fog, levelMapKey(state.mapPath, state));
-    const fogged = coverage === null || coverage.shape.length > 0;
-    const roofed = this.roofed();
-    if (!fogged && !roofed) return lit;
-    return (id) => {
-      const token = tokens[id];
-      if (token === undefined || (fogged && !fogSparesToken(token) && (coverage === null || coverage.covers(token)))) return 'unseen';
-      if (roofed && !policy.alwaysSeen(token)) return 'unseen';
-      return lit?.(id) ?? 'seen';
-    };
+    const fog = this.fog.get(objects.fog, levelMapKey(state.mapPath, state));
+    return framePerception(lit, { tokens, place: (id) => tokens[id], fog, roof: this.roofed() ? 'unread' : null, policy }, this.membership);
   }
 
   /** Whether the floor has a roof, which only the GM's view of it can tell players' tokens from. */

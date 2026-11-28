@@ -15,7 +15,9 @@ import { sha256Hex } from '../../../../src/app/online/gm/assetServe.ts';
 import { assetIdOf } from '../../../../src/app/online/gm/assets/assetIds.ts';
 import { SALT } from './fakeAssetStore.ts';
 import { MAP_LAYER_INTERVAL_MS } from '../../../../src/app/online/gm/MapLayerShare.ts';
-import { roundPlace } from '../../../../src/app/online/gm/scenePicture.ts';
+import { sharedDoors } from '../../../../src/app/online/gm/mapLayerInputs.ts';
+import { levelObjects } from '../../../../src/app/levels/levelObjects';
+import { mapTokens } from '../../../../src/app/tokens/offMap';
 import { GENERIC_SOURCE, gmPerception } from './gmLighting.ts';
 import { sceneState, shareHarness, token, type Sent } from './shareHarness.ts';
 
@@ -157,15 +159,14 @@ describe("what players are sent of the map's layers", () => {
         [stroke(strokes.hidden, { type: 'pen', hidden: true })],
       ];
       table.share.start();
-      const hiddenPlaces = new Set<number>();
       let sentBeforeHiding = 0;
       for (let step = 0; step < STEPS; step += 1) {
         if (step === STEPS / 2) sentBeforeHiding = table.sent.length;
         drawings = drawingsAt(step);
         texts = textsAt(step);
         current = scene();
-        for (const entry of tokens) if (entry.hidden) hiddenPlaces.add(roundPlace(current.objects.tokens[entry.id]?.x ?? 0));
         table.perception = gmPerception(current, GENERIC_SOURCE, MAP);
+        const stepStart = table.sent.length;
         await table.set(current);
         await table.advance(MAP_LAYER_INTERVAL_MS);
         underWay.begin();
@@ -174,13 +175,22 @@ describe("what players are sent of the map's layers", () => {
         if (step % 2 === 0) underWay.made();
         else underWay.drop();
         await table.advance(MARKS_INTERVAL_MS);
+        // Every door and outline players are sent is what the players' perception answers at that step (tests/unit/perception/), nothing else.
+        const objects = levelObjects(current);
+        const seenDoors = table.layers!.doorsSeen(objects.walls, fogCoverage(objects.fog));
+        const doors = seenDoors === null ? null : sharedDoors(objects.walls, seenDoors);
+        const sensed = table.layers!.sensed(mapTokens(objects));
+        const label = `trial ${trial} step ${step}`;
+        for (const message of ofKind(table.sent.slice(stepStart), 'doors')) expect(message.doors, `${label}: the doors players see`).toEqual(doors);
+        for (const message of ofKind(table.sent.slice(stepStart), 'sensed')) expect(message.tokens, `${label}: the tokens players sense`).toEqual(sensed);
+        expect(ofKind(table.sent, 'doors').at(-1)?.doors ?? null, `${label}: the doors players last got`).toEqual(doors);
+        expect(ofKind(table.sent, 'sensed').at(-1)?.tokens ?? null, `${label}: the tokens players last got`).toEqual(sensed);
       }
 
       const sent = traffic(table.sent);
       const label = `trial ${trial}`;
       expect(table.sent.every(({ body }) => parseGmMessage(JSON.parse(JSON.stringify(body))) !== null), `${label}: malformed message`).toBe(true);
       for (const kind of ['grid', 'annotations', 'initiative'] as const) expect(ofKind(table.sent, kind).length, `${label}: ${kind}`).toBeGreaterThan(0);
-      expect(ofKind(table.sent, 'doors').length > 0, `${label}: door badges only in a lit scene`).toBe(lit);
       expect(sent, `${label}: a lock`).not.toContain('locked');
       expect(sent, `${label}: a secret door`).not.toContain('secret');
       const ordinary = new Set(Object.values(sceneWalls).filter((wall) => wall.type === 'door').map((wall) => JSON.stringify([wall.p1.x, wall.p1.y, wall.p2.x, wall.p2.y])));
@@ -254,10 +264,6 @@ describe("what players are sent of the map's layers", () => {
           expect(sent.includes(entry.mark), `${label}: a listed name only with nameplates`).toBe(showNames);
           expect(sent, `${label}: a listed portrait named`).toContain(artIds.get(entry.id));
         }
-      }
-      for (const message of ofKind(table.sent, 'sensed')) {
-        expect(lit, `${label}: outlines only in a lit scene`).toBe(true);
-        for (const mark of message.tokens) expect(hiddenPlaces.has(mark.x), `${label}: a hidden token's outline`).toBe(false);
       }
     }
   });

@@ -18,6 +18,7 @@ import { rollFaceOf } from './log/logEntries.ts';
 import { MoveRate } from './moveCheck.ts';
 import { playerSide } from './rollAdvantage.ts';
 import type { RollNotes } from './RollShare.ts';
+import { hiddenFromPlayers } from '../../perception/framePerception';
 
 /**
  * Who is shown a private roll whole besides its roller: the GM (`gm`, and `blind`, where the roller
@@ -98,7 +99,7 @@ export function checkRoll(from: string, message: PlayerRoll, context: RollContex
   if (!playerFormula(message.formula)) return { ok: false, reason: 'formula' };
   const tokenId = message.token === null ? undefined : context.listedToken(message.token);
   const token = tokenId === undefined ? undefined : context.tokens[tokenId];
-  const named = tokenId !== undefined && token !== undefined && token.isHidden !== true && context.ownerOf(tokenId) === from;
+  const named = tokenId !== undefined && token !== undefined && !hiddenFromPlayers(token) && context.ownerOf(tokenId) === from;
   return { ok: true, tokenId: named ? tokenId : null };
 }
 
