@@ -18,10 +18,11 @@ export function loadedFront(scenes: FrontScenes, viewId: string | undefined): Fr
   return scene && state && scene.viewId === viewId && state.mapPath !== null && state.mapLoaded && !state.isMapLoading ? scene : null;
 }
 
-/** A drawing as its devices were sent it: its number, and the roll links it numbered with the formula each showed then. */
+/** A drawing as its devices were sent it: its number, the roll links it numbered with the formula each showed then, and the token controls it numbered. */
 export interface SentDrawing {
   readonly drawing: number;
   readonly rolls: readonly { readonly link: Element; readonly formula: string }[];
+  readonly presses: readonly Element[];
   /** The map whose dice those links roll on now (`Drawing.rollsOn`). */
   rollsOn(): string | undefined;
 }

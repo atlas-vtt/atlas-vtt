@@ -18,6 +18,11 @@ export interface MapPointerHost {
 /** Opens a menu when the press `down` is released in place. */
 export type OpenOnRelease = (down: FederatedPointerEvent, open: (up: FederatedPointerEvent) => void) => void;
 
+/** The cursor a move over the map shows of its own: a pin's, a token's, a handle's, a tool's crosshair; null for none. */
+export interface MoveCursor {
+  readonly own: string | null;
+}
+
 type Question = 'tap' | 'pressActs';
 
 /**
@@ -50,8 +55,12 @@ export class MapPointer {
     else walk();
   }
 
-  /** A move over the canvas; returns the cursor it shows, or null where the move shows nothing (tokens held or dragged). */
-  move(at: PointerAt): string | null {
+  /**
+   * A move over the canvas. Returns the cursor of the map's own it shows (`own` null where nothing on
+   * the map has one, and the canvas keeps the cursor a tool or panel set), or null where the move
+   * says nothing of the cursor (tokens held or dragged).
+   */
+  move(at: PointerAt): MoveCursor | null {
     if (this.layers.tokens?.dragging()) return null;
     if (this.host.placing()) {
       this.leaveAll();
@@ -66,7 +75,7 @@ export class MapPointer {
       cursor ??= claim.cursor;
       if (claim.covers) above ??= row.layer;
     }
-    return cursor ?? 'default';
+    return { own: cursor };
   }
 
   /** The press was released, inside the canvas or outside it. */

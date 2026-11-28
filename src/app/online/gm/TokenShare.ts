@@ -62,6 +62,8 @@ export class TokenShare {
   /** The GM ids of the tokens in the last list, by the ids players know them by, and the other way round. */
   private listedIds = new Map<string, string>();
   private listedAliases: ReadonlyMap<string, string> = new Map();
+  /** The ids players know the combatants beside the map by, by GM id, as the last list read them. */
+  private besideAliases: ReadonlyMap<string, string> = new Map();
   private readonly aliases: Map<string, string>;
   private readonly art: ArtRefs;
   /** The GM's look-alike numbers of the tokens players see, as the last list read them. */
@@ -109,6 +111,12 @@ export class TokenShare {
     return this.listedAliases.get(tokenId);
   }
 
+  /** The id players know a combatant beside the map by, where their initiative list shows it (it is not hidden). */
+  besideAlias(tokenId: string): string | undefined {
+    const token = sceneTokens(levelObjects(this.store.getState()))[tokenId];
+    return isOffMap(token) && token?.isHidden !== true ? this.alias(tokenId) : undefined;
+  }
+
   /** The scene of the last list players were sent, or null while none is. */
   get listedScene(): string | null {
     return this.listedIn;
@@ -151,6 +159,7 @@ export class TokenShare {
     this.listedIn = null;
     this.listedIds = new Map();
     this.listedAliases = new Map();
+    this.besideAliases = new Map();
     this.listedPlaces = new Map();
     this.kept = new Set();
     this.numbers = new Map();
@@ -162,20 +171,24 @@ export class TokenShare {
   private build(scene: FeedScene, out: FeedOut): void {
     const built = this.read();
     if (built === null) return;
-    const { tokens, cell, snap, aliases } = built;
-    if (!out.sequenced('tokens', { tokens, cell, snap })) return;
-    this.listedIn = scene.id;
-    this.listedIds = new Map([...aliases].map(([id, alias]) => [alias, id]));
-    this.listedAliases = aliases;
-    this.listedPlaces = new Map(tokens.map((token) => [token.id, { x: token.x, y: token.y }]));
-    this.listed({ scene: scene.id, aliases });
+    const { tokens, cell, snap, aliases, beside } = built;
+    // A combatant put beside the map, or hidden or shown there, changes which tokens are a player's while the list stays as it was
+    const besideChanged = beside.size !== this.besideAliases.size || [...beside].some(([id, alias]) => this.besideAliases.get(id) !== alias);
+    this.besideAliases = beside;
+    if (out.sequenced('tokens', { tokens, cell, snap })) {
+      this.listedIn = scene.id;
+      this.listedIds = new Map([...aliases].map(([id, alias]) => [alias, id]));
+      this.listedAliases = aliases;
+      this.listedPlaces = new Map(tokens.map((token) => [token.id, { x: token.x, y: token.y }]));
+    } else if (!besideChanged || this.listedIn !== scene.id) return;
+    this.listed({ scene: scene.id, aliases: this.listedAliases, beside });
   }
 
   /**
    * The list now with the players' ids of its tokens by GM id, or null while the scene loads or the
    * tab has no renderer.
    */
-  private read(): { readonly tokens: SharedToken[]; readonly cell: number; readonly snap: SnapGrid | null; readonly aliases: Map<string, string> } | null {
+  private read(): { readonly tokens: SharedToken[]; readonly cell: number; readonly snap: SnapGrid | null; readonly aliases: Map<string, string>; readonly beside: Map<string, string> } | null {
     const state = this.store.getState();
     const source = this.ports.tokenSource();
     if (!state.mapLoaded || state.isMapLoading || state.mapPath === null || source === null) return null;
@@ -228,7 +241,11 @@ export class TokenShare {
       const id = gmIds.get(token.id);
       return id === undefined ? [] : [[id, token.id]];
     }));
-    return { tokens: this.heldWhereListed(tokens, state.heldTokens), cell: gridSize, snap: snapGridOf(state.grid), aliases };
+    const beside = new Map(Object.keys(scene).flatMap((id): [string, string][] => {
+      const alias = this.besideAlias(id);
+      return alias === undefined ? [] : [[id, alias]];
+    }));
+    return { tokens: this.heldWhereListed(tokens, state.heldTokens), cell: gridSize, snap: snapGridOf(state.grid), aliases, beside };
   }
 
   /**

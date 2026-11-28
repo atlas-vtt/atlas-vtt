@@ -43,7 +43,7 @@ export const MAX_SHOWN_FOREIGN_KEY = 1000;
  */
 export const KEY_COMMANDS = [
   'stopAll', 'pause', 'nextMood', 'nextTrack', 'previousTrack', 'shuffle', 'repeat', 'muteMusic',
-  'combat', 'rollInitiative', 'present', 'freeze', 'curtain', 'handout', 'shareRolls',
+  'combat', 'rollInitiative', 'present', 'freeze', 'curtain', 'handout', 'shareRolls', 'playerWindow',
 ] as const;
 export type KeyCommand = (typeof KEY_COMMANDS)[number];
 

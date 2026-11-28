@@ -5,9 +5,11 @@ import { entrySide, entryToken } from '../../../initiative/party';
 import { listedSides } from '../../../initiative/sides';
 import { trackerSegments } from '../../../initiative/trackerSegments';
 import { turnColor } from '../../../initiative/turnColor';
+import { woundShare } from '../../../initiative/woundShare';
 import { currentTurn, holdsTurn, turnEntries } from '../../../initiative/turnHolders';
 import { tokenDisplayName } from '../../../pixi/token-renderer/tokenDisplayName';
 import type { ResourceDefinition } from '../../../resources/resourceTypes';
+import { visibleResources } from '../../../resources/visibleResources';
 import { isOffMap } from '../../../tokens/offMap';
 import type { InitiativeRules } from '../../../types/initiativeRulesTypes';
 import type { InitiativeEntry } from '../../../types/initiativeTypes';
@@ -74,8 +76,15 @@ export function fightOf(state: FrontSceneState, inputs: FightInputs): Statblocks
     return inputs.keyOf(before === 0 ? id : `${id}\u0000${before}`);
   };
 
+  /** How much of its life the token has lost, as its tracker card's red shows it (`woundShare`), to a thousandth; null where nothing tells. */
+  const woundOf = (token: ReturnType<typeof entryToken>): number | null => {
+    const share = token ? woundShare(visibleResources(token, inputs.definitions, 'dm').filter(({ definition }) => definition.defeatedWhenSpent)) : null;
+    return share === null ? null : Math.round(share * 1000) / 1000;
+  };
+
   const combatant = (entry: InitiativeEntry): FightCombatant => {
     const token = entryToken(tokens, entry);
+    const wound = woundOf(token);
     const badge = entry.tokenId === undefined ? undefined : badges.get(entry.tokenId);
     const path = token?.kind === 'character' ? token.statblockPath : undefined;
     const flags: Partial<Record<'turn' | 'ally' | 'hidden' | 'defeated' | 'sitsOut' | 'delayed' | 'offMap', boolean>> = {
@@ -95,6 +104,7 @@ export function fightOf(state: FrontSceneState, inputs: FightInputs): Statblocks
       ring: token?.showRing === false ? null : ringColour(token?.ringColor),
       turnColour: hexColour(turnColor(token) ?? undefined),
       ...(badge !== undefined && { badge }),
+      ...(wound !== null && { wound }),
       ...Object.fromEntries(Object.entries(flags).flatMap(([flag, on]) => (on ? [[flag, true]] : []))),
     };
   };
