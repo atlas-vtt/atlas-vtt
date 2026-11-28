@@ -58,8 +58,10 @@ function sized(tags: readonly DungeonTag[]): DungeonTag[] {
   return tags.some((tag) => SIZE_TAGS.includes(tag)) ? [...tags] : withTag(tags, 'medium');
 }
 
+/** The stored preferences as this panel's own state: a copy, since the settings hand every reader the same value. */
 function readSettings(app: App): DungeonGeneratorSettings {
-  return SettingsService.forApp(app)?.get('dungeonGenerator') ?? DEFAULT_DUNGEON_GENERATOR_SETTINGS;
+  const stored = SettingsService.forApp(app)?.get('dungeonGenerator') ?? DEFAULT_DUNGEON_GENERATOR_SETTINGS;
+  return { ...stored, view: { ...stored.view }, tags: [...stored.tags] };
 }
 
 /** The floor shown: the one picked, or the deepest there is where the dungeon has fewer. */

@@ -23,7 +23,19 @@ export const PREFERENCES = {
 } satisfies Record<string, AnyPreferenceRow>;
 
 export type PreferenceName = keyof typeof PREFERENCES;
-/** What a preference reads as. */
-export type Preference<N extends PreferenceName> = PreferenceValueOf<(typeof PREFERENCES)[N]>;
+/** `T` with every field and list read-only, at any depth. */
+export type DeepReadonly<T> = T extends (...args: never[]) => unknown
+  ? T
+  : T extends ReadonlyArray<infer Item>
+    ? ReadonlyArray<DeepReadonly<Item>>
+    : T extends object
+      ? { readonly [K in keyof T]: DeepReadonly<T[K]> }
+      : T;
+
+/**
+ * What a preference reads as. Read-only: every reader is handed the same value until the
+ * preference changes, so a write into it would change what all of them see.
+ */
+export type Preference<N extends PreferenceName> = DeepReadonly<PreferenceValueOf<(typeof PREFERENCES)[N]>>;
 /** What a preference takes as a change: the whole value, or the fields to change of one kept as a record. */
-export type PreferenceChange<N extends PreferenceName> = PreferenceChangeOf<(typeof PREFERENCES)[N]>;
+export type PreferenceChange<N extends PreferenceName> = DeepReadonly<PreferenceChangeOf<(typeof PREFERENCES)[N]>>;
