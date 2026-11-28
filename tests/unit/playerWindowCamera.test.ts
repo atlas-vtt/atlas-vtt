@@ -70,6 +70,19 @@ describe('a glide meeting another move', () => {
     expect(other.rendered.at(-1)).toMatchObject({ centerX: 500, centerY: 600 });
   });
 
+  it('presenting the scene players see with a camera glides on from where they are', () => {
+    const rig = halfwayToB();
+    const halfway = rig.service.glassOf('scene-a')!.centerX;
+    rig.service.presentCanvas(rig.view, 'scene-a', 'scene-a.atlasmap', FRAME_C);
+    expect(rig.session.frames?.['scene-a.atlasmap']).toEqual(FRAME_C);
+    rig.frame(800);
+    const between = rig.service.glassOf('scene-a')!.centerX;
+    expect(between).toBeLessThan(halfway);
+    expect(between).toBeGreaterThan(-300);
+    rig.frame(1200);
+    expect(rig.session).toMatchObject({ frozen: true, camera: FRAME_C });
+  });
+
   it('a frame held meanwhile lets it land, and players come back to where it landed', () => {
     const rig = halfwayToB();
     rig.service.holdCurrentFrame();
@@ -136,6 +149,16 @@ describe('a freeze when the presented scene changes', () => {
 });
 
 describe('a held frame', () => {
+  it('lets frozen players go without a dip', () => {
+    const rig = openPlayerWindowRig();
+    rig.frame(0);
+    rig.service.freezeCamera({ centerX: 500, centerY: 300, scale: 2 });
+    rig.service.holdCurrentFrame();
+    rig.service.unfreezeCamera();
+    expect(rig.service.isFrozen()).toBe(false);
+    expect(rig.sheetDown()).toBe(false);
+    expect(rig.pausedLabel()).toBe(true);
+  });
 
   it('sends players to no frame, by a drop, a drag or a saved frame, and shows no glass', () => {
     const rig = openPlayerWindowRig();
