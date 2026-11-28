@@ -5,7 +5,7 @@
  */
 
 import type { ViewState } from '../types/viewState';
-import { openIn } from './viewSurfaces';
+import { closeIn, openIn } from './viewSurfaces';
 
 /** What the GM comes back to when Table mode ends. */
 export interface TableModeReturn {
@@ -41,7 +41,7 @@ export function createTableModeActions(set: ImmerSet): Omit<TableModeSlice, 'tab
     leaveTableMode: () => set((draft) => {
       const back = draft.tableMode;
       if (!back) return;
-      draft.tableMode = null;
+      closeIn(draft, 'tableMode');
       draft.activeTool = back.activeTool;
       draft.isGMView = back.isGMView;
     }),

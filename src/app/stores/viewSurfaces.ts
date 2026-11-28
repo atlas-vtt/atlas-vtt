@@ -219,16 +219,16 @@ export type BarState = Pick<ViewAtlasState, 'isToolbarEditing' | 'isMapLoading' 
 
 /** The bars above the toolbar and over a selection, each by what brings it up; none while the toolbar is arranged or a map loads. */
 const BARS = {
-  fog: (state: BarState) => isFogTool(shownTool(state)) && !state.isPlayerView,
-  lighting: (state: BarState) => shownTool(state) === 'wall' && !state.isPlayerView,
-  draw: (state: BarState) => shownTool(state) === 'draw' && !state.isPlayerView,
+  fog: (state: BarState): boolean => isFogTool(shownTool(state)) && !state.isPlayerView,
+  lighting: (state: BarState): boolean => shownTool(state) === 'wall' && !state.isPlayerView,
+  draw: (state: BarState): boolean => shownTool(state) === 'draw' && !state.isPlayerView,
   // The player window measures too.
-  measure: (state: BarState) => state.activeTool === 'measure' && state.heldRulerFrom === undefined,
-  floorPosition: (state: BarState) => state.isFloorPositioning === true && !state.isPlayerView,
+  measure: (state: BarState): boolean => state.activeTool === 'measure' && state.heldRulerFrom === undefined,
+  floorPosition: (state: BarState): boolean => state.isFloorPositioning === true && !state.isPlayerView,
   /** The bar under a selected drawing or text; the canvas says whether one is shown. */
-  drawingSelection: (state: BarState) => state.isGMView && !state.isPlayerView,
+  drawingSelection: (state: BarState): boolean => state.isGMView && !state.isPlayerView,
   /** The actions on what is selected. */
-  selectionActions: (state: BarState) => state.selectedIds.length > 0 && toolSelects(state.activeTool) && state.isGMView && !state.isPlayerView,
+  selectionActions: (state: BarState): boolean => state.selectedIds.length > 0 && toolSelects(state.activeTool) && state.isGMView && !state.isPlayerView,
 } satisfies Record<string, (state: BarState) => boolean>;
 
 export type Bar = keyof typeof BARS;
