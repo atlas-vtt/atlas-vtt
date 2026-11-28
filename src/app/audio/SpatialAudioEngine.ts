@@ -30,6 +30,7 @@ export class SpatialAudioEngine {
   private store: StoreApi<ViewAtlasState>;
   private unsubscribers: Array<() => void> = [];
   private lastUpdateTime: number = 0;
+  private pendingUpdate: number | null = null;
   private isDisposed: boolean = false;
   private wallDampenFactor: number = DEFAULT_WALL_DAMPEN;
 
@@ -59,13 +60,8 @@ export class SpatialAudioEngine {
   }
 
   private setupStoreSubscriptions(): void {
-    let prevAudioDirty = false;
     const unsub1 = this.store.subscribe((state) => {
-      const dirty = state._audioDirty;
-      if (dirty && !prevAudioDirty) {
-        this.scheduleUpdate();
-      }
-      prevAudioDirty = dirty;
+      if (state._audioDirty) this.scheduleUpdate();
     });
     this.unsubscribers.push(unsub1);
 
@@ -91,9 +87,16 @@ export class SpatialAudioEngine {
   }
 
   private scheduleUpdate(): void {
-    const now = performance.now();
-    if (now - this.lastUpdateTime < UPDATE_THROTTLE_MS) return;
-    this.lastUpdateTime = now;
+    if (this.pendingUpdate !== null) return;
+    const wait = this.lastUpdateTime + UPDATE_THROTTLE_MS - performance.now();
+    if (wait > 0) {
+      this.pendingUpdate = window.setTimeout(() => {
+        this.pendingUpdate = null;
+        this.scheduleUpdate();
+      }, wait);
+      return;
+    }
+    this.lastUpdateTime = performance.now();
     this.update();
   }
 
@@ -303,6 +306,8 @@ export class SpatialAudioEngine {
 
   dispose(): void {
     this.isDisposed = true;
+    if (this.pendingUpdate !== null) window.clearTimeout(this.pendingUpdate);
+    this.pendingUpdate = null;
     this.stopAllSources();
 
     for (const unsub of this.unsubscribers) {

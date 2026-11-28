@@ -2,6 +2,11 @@
   "version": "0.21.2-beta.0",
   "releases": [
     {
+      "version": "0.21.2-beta.0",
+      "title": "Coming in 0.21.2",
+      "markdown": "## Fixed\n\n- Sounds on the map follow the scene again while a token is selected: a moved, new or removed sound, a wall, a door, a dropped token and undo are heard at once, and so is the last of several quick changes"
+    },
+    {
       "version": "0.21.1",
       "date": "2026-11-27",
       "title": "Sidekick fix",
