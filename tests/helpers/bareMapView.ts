@@ -1,6 +1,7 @@
 import { Container, Ticker, type EventSystem } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
 import { vi, type Mock } from 'vitest';
+import type { App } from 'obsidian';
 import { PixiRendererOrchestrator } from '../../src/app/PixiRendererOrchestrator';
 import type { GridOptions } from '../../src/app/grid/GridSystem';
 import { MosaicCanvas } from '../../src/app/pixi/mosaicCanvas/MosaicCanvas';
@@ -16,6 +17,8 @@ export interface BareMapView {
   renderer: PixiRendererOrchestrator;
   store: ViewAtlasStore;
   events: EventEmitter;
+  /** The Obsidian app the view is in. */
+  obsidian: App;
   viewport: Viewport;
   /** Every render of the PIXI renderer: the players' frame, each piece of it through the canvas, the GM's frame. */
   render: Mock;
@@ -31,6 +34,8 @@ export interface BareMapViewOptions {
    * gestures. A test file that asks for it mocks `createSceneLighting`, which needs WebGL.
    */
   whole?: { gestures?: unknown };
+  /** What the vault holds (`createInMemoryApp`). */
+  vault?: Parameters<typeof createInMemoryApp>[0];
 }
 
 /**
@@ -61,7 +66,7 @@ export async function bareMapView(options: BareMapViewOptions = {}): Promise<Bar
   stage.addChild(viewport);
   const app = { renderer: pixi, stage, canvas, ticker: new Ticker() };
   const manager = { init: vi.fn(), getApp: () => app, app, getViewport: () => viewport, getGestures: () => options.whole?.gestures ?? null, getCanvasElement: () => canvas, destroy: vi.fn() };
-  const obsidian = createInMemoryApp().app;
+  const obsidian = createInMemoryApp(options.vault).app;
   const store = createViewAtlasStore(obsidian, `bare-map-view-${Math.random()}`);
   store.getState().setPersistenceEnabled(false);
   store.setState({ mapPath: 'maps/bare.atlasmap', mapLoaded: true, isMapLoading: false, isGMView: true });
@@ -76,7 +81,7 @@ export async function bareMapView(options: BareMapViewOptions = {}): Promise<Bar
     renderer.initGrid(grid, mapImage);
   }
   return {
-    renderer, store, events: bus, viewport, render,
+    renderer, store, events: bus, obsidian, viewport, render,
     destroy: () => {
       renderer.destroy();
       canvas.remove();

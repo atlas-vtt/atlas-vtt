@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import { AnnotationsRenderer } from '../../src/app/pixi/annotations/AnnotationsRenderer';
 import { FogOfWarRenderer } from '../../src/app/pixi/fog/FogOfWarRenderer';
 import type { SceneLightingDeps } from '../../src/app/pixi/lighting/createSceneLighting';
+import type { SceneFrame } from '../../src/app/pixi/lighting/engine/types';
 import { LightingController } from '../../src/app/pixi/lighting/LightingController';
 import type { GmOverlays } from '../../src/app/pixi/lighting/playerLightingLayers';
 import type { SceneLightingView } from '../../src/app/pixi/lighting/sceneLightingView';
@@ -30,6 +31,8 @@ import { bareMapView, type BareMapView } from '../helpers/bareMapView';
 
 /** What the scene's lighting sees: nothing, or everything. */
 const sight = vi.hoisted(() => ({ sees: false }));
+/** The scene lighting's render of a picture of the scene, lit for that picture's frame. */
+const sceneLit = vi.hoisted(() => vi.fn((_frame: unknown, render: () => unknown) => render()));
 vi.mock('../../src/app/pixi/lighting/createSceneLighting', () => ({
   createSceneLighting: (deps: SceneLightingDeps): SceneLightingView => ({
     modeLayer: { visible: false },
@@ -42,7 +45,7 @@ vi.mock('../../src/app/pixi/lighting/createSceneLighting', () => ({
     resetExplored: () => undefined,
     editExplored: () => false,
     beforeMapUnload: () => undefined,
-    renderForFrame: (_frame, render) => render(),
+    renderForFrame: <T,>(frame: SceneFrame, render: () => T): T => sceneLit(frame, render) as T,
     destroy: () => undefined,
   }),
 }));
@@ -50,15 +53,11 @@ vi.mock('../../src/app/pixi/lighting/createSceneLighting', () => ({
 /** A players' frame through a camera of its own: another part of the map, at another zoom than the GM's. */
 const FRAME: PlayerFrame = { width: 1280, height: 720, resolution: 1, antialias: false, centerX: 600, centerY: 400, scale: 2 };
 const GM_CAMERA = { x: -30, y: 20, scale: 1.5 };
-const LEVELS: SceneLevel[] = [
-  { id: 'ground', name: 'Ground', elevation: { bottom: 0, top: 10 }, background: 'ground.png' },
-  { id: 'upper', name: 'Upper', elevation: { bottom: 10, top: 20 }, background: 'upper.png' },
-];
+const LEVELS: SceneLevel[] = [{ id: 'ground', name: 'Ground', elevation: { bottom: 0, top: 10 }, background: 'ground.png' }, { id: 'upper', name: 'Upper', elevation: { bottom: 10, top: 20 }, background: 'upper.png' }];
 
 const token = (id: string, more: Partial<TokenEntity>): TokenEntity => ({ id, kind: 'token', imagePath: '', size: 1, x: 0, y: 0, ...more } as TokenEntity);
 const ruler = (id: string, more: Partial<KeptMeasure>): KeptMeasure => ({ id, kind: 'measure', shape: 'ruler', points: [{ x: 100, y: 300 }, { x: 500, y: 300 }], ...more } as KeptMeasure);
-const pen = (id: string): DrawingStroke =>
-  ({ id, kind: 'drawing', timestamp: 1, type: 'pen', hidden: true, points: [{ x: 50, y: 500 }, { x: 400, y: 500 }], color: '#ffffff', width: 4, opacity: 1 });
+const pen = (id: string): DrawingStroke => ({ id, kind: 'drawing', timestamp: 1, type: 'pen', hidden: true, points: [{ x: 50, y: 500 }, { x: 400, y: 500 }], color: '#ffffff', width: 4, opacity: 1 });
 
 type StageState = Array<[string, boolean, number, number, number, number, number]>;
 
@@ -75,13 +74,11 @@ function stageState(stage: Container): StageState {
 /** The last answer of a renderer's declaration of what a picture shows of its layers. */
 const lastAnswer = <T,>(spy: MockInstance): T => spy.mock.results.at(-1)?.value as T;
 
+/** The view, the touch gestures' ring, a tool preview on the GM's screen, a layer only the players' frame shows, and the renderers' declarations. */
 interface Scene {
   view: BareMapView;
-  /** The touch gestures' ring, the GM's alone. */
   ring: Container;
-  /** A tool preview on the GM's screen. */
   overlay: Container;
-  /** A layer only the players' frame shows (Atlas Online's measurements of the players). */
   frameOnly: Container;
   spies: Record<'pinsFrame' | 'pinsPicture' | 'tokensFrame' | 'tokensPicture' | 'measuresFrame' | 'measuresPicture' | 'fogFrame' | 'fogPicture'
     | 'drawingsFrame' | 'drawingsPicture' | 'selection' | 'lightingFrame' | 'gmOverlays' | 'floorGhost'
@@ -237,6 +234,19 @@ describe('the pictures of a map view as Atlas builds it', () => {
       seen = [goblin.visible, (spies.tokensFrame.mock.lastCall?.[1] as TokenPerception)('goblin'), (spies.measuresFrame.mock.lastCall?.[0] as TokenSeen)('goblin')];
     }, DEFAULT_SETTINGS.localPlayerView, FRAME);
     expect(seen).toEqual([true, 'seen', true]);
+  });
+
+  it('lights a picture of the scene for its own frame, and leaves out the wall editor the GM has open', async () => {
+    const { view, spies } = await scene();
+    view.store.getState().setActiveTool('wall');
+    const { wallEditor } = lastAnswer<GmOverlays>(spies.gmOverlays);
+    expect(wallEditor.visible).toBe(true);
+    sceneLit.mockClear();
+    const frame = { x: 0, y: 0, width: 800, height: 600, resolution: 1 };
+    expect(view.renderer.captureSceneFrame(frame, () => wallEditor.visible)).toBe(false);
+    expect(sceneLit).toHaveBeenCalledTimes(1);
+    expect(sceneLit).toHaveBeenCalledWith(frame, expect.any(Function));
+    expect(wallEditor.visible).toBe(true);
   });
 
   it('takes a picture of the scene as the GM sees it, without the GM\'s marks, and puts every part back', async () => {

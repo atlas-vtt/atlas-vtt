@@ -4,6 +4,7 @@ import { MeasureRenderer } from '../../src/app/pixi/measure/MeasureRenderer';
 import { measurePlayersView } from '../../src/app/pixi/measurePlayersView';
 import type { LayerVisibility } from '../../src/app/pixi/playerSafeFrame';
 import { measuresPicture } from '../../src/app/pixi/picture/viewPictureParts';
+import { AssetService } from '../../src/app/services/AssetService';
 import type { MeasurePlayersView } from '../../src/app/pixi/measurePartsVisibility';
 import type { SceneLightingDeps } from '../../src/app/pixi/lighting/createSceneLighting';
 import type { SceneLightingView } from '../../src/app/pixi/lighting/sceneLightingView';
@@ -80,6 +81,10 @@ describe('a players\' frame and the measurements', () => {
   });
 });
 
+const ASSET_INDEX = 'atlas-vtt/.atlas-data/assets-metadata.json';
+const DUNGEON_MAP = 'atlas-vtt/collections/dungeon/scenes/cave.atlasmap';
+const DUNGEON_INDEX = { collections: { dungeon: { id: 'dungeon', name: 'Dungeon', description: '', tags: {}, createdAt: 1, modifiedAt: 1 } }, assets: {}, version: 2 };
+
 describe('the measure renderer\'s wiring', () => {
   /**
    * A view whose grid is built before it opens: opening builds the measure renderer again and wires
@@ -89,7 +94,7 @@ describe('the measure renderer\'s wiring', () => {
     vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: () => undefined, removeEventListener: () => undefined }));
     const restoreGraphics = stubJsdomGraphics();
     const built = vi.spyOn(MeasureRenderer.prototype, 'followShown');
-    const view = await bareMapView({ grid: { size: 70, enabled: true, color: 0xffffff } });
+    const view = await bareMapView({ grid: { size: 70, enabled: true, color: 0xffffff }, vault: { files: { [ASSET_INDEX]: JSON.stringify(DUNGEON_INDEX) } } });
     await view.renderer.init(document.createElement('div'));
     afterTest.push(() => {
       view.destroy();
@@ -107,13 +112,28 @@ describe('the measure renderer\'s wiring', () => {
     const [first, current] = renderers();
     expect(renderers()).toHaveLength(2);
     expect(current).not.toBe(first);
+    // Once the asset index is read, the map below is the dungeon collection's
+    await vi.waitFor(() => expect(AssetService.getInstance(view.obsidian).getCollectionForMap(DUNGEON_MAP)).toBe('dungeon'));
+    rulesChanged.mockClear();
 
     // A token off the floor: the rulers of the measure renderer the view has now are written again, once
     view.store.getState().addTokens([{ id: 'flier', kind: 'token', imagePath: '', size: 1, x: 100, y: 100, elevation: 30 } as never]);
+    expect(rulesChanged).toHaveBeenCalledTimes(1);
+    expect(rulesChanged.mock.contexts).toEqual([current]);
+
+    // The map's collection changes its rules: again only that renderer, once
+    rulesChanged.mockClear();
+    view.store.setState({ mapPath: DUNGEON_MAP });
+    // As the workspace tells every listener it was given, the first wiring's included
+    for (const [name, listener] of vi.mocked(view.obsidian.workspace.on).mock.calls) {
+      if (name === 'atlas-vtt:collection-settings-changed') (listener as (collectionId: string) => void)('dungeon');
+    }
+    expect(rulesChanged).toHaveBeenCalledTimes(1);
     expect(rulesChanged.mock.contexts).toEqual([current]);
 
     // Leaving the view is heard once, by that renderer
     view.events.emit('map-unloading');
+    expect(left).toHaveBeenCalledTimes(1);
     expect(left.mock.contexts).toEqual([current]);
 
     // Whom the canvas is drawn for: nobody's sight while the GM looks, the players' while the GM peeks
