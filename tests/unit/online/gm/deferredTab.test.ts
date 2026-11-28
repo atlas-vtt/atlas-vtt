@@ -87,13 +87,16 @@ describe('an Atlas tab Obsidian has not loaded yet', () => {
     relay.outbox.welcome(PLAYERS);
     await advance(3_000);
     const scenes = (): string[] => relay.pages.of(ANA).all().filter((body) => body.t === 'scene').map((body) => JSON.stringify(body));
+    const tokenLists = (): number => relay.pages.of(ANA).all().filter((body) => body.t === 'tokens').length;
     expect(failure).toBeNull();
     expect(scenes().at(-1)).toBe(NO_SCENE);
+    expect(tokenLists()).toBe(0);
 
     leaf.view = tab.view;
     await advance(3_000);
     online.stop();
     expect(scenes().at(-1)).not.toBe(NO_SCENE);
     expect(scenes().at(-1)).toContain('"scene":{');
+    expect(tokenLists()).toBeGreaterThan(0);
   });
 });
