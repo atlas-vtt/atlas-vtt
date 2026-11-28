@@ -6,6 +6,7 @@ import { INPUT_MODE_STORAGE_KEY } from '../../src/app/services/deviceSettings';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { memoryPluginData } from '../mocks/pluginData';
 import { withListed } from '../../src/app/services/preferences/syncedPreferences';
+import defaults0212 from '../fixtures/settings/data-0.21.2-defaults.json';
 
 async function loaded(stored: unknown = null, app = new App()): Promise<{ settings: SettingsService; data: ReturnType<typeof memoryPluginData>; app: App }> {
   const data = memoryPluginData(stored);
@@ -175,6 +176,17 @@ describe('Atlas settings in the plugin data', () => {
     const { settings, saved } = await arriving(file, (here) => { here.set('diceVolume', 0.5); here.set('diceVolume', 1); }, { diceVolume: 0.3 });
     expect(settings.get('diceVolume')).toBe(0.3);
     expect(saved).toMatchObject({ diceVolume: 0.3 });
+  });
+
+  it.each([['no hotkeys', {}], ['the defaults 0.21.2 writes', defaults0212]])('keeps a newer Atlas\'s binding that arrives while a hotkey changed here waits to be saved, from a file with %s', async (_name, file) => {
+    const { settings, saved } = await arriving(file, (here) => here.setHotkey('measure', 'j'), { ...file, hotkeys: { futureAction: 'F9' } });
+    expect(settings.getHotkeys().measure).toBe('j');
+    expect(saved.hotkeys).toEqual({ futureAction: 'F9', measure: 'j' });
+  });
+
+  it('takes a newer Atlas\'s changed binding that arrives while a hotkey changed here waits to be saved', async () => {
+    const { saved } = await arriving({ hotkeys: { futureAction: 'F9' } }, (here) => here.setHotkey('measure', 'j'), { hotkeys: { futureAction: 'F10' } });
+    expect(saved.hotkeys).toEqual({ futureAction: 'F10', measure: 'j' });
   });
 
   it('keeps the settings when the file reads as nothing, as while a sync tool rewrites it', async () => {
