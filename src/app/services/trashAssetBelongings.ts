@@ -6,6 +6,7 @@ import { trashMapMemories } from '../campaigns/exploredFolders';
 import { encounterThumbnailFile } from '../encounters/encounterThumbnailFile';
 import { trashSceneSnapshots } from '../snapshots/sceneSnapshotFolders';
 import { trashVaultItem } from '../utils/trashVaultItem';
+import { assetFilePath } from './vault-sync/assetFiles';
 
 /**
  * Trashes the files a deleted asset leaves behind (`belongingsOf`, `trashedOnDelete`), and for a
@@ -13,16 +14,16 @@ import { trashVaultItem } from '../utils/trashVaultItem';
  * asset of the index; a shared file stays while one of them or a note still uses it.
  */
 export async function trashAssetBelongings(app: App, assetService: AssetService, asset: Asset, others: readonly Asset[]): Promise<void> {
-  const [backing] = belongingsOf(asset);
-  if (backing) await trashIfPresent(app, backing.path);
+  const backing = assetFilePath(asset);
+  if (backing) await trashIfPresent(app, backing);
 
   // The JSON is in the trash by now, so an older record's map is not found and stays (#881).
-  const mapPath = asset.type === 'scene' ? (asset.data ? asset.data.mapPath : await mapPathInRecord(app, backing?.path)) : undefined;
+  const mapPath = asset.type === 'scene' ? (asset.data ? asset.data.mapPath : await mapPathInRecord(app, backing)) : undefined;
   const encounterThumbnail = asset.type === 'encounter' ? encounterThumbnailFile(app, asset.thumbnailUrl)?.path : undefined;
-  const belongings = belongingsOf(asset, { mapPath, encounterThumbnail }).filter((file) => file.path !== backing?.path);
+  const belongings = belongingsOf(asset, { mapPath, encounterThumbnail }).filter((file) => file.path !== backing);
   const stillUsed = await sharedFilesInUse(app, assetService, asset, belongings, others);
   for (const path of trashedOnDelete(belongings, stillUsed)) {
-    if (path === mapPath) closeMarkdownLeaves(app, path);
+    if (path === mapPath && !closeMarkdownLeaves(app, path)) continue;
     await trashIfPresent(app, path);
   }
 
@@ -58,18 +59,29 @@ async function mapFilesInUse(app: App, assetService: AssetService, map: MapAsset
       return () => true;
     }
     const used = new Set(files.map((file) => file.vaultPath));
-    return (path) => used.has(path) || Object.values(app.metadataCache.resolvedLinks).some((links) => path in links);
+    // Read here, inside the catch: the answer handed back is asked while files already go and must not fail.
+    const linked = new Set(Object.values(app.metadataCache.resolvedLinks).flatMap((links) => Object.keys(links)));
+    return (path) => used.has(path) || linked.has(path);
   } catch (error) {
     console.error('[AssetService] Could not tell whether a deleted map\'s image is still used; keeping it:', error);
     return () => true;
   }
 }
 
-/** Atlas closes the scene's tab when the vault reports the deletion (`vaultSync`); a markdown leaf showing the file goes here. */
-function closeMarkdownLeaves(app: App, path: string): void {
-  if (!(app.vault.getAbstractFileByPath(path) instanceof TFile)) return;
-  for (const leaf of app.workspace.getLeavesOfType('markdown')) {
-    if (leaf.view?.getState?.()?.file === path) leaf.detach();
+/**
+ * Atlas closes the scene's tab when the vault reports the deletion (`vaultSync`); a markdown leaf showing the
+ * file goes here. False when a leaf could not be asked or closed: the file then stays, and the delete goes on.
+ */
+function closeMarkdownLeaves(app: App, path: string): boolean {
+  if (!(app.vault.getAbstractFileByPath(path) instanceof TFile)) return true;
+  try {
+    for (const leaf of app.workspace.getLeavesOfType('markdown')) {
+      if (leaf.view?.getState?.()?.file === path) leaf.detach();
+    }
+    return true;
+  } catch (error) {
+    console.error('[AssetService] Error deleting scene map file:', error);
+    return false;
   }
 }
 

@@ -187,6 +187,18 @@ describe('moving assets to another collection', () => {
     expect([...vault.vault.files.keys()].filter((path) => path.startsWith(`${TARGET}/tokens/`))).toEqual([]);
   });
 
+  it('points a moved token at its own copy of art another token of the source collection also shows', async () => {
+    const vault = await seededVault();
+    const image = `${SOURCE}/tokens/orc.webp`;
+    await vault.vault.app.vault.create(image, 'ORC');
+    const leaving = await vault.assets.addTokenAsset({ name: 'Orc', imagePath: image, collection: 'source', tags: [] });
+    await vault.assets.addTokenAsset({ name: 'Orc chief', imagePath: image, collection: 'source', tags: [] });
+
+    await move(vault, [leaving.id]);
+
+    expect(((await vault.assets.getAssetById(leaving.id)) as TokenAsset).imagePath).toBe(`${TARGET}/tokens/orc.webp`);
+  });
+
   it('puts every file back and changes no record when the transfer fails', async () => {
     const vault = await seededVault();
     const scene = await only(vault.assets, 'source', 'scene');
