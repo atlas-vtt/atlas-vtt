@@ -67,7 +67,8 @@ export const VALUES: Record<PreferenceName, readonly unknown[]> = {
 };
 
 const FILES: readonly unknown[] = [null, defaults0212, filled0212, file0120, newerFile];
-const MALFORMED: readonly unknown[] = ['x', 0, -1, [], {}, { bogus: 1 }, true, 'yes'];
+/** Values planted in files under keys whose preference may not take them. */
+export const MALFORMED: readonly unknown[] = ['x', 0, -1, [], {}, { bogus: 1 }, true, 'yes'];
 const MALFORMED_DEVICE: readonly string[] = ['x', '{bad', 'true', '2', '{"a":1}'];
 
 /** A settings file: a fixture or none, half of the time with some of `keys` holding values Atlas cannot use. */

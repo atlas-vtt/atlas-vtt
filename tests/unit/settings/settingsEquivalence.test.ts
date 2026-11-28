@@ -7,7 +7,8 @@
  * device's local storage. A difference passes only as one of the changes #871 makes on purpose,
  * named for that step:
  * - `unchanged`: a write that reads back as the value already there stores nothing and tells no one;
- * - `malformed`: a stored value Atlas cannot use reads as the default;
+ * - `malformed`: a stored value Atlas cannot use reads as the default, judged without the rows now:
+ *   a value the generator planted, of another kind than the service before reads for that preference;
  * - `kept`: the file keeps what it held (no defaults filled in, nothing rewritten in a checked
  *   form, only the fields a change names): every field the file now holds is the one the file
  *   before holds or one a file read held, and every field it lacks is at its default there.
@@ -26,7 +27,7 @@ import { SettingsService as SettingsServiceBefore } from '../../oracles/settings
 import { PREFERENCE_ACCESS as ACCESS_BEFORE } from '../../oracles/settingsServiceBaseline/preferenceAccess';
 import { memoryPluginData } from '../../mocks/pluginData';
 import { PREFERENCE_ACCESS, type PreferenceName } from './preferenceAccess';
-import { randomDevice, randomFile, randomStep, seeded, type Step } from './equivalenceSteps';
+import { MALFORMED, randomDevice, randomFile, randomStep, seeded, type Step } from './equivalenceSteps';
 
 const SEQUENCES = Number(process.env.VITE_SETTINGS_EQUIVALENCE_SEQUENCES ?? 300);
 const STEPS = 30;
@@ -126,13 +127,23 @@ function flatKeys(value: unknown, into: Record<string, true> = {}): Record<strin
 const readsOf = (rows: readonly AnyPreferenceRow[], store: Record<string, unknown>, key: string): unknown[] =>
   rows.filter((row) => row.keys.includes(key)).map((row) => row.read((name) => store[name] ?? undefined));
 
-/** Whether a stored value is no value the rows now read as itself: the rows read it as their default. */
-const malformedRead = (name: PreferenceName, read: string): boolean => {
-  const row = PREFERENCES[name as keyof typeof PREFERENCES] as AnyPreferenceRow | undefined;
-  if (!row || row.store !== 'synced' || row.keys.length !== 1 || read.startsWith('threw')) return false;
-  const value: unknown = read === undefined ? undefined : JSON.parse(read);
-  return !sameValue(row.read(() => value), value);
-};
+/** Preferences whose accessors return something else than the preference's value (a binding, whether an id is listed): their reads never show a stored value as it is. */
+const DERIVED_READS: readonly PreferenceName[] = ['hotkeys', 'hiddenStarterOffers', 'hiddenSoundOffers', 'experimental'];
+
+const kindOf = (value: unknown): string => (Array.isArray(value) ? 'list' : value === null ? 'null' : typeof value);
+
+/**
+ * Whether a file read held, under the key of preference `name`, a value the generator planted that
+ * is of another kind than the preference's own (a word where a switch belongs, a number where a
+ * record does), judged by the service before's reading of an empty file. That is where the service
+ * before handed a stored value on as it was and the one now reads the default.
+ */
+function plantedOtherKind(name: PreferenceName, held: ReadonlyMap<string, unknown[]>): boolean {
+  const keys = keysOf(name);
+  if (DERIVED_READS.includes(name) || keys.length !== 1) return false;
+  const own = kindOf(JSON.parse(DEFAULT_READS[name]!));
+  return (held.get(keys[0]!) ?? []).some((value) => MALFORMED.some((planted) => sameValue(planted, value)) && kindOf(value) !== own);
+}
 
 /**
  * Whether a stored value is one Atlas cannot use at all: no record where the row reads a record, no
@@ -146,21 +157,6 @@ const unusable = (key: string, stored: unknown): boolean =>
     if (Array.isArray(read)) return !Array.isArray(stored);
     return isRecord(read) ? !isRecord(stored) : !sameValue(read, stored);
   });
-
-/**
- * Whether a file the service now read held, in a record preference `name` keeps under `key`, fields
- * its row does not read (a newer Atlas's): the service now keeps them in the record, so the record
- * it holds differs from one that only carries this device's own fields, where the one before kept
- * none. Never for a row that rebases on arrival: what it keeps of another version must stay as arrived.
- */
-function newerFieldsHeld(name: PreferenceName, key: string, read: readonly unknown[]): boolean {
-  const row = PREFERENCES[name as keyof typeof PREFERENCES] as AnyPreferenceRow | undefined;
-  if (!row || row.store !== 'synced' || row.rebasesOnArrival || row.keys.length !== 1) return false;
-  return read.some((held) => {
-    const own = row.read(() => held);
-    return isRecord(held) && isRecord(own) && Object.keys(held).some((field) => !(field in own));
-  });
-}
 
 interface Tally {
   steps: number;
@@ -185,6 +181,9 @@ function keptInFile(key: string, before: unknown, now: unknown, read: readonly u
   if (Object.entries(before).every(([name, value]) => name in now || sameValue(value, defaults[name]))) return 'kept';
   return read.some((held) => unusable(key, held)) ? 'malformed' : null;
 }
+
+/** What the service before reads for each preference from an empty file and device. */
+const DEFAULT_READS: Record<string, string> = {};
 
 async function runSequence(seed: number, tally: Tally): Promise<void> {
   const random = seeded(seed);
@@ -222,7 +221,7 @@ async function runSequence(seed: number, tally: Tally): Promise<void> {
     const nowStill = written !== null && heard[1] === 0 && sameValue(is.device, previous[1].device);
     const writeChange: Change | null = !nowStill || written === null ? null
       : was.reads[written] === previous[0].reads[written] ? 'unchanged'
-        : malformedRead(written, previous[0].reads[written]!) ? 'malformed' : null;
+        : plantedOtherKind(written, everHeld) ? 'malformed' : null;
     if (writeChange && written !== null && heard[0] > 0) keysOf(written).forEach((key) => noChangeBefore.set(key, writeChange));
     if (step.kind === 'arrive' && isRecord(step.file)) hold(step.file);
     if (step.kind === 'restart') hold(is.file);
@@ -232,10 +231,10 @@ async function runSequence(seed: number, tally: Tally): Promise<void> {
     for (const each of NAMES.filter((pref) => was.reads[pref] !== is.reads[pref])) {
       const keys = keysOf(each);
       const unchangedSince = was.reads[each] === previous[0].reads[each] && is.reads[each] === previous[1].reads[each];
-      const change: Change | null = malformedRead(each, was.reads[each]!) ? 'malformed'
+      const change: Change | null = plantedOtherKind(each, everHeld) ? 'malformed'
         : unchangedSince && explainedReads.has(each) ? explainedReads.get(each)!
           : step.kind === 'arrive' && keys.some((key) => noChangeBefore.has(key)) ? noChangeBefore.get(keys.find((key) => noChangeBefore.has(key))!)!
-            : step.kind === 'arrive' && keys.some((key) => unusable(key, previous[1].file[key]) || newerFieldsHeld(each, key, everHeld.get(key) ?? [])) ? 'kept'
+            : step.kind === 'arrive' && keys.some((key) => unusable(key, previous[1].file[key])) ? 'kept'
               : null;
       if (change && name(change)) readsParted.set(each, change);
       else fail(`${each} reads ${was.reads[each]} before, ${is.reads[each]} now`);
@@ -285,6 +284,9 @@ afterEach(() => {
 
 it('differs from the settings before only by the changes made on purpose, step by step', async () => {
   const tally: Tally = { steps: 0, differing: 0, changes: { unchanged: 0, malformed: 0, kept: 0 }, unexplained: [] };
+  const empty = new Side(true, null, {});
+  await empty.start();
+  Object.assign(DEFAULT_READS, empty.snapshot().reads);
   for (let seed = 1; seed <= SEQUENCES; seed += 1) await runSequence(seed, tally);
   process.stdout.write(`settings equivalence: ${JSON.stringify({ ...tally, unexplained: tally.unexplained.length })}\n${tally.unexplained.slice(0, 20).join('\n')}\n`);
   expect(tally.steps).toBe(SEQUENCES * STEPS);
