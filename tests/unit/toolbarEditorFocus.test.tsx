@@ -65,7 +65,7 @@ describe('focus around the editor menu', () => {
     fireEvent.click(moreTools());
     fireEvent.click(within(screen.getByRole('menu', { name: 'More tools' })).getByRole('menuitem', { name: /^Asset manager/ }));
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Hide' }));
-    expect(harness.settings.getToolbarLayout()).toEqual({ hidden: ['assets'] });
+    expect(harness.settings.get('toolbar')).toEqual({ hidden: ['assets'] });
     await waitFor(() => expect(screen.queryByRole('menuitem', { name: 'Hide' })).toBeNull());
     expect(document.activeElement).toBe(moreTools());
   });
@@ -84,7 +84,7 @@ describe('Delete and Backspace while editing', () => {
       fireEvent.keyDown(screen.getByRole('button', { name: 'Reset toolbar' }), { key: 'Delete' });
       fireEvent.keyDown(screen.getByRole('button', { name: 'Done' }), { key: 'Backspace' });
       expect(map.deletes()).toBe(0);
-      expect(harness.settings.getToolbarLayout()).toEqual({ hidden: ['fog'] });
+      expect(harness.settings.get('toolbar')).toEqual({ hidden: ['fog'] });
     } finally {
       map.stop();
     }
@@ -104,7 +104,7 @@ describe('Delete and Backspace while editing', () => {
       expect(fireEvent.keyDown(fog, { key: 'Delete' })).toBe(false);
       expect(fireEvent.keyDown(fog, { key: 'ArrowUp' })).toBe(false);
       expect(map.deletes()).toBe(0);
-      expect(harness.settings.getToolbarLayout()).toEqual({});
+      expect(harness.settings.get('toolbar')).toEqual({});
       act(() => { window.dispatchEvent(pointer('pointercancel', 30, 10)); });
     } finally {
       map.stop();

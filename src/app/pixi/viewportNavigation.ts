@@ -1,5 +1,6 @@
 import type { Viewport } from 'pixi-viewport';
-import type { NavigationInputMode, SettingsService } from '../services/SettingsService';
+import type { SettingsService } from '../services/SettingsService';
+import type { NavigationInputMode } from '../services/deviceSettings';
 import { SmoothWheelZoom } from './SmoothWheelZoom';
 
 /**
@@ -23,12 +24,13 @@ export function applyNavigationMode(viewport: Viewport, mode: NavigationInputMod
  * later settings changes. Returns an unsubscribe function.
  */
 export function bindViewportNavigation(viewport: Viewport, settingsService: SettingsService): () => void {
-  let currentMode = settingsService.getNavigationSettings().inputMode;
+  let currentMode = settingsService.get('inputMode');
   applyNavigationMode(viewport, currentMode);
 
-  return settingsService.onChange((settings) => {
-    if (settings.navigation.inputMode === currentMode) return;
-    currentMode = settings.navigation.inputMode;
+  return settingsService.onChange(() => {
+    const mode = settingsService.get('inputMode');
+    if (mode === currentMode) return;
+    currentMode = mode;
     applyNavigationMode(viewport, currentMode);
   });
 }

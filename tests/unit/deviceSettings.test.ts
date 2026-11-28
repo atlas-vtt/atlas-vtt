@@ -16,35 +16,35 @@ describe('the settings this device keeps to itself', () => {
   it('survive a reload in every state they can be set to', async () => {
     const app = new App();
     const before = await reloaded(app);
-    before.setAnimateMaps(false);
+    before.set('animateMaps', false);
     before.setLightingQuality('saver');
-    before.setNavigationSettings({ inputMode: 'mouse' });
-    expect(before.isPlayerView4k()).toBe(false);
-    before.setPlayerView4k(true);
+    before.set('inputMode', 'mouse');
+    expect(before.get('playerView4k')).toBe(false);
+    before.set('playerView4k', true);
 
     const after = await reloaded(app);
 
-    expect(after.getAnimateMaps()).toBe(false);
-    expect(after.getLightingQuality()).toBe('saver');
-    expect(after.getNavigationSettings().inputMode).toBe('mouse');
-    expect(after.isPlayerView4k()).toBe(true);
+    expect(after.get('animateMaps')).toBe(false);
+    expect(after.getGraphics().preset).toBe('saver');
+    expect(after.get('inputMode')).toBe('mouse');
+    expect(after.get('playerView4k')).toBe(true);
 
-    after.setAnimateMaps(true);
+    after.set('animateMaps', true);
     after.setLightingQuality('high');
-    after.setNavigationSettings({ inputMode: 'trackpad' });
-    after.setPlayerView4k(false);
+    after.set('inputMode', 'trackpad');
+    after.set('playerView4k', false);
     const again = await reloaded(app);
-    expect(again.getAnimateMaps()).toBe(true);
-    expect(again.getLightingQuality()).toBe('high');
-    expect(again.getNavigationSettings().inputMode).toBe('trackpad');
-    expect(again.isPlayerView4k()).toBe(false);
+    expect(again.get('animateMaps')).toBe(true);
+    expect(again.getGraphics().preset).toBe('high');
+    expect(again.get('inputMode')).toBe('trackpad');
+    expect(again.get('playerView4k')).toBe(false);
   });
 
   it('read animating maps as the first builds stored it, and as never chosen when nothing is stored', async () => {
     const app = new App();
-    expect((await reloaded(app)).getAnimateMaps()).toBeNull();
+    expect((await reloaded(app)).get('animateMaps')).toBeNull();
 
     app.saveLocalStorage(ANIMATE_MAPS_STORAGE_KEY, true);
-    expect((await reloaded(app)).getAnimateMaps()).toBe(true);
+    expect((await reloaded(app)).get('animateMaps')).toBe(true);
   });
 });

@@ -29,10 +29,11 @@ export class PlayerDiceRolls implements PlayerOverlay {
   private readonly unsubscribeSettings: () => void;
 
   constructor(private readonly app: App, private readonly settings: SettingsService) {
-    this.isShown = settings.getLocalPlayerViewSettings().showDiceRolls;
-    this.unsubscribeSettings = settings.onChange(({ localPlayerView }) => {
-      if (localPlayerView.showDiceRolls === this.isShown) return;
-      this.isShown = localPlayerView.showDiceRolls;
+    this.isShown = settings.get('localPlayerView').showDiceRolls;
+    this.unsubscribeSettings = settings.onChange(() => {
+      const shown = settings.get('localPlayerView').showDiceRolls;
+      if (shown === this.isShown) return;
+      this.isShown = shown;
       this.render();
     });
   }
@@ -73,7 +74,7 @@ export class PlayerDiceRolls implements PlayerOverlay {
 
   private readonly prepare = (result: DiceRollResult, origin: DiceRollOrigin | undefined): PreparedDiceRoll =>
     rollForPlayers(result, origin, this.scene, {
-      showNames: this.settings.getLocalPlayerViewSettings().showTokenNameplates,
+      showNames: this.settings.get('localPlayerView').showTokenNameplates,
       imageSrc: (path) => {
         const file = this.app.vault.getAbstractFileByPath(path);
         return file instanceof TFile ? this.app.vault.getResourcePath(file) : null;

@@ -31,7 +31,7 @@ export function DiceSettingsPanel(): React.ReactElement {
             ariaLabel={t('diceSettings.display')}
             value={display}
             options={DICE_DISPLAY_OPTIONS}
-            onChange={(value) => settings?.setDiceDisplay(value)}
+            onChange={(value) => settings?.set('diceDisplay', value)}
           />
         </SettingRow>
         <SettingSliderRow
@@ -42,7 +42,7 @@ export function DiceSettingsPanel(): React.ReactElement {
           max={100}
           step={5}
           displayValue={volume === 0 ? t('dice.volumeOff') : t('dice.volumePercent', { percent: String(volume) })}
-          onChange={(percent) => settings?.setDiceVolume(percent / 100)}
+          onChange={(percent) => settings?.set('diceVolume', percent / 100)}
         />
         {shareRolls && (
           <SettingToggleRow
@@ -56,13 +56,13 @@ export function DiceSettingsPanel(): React.ReactElement {
 
       <div className="atlas-command-palette-panel-column">
         <h3 className="atlas-command-palette-panel-heading">{t('diceSettings.dice')}</h3>
-        <DiceColourStrip value={look.colour} previews={previews} onChange={(colour) => settings?.setDiceLook({ colour })} />
+        <DiceColourStrip value={look.colour} previews={previews} onChange={(colour) => settings?.set('diceLook', { colour })} />
         <SettingRow label={t('diceSettings.numbers')} hint={t('diceSettings.numbersHint')}>
           <SegmentedControl
             ariaLabel={t('diceSettings.diceNumbers')}
             value={look.font}
             options={DICE_FONT_OPTIONS}
-            onChange={(font) => settings?.setDiceLook({ font })}
+            onChange={(font) => settings?.set('diceLook', { font })}
           />
         </SettingRow>
       </div>

@@ -46,7 +46,7 @@ describe('map hotkeys', () => {
     expect(reloaded.getHotkeys().assets).toBe('q');
     expect(reloaded.shouldShowTutorial('assets')).toBe(false);
     expect(reloaded.shouldShowTutorial('tokenStatblocks')).toBe(true);
-    expect(reloaded.getSetting('onboarding').tokenImported).toBe(true);
+    expect(reloaded.get('onboarding').tokenImported).toBe(true);
     expect(reloaded.getHotkeys().palette).toBe('Space');
   });
   it('allows bindings reserved only by disabled tools', () => {

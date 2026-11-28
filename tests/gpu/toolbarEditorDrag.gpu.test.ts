@@ -119,7 +119,7 @@ describe('dragging in the toolbar editor', () => {
 
     await mouse.up(tray.x, tray.y);
     await eachFrame(SETTLE_FRAMES, watch);
-    expect(harness.settings.getToolbarLayout().hidden).toEqual(['fog', 'loot']);
+    expect(harness.settings.get('toolbar').hidden).toEqual(['fog', 'loot']);
     expect(slot('fog').hidden).toBe(true);
     expect(document.querySelector('.atlas-toolbar-ghost')).toBeNull();
 
@@ -136,7 +136,7 @@ describe('dragging in the toolbar editor', () => {
     lastGhost = null;
     await mouse.up(stop.x, stop.y);
     await eachFrame(SETTLE_FRAMES, watch);
-    expect(harness.settings.getToolbarLayout().hidden).toEqual(['loot']);
+    expect(harness.settings.get('toolbar').hidden).toEqual(['loot']);
     expect(barIds()).toEqual(['move', 'draw', 'measure', 'fog', 'wall', 'pin', 'dice', 'assets', 'palette']);
     expect(document.querySelector('.atlas-toolbar-ghost')).toBeNull();
     if (!lastGhost) throw new Error('no ghost settled');
@@ -157,7 +157,7 @@ describe('dragging in the toolbar editor', () => {
     await eachFrame(SETTLE_FRAMES, () => { lastGhost = ghostBox() ?? lastGhost; });
     await mouse.up(start.x, start.y);
     expect(harness.store.getState().isToolbarEditing).toBe(true);
-    expect(harness.settings.getToolbarLayout()).toEqual({});
+    expect(harness.settings.get('toolbar')).toEqual({});
     expect(barIds()).toEqual(DEFAULT_BAR);
     expect(document.querySelector('.atlas-toolbar-ghost')).toBeNull();
     if (!lastGhost) throw new Error('no ghost went back');
@@ -183,7 +183,7 @@ describe('dragging in the toolbar editor', () => {
     let lastGhost: Rect | null = null;
     await mouse.up(overBar.x, overBar.y);
     await eachFrame(SETTLE_FRAMES, () => { lastGhost = ghostBox() ?? lastGhost; });
-    expect(harness.settings.getToolbarLayout().hidden).toBeUndefined();
+    expect(harness.settings.get('toolbar').hidden).toBeUndefined();
     expect(barIds()).toEqual(['move', 'palette']);
     if (!lastGhost) throw new Error('no ghost settled');
     expectSameBox(lastGhost, rectOf(overflow));
@@ -277,7 +277,7 @@ describe('dragging in the toolbar editor', () => {
     await mouse.up(bar.left + bar.width - 30, y);
     await settle(20);
     expect(document.querySelector('.atlas-toolbar-ghost')).toBeNull();
-    expect(harness.settings.getToolbarLayout().hidden).toBeUndefined();
+    expect(harness.settings.get('toolbar').hidden).toBeUndefined();
     expect(spacers()).toEqual([]);
   });
 });

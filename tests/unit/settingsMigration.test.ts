@@ -57,9 +57,9 @@ describe('carrying the settings over into the plugin data', () => {
 
     const settings = new SettingsService(app, undefined, data);
     await settings.initialize();
-    expect(settings.getDiceLook().colour).toBe('dark');
+    expect(settings.get('diceLook').colour).toBe('dark');
     expect(settings.getHotkeys().assets).toBe('q');
-    expect(settings.getNavigationSettings().inputMode).toBe('mouse');
+    expect(settings.get('inputMode')).toBe('mouse');
   });
 
   it('brings back no preset deleted since another device, sharing the old file, carried it over', async () => {

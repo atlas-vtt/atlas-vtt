@@ -40,12 +40,12 @@ export class ChangelogService {
     if (this.destroyed || !this.options.releaseBuild || !this.matchesInstalledVersion()) return;
     // Beta builds neither announce nor move the acknowledgment, so the stable release they precede still does.
     if (!isReleaseVersion(this.options.installedVersion)) return;
-    if ((!this.lastAcknowledged && !this.options.existingInstallation) || !this.settings.getSetting('showChangelogOnUpdate')) {
+    if ((!this.lastAcknowledged && !this.options.existingInstallation) || !this.settings.get('showChangelogOnUpdate')) {
       this.acknowledge();
       return;
     }
     if (this.lastAcknowledged && compareVersions(this.options.installedVersion, this.lastAcknowledged) <= 0) return;
-    if (this.lastAcknowledged && this.settings.getSetting('changelogMajorUpdatesOnly')
+    if (this.lastAcknowledged && this.settings.get('changelogMajorUpdatesOnly')
       && !crossesFeatureRelease(this.lastAcknowledged, this.options.installedVersion)) {
       this.acknowledge();
       return;
@@ -77,10 +77,10 @@ export class ChangelogService {
     ).map(release => release.version));
     const modal = new ChangelogModal(this.app, {
       releases, currentVersion, newVersions,
-      showOnUpdate: this.settings.getSetting('showChangelogOnUpdate'),
-      majorUpdatesOnly: this.settings.getSetting('changelogMajorUpdatesOnly'),
-      onPreferenceChange: enabled => this.settings.setSetting('showChangelogOnUpdate', enabled),
-      onMajorUpdatesChange: enabled => this.settings.setSetting('changelogMajorUpdatesOnly', enabled),
+      showOnUpdate: this.settings.get('showChangelogOnUpdate'),
+      majorUpdatesOnly: this.settings.get('changelogMajorUpdatesOnly'),
+      onPreferenceChange: enabled => this.settings.set('showChangelogOnUpdate', enabled),
+      onMajorUpdatesChange: enabled => this.settings.set('changelogMajorUpdatesOnly', enabled),
       onClose: rendered => {
         if (this.modal !== modal) return;
         this.modal = undefined;

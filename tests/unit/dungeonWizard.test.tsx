@@ -156,7 +156,7 @@ describe('the dungeon wizard', () => {
     expect(tag('flooded').getAttribute('aria-pressed')).toBe('true');
     await waitFor(() => expect(lastJob().request.tags).toEqual(['medium', 'flooded']));
     expect(lastJob().request.seed).toBe(seed);
-    expect(settings.getDungeonGenerator().tags).toEqual(['medium', 'flooded']);
+    expect(settings.get('dungeonGenerator').tags).toEqual(['medium', 'flooded']);
   });
 
   it('chooses the size as one of three, medium where the tags name none', async () => {
@@ -168,7 +168,7 @@ describe('the dungeon wizard', () => {
     await waitFor(() => expect(lastJob().request.tags).toEqual(['large']));
     // Choosing it again keeps it
     fireEvent.click(within(size).getByRole('radio', { name: 'Large' }));
-    expect(settings.getDungeonGenerator().tags).toEqual(['large']);
+    expect(settings.get('dungeonGenerator').tags).toEqual(['large']);
     // No size is a chip any more
     expect(document.querySelector('.atlas-dungeon-tag[data-tag="small"]')).toBeNull();
   });
@@ -199,14 +199,14 @@ describe('the dungeon wizard', () => {
     renderPanel(vi.fn(), 'Sunken Vault', 'Style');
     fireEvent.click(screen.getByText('Map options'));
     fireEvent.click(screen.getByRole('switch', { name: 'Monochrome' }));
-    expect(settings.getDungeonGenerator().view.monochrome).toBe(true);
+    expect(settings.get('dungeonGenerator').view.monochrome).toBe(true);
     await waitFor(() => expect(lastJob().view.monochrome).toBe(true));
   });
 
   it('picks the grid in sight on the Style step', async () => {
     renderPanel(vi.fn(), 'Sunken Vault', 'Style');
     fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Grid' })).getByRole('radio', { name: 'Dashed' }));
-    expect(settings.getDungeonGenerator().view.grid).toBe('dashed');
+    expect(settings.get('dungeonGenerator').view.grid).toBe('dashed');
     await waitFor(() => expect(lastJob().view.grid).toBe('dashed'));
   });
 
@@ -222,7 +222,7 @@ describe('the dungeon wizard', () => {
     expect(service).toBe(assets);
     expect(options).toMatchObject({ collectionId: 'Dungeons', name: 'Sunken Vault' });
     expect(options.model?.floors[0]?.rooms.length).toBeGreaterThan(0);
-    expect(options.style).toBe(dungeonStyle(settings.getDungeonGenerator().style));
+    expect(options.style).toBe(dungeonStyle(settings.get('dungeonGenerator').style));
   });
 
   it('creates the scene with Enter in the name field', async () => {
@@ -245,7 +245,7 @@ describe('the dungeon wizard', () => {
     await waitFor(() => expect(worker.preview).toHaveBeenCalled());
     const calls = worker.preview.mock.calls.length;
     const { request } = lastJob();
-    const before = settings.getDungeonGenerator();
+    const before = settings.get('dungeonGenerator');
     const panel = document.querySelector<HTMLElement>('.atlas-dungeon-wizard')!;
     for (const key of ['Enter', ' ', 'n', 'g', 'G', 'h', 'm', 'w', 'p', 'e', 'j', '1']) {
       fireEvent.keyDown(panel, { key, shiftKey: key === 'G' });
@@ -253,7 +253,7 @@ describe('the dungeon wizard', () => {
     await act(async () => { await Promise.resolve(); });
     expect(worker.preview.mock.calls.length).toBe(calls);
     expect(lastJob().request).toEqual(request);
-    expect(settings.getDungeonGenerator()).toEqual(before);
+    expect(settings.get('dungeonGenerator')).toEqual(before);
   });
 });
 
@@ -349,7 +349,7 @@ describe('the theme', () => {
     chooseTheme('Fortress');
     await waitFor(() => expect(lastJob().request.theme).toBe('fortress'));
     expect(lastJob().request.seed).toBe(seed);
-    expect(settings.getDungeonGenerator().theme).toBe('fortress');
+    expect(settings.get('dungeonGenerator').theme).toBe('fortress');
   });
 
   it('names the theme Surprise me picked once the dungeon is there', async () => {
@@ -361,7 +361,7 @@ describe('the theme', () => {
 
 describe('the theme pictures', () => {
   it('draws the whole entry floor of the dungeon asked for in every theme, the chosen one first', async () => {
-    settings.setDungeonGenerator({ theme: 'cavern', style: 'night' });
+    settings.set('dungeonGenerator', { theme: 'cavern', style: 'night' });
     renderPanel();
     await waitFor(() => expect(thumbnailJobs('themes')).toHaveLength(4));
     const jobs = thumbnailJobs('themes');
@@ -525,7 +525,7 @@ describe('the style gallery', () => {
   it('keeps the style picked by its id and draws the map in it', async () => {
     renderPanel(vi.fn(), 'Sunken Vault', 'Style');
     fireEvent.click(screen.getByRole('radio', { name: 'Lantern' }));
-    expect(settings.getDungeonGenerator().style).toBe('night');
+    expect(settings.get('dungeonGenerator').style).toBe('night');
     expect(screen.getByRole('radio', { name: 'Lantern' }).getAttribute('aria-checked')).toBe('true');
     await waitFor(() => expect(lastJob().style).toBe(dungeonStyle('night')));
   });
@@ -535,12 +535,12 @@ describe('the style gallery', () => {
     const first = screen.getByRole('radio', { name: 'Crayon' });
     fireEvent.keyDown(first, { key: 'ArrowRight' });
     const second = DUNGEON_STYLES[1]!.id;
-    expect(settings.getDungeonGenerator().style).toBe(second);
+    expect(settings.get('dungeonGenerator').style).toBe(second);
     expect(document.activeElement?.getAttribute('aria-checked')).toBe('true');
     fireEvent.keyDown(document.activeElement!, { key: 'End' });
-    expect(settings.getDungeonGenerator().style).toBe(DUNGEON_STYLES.at(-1)!.id);
+    expect(settings.get('dungeonGenerator').style).toBe(DUNGEON_STYLES.at(-1)!.id);
     fireEvent.keyDown(document.activeElement!, { key: 'ArrowDown' });
-    expect(settings.getDungeonGenerator().style).toBe(DEFAULT_STYLE_ID);
+    expect(settings.get('dungeonGenerator').style).toBe(DEFAULT_STYLE_ID);
   });
 
   it('draws the style cards once the theme cards are in, before the Style step', async () => {
@@ -553,7 +553,7 @@ describe('the style gallery', () => {
   });
 
   it('draws every style on one sample dungeon, made once, the chosen one first', async () => {
-    settings.setDungeonGenerator({ style: 'volcanic' });
+    settings.set('dungeonGenerator', { style: 'volcanic' });
     renderPanel(vi.fn(), 'Sunken Vault', 'Style');
     await waitFor(() => expect(thumbnailJobs('styles')).toHaveLength(DUNGEON_STYLES.length));
     const [first, ...rest] = thumbnailJobs('styles');

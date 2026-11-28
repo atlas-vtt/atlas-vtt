@@ -27,28 +27,28 @@ describe('the drag distance setting', () => {
     const data = memoryPluginData();
     const settings = new SettingsService(new App(), undefined, data);
     await settings.initialize();
-    expect(settings.getDragDistance()).toBe('always');
+    expect(settings.get('dragDistance')).toBe('always');
 
     const heard = vi.fn();
     settings.onChange(heard);
-    settings.setDragDistance('combat');
-    expect(settings.getDragDistance()).toBe('combat');
+    settings.set('dragDistance', 'combat');
+    expect(settings.get('dragDistance')).toBe('combat');
     expect(heard).toHaveBeenCalledTimes(1);
-    settings.setDragDistance('combat');
+    settings.set('dragDistance', 'combat');
     expect(heard).toHaveBeenCalledTimes(1);
 
     await settings.saveSettingsNow();
     expect(data.stored()).toMatchObject({ dragDistance: 'combat' });
     const reopened = new SettingsService(new App(), undefined, data);
     await reopened.initialize();
-    expect(reopened.getDragDistance()).toBe('combat');
+    expect(reopened.get('dragDistance')).toBe('combat');
   });
 
   it('reads a value this Atlas does not know as always, without rewriting it', async () => {
     const data = memoryPluginData({ dragDistance: 'on-my-turn' });
     const settings = new SettingsService(new App(), undefined, data);
     await settings.initialize();
-    expect(settings.getDragDistance()).toBe('always');
+    expect(settings.get('dragDistance')).toBe('always');
     await settings.saveSettingsNow();
     expect(data.stored()).toMatchObject({ dragDistance: 'on-my-turn' });
   });

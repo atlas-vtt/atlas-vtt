@@ -54,7 +54,7 @@ describe('the undo/redo bar in the toolbar editor', () => {
     startEditing(harness);
     fireEvent.contextMenu(handle(harness.container, 'undo'), { clientX: 10, clientY: 10 });
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Hide' }));
-    expect(harness.settings.getToolbarLayout()).toEqual({ hidden: ['undo', 'fog'] });
+    expect(harness.settings.get('toolbar')).toEqual({ hidden: ['undo', 'fog'] });
     expect(undoSlot(harness.container).hidden).toBe(true);
     expect(trayIds(harness.container)).toEqual(['undo', 'fog']);
     expect(liveRegion(harness.container)).toBe('Undo and redo hidden. Ctrl/Cmd + Z still undoes.');
@@ -66,7 +66,7 @@ describe('the undo/redo bar in the toolbar editor', () => {
     const undo = handle(harness.container, 'undo');
     act(() => { undo.focus(); });
     expect(fireEvent.keyDown(undo, { key: 'Delete' })).toBe(false);
-    expect(harness.settings.getToolbarLayout()).toEqual({ hidden: ['undo'] });
+    expect(harness.settings.get('toolbar')).toEqual({ hidden: ['undo'] });
     expect(document.activeElement).toBe(handle(harness.container, 'move'));
   });
 
@@ -77,7 +77,7 @@ describe('the undo/redo bar in the toolbar editor', () => {
     const face = handle(harness.container, 'undo', 'tray');
     act(() => { face.focus(); });
     expect(fireEvent.keyDown(face, { key: 'Enter' })).toBe(false);
-    expect(harness.settings.getToolbarLayout()).toEqual({});
+    expect(harness.settings.get('toolbar')).toEqual({});
     expect(undoSlot(harness.container).hidden).toBe(false);
     expect(liveRegion(harness.container)).toBe('Undo and redo is back in its place.');
     // The tray emptied, so focus goes to the bar's handle for it.
@@ -89,7 +89,7 @@ describe('the undo/redo bar in the toolbar editor', () => {
     startEditing(harness);
     fireEvent.contextMenu(handle(harness.container, 'undo', 'tray'), { clientX: 10, clientY: 10 });
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Show on toolbar' }));
-    expect(harness.settings.getToolbarLayout()).toEqual({});
+    expect(harness.settings.get('toolbar')).toEqual({});
   });
 
   it('comes back with Reset', () => {
@@ -97,7 +97,7 @@ describe('the undo/redo bar in the toolbar editor', () => {
     startEditing(harness);
     const tray = harness.container.querySelector<HTMLElement>('.atlas-toolbar-tray')!;
     fireEvent.click(within(tray).getByRole('button', { name: 'Reset toolbar' }));
-    expect(harness.settings.getToolbarLayout()).toEqual({});
+    expect(harness.settings.get('toolbar')).toEqual({});
     expect(undoSlot(harness.container).hidden).toBe(false);
   });
 
@@ -113,7 +113,7 @@ describe('the undo/redo bar in the toolbar editor', () => {
     expect(undo.tabIndex).toBe(0);
     expect(handle(harness.container, 'move').tabIndex).toBe(-1);
     expect(fireEvent.keyDown(undo, { key: 'ArrowRight', altKey: true })).toBe(false);
-    expect(harness.settings.getToolbarLayout()).toEqual({});
+    expect(harness.settings.get('toolbar')).toEqual({});
     expect(liveRegion(harness.container)).toBe('Undo and redo always stays in its own place.');
   });
 
@@ -135,7 +135,7 @@ describe('the undo/redo bar in the toolbar editor', () => {
     startEditing(harness);
     fireEvent.click(handle(harness.container, 'undo'));
     expect(getHistoryStore(harness.store).getState().pastStates).toHaveLength(1);
-    expect(harness.settings.getToolbarLayout()).toEqual({});
+    expect(harness.settings.get('toolbar')).toEqual({});
   });
 
   it('leaves the player view as it was: no undo/redo bar, and a bar that ignores the stored layout', async () => {

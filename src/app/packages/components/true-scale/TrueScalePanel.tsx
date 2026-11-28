@@ -70,7 +70,7 @@ export function TrueScalePanel({ settings, host, view }: TrueScalePanelProps): R
   const { flash, stop } = useOrientationFlash(host)
 
   const key = host.setupScreenKey()
-  const device = settings.getTableTvDevice()
+  const device = settings.get('tableTvDevice')
   const setup = key ? setupOf(device, key) : null
   const rotation: TvRotation = key ? device.screens[key]?.rotation ?? 0 : 0
   const startSetup = (): void => {
@@ -103,8 +103,8 @@ export function TrueScalePanel({ settings, host, view }: TrueScalePanelProps): R
           value={device.trueScale && setup !== null}
           disabled={key === null}
           onChange={() => {
-            if (device.trueScale && setup) settings.setTableTvDevice({ trueScale: false })
-            else if (setup) settings.setTableTvDevice({ trueScale: true })
+            if (device.trueScale && setup) settings.set('tableTvDevice', { trueScale: false })
+            else if (setup) settings.set('tableTvDevice', { trueScale: true })
             else startSetup()
           }}
         />
@@ -119,7 +119,7 @@ export function TrueScalePanel({ settings, host, view }: TrueScalePanelProps): R
           options={CELL_MM_CHOICES.map((mm) => ({ value: String(mm), label: t(CELL_LABELS[mm]) }))}
           onChange={(picked) => {
             const cellMm = CELL_MM_CHOICES.find((mm) => String(mm) === picked)
-            if (cellMm !== undefined) settings.setTableTvDevice({ cellMm })
+            if (cellMm !== undefined) settings.set('tableTvDevice', { cellMm })
           }}
         />
       </div>

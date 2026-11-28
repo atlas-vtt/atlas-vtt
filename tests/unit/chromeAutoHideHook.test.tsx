@@ -29,7 +29,7 @@ describe('useChromeAutoHide', () => {
     const root = container.querySelector('.atlas-ui')!;
     expect(root.hasAttribute('data-chrome-auto-hide')).toBe(false);
 
-    act(() => { settings.setToolbarAutoHide(true); });
+    act(() => { settings.set('toolbarAutoHide', true); });
     expect(root.hasAttribute('data-chrome-auto-hide')).toBe(true);
 
     // Switched off, the bars show as they would near the pointer, and stop hiding once they stand
@@ -47,7 +47,7 @@ describe('useChromeAutoHide', () => {
     const settings = new SettingsService(app);
     const store = createViewAtlasStore(app, `chrome-auto-hide-${Math.random()}`);
     store.getState().setPersistenceEnabled(false);
-    settings.setToolbarAutoHide(true);
+    settings.set('toolbarAutoHide', true);
     const { container } = render(<ViewStoreProvider store={store}><Root settings={settings} /></ViewStoreProvider>);
     const toolbar = container.querySelector('.atlas-main-toolbar')!;
     expect(toolbar.hasAttribute('data-peek')).toBe(false);
@@ -68,7 +68,7 @@ describe('useChromeAutoHide', () => {
     const settings = new SettingsService(app);
     const store = createViewAtlasStore(app, `chrome-auto-hide-${Math.random()}`);
     store.getState().setPersistenceEnabled(false);
-    settings.setToolbarAutoHide(true);
+    settings.set('toolbarAutoHide', true);
     const { container } = render(<ViewStoreProvider store={store}><Root settings={settings} /></ViewStoreProvider>);
     const toolbar = container.querySelector('.atlas-main-toolbar')!;
 

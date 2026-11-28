@@ -35,19 +35,19 @@ export function diceSettingsSection(settings: SettingsService): AtlasSettingSect
     heading: t('diceSettings.dice'),
     rows: [{
       name: t('diceSettings.display'),
-      desc: DICE_DISPLAY_HINTS[settings.getDiceDisplay()],
+      desc: DICE_DISPLAY_HINTS[settings.get('diceDisplay')],
       aliases: ['dice', 'roll', 'animation', '3d', 'toast', 'speed', 'fast'],
       render: (setting) => {
         let unsubscribe: (() => void) | undefined;
         setting.addDropdown((dropdown) => {
           dropdown.addOptions(DISPLAY_LABELS)
-            .setValue(settings.getDiceDisplay())
+            .setValue(settings.get('diceDisplay'))
             .onChange((value) => {
-              if (isDiceDisplay(value)) settings.setDiceDisplay(value);
+              if (isDiceDisplay(value)) settings.set('diceDisplay', value);
             });
           // The choice can also change from the command palette.
           unsubscribe = settings.onChange(() => {
-            const display = settings.getDiceDisplay();
+            const display = settings.get('diceDisplay');
             dropdown.setValue(display);
             setting.setDesc(DICE_DISPLAY_HINTS[display]);
           });
@@ -61,10 +61,10 @@ export function diceSettingsSection(settings: SettingsService): AtlasSettingSect
       render: (setting) => {
         let unsubscribe: (() => void) | undefined;
         setting.addSlider((slider) => {
-          const percent = (): number => Math.round(settings.getDiceVolume() * 100);
+          const percent = (): number => Math.round(settings.get('diceVolume') * 100);
           slider.setLimits(0, 100, 5)
             .setValue(percent())
-            .onChange((value) => settings.setDiceVolume(value / 100));
+            .onChange((value) => settings.set('diceVolume', value / 100));
           unsubscribe = settings.onChange(() => { slider.setValue(percent()); });
         });
         return unsubscribe;
@@ -77,9 +77,9 @@ export function diceSettingsSection(settings: SettingsService): AtlasSettingSect
         setting,
         settings,
         DICE_COLOUR_OPTIONS,
-        () => settings.getDiceLook().colour,
+        () => settings.get('diceLook').colour,
         (value) => {
-          if (isDiceColour(value)) settings.setDiceLook({ colour: value });
+          if (isDiceColour(value)) settings.set('diceLook', { colour: value });
         },
       ),
     }, {
@@ -90,9 +90,9 @@ export function diceSettingsSection(settings: SettingsService): AtlasSettingSect
         setting,
         settings,
         DICE_FONT_OPTIONS,
-        () => settings.getDiceLook().font,
+        () => settings.get('diceLook').font,
         (value) => {
-          if (isDiceFont(value)) settings.setDiceLook({ font: value });
+          if (isDiceFont(value)) settings.set('diceLook', { font: value });
         },
       ),
     }],

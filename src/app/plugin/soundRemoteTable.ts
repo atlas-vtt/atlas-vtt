@@ -51,9 +51,9 @@ function tableMap(app: App, view: AtlasView): TableMap {
 /** "Show my rolls to players": the player view setting the dice tray's switch reads and writes (`useShareRolls`). */
 function shareRolls(app: App): TableShareRolls {
   return {
-    shown: () => SettingsService.forApp(app)?.getLocalPlayerViewSettings().showDiceRolls ?? false,
+    shown: () => SettingsService.forApp(app)?.get('localPlayerView').showDiceRolls ?? false,
     setShown: (shown) => {
-      SettingsService.forApp(app)?.setLocalPlayerViewSettings({ showDiceRolls: shown });
+      SettingsService.forApp(app)?.set('localPlayerView', { showDiceRolls: shown });
       // The key is pressed away from Obsidian, whose switch the GM may not see: say what changed
       showNotice(t(shown ? 'remote.rollsShown' : 'remote.rollsHidden'));
     },

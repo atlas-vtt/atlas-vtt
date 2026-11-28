@@ -29,7 +29,7 @@ export function AssetManagerTours({ isOpen, settings, crud, tags, statblock, onS
       ]} action={{ label: t('am.tour.showMaps'), onClick: onShowMaps }} />
     );
   }
-  if (settings?.getSetting('onboarding').tokenImported) {
+  if (settings?.get('onboarding').tokenImported) {
     return (
       <Tutorial settings={settings} id="tokenStatblocks" steps={[
         { title: t('am.tour.statblockTitle'), body: tPointer('am.tour.statblockBody'), selector: '.atlas-asset-manager-main' },

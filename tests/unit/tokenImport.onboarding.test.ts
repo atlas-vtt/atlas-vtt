@@ -11,9 +11,9 @@ it('queues the statblock tutorial only after a token has been saved, and does no
   const assets = AssetService.getInstance(app);
   await settings.initialize();
   await assets.initialize();
-  expect(settings.getSetting('onboarding').tokenImported).toBe(false);
+  expect(settings.get('onboarding').tokenImported).toBe(false);
   await assets.addTokenAsset({ name: 'Goblin', imagePath: 'goblin.webp', collection: 'default', tags: [] });
-  expect(settings.getSetting('onboarding').tokenImported).toBe(true);
+  expect(settings.get('onboarding').tokenImported).toBe(true);
   expect(settings.shouldShowTutorial('tokenStatblocks')).toBe(true);
   settings.completeTutorial('tokenStatblocks');
   await assets.addTokenAsset({ name: 'Another goblin', imagePath: 'goblin.webp', collection: 'default', tags: [] });

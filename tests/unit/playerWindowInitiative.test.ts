@@ -76,13 +76,13 @@ describe('player initiative panel', () => {
     const bannerScale = (): number => Number(overlays().style.getPropertyValue('--atlas-player-turn-banner-scale'));
     expect(overlays().style.getPropertyValue('--atlas-player-initiative-scale')).toBe('1');
     expect(bannerScale()).toBeCloseTo(turnBannerScaleFor(view.innerWidth, view.innerHeight), 5);
-    settings.setLocalPlayerViewSettings({ initiativeScale: 2 });
+    settings.set('localPlayerView', { initiativeScale: 2 });
     expect(overlays().style.getPropertyValue('--atlas-player-initiative-scale')).toBe('2');
     // A window made the size of a 1080p TV draws it twice its own size
     expect(view.addEventListener.mock.calls.some(([name]) => name === 'resize')).toBe(true);
     Object.assign(view, { innerWidth: 1920, innerHeight: 1080 });
     // What a resize runs, as any change of the player view's look runs it
-    settings.setLocalPlayerViewSettings({ initiativeScale: 1 });
+    settings.set('localPlayerView', { initiativeScale: 1 });
     expect(bannerScale()).toBe(2);
   });
 
@@ -115,12 +115,12 @@ describe('player initiative panel', () => {
     expect(panel()?.textContent).not.toContain('18');
     expect(panel()?.textContent).toContain('Round 1');
     expect(panel()?.querySelector('button, input, [draggable="true"]')).toBeNull();
-    settings.setLocalPlayerViewSettings({ showWidgets: false });
+    settings.set('localPlayerView', { showWidgets: false });
     expect(panel()).not.toBeNull();
-    settings.setLocalPlayerViewSettings({ showInitiative: false });
+    settings.set('localPlayerView', { showInitiative: false });
     expect(panel()).toBeNull();
     store.setState({ initiative: { ...store.getState().initiative, round: 2 } });
-    settings.setLocalPlayerViewSettings({ showInitiative: true });
+    settings.set('localPlayerView', { showInitiative: true });
     expect(panel()?.textContent).toContain('Round 2');
     expect(store.getState().initiativeTrackerOpen).toBe(true);
   });
@@ -147,17 +147,17 @@ describe('player initiative panel', () => {
   it('requires the DM tracker to be open and reacts immediately to visibility changes', () => {
     const { settings, store, doc } = setup(false);
     const panel = (): Element | null => doc.querySelector('[aria-label="Initiative order"]:not([aria-hidden])');
-    expect(settings.getLocalPlayerViewSettings().showInitiative).toBe(true);
+    expect(settings.get('localPlayerView').showInitiative).toBe(true);
     expect(panel()).toBeNull();
     store.setState({ initiativeTrackerOpen: true });
     expect(panel()).not.toBeNull();
     store.setState({ initiativeTrackerOpen: false });
     expect(panel()).toBeNull();
-    settings.setLocalPlayerViewSettings({ showInitiative: false });
+    settings.set('localPlayerView', { showInitiative: false });
     store.setState({ initiativeTrackerOpen: true });
     expect(panel()).toBeNull();
     store.setState({ initiativeTrackerOpen: false });
-    settings.setLocalPlayerViewSettings({ showInitiative: true });
+    settings.set('localPlayerView', { showInitiative: true });
     expect(panel()).toBeNull();
     store.setState({ initiativeTrackerOpen: true });
     expect(panel()).not.toBeNull();
@@ -168,7 +168,7 @@ describe('player initiative panel', () => {
     const panel = (): Element | null => doc.querySelector('[aria-label="Initiative order"]:not([aria-hidden])');
     expect(panel()?.textContent).not.toContain('Hero');
     expect(panel()?.querySelector('progress')).toBeNull();
-    settings.setLocalPlayerViewSettings({ showTokenNameplates: true });
+    settings.set('localPlayerView', { showTokenNameplates: true });
     expect(panel()?.textContent).toContain('Hero');
     // A token the GM's map does not name goes unnamed for players too
     store.setState({ tokenSettings: { ...MAP_NAMES, showNameplates: false } });
@@ -220,7 +220,7 @@ describe('player initiative panel', () => {
     const { service, settings, store, doc, source } = setup();
     service.holdCurrentFrame();
     store.setState({ initiative: { ...store.getState().initiative, round: 9 } });
-    settings.setLocalPlayerViewSettings({ showTokenNameplates: true });
+    settings.set('localPlayerView', { showTokenNameplates: true });
     expect(doc.body.textContent).toContain('Round 1');
     expect(doc.body.textContent).not.toContain('Round 9');
     service.releaseHeldFrame(source);
@@ -233,7 +233,7 @@ describe('player initiative panel', () => {
     service.destroy();
     const before = doc.body.textContent;
     other.setState({ initiative: { ...other.getState().initiative, round: 4 } });
-    settings.setLocalPlayerViewSettings({ showInitiative: false });
+    settings.set('localPlayerView', { showInitiative: false });
     expect(doc.body.textContent).toBe(before);
   });
 
@@ -309,7 +309,7 @@ describe('player initiative panel', () => {
     // The list at the old edge leaves while the new one comes in
     const panel = (): Element | null => doc.querySelector('.atlas-player-initiative:not(.atlas-player-initiative--leaving)');
     expect(panel()?.classList.contains('atlas-player-initiative--bottom')).toBe(false);
-    settings.setInitiativeLayout({ dock: 'bottom' });
+    settings.set('initiativeLayout', { dock: 'bottom' });
     expect(panel()?.classList.contains('atlas-player-initiative--bottom')).toBe(true);
   });
 
@@ -318,12 +318,12 @@ describe('player initiative panel', () => {
     const data = memoryPluginData({ localPlayerView: { showWidgets: false } });
     const settings = new SettingsService(app, undefined, data);
     await settings.initialize();
-    expect(settings.getLocalPlayerViewSettings().showInitiative).toBe(true);
-    settings.setLocalPlayerViewSettings({ showInitiative: false });
+    expect(settings.get('localPlayerView').showInitiative).toBe(true);
+    settings.set('localPlayerView', { showInitiative: false });
     await settings.saveSettingsNow();
     const reloaded = new SettingsService(app, undefined, data);
     await reloaded.initialize();
-    expect(reloaded.getLocalPlayerViewSettings()).toMatchObject({ showInitiative: false, showWidgets: false });
+    expect(reloaded.get('localPlayerView')).toMatchObject({ showInitiative: false, showWidgets: false });
   });
 });
 
@@ -339,7 +339,7 @@ describe('player initiative panel of a collection that fights by sides', () => {
     const { app } = createInMemoryApp();
     playByTestRules(app);
     const settings = new SettingsService(app);
-    settings.setLocalPlayerViewSettings({ showTokenNameplates: true });
+    settings.set('localPlayerView', { showTokenNameplates: true });
     const store = createStore(() => ({
       initiative: { ...createDefaultInitiativeState(), entries: [entry('goblin', 0), entry('hero', 1), entry('rat', 2, { sitsOut: true }), entry('cleric', 3)], ...initiative },
       objects: { tokens: { goblin: token('goblin'), hero: token('hero', { vision: { enabled: true } }), rat: token('rat'), cleric: token('cleric', { side: 'players' }) } },

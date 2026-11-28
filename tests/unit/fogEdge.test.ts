@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_FOG_EDGE, MAX_FOG_EDGE_WIDTH, readFogEdge, sameFogEdge } from '../../src/app/fog/fogEdge';
-import { DEFAULT_SETTINGS, readStoredSettings } from '../../src/app/services/atlasSettings';
+import { DEFAULT_SETTINGS } from '../../src/app/services/atlasSettings';
+import { SYNCED_PREFERENCES } from '../../src/app/services/preferences/syncedPreferences';
 import { crackleCells } from '../../src/app/pixi/fog/fogEdgeMesh';
 
 describe('the fog edge setting', () => {
@@ -21,8 +22,9 @@ describe('the fog edge setting', () => {
 
   it('is the default of settings that never stored one, as every GM\'s from before fog edges', () => {
     expect(DEFAULT_SETTINGS.fogEdge).toEqual({ style: 'crackle', width: 15 });
-    expect(readStoredSettings({ fogFill: 'black' }, 'mouse').settings.fogEdge).toEqual({ style: 'crackle', width: 15 });
-    expect(readStoredSettings({ fogEdge: { style: 'soft', width: 0 } }, 'mouse').settings.fogEdge).toEqual({ style: 'soft', width: 0 });
+    const fogEdgeIn = (file: Record<string, unknown>): unknown => SYNCED_PREFERENCES.fogEdge.read((key) => file[key]);
+    expect(fogEdgeIn({ fogFill: 'black' })).toEqual({ style: 'crackle', width: 15 });
+    expect(fogEdgeIn({ fogEdge: { style: 'soft', width: 0 } })).toEqual({ style: 'soft', width: 0 });
   });
 
   it('tells edges apart by what they draw', () => {

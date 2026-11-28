@@ -50,7 +50,7 @@ export function barOffered(state: BarState, wanted: boolean): boolean {
 export function useSelectionActionsShown(source: () => SelectionBarSource | null, ownMenu: boolean): boolean {
   const { pixiApp } = useAtlasUI()
   const coarse = useCoarsePointer()
-  const wanted = useAtlasSettings()?.isSelectionBarShown() === true || coarse
+  const wanted = useAtlasSettings()?.get('selectionBar') === true || coarse
   const offered = useAtlasStore((state) => barOffered(state, wanted))
   const [atRest, setAtRest] = useState(false)
   const [covered, setCovered] = useState(false)

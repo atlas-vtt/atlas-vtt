@@ -98,7 +98,7 @@ export function DiceRollDisplay({ container, prepare, muted: windowMuted = false
       const base: PreparedDiceRoll = prepare ? prepare(raw, options.origin) : { result: raw };
       // The GM's own display marks whom each roll was shown to, as the switch stood when it came.
       const prepared: PreparedDiceRoll = settings
-        ? { ...base, audience: settings.getLocalPlayerViewSettings().showDiceRolls ? 'players' : 'gm' }
+        ? { ...base, audience: settings.get('localPlayerView').showDiceRolls ? 'players' : 'gm' }
         : base;
       setAnnouncement({ id: prepared.result.id, text: rollAnnouncement(prepared.result, prepared.audience) });
       const scene = diceSceneToShow(prepared.result, display);

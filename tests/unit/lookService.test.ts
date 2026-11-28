@@ -52,16 +52,16 @@ it('switches Obsidian to its default theme for an Atlas look and remembers the G
   expect(s.setTheme).toHaveBeenCalledWith('');
   expect(service.previousThemeName()).toBe('Minimal');
   expect(service.get()).toBe('scifi');
-  expect(s.settings.getFogEdge().style).toBe('soft');
+  expect(s.settings.get('fogEdge').style).toBe('soft');
 });
 
 it('gives the dice the numerals of the look picked', () => {
   const s = stub('Minimal');
   const service = looks(s);
   service.set('scifi');
-  expect(s.settings.getDiceLook().font).toBe('scifi');
+  expect(s.settings.get('diceLook').font).toBe('scifi');
   service.set('mediaeval');
-  expect(s.settings.getDiceLook().font).toBe('medieval');
+  expect(s.settings.get('diceLook').font).toBe('medieval');
 });
 
 it('puts the GM\'s theme back for their own look', () => {

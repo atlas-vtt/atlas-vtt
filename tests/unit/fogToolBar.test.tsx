@@ -371,12 +371,12 @@ describe('FogToolBar', () => {
     expect(slider()!.getAttribute('aria-valuetext')).toBe('50%');
     act(() => { slider()!.focus(); });
     fireEvent.keyDown(slider()!, { key: 'ArrowRight' });
-    expect(settings.getGmFogOpacity()).toBe(0.55);
+    expect(settings.get('gmFogOpacity')).toBe(0.55);
     expect(slider()!.getAttribute('aria-valuenow')).toBe('55');
     fireEvent.keyDown(slider()!, { key: 'End' });
-    expect(settings.getGmFogOpacity()).toBe(1);
+    expect(settings.get('gmFogOpacity')).toBe(1);
     fireEvent.keyDown(slider()!, { key: 'Home' });
-    expect(settings.getGmFogOpacity()).toBe(0.1);
+    expect(settings.get('gmFogOpacity')).toBe(0.1);
     fireEvent.click(button('More'));
     expect(slider()).toBeNull();
   });

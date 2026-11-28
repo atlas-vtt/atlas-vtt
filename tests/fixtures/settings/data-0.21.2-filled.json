@@ -1,0 +1,117 @@
+{
+  "showChangelogOnUpdate": false,
+  "changelogMajorUpdatesOnly": true,
+  "checkForUpdates": false,
+  "hotkeys": {
+    "measure": "j",
+    "fog": ""
+  },
+  "onboarding": {
+    "enabled": true,
+    "completed": {
+      "welcome": true,
+      "map": true
+    },
+    "tokenImported": true
+  },
+  "starterTokensAdded": true,
+  "laserPointer": {
+    "color": "#00a9ff",
+    "size": 40
+  },
+  "diceDisplay": "fast",
+  "diceVolume": 0.4,
+  "sound": {
+    "musicDb": -3,
+    "ambienceDb": -6,
+    "masterDb": 0,
+    "fadeSeconds": 6,
+    "crossfadeSeconds": 4,
+    "followScenes": false
+  },
+  "detectGridOnNewScenes": false,
+  "fogEdge": {
+    "style": "soft",
+    "width": 40
+  },
+  "dragDistance": "combat",
+  "diceColour": "teal",
+  "diceFont": "scifi",
+  "initiativeDock": "top",
+  "initiativeBanner": false,
+  "initiativeMovesOnTurn": true,
+  "experimental": {
+    "onlinePlay": true
+  },
+  "toolbar": {
+    "order": [
+      "fog",
+      "move"
+    ],
+    "hidden": [
+      "loot"
+    ]
+  },
+  "dungeonGenerator": {
+    "style": "crayon",
+    "view": {
+      "grid": "dotted",
+      "smallTiles": false,
+      "water": true,
+      "props": true,
+      "shadow": true,
+      "secrets": true,
+      "monochrome": false
+    },
+    "theme": "mansion",
+    "tags": [],
+    "floors": 3,
+    "bossRoom": true,
+    "fiveRoom": true
+  },
+  "localPlayerView": {
+    "showToolbar": true,
+    "showTokenNameplates": false,
+    "showNotePreviews": false,
+    "showWidgets": true,
+    "showInitiative": true,
+    "showDiceRolls": false,
+    "showCommandPalette": false,
+    "showCursors": false,
+    "initiativeScale": 1.5,
+    "initiativePulse": false,
+    "turnBannerAtLists": false,
+    "turnDim": false,
+    "initiativeMaxCards": 0,
+    "playersDraw": false,
+    "playersOpenDoors": false,
+    "sharedVision": true,
+    "tokenBarsCarriedOver": true
+  },
+  "tableTv": {
+    "viewGlideMs": 1200
+  },
+  "hiddenStarterOffers": [
+    "0f3c-collection"
+  ],
+  "hiddenSoundOffers": [
+    "starter-ambience"
+  ],
+  "soundRoots": {
+    "music": {
+      "type": "vault",
+      "path": "Music",
+      "originals": "keep"
+    },
+    "ambience": {
+      "type": "external"
+    }
+  },
+  "initiativeCompact": true,
+  "initiativeEdges": [
+    "top",
+    "bottom"
+  ],
+  "initiativeFacesPlayers": true,
+  "toolbarAutoHide": true
+}

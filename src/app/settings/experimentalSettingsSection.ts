@@ -17,8 +17,8 @@ export function experimentalSettingsSection(settings: SettingsService): AtlasSet
       render: (setting) => {
         let unsubscribe: (() => void) | undefined;
         setting.addToggle((toggle) => {
-          toggle.setValue(settings.isExperimentalOn(id)).onChange((on) => settings.setExperimental(id, on));
-          unsubscribe = settings.onChange(() => { toggle.setValue(settings.isExperimentalOn(id)); });
+          toggle.setValue(settings.get('experimental')[id] === true).onChange((on) => settings.set('experimental', { [id]: on }));
+          unsubscribe = settings.onChange(() => { toggle.setValue(settings.get('experimental')[id] === true); });
         });
         return unsubscribe;
       },

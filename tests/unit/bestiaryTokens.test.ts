@@ -101,7 +101,7 @@ describe('the bestiary tokens', () => {
     expect(steps[0]).toBe(0);
     expect(steps.at(-1)).toBe(1);
     expect(await hasBestiaryTokens(assets, collection)).toBe(true);
-    expect(settings.getSetting('onboarding').tokenImported).toBe(false);
+    expect(settings.get('onboarding').tokenImported).toBe(false);
     expect(vault.app.workspace.trigger).toHaveBeenCalledWith('atlas-vtt:refresh-assets');
   });
 

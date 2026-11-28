@@ -40,7 +40,7 @@ describe('what fingers do in the drawing tools', () => {
 });
 
 describe('the settings\' Fingers row', () => {
-  const service = { getNavigationSettings: () => ({ inputMode: 'mouse' }) } as unknown as SettingsService;
+  const service = { get: (name: string): unknown => (name === 'inputMode' ? 'mouse' : undefined) } as unknown as SettingsService;
   const names = (penSeen: boolean): string[] =>
     navigationSettingsSection(service, { penSeen, use: 'pan', setUse: () => undefined }).rows.map((row) => row.name);
 

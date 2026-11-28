@@ -41,9 +41,9 @@ export abstract class PlayerSceneOverlay<Scene extends object> implements Player
   private readonly unsubscribeSettings: () => void;
 
   protected constructor(private readonly containerInfo: DomElementInfo, settings: SettingsService) {
-    this.playerSettings = settings.getLocalPlayerViewSettings();
+    this.playerSettings = settings.get('localPlayerView');
     this.unsubscribeSettings = settings.onChange(() => {
-      const playerSettings = settings.getLocalPlayerViewSettings();
+      const playerSettings = settings.get('localPlayerView');
       if (shallow(this.playerSettings, playerSettings)) return;
       this.playerSettings = playerSettings;
       this.refresh();

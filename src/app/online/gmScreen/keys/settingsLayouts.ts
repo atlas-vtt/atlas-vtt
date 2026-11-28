@@ -26,7 +26,7 @@ function withLayout(keys: GmScreenKeys, device: GmScreenDevice, layout: GmScreen
  * settings on a pause (`LAYOUT_SAVE_QUIET_MS`), at the latest after `LAYOUT_SAVE_MAX_MS`, or when `flush` is
  * called: when no device is left and when Atlas unloads.
  */
-export function settingsLayouts(settings: Pick<SettingsService, 'getGmScreenKeys' | 'setGmScreenKeys' | 'onChange'>, timers: Timers): LayoutStore {
+export function settingsLayouts(settings: Pick<SettingsService, 'get' | 'set' | 'onChange'>, timers: Timers): LayoutStore {
   const waiting = new Map<GmScreenDevice, GmScreenLayout>();
   let timer: number | null = null;
   let firstAt = 0;
@@ -34,13 +34,13 @@ export function settingsLayouts(settings: Pick<SettingsService, 'getGmScreenKeys
     if (timer !== null) timers.clearTimer(timer);
     timer = null;
     if (waiting.size === 0) return false;
-    const keys = [...waiting].reduce((each, [device, layout]) => withLayout(each, device, layout), settings.getGmScreenKeys());
+    const keys = [...waiting].reduce((each, [device, layout]) => withLayout(each, device, layout), settings.get('gmScreenKeys'));
     waiting.clear();
-    settings.setGmScreenKeys(keys);
+    settings.set('gmScreenKeys', keys);
     return true;
   };
   return {
-    layout: (device) => waiting.get(device) ?? settings.getGmScreenKeys()[device] ?? defaultLayout(device),
+    layout: (device) => waiting.get(device) ?? settings.get('gmScreenKeys')[device] ?? defaultLayout(device),
     save: (device, layout) => {
       waiting.set(device, layout);
       const now = timers.now();

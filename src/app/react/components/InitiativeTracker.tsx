@@ -61,7 +61,7 @@ const OUTWARD: Outward = [1, 0];
 export const InitiativeTracker: React.FC = () => {
   const { app, view } = useAtlasUI();
   const settings = useAtlasSettings();
-  const compact = settings?.showsCompactInitiative() ?? false;
+  const compact = settings?.get('initiativeCompact') ?? false;
   const { layout } = useInitiativeLayout();
   // The tracker stands at the right edge: popups and tooltips open to its left
   const inward = 'left';
@@ -209,10 +209,10 @@ export const InitiativeTracker: React.FC = () => {
           label: party.length === 0 ? t('initiative.partySetUp') : missingParty.length > 0 ? t('initiative.partyAdd') : t('initiative.partyEdit'),
           onClick: () => (missingParty.length > 0 ? missingParty.forEach((entry) => addToInitiative(entry)) : setPartySettingsOpen(true)),
         },
-        banner: (settings?.initiativeTurnOptions() ?? DEFAULT_TURN_OPTIONS).banner },
+        banner: (settings?.get('initiativeTurnOptions') ?? DEFAULT_TURN_OPTIONS).banner },
       {
-        setCompact: (on) => settings?.setCompactInitiative(on),
-        setBanner: (banner) => settings?.setInitiativeTurnOptions({ banner }),
+        setCompact: (on) => settings?.set('initiativeCompact', on),
+        setBanner: (banner) => settings?.set('initiativeTurnOptions', { banner }),
         clear: () => clearCombatants(store),
         resetNumbers: () => store.getState().resetInitiativeNumbers(),
         addEnemy: () => addToInitiative(nextTokenlessEnemy(store.getState().initiative.entries, app ? mapEnemyImage(app, store.getState().mapPath) : '')),

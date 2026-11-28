@@ -5,6 +5,7 @@ import { DownloadManager } from '../../../../../downloads/DownloadManager';
 import type { DownloadJob } from '../../../../../downloads/downloadTypes';
 import { useAtlasUI } from '../../../../root/AtlasUIContext';
 import { showAtlasToast } from '../../../AtlasToast';
+import { withListed } from '../../../../../services/preferences/syncedPreferences';
 
 /** How long the toast that hid an offer stays, with its Undo. */
 const HIDDEN_TOAST_MS = 6000;
@@ -37,13 +38,14 @@ export interface OfferDismissal {
 export function useOfferDismissal(offerId: string, rootName: string): OfferDismissal {
   const settings = useAtlasSettings();
   if (!settings) return { dismissed: false, dismiss: undefined };
+  const hide = (hidden: boolean): void => settings.set('hiddenSoundOffers', withListed(settings.get('hiddenSoundOffers'), offerId, hidden));
   return {
-    dismissed: settings.isSoundOfferHidden(offerId),
+    dismissed: settings.get('hiddenSoundOffers').includes(offerId),
     dismiss: () => {
-      settings.setSoundOfferHidden(offerId, true);
+      hide(true);
       showAtlasToast(t('audio.library.offerHidden', { root: rootName }), HIDDEN_TOAST_MS, {
         label: t('history.undo'),
-        run: () => settings.setSoundOfferHidden(offerId, false),
+        run: () => hide(false),
       });
     },
   };

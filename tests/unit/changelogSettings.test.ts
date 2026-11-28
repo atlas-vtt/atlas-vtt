@@ -8,20 +8,20 @@ describe('changelog settings integration', () => {
   it('enables announcements by default when loading settings from older Atlas versions', async () => {
     const settings = new SettingsService(new App(), undefined, memoryPluginData({ onboarding: { enabled: false } }));
     await settings.initialize();
-    expect(settings.getSetting('showChangelogOnUpdate')).toBe(true);
-    expect(settings.getSetting('changelogMajorUpdatesOnly')).toBe(false);
-    expect(settings.getSetting('onboarding').enabled).toBe(false);
+    expect(settings.get('showChangelogOnUpdate')).toBe(true);
+    expect(settings.get('changelogMajorUpdatesOnly')).toBe(false);
+    expect(settings.get('onboarding').enabled).toBe(false);
   });
   it('keeps the settings toggle in sync with modal changes and releases the listener', () => {
     let value = true;
-    const listeners = new Set<(settings: { showChangelogOnUpdate: boolean }) => void>();
+    const listeners = new Set<() => void>();
     const settings = {
-      getSetting: () => value,
-      setSetting: vi.fn((_key: string, next: boolean) => {
+      get: () => value,
+      set: vi.fn((_key: string, next: boolean) => {
         value = next;
-        listeners.forEach(listener => listener({ showChangelogOnUpdate: value }));
+        listeners.forEach(listener => listener());
       }),
-      onChange: (listener: (settings: { showChangelogOnUpdate: boolean }) => void) => {
+      onChange: (listener: () => void) => {
         listeners.add(listener); return () => { listeners.delete(listener); };
       },
     };
@@ -36,9 +36,9 @@ describe('changelog settings integration', () => {
     };
     const section = changelogSettingsSection(settings as any, { open: vi.fn() } as any, '0.1.6', { available: () => null, isChecking: () => false, onChange: () => () => undefined } as any);
     const cleanup = section.rows[3]!.render({ addToggle: (callback: (value: typeof toggle) => void) => callback(toggle) } as any);
-    settings.setSetting('showChangelogOnUpdate', false);
+    settings.set('showChangelogOnUpdate', false);
     expect(toggleValue).toBe(false);
-    expect(settings.setSetting).toHaveBeenCalledOnce();
+    expect(settings.set).toHaveBeenCalledOnce();
     expect(listeners.size).toBe(1);
     if (cleanup) cleanup();
     expect(listeners.size).toBe(0);

@@ -151,7 +151,7 @@ describe('the turn passing on and back', () => {
     document.body.innerHTML = '';
     const { app } = createInMemoryApp({ files: {} });
     const settings = new SettingsService(app);
-    settings.setInitiativeLayout({ fromTurn: true, dock: 'right' });
+    settings.set('initiativeLayout', { fromTurn: true, dock: 'right' });
     const store = createViewAtlasStore(app, `turn-motion-${Math.random()}`);
     store.setState({
       persistenceEnabled: false,
@@ -213,7 +213,7 @@ describe('the turn passing on and back', () => {
     document.body.innerHTML = '';
     const { app } = createInMemoryApp({ files: {} });
     const settings = new SettingsService(app);
-    settings.setInitiativeLayout({ dock: 'right' });
+    settings.set('initiativeLayout', { dock: 'right' });
     const store = createViewAtlasStore(app, `look-morph-${Math.random()}`);
     store.setState({
       persistenceEnabled: false,
@@ -226,7 +226,7 @@ describe('the turn passing on and back', () => {
     const tracker = document.querySelector<HTMLElement>('.atlas-initiative-tracker')!;
     const cards = { width: box(tracker).width, height: box(tracker).height };
 
-    await act(async () => settings.setCompactInitiative(true));
+    await act(async () => settings.set('initiativeCompact', true));
     holdAt(0);
     // It starts at the size it had, its cards not yet in sight
     expect(box(tracker).width).toBeCloseTo(cards.width, 0);
@@ -238,7 +238,7 @@ describe('the turn passing on and back', () => {
     const lines = { width: box(tracker).width, height: box(tracker).height };
     expect(lines.width).toBeGreaterThan(cards.width);
 
-    await act(async () => settings.setCompactInitiative(false));
+    await act(async () => settings.set('initiativeCompact', false));
     holdAt(0);
     expect(box(tracker).width).toBeCloseTo(lines.width, 0);
     finishAll();

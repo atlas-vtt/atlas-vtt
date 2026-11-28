@@ -73,7 +73,7 @@ describe('the cost of a drag on a lit map view mirrored to the player window', (
     const { view, app, store, settings } = scene;
     store.getState().setGMView(gmView);
     const gl = (app.renderer as unknown as { gl: WebGL2RenderingContext }).gl;
-    const players = settings.getLocalPlayerViewSettings();
+    const players = settings.get('localPlayerView');
     let time = performance.now();
     const step = (index: number): number => {
       const start = performance.now();

@@ -16,6 +16,7 @@ import {
   LASER_SIZE_MAX,
   LASER_SIZE_MIN,
   resolveLaserPointerSettings,
+  type LaserPointerSettings,
 } from '../../src/app/tools/laserPointerSettings';
 
 // The real beam compiles a WebGL shader, which jsdom cannot.
@@ -40,7 +41,7 @@ function rendererAtZoom(zoom: number, settings: SettingsService): RendererIntern
   const viewport = { on: vi.fn(), off: vi.fn(), scale: { x: zoom } } as unknown as Viewport;
   const source: SceneSource<ViewState['activeTool']> = { get: () => 'move', subscribe: vi.fn(() => () => {}) };
   const pixiApp = { ticker: { add: vi.fn(), remove: vi.fn() }, renderer: { name: 'webgl' } } as unknown as Application;
-  const readSettings = (): ReturnType<SettingsService['getLaserPointerSettings']> => settings.getLaserPointerSettings();
+  const readSettings = (): LaserPointerSettings => settings.get('laserPointer');
   const renderer = new LaserPointerRenderer(viewport, pixiApp, source, createEl('canvas'), readSettings) as unknown as RendererInternals & LaserPointerRenderer;
   Object.assign(renderer, { isToolActive: true, pointer: { x: 0, y: 0 } });
   return renderer;
@@ -62,9 +63,9 @@ describe('laser pointer settings', () => {
   });
 
   it('are read from the settings file and default for older files', async () => {
-    expect((await settingsFrom({ laserPointer: { color: '#ffe600' } })).getLaserPointerSettings())
+    expect((await settingsFrom({ laserPointer: { color: '#ffe600' } })).get('laserPointer'))
       .toEqual({ ...DEFAULT_LASER_POINTER_SETTINGS, color: '#ffe600' });
-    expect((await settingsFrom({})).getLaserPointerSettings()).toEqual(DEFAULT_LASER_POINTER_SETTINGS);
+    expect((await settingsFrom({})).get('laserPointer')).toEqual(DEFAULT_LASER_POINTER_SETTINGS);
   });
 });
 
@@ -80,7 +81,7 @@ describe('laser pointer rendering', () => {
     const renderer = rendererAtZoom(1, settings);
     const before = frame(renderer);
 
-    settings.setLaserPointerSettings({ size: DEFAULT_LASER_POINTER_SETTINGS.size * 2, color: '#00e5ff' });
+    settings.set('laserPointer', { size: DEFAULT_LASER_POINTER_SETTINGS.size * 2, color: '#00e5ff' });
     const after = frame(renderer);
     expect(after.width.halfWidth).toBeGreaterThan(before.width.halfWidth * 1.5);
     expect(after.color).toBe('#00e5ff');

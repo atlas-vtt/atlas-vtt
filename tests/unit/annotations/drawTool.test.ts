@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_DRAW_TOOL } from '../../../src/app/annotations/annotationTypes';
 import { drawToolFrom, rememberedDrawTool } from '../../../src/app/annotations/drawToolMemory';
-import { DRAW_TOOL_STORAGE_KEY, loadDrawTool, saveDrawTool } from '../../../src/app/services/deviceSettings';
+import { DEVICE_PREFERENCES, DRAW_TOOL_STORAGE_KEY, readDevice, writeDevice } from '../../../src/app/services/deviceSettings';
 import { createViewAtlasStore } from '../../../src/app/storeFactory';
 import { getHistoryStore } from '../../../src/app/stores/history';
 import { createInMemoryApp } from '../../mocks/inMemoryVault';
@@ -40,7 +40,7 @@ describe('the draw tool\'s choices', () => {
 
     store.getState().setDrawTool({ seeThrough: true });
     expect(localStorage.get(DRAW_TOOL_STORAGE_KEY)).toBe(JSON.stringify(rememberedDrawTool({ ...DEFAULT_DRAW_TOOL, seeThrough: true })));
-    expect(loadDrawTool(app)).toEqual({ ...DEFAULT_DRAW_TOOL, seeThrough: true });
+    expect(readDevice(app, DEVICE_PREFERENCES.drawTool)).toEqual({ ...DEFAULT_DRAW_TOOL, seeThrough: true });
   });
 
   it('read what a device stored field by field, the default for each that cannot be read', () => {
@@ -68,18 +68,18 @@ describe('the draw tool\'s choices', () => {
     const error = console.error;
     console.error = (...args: unknown[]): void => { logged.push(args); };
     try {
-      expect(loadDrawTool(app)).toEqual(DEFAULT_DRAW_TOOL);
+      expect(readDevice(app, DEVICE_PREFERENCES.drawTool)).toEqual(DEFAULT_DRAW_TOOL);
     } finally {
       console.error = error;
     }
     expect(logged).toHaveLength(1);
     localStorage.set(DRAW_TOOL_STORAGE_KEY, 7);
-    expect(loadDrawTool(app)).toEqual(DEFAULT_DRAW_TOOL);
-    saveDrawTool(app, { ...DEFAULT_DRAW_TOOL, curved: true });
-    expect(loadDrawTool(app).curved).toBe(true);
+    expect(readDevice(app, DEVICE_PREFERENCES.drawTool)).toEqual(DEFAULT_DRAW_TOOL);
+    writeDevice(app, DEVICE_PREFERENCES.drawTool, { ...DEFAULT_DRAW_TOOL, curved: true });
+    expect(readDevice(app, DEVICE_PREFERENCES.drawTool).curved).toBe(true);
     // A device that remembered an alignment, bold or italic starts without them, and without a word.
     localStorage.set(DRAW_TOOL_STORAGE_KEY, JSON.stringify({ look: 'plate', align: 'right', bold: true, italic: true }));
-    expect(loadDrawTool(app)).toEqual({ ...DEFAULT_DRAW_TOOL, look: 'plate' });
+    expect(readDevice(app, DEVICE_PREFERENCES.drawTool)).toEqual({ ...DEFAULT_DRAW_TOOL, look: 'plate' });
     expect(logged).toHaveLength(1);
   });
 });

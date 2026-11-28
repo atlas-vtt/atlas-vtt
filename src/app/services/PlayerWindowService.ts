@@ -194,7 +194,7 @@ export class PlayerWindowService {
 
   /** Whether players' pictures may move on their way to the next: `viewGlideMs` is 0, or the window's OS setting says not, and they jump. */
   private movesGently(win: Window): boolean {
-    return this.settingsService.getTableTvSettings().viewGlideMs > 0 && !prefersReducedMotion(win.document.body);
+    return this.settingsService.get('tableTv').viewGlideMs > 0 && !prefersReducedMotion(win.document.body);
   }
 
   /** The camera players are on, moved to the world point (x, y): to present another scene framed there; null while the window is closed. */
@@ -425,7 +425,7 @@ export class PlayerWindowService {
     curtained: () => this.curtained,
     glideMs: () => {
       const win = this.playerWindow;
-      return win && this.movesGently(win) ? this.settingsService.getTableTvSettings().viewGlideMs : 0;
+      return win && this.movesGently(win) ? this.settingsService.get('tableTv').viewGlideMs : 0;
     },
     now: () => this.playerWindow?.performance.now() ?? 0,
   };
@@ -564,7 +564,7 @@ export class PlayerWindowService {
         const tv = this.tableTv();
         if (tv) applyTableTvLook(body, overlayLayer, tv);
         // How large the initiative lists are drawn (the player view's setting), and the turn banner (the window's size)
-        const { initiativeScale } = this.settingsService.getLocalPlayerViewSettings();
+        const { initiativeScale } = this.settingsService.get('localPlayerView');
         overlayLayer.style.setProperty('--atlas-player-initiative-scale', String(initiativeScaleOf(initiativeScale)));
         const win = this.playerWindow;
         if (win) overlayLayer.style.setProperty('--atlas-player-turn-banner-scale', String(turnBannerScaleFor(win.innerWidth, win.innerHeight)));
@@ -673,7 +673,7 @@ export class PlayerWindowService {
       window: () => this.windowScreen(targetCanvas),
       heldFrame: () => this.heldFrame,
       frozenCamera: () => this.camera.frozen,
-      settings: () => this.settingsService.getLocalPlayerViewSettings(),
+      settings: () => this.settingsService.get('localPlayerView'),
       tableTv: () => this.tableTv(),
       setup: () => this.glass.setupScreen(),
       pixelBudget: () => this.pixelBudget(),
@@ -729,13 +729,13 @@ export class PlayerWindowService {
   private tableTv(): TableTv | undefined {
     const win = this.playerWindow;
     if (!win || win.closed) return undefined;
-    const tv = tableTvOf(win, this.settingsService.getTableTvSettings(), this.settingsService.getTableTvDevice());
+    const tv = tableTvOf(win, this.settingsService.get('tableTv'), this.settingsService.get('tableTvDevice'));
     return withSetupScreen(tv, this.glass.setupScreen());
   }
 
   /** Most pixels a players' frame is rendered with on this device (the player view settings). */
   private pixelBudget(): number {
-    return this.settingsService.isPlayerView4k() ? PLAYER_FRAME_4K_PIXEL_BUDGET : PLAYER_FRAME_PIXEL_BUDGET;
+    return this.settingsService.get('playerView4k') ? PLAYER_FRAME_4K_PIXEL_BUDGET : PLAYER_FRAME_PIXEL_BUDGET;
   }
 
   /** Persist the camera players see so a restored window reopens on the same framing. */

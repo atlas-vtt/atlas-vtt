@@ -55,7 +55,7 @@ describe('TrueScale panel', () => {
     fireEvent.click(screen.getByRole('switch', { name: 'Show the map at true scale' }));
     expect(screen.getByText('Which way is up?')).toBeTruthy();
     expect(lastScreen()).toEqual({ kind: 'orientation' });
-    expect(settings.getTableTvDevice().trueScale).toBe(false);
+    expect(settings.get('tableTvDevice').trueScale).toBe(false);
   });
 
   it('fits the card with the dial and stores the fit with Done', () => {
@@ -69,7 +69,7 @@ describe('TrueScale panel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Larger' }));
     expect((lastScreen() as { pxPerMm: number }).pxPerMm).toBeGreaterThan(3.06);
     fireEvent.click(screen.getByRole('button', { name: 'Done' }));
-    const device = settings.getTableTvDevice();
+    const device = settings.get('tableTvDevice');
     expect(device.screens[KEY]?.pxPerMm).toBeCloseTo(3 * 1.02 ** 2);
     expect(device.screens[KEY]?.rotation).toBe(90);
     expect(device.trueScale).toBe(true);
@@ -81,12 +81,12 @@ describe('TrueScale panel', () => {
     renderPanel();
     fireEvent.click(screen.getByRole('button', { name: 'Measure the screen…' }));
     fireEvent.click(screen.getByRole('radio', { name: 'Right' }));
-    expect(settings.getTableTvDevice().screens[KEY]?.rotation).toBe(90);
+    expect(settings.get('tableTvDevice').screens[KEY]?.rotation).toBe(90);
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
     expect(lastScreen()?.kind).toBe('fit');
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-    expect(settings.getTableTvDevice().screens[KEY]?.rotation).toBe(0);
-    expect(settings.getTableTvDevice().screens[KEY]?.pxPerMm).toBeUndefined();
+    expect(settings.get('tableTvDevice').screens[KEY]?.rotation).toBe(0);
+    expect(settings.get('tableTvDevice').screens[KEY]?.pxPerMm).toBeUndefined();
     expect(lastScreen()).toBeNull();
     expect(screen.getByText('This screen is not measured yet')).toBeTruthy();
   });
@@ -94,14 +94,14 @@ describe('TrueScale panel', () => {
   it('writes the cell on the glass', () => {
     renderPanel();
     fireEvent.click(screen.getByRole('radio', { name: '25 mm' }));
-    expect(settings.getTableTvDevice().cellMm).toBe(25);
+    expect(settings.get('tableTvDevice').cellMm).toBe(25);
   });
 
   it('turns the TV with the arrows and shows its arrow for a moment', () => {
     vi.useFakeTimers();
     renderPanel();
     fireEvent.click(screen.getByRole('radio', { name: 'Down' }));
-    expect(settings.getTableTvDevice().screens[KEY]?.rotation).toBe(180);
+    expect(settings.get('tableTvDevice').screens[KEY]?.rotation).toBe(180);
     expect(lastScreen()).toEqual({ kind: 'orientation' });
     act(() => { vi.advanceTimersByTime(1999); });
     expect(lastScreen()).toEqual({ kind: 'orientation' });

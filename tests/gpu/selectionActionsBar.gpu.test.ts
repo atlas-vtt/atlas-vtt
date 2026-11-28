@@ -297,7 +297,7 @@ describe('the bar above a selection, under a mouse', () => {
 
   it('is there with the setting on: a tool bar\'s buttons without words, each with its tooltip', async () => {
     pointer.coarse = false;
-    const m = await scene((made) => new SettingsService(made.obsidian).setSelectionBarShown(true));
+    const m = await scene((made) => new SettingsService(made.obsidian).set('selectionBar', true));
     act(() => m.store.getState().setSelection(['token']));
     await settled();
     expect(buttons().map(nameOf)).toEqual(['Select more', 'Edit token', 'Duplicate', 'Delete', 'More']);

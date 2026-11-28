@@ -66,7 +66,7 @@ describe('a turn change on the GM\'s map', () => {
 
   it('always follows the turn, and only to a token the canvas shows', () => {
     const { settings, turnTo } = setup();
-    settings.setInitiativeTurnOptions({ banner: false });
+    settings.set('initiativeTurnOptions', { banner: false });
     turnTo('ghost');
     turnTo('hero');
     turnTo('away');
@@ -77,7 +77,7 @@ describe('a turn change on the GM\'s map', () => {
 
   it('follows the turn to another floor in the GM\'s view, and leaves it there in the players\' view', () => {
     const gm = setup({ isGMView: true });
-    gm.settings.setInitiativeTurnOptions({ banner: false });
+    gm.settings.set('initiativeTurnOptions', { banner: false });
     gm.turnTo('ghost');
     gm.turnTo('hero');
     expect(gm.viewStore.getState().viewedLevel).toBe('cellar');
@@ -85,7 +85,7 @@ describe('a turn change on the GM\'s map', () => {
 
     pans.calls.length = 0;
     const players = setup({ isGMView: false });
-    players.settings.setInitiativeTurnOptions({ banner: false });
+    players.settings.set('initiativeTurnOptions', { banner: false });
     players.turnTo('ghost');
     players.turnTo('hero');
     expect(players.viewStore.getState().viewedLevel).toBe('ground');

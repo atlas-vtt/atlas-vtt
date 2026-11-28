@@ -128,7 +128,7 @@ describe('a freeze when the presented scene changes', () => {
 
   it('a frame remembered for a map wins over the freeze carried over when that map comes back', () => {
     const rig = openPlayerWindowRig();
-    rig.settings.setTableTvSettings({ viewGlideMs: 0 });
+    rig.settings.set('tableTv', { viewGlideMs: 0 });
     rig.frame(0);
     rig.service.framePlayersOn('scene-a', 300, 400);
     const other = rig.createView({ centerX: 500, centerY: 600, scale: 2 });
@@ -201,7 +201,7 @@ describe('true scale', () => {
     const rig = openPlayerWindowRig();
     const key = rig.service.setupScreenKey()!;
     rig.settings.setTvScreenSetup(key, { pxPerMm: 7 });
-    rig.settings.setTableTvDevice({ trueScale: true, cellMm: 30 });
+    rig.settings.set('tableTvDevice', { trueScale: true, cellMm: 30 });
     expect(rig.service.isTrueScale()).toBe(true);
     return rig;
   }

@@ -140,7 +140,7 @@ export async function mountToolbar(stored: StoredToolbarLayout = {}): Promise<To
   // Its file is read first, as at startup: a write before that would be lost to the read.
   await settings.initialize();
   settings.completeTutorial('palette');
-  settings.setToolbarLayout(stored);
+  settings.set('toolbar', stored);
   const store = createViewAtlasStore(app, `toolbar-editor-gpu-${Math.random()}`);
   store.getState().setPersistenceEnabled(false);
   const view = {

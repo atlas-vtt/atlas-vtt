@@ -51,7 +51,7 @@ describe('the turn flash in the views of the canvas', () => {
     expect(goldAround(scene.canvas(), 180, 180)).toBeGreaterThan(20);
 
     // The player view's switch hides the list from players, and so the flash
-    scene.settings.setLocalPlayerViewSettings({ showInitiative: false });
+    scene.settings.set('localPlayerView', { showInitiative: false });
     expect(goldAround(scene.canvas(), 180, 180)).toBe(0);
 
     // Back in the GM's view the GM sees it again; held for a peek it goes

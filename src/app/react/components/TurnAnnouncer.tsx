@@ -43,7 +43,7 @@ export function TurnAnnouncer(): React.ReactElement {
     const look = (state: ViewAtlasState): void => {
       const banner = watch.next(state, { kind: 'gm' });
       const change = fights.next(state);
-      const options = SettingsService.forApp(app)?.initiativeTurnOptions() ?? DEFAULT_TURN_OPTIONS;
+      const options = SettingsService.forApp(app)?.get('initiativeTurnOptions') ?? DEFAULT_TURN_OPTIONS;
       if (!state.initiative?.isActive) {
         // The fight ended: its banner replaces the turn's; a turn's banner leaves with the fight
         if (change === 'ended' && options.banner) display.show(fightBanner('ended'));

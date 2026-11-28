@@ -76,7 +76,7 @@ export function setupPlayerDice(display: 'card' | 'full' = 'card'): PlayerDiceHa
     'tokens/wolf.webp': '', 'tokens/hound.webp': '', 'tokens/goblin.webp': '', 'tokens/statblock-wolf.webp': '',
   } });
   const settings = new SettingsService(app);
-  settings.setDiceDisplay(display);
+  settings.set('diceDisplay', display);
   const store = createStore(() => sceneState(MAP_A, SCENE_A_TOKENS)) as unknown as StoreApi<ViewAtlasState>;
   const service = new PlayerWindowService(app, store, settings);
   const bus = new EventEmitter();
@@ -87,7 +87,7 @@ export function setupPlayerDice(display: 'card' | 'full' = 'card'): PlayerDiceHa
     rollSources: rollSourcesFor(store, store.getState().mapPath ?? '', () => perception.current, shownTokens),
   });
   const doc = attachFakePlayerWindow(service, sourceFor());
-  act(() => settings.setLocalPlayerViewSettings({ showDiceRolls: true, showTokenNameplates: true }));
+  act(() => settings.set('localPlayerView', { showDiceRolls: true, showTokenNameplates: true }));
   return { app, settings, store, bus, doc, service, perception, shownTokens, sourceFor };
 }
 

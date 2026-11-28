@@ -15,7 +15,7 @@ export function registerUpdateWatch(plugin: Plugin, settings: SettingsService): 
   const watch = new UpdateWatch({
     installed: plugin.manifest.version,
     readPublished: () => readPublishedVersion(obsidianFetch, requireApiVersion),
-    enabled: () => settings.getSetting('checkForUpdates'),
+    enabled: () => settings.get('checkForUpdates'),
     online: () => navigator.onLine,
     announced: {
       get: () => {

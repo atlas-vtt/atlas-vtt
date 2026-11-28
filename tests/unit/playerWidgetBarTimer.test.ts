@@ -5,6 +5,7 @@ import { PlayerWidgetBar } from '../../src/app/services/PlayerWidgetBar';
 import type { SettingsService } from '../../src/app/services/SettingsService';
 import type { ViewAtlasState } from '../../src/app/storeFactory';
 import type { TimerWidget } from '../../src/app/types/widgetTypes';
+import { preferenceReader } from '../mocks/preferenceReader';
 
 const torch: TimerWidget = {
   id: 'torch', type: 'timer', label: 'Torch', icon: 'hourglass',
@@ -12,8 +13,10 @@ const torch: TimerWidget = {
 };
 
 const settings = {
-  getLocalPlayerViewSettings: () => ({ showWidgets: true }),
-  initiativeLayout: () => ({ fromTurn: true, dock: 'right', edges: ['right'], facesPlayers: false }),
+  get: preferenceReader({
+    localPlayerView: () => ({ showWidgets: true }),
+    initiativeLayout: () => ({ fromTurn: true, dock: 'right', edges: ['right'], facesPlayers: false }),
+  }),
   onChange: () => () => undefined,
 } as unknown as SettingsService;
 

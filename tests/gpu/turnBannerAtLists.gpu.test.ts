@@ -46,8 +46,8 @@ async function showAtLists(rotation: number, edges: PlayersListEdge[], faces: bo
 
   const { app } = createInMemoryApp({ files: {} });
   const settings = new SettingsService(app);
-  settings.setLocalPlayerViewSettings({ turnBannerAtLists: true });
-  settings.setInitiativeLayout({ edges, facesPlayers: faces });
+  settings.set('localPlayerView', { turnBannerAtLists: true });
+  settings.set('initiativeLayout', { edges, facesPlayers: faces });
   const store = createStore(() => ({
     initiative: fight(0), initiativeTrackerOpen: true, mapPath: 'a.atlasmap', isMapLoading: false,
     objects: { tokens: Object.fromEntries([0, 1, 2].map((index) => [`t${index}`, creature(index)])) },

@@ -91,7 +91,7 @@ export function GridSettingsPanel({
   const [hexNumbers, setHexNumbers] = React.useState<CellNumberFormat | undefined>(currentGrid?.cellNumbers);
   const [tableTvTrueScale, setTableTvTrueScale] = React.useState(currentGrid?.tableTvTrueScale !== false);
   // Only asked where the player view is a table TV at true scale (TrueScale)
-  const usesTrueScale = SettingsService.forApp(view?.app)?.getTableTvDevice().trueScale === true;
+  const usesTrueScale = SettingsService.forApp(view?.app)?.get('tableTvDevice').trueScale === true;
   const [hexNumberOpacity, setHexNumberOpacity] = React.useState(
     currentGrid?.cellNumberOpacity ?? DEFAULT_CELL_NUMBER_OPACITY,
   );

@@ -14,7 +14,7 @@ import { DropdownSwatchGrid } from "./primitives/DropdownSwatchGrid"
 /** Colour and size of the laser pointer, saved in Atlas' settings for every map. */
 export function LaserPointerOptions(): React.ReactElement {
   const settings = useAtlasSettings()
-  const { color, size } = settings?.getLaserPointerSettings() ?? DEFAULT_LASER_POINTER_SETTINGS
+  const { color, size } = settings?.get('laserPointer') ?? DEFAULT_LASER_POINTER_SETTINGS
 
   return (
     <div className="atlas-dropdown-section">
@@ -22,7 +22,7 @@ export function LaserPointerOptions(): React.ReactElement {
         label={t('toolbar.laserColour')}
         swatches={LASER_COLOR_SWATCHES}
         value={color}
-        onChange={(value) => settings?.setLaserPointerSettings({ color: value })}
+        onChange={(value) => settings?.set('laserPointer', { color: value })}
         hint={LASER_COLOR_HINT}
       />
       <DropdownSliderRow
@@ -30,7 +30,7 @@ export function LaserPointerOptions(): React.ReactElement {
         value={size}
         min={LASER_SIZE_MIN}
         max={LASER_SIZE_MAX}
-        onChange={(value) => settings?.setLaserPointerSettings({ size: value })}
+        onChange={(value) => settings?.set('laserPointer', { size: value })}
       />
     </div>
   )

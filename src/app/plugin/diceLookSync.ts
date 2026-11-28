@@ -10,7 +10,7 @@ import type { SettingsService } from '../services/SettingsService';
 export function registerDiceLookSync(plugin: Plugin, settings: SettingsService): void {
   let applied = '';
   const apply = (force: boolean): void => {
-    const look = settings.getDiceLook();
+    const look = settings.get('diceLook');
     const key = `${look.colour}:${look.font}`;
     if (!force && key === applied) return;
     applied = key;

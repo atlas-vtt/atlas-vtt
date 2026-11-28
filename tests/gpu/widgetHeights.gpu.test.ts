@@ -5,6 +5,7 @@ import css from '../../styles/main.scss?inline';
 import { PlayerWidgetBar } from '../../src/app/services/PlayerWidgetBar';
 import type { SettingsService } from '../../src/app/services/SettingsService';
 import type { AnyWidget } from '../../src/app/types/widgetTypes';
+import { preferenceReader } from '../mocks/preferenceReader';
 
 const THEME = `
   body { margin: 0; font: 13px/1.5 sans-serif; --background-primary: #1e1e1e; --background-modifier-border: #363636; --text-normal: #dadada;
@@ -19,7 +20,10 @@ const WIDGETS: readonly AnyWidget[] = [
   { ...base, id: 'count', type: 'clock', label: 'A clock that counts', value: 2, segments: 6, showCount: true, order: 3 },
 ];
 
-const settings = { getLocalPlayerViewSettings: () => ({ showWidgets: true }), initiativeLayout: () => ({ fromTurn: true, dock: 'right', edges: ['right'], facesPlayers: false }), onChange: () => () => undefined } as unknown as SettingsService;
+const settings = {
+  get: preferenceReader({ localPlayerView: () => ({ showWidgets: true }), initiativeLayout: () => ({ fromTurn: true, dock: 'right', edges: ['right'], facesPlayers: false }) }),
+  onChange: () => () => undefined,
+} as unknown as SettingsService;
 
 /** The cards of the players' widget bar, one of every kind. */
 function cards(touch: boolean): HTMLElement[] {

@@ -26,7 +26,7 @@ function setup(): { settings: SettingsService; store: StoreApi<ViewAtlasState>; 
   const { app } = createInMemoryApp({ files: { 'tokens/wolf.webp': '' } });
   const settings = new SettingsService(app);
   // The result cards; the 3D panel has its own case below.
-  settings.setDiceDisplay('card');
+  settings.set('diceDisplay', 'card');
   const store = createStore(() => ({
     objects: {
       tokens: {
@@ -56,7 +56,7 @@ describe('player window dice rolls', () => {
     const { settings, store, doc, bus, service } = setup();
     const other = new EventEmitter();
     const otherStore = createStore(() => store.getState());
-    act(() => settings.setLocalPlayerViewSettings({ showDiceRolls: true }));
+    act(() => settings.set('localPlayerView', { showDiceRolls: true }));
     roll(other);
     expect(toastText(doc)).toBeUndefined();
     act(() => service.holdCurrentFrame());
@@ -87,11 +87,11 @@ describe('player window dice rolls', () => {
     roll(bus);
     expect(toastText(doc)).toBeUndefined();
 
-    act(() => settings.setLocalPlayerViewSettings({ showDiceRolls: true }));
+    act(() => settings.set('localPlayerView', { showDiceRolls: true }));
     roll(bus);
     expect(toastText(doc)).toContain('17');
 
-    act(() => settings.setLocalPlayerViewSettings({ showDiceRolls: false }));
+    act(() => settings.set('localPlayerView', { showDiceRolls: false }));
     expect(toastText(doc)).toBeUndefined();
   });
 
@@ -148,7 +148,7 @@ describe('who a roll names in the player window', () => {
   it('shows a portrait and the ability but no name, nor alt text, while nameplates are off', () => {
     for (const display of ['card', 'full'] as const) {
       const { doc, bus, settings } = setupPlayerDice(display);
-      act(() => settings.setLocalPlayerViewSettings({ showTokenNameplates: false }));
+      act(() => settings.set('localPlayerView', { showTokenNameplates: false }));
       emitRoll(bus, WOLF_BITE, originOf(MAP_A));
       const shown = doc.querySelector(display === 'card' ? '.atlas-dice-toast' : '.atlas-dice-roll');
       expect(shown?.querySelector('img')?.getAttribute('src')).toContain('tokens/wolf.webp');
@@ -199,7 +199,7 @@ describe('who a roll names in the player window', () => {
     expect(second).not.toContain('Wolf');
 
     perception.current = undefined;
-    act(() => settings.setLocalPlayerViewSettings({ showTokenNameplates: false }));
+    act(() => settings.set('localPlayerView', { showTokenNameplates: false }));
     expect(cardTexts(doc)[0]).toContain('Wolf');
     emitRoll(bus, WOLF_BITE, originOf(MAP_A));
     expect(lastCard(doc)?.textContent).not.toContain('Wolf');
@@ -341,7 +341,7 @@ describe('a result card in the player window', () => {
 
   it.each<[string, (harness: PlayerDiceHarness) => void]>([
     ['the window closes', ({ service }) => service.destroy()],
-    ['the DM stops sharing rolls', ({ settings }) => settings.setLocalPlayerViewSettings({ showDiceRolls: false })],
+    ['the DM stops sharing rolls', ({ settings }) => settings.set('localPlayerView', { showDiceRolls: false })],
     ['another view is presented', ({ service, sourceFor }) => service.presentCanvas(sourceFor(new EventEmitter()), 'scene-other')],
     ['its view is released', ({ service, store }) => service.releaseSource(store)],
   ])('leaves no timer behind once %s', (_, end) => {

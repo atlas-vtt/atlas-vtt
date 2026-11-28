@@ -1,6 +1,6 @@
 import type { App } from 'obsidian';
 import { deviceProfile } from '../platform/deviceProfile';
-import { loadZoomButtons, saveZoomButtons } from '../services/deviceSettings';
+import { DEVICE_PREFERENCES, readDevice, writeDevice } from '../services/deviceSettings';
 import type { ZoomButtonsRow } from '../settings/navigationSettingsSection';
 
 type DeviceStorage = Pick<App, 'loadLocalStorage' | 'saveLocalStorage'>;
@@ -23,7 +23,7 @@ export class ZoomButtonsChoice {
   private readonly listeners = new Set<() => void>();
 
   constructor(private readonly storage: DeviceStorage) {
-    this.chosen = loadZoomButtons(storage);
+    this.chosen = readDevice(storage, DEVICE_PREFERENCES.zoomButtons);
   }
 
   get shown(): boolean {
@@ -33,7 +33,7 @@ export class ZoomButtonsChoice {
   setShown(shown: boolean): void {
     if (shown === this.chosen) return;
     this.chosen = shown;
-    saveZoomButtons(this.storage, shown);
+    writeDevice(this.storage, DEVICE_PREFERENCES.zoomButtons, shown);
     for (const listener of this.listeners) listener();
   }
 

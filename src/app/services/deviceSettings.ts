@@ -1,10 +1,12 @@
 import type { App } from 'obsidian';
-import type { NavigationInputMode } from './atlasSettings';
+import { Platform } from 'obsidian';
 import { isLightingQualityLevel, type LightingQualityLevel } from '../lighting/lightingQuality';
 import { parseGraphicsChoice, type GraphicsChoice } from '../lighting/graphicsSettings';
-import type { DrawToolChoices } from '../annotations/annotationTypes';
 import { drawToolFrom, rememberedDrawTool } from '../annotations/drawToolMemory';
+import type { DrawToolChoices } from '../annotations/annotationTypes';
 import { readGmFogOpacity } from '../fog/gmFogOpacity';
+import { readTableTvDevice, TABLE_TV_STORAGE_KEY } from './tableTvDevice';
+import { applyChange, fields, whole, type PreferenceRow, type PreferenceStorage } from './preferences/preferenceRow';
 
 /**
  * Facts about this device, which Atlas keeps in the vault's local storage: they never sync,
@@ -25,254 +27,122 @@ export const PLAYER_VIEW_4K_STORAGE_KEY = 'atlas-vtt:player-view-4k';
 export const DRAW_TOOL_STORAGE_KEY = 'atlas-vtt:draw-tool';
 /** How opaque fog is in the GM's view on this device: a number from 0 to 1 as text, never a falsy value Obsidian would drop. */
 export const GM_FOG_OPACITY_STORAGE_KEY = 'atlas-vtt:gm-fog-opacity';
+/** Whether the bar above a selection shows on this device under a mouse too: `shown`, else only under a finger. */
+export const SELECTION_BAR_STORAGE_KEY = 'atlas-vtt:selection-bar';
+/** A pen has touched a map on this device: `seen`, never a falsy value Obsidian would drop. */
+export const PEN_SEEN_STORAGE_KEY = 'atlas-vtt:pen-seen';
+/** What a finger does in a drawing tool on a device with a pen: `tool` or `pan`. */
+export const FINGER_USE_STORAGE_KEY = 'atlas-vtt:finger-use';
+/** Whether the map shows its zoom buttons on this device while a mouse points: `shown`, never a falsy value Obsidian would drop. */
+export const ZOOM_BUTTONS_STORAGE_KEY = 'atlas-vtt:zoom-buttons';
+
+/**
+ * How wheel events drive the map viewport.
+ * - `mouse`: the wheel always zooms; right-drag pans.
+ * - `trackpad`: two-finger scroll pans; pinch (Ctrl/Cmd + wheel) zooms.
+ */
+export type NavigationInputMode = 'mouse' | 'trackpad';
+
+/** Whether a finger in a drawing tool is the tool, as the pen is, or pans the map and leaves drawing to the pen. */
+export type FingerUse = 'tool' | 'pan';
 
 /**
  * The vault's local storage. Obsidian stores a value only when it is truthy: `false`, `0` and `''`
- * remove the key, and read back as never chosen. Store every fact as a value that is never falsy.
+ * remove the key, and read back as never chosen. Every row stores a value that is never falsy, or null to clear.
  */
 export type DeviceStorage = Pick<App, 'loadLocalStorage' | 'saveLocalStorage'>;
 
 export const isInputMode = (value: unknown): value is NavigationInputMode => value === 'mouse' || value === 'trackpad';
 
-/** The input mode chosen on this device, or null when none was. */
-export function loadInputMode(storage: DeviceStorage): NavigationInputMode | null {
+/** The input mode a device starts with: Macs mostly have a trackpad, other computers a mouse. */
+export const defaultInputMode = (): NavigationInputMode => (Platform.isMacOS ? 'trackpad' : 'mouse');
+
+const json = (stored: unknown): unknown => {
+  if (typeof stored !== 'string') return stored;
   try {
-    const stored: unknown = storage.loadLocalStorage(INPUT_MODE_STORAGE_KEY);
-    return isInputMode(stored) ? stored : null;
+    return JSON.parse(stored);
   } catch (error) {
-    console.error('[Atlas] Could not read the input mode of this device', error);
-    return null;
+    console.error('[Atlas] A setting of this device is no JSON; it reads as its default', error);
+    return undefined;
   }
+};
+const asJson = { decode: json, encode: (value: unknown): unknown => JSON.stringify(value) };
+const qualityLevel = (stored: unknown): LightingQualityLevel | null => (isLightingQualityLevel(stored) ? stored : null);
+/** A switch stored as `word` while on, and as no key while off. */
+const shownAs = (key: string, word: string): PreferenceRow<boolean> =>
+  whole('device', key, (stored) => stored === word, { encode: (on) => (on ? word : null) });
+
+/** The Graphics page's choice, its preset also under the older key for versions before the page; null forgets both. */
+const graphics: PreferenceRow<GraphicsChoice | null> = {
+  store: 'device',
+  keys: [GRAPHICS_STORAGE_KEY, LIGHTING_QUALITY_STORAGE_KEY],
+  read: (stored) => {
+    const choice = parseGraphicsChoice(json(stored(GRAPHICS_STORAGE_KEY)));
+    const level = qualityLevel(stored(LIGHTING_QUALITY_STORAGE_KEY));
+    return choice ?? (level ? { preset: level, overrides: {} } : null);
+  },
+  write: (choice) => ({
+    [GRAPHICS_STORAGE_KEY]: choice === null ? null : JSON.stringify(choice),
+    [LIGHTING_QUALITY_STORAGE_KEY]: choice === null ? null : choice.preset,
+  }),
+};
+
+/** What this device keeps of itself, each under its key in the vault's local storage. */
+export const DEVICE_PREFERENCES = {
+  /** Unset is this platform's default (`defaultInputMode`). */
+  inputMode: whole('device', INPUT_MODE_STORAGE_KEY, (stored) => (isInputMode(stored) ? stored : defaultInputMode())),
+  /** Null until the GM chose, at the page or with an older version's level. */
+  graphics,
+  /** Null before Atlas was first asked to pick (`pickLightingQuality`). */
+  pickedLightingQuality: whole('device', PICKED_LIGHTING_QUALITY_STORAGE_KEY, qualityLevel),
+  /** Null when never chosen (`animateMapsOn` decides then). Words, since a stored `false` would read as never chosen; `true` as the first builds stored it. */
+  animateMaps: whole('device', ANIMATE_MAPS_STORAGE_KEY, (stored): boolean | null => (stored === 'on' || stored === true ? true : stored === 'off' ? false : null), {
+    encode: (on) => (on ? 'on' : 'off'),
+  }),
+  playerView4k: shownAs(PLAYER_VIEW_4K_STORAGE_KEY, '4k'),
+  selectionBar: shownAs(SELECTION_BAR_STORAGE_KEY, 'shown'),
+  /** 0 to 1 (`readGmFogOpacity`), stored as text. */
+  gmFogOpacity: whole('device', GM_FOG_OPACITY_STORAGE_KEY, readGmFogOpacity, { encode: (opacity) => String(readGmFogOpacity(opacity)) }),
+  /** TrueScale's facts about the TVs this device shows the player view on (`tableTvDevice.ts`). */
+  tableTvDevice: fields('device', TABLE_TV_STORAGE_KEY, readTableTvDevice, asJson),
+  /** The Draw tool's choices as it starts: the style it was last given. */
+  drawTool: whole<DrawToolChoices>('device', DRAW_TOOL_STORAGE_KEY, drawToolFrom, { decode: json, encode: (choices) => JSON.stringify(rememberedDrawTool(choices as DrawToolChoices)) }),
+  penSeen: shownAs(PEN_SEEN_STORAGE_KEY, 'seen'),
+  /** Null when never chosen. */
+  fingerUse: whole('device', FINGER_USE_STORAGE_KEY, (stored): FingerUse | null => (stored === 'tool' || stored === 'pan' ? stored : null)),
+  zoomButtons: shownAs(ZOOM_BUTTONS_STORAGE_KEY, 'shown'),
+};
+
+/** The device's local storage as a store rows read and write; what cannot be read or written is logged and left. */
+export function deviceStorage(storage: DeviceStorage): PreferenceStorage {
+  return {
+    entry: (key) => {
+      try {
+        const stored: unknown = storage.loadLocalStorage(key);
+        return stored ?? undefined;
+      } catch (error) {
+        console.error(`[Atlas] Could not read ${key} on this device`, error);
+        return undefined;
+      }
+    },
+    put: (change) => {
+      for (const [key, stored] of Object.entries(change)) {
+        try {
+          storage.saveLocalStorage(key, stored ?? null);
+        } catch (error) {
+          console.error(`[Atlas] Could not save ${key} on this device`, error);
+        }
+      }
+    },
+  };
 }
 
-export function saveInputMode(storage: DeviceStorage, mode: NavigationInputMode): void {
-  try {
-    storage.saveLocalStorage(INPUT_MODE_STORAGE_KEY, mode);
-  } catch (error) {
-    console.error('[Atlas] Could not save the input mode of this device', error);
-  }
+/** A device preference as this device keeps it. */
+export function readDevice<T>(storage: DeviceStorage, row: PreferenceRow<T, never>): T {
+  return row.read(deviceStorage(storage).entry);
 }
 
-/** The lighting quality chosen on this device, or null when none was. */
-export function loadLightingQuality(storage: DeviceStorage): LightingQualityLevel | null {
-  return loadQualityLevel(storage, LIGHTING_QUALITY_STORAGE_KEY);
-}
-
-export function saveLightingQuality(storage: DeviceStorage, level: LightingQualityLevel): void {
-  saveQualityLevel(storage, LIGHTING_QUALITY_STORAGE_KEY, level);
-}
-
-/** The Graphics page's choice on this device, or null when none was made (an older stored level stands in, `loadLightingQuality`). */
-export function loadGraphicsChoice(storage: DeviceStorage): GraphicsChoice | null {
-  try {
-    const stored: unknown = storage.loadLocalStorage(GRAPHICS_STORAGE_KEY);
-    return typeof stored === 'string' ? parseGraphicsChoice(JSON.parse(stored)) : null;
-  } catch (error) {
-    console.error('[Atlas] Could not read the graphics choice of this device', error);
-    return null;
-  }
-}
-
-/** Stores the choice, its preset also under the older key for versions before the page; null forgets both, so the level Atlas picked for the device holds again. */
-export function saveGraphicsChoice(storage: DeviceStorage, choice: GraphicsChoice | null): void {
-  try {
-    storage.saveLocalStorage(GRAPHICS_STORAGE_KEY, choice === null ? null : JSON.stringify(choice));
-    storage.saveLocalStorage(LIGHTING_QUALITY_STORAGE_KEY, choice === null ? null : choice.preset);
-  } catch (error) {
-    console.error('[Atlas] Could not save the graphics choice of this device', error);
-  }
-}
-
-/** The lighting quality Atlas picked for this device, or null before it was asked. */
-export function loadPickedLightingQuality(storage: DeviceStorage): LightingQualityLevel | null {
-  return loadQualityLevel(storage, PICKED_LIGHTING_QUALITY_STORAGE_KEY);
-}
-
-export function savePickedLightingQuality(storage: DeviceStorage, level: LightingQualityLevel): void {
-  saveQualityLevel(storage, PICKED_LIGHTING_QUALITY_STORAGE_KEY, level);
-}
-
-function loadQualityLevel(storage: DeviceStorage, key: string): LightingQualityLevel | null {
-  try {
-    const stored: unknown = storage.loadLocalStorage(key);
-    return isLightingQualityLevel(stored) ? stored : null;
-  } catch (error) {
-    console.error('[Atlas] Could not read the lighting quality of this device', error);
-    return null;
-  }
-}
-
-function saveQualityLevel(storage: DeviceStorage, key: string, level: LightingQualityLevel): void {
-  try {
-    storage.saveLocalStorage(key, level);
-  } catch (error) {
-    console.error('[Atlas] Could not save the lighting quality of this device', error);
-  }
-}
-
-/** How the choice is stored: words, since a stored `false` would read as never chosen. */
-const ANIMATE_ON = 'on';
-const ANIMATE_OFF = 'off';
-
-/** Whether animated maps play on this device, or null when it was never chosen. */
-export function loadAnimateMaps(storage: DeviceStorage): boolean | null {
-  try {
-    const stored: unknown = storage.loadLocalStorage(ANIMATE_MAPS_STORAGE_KEY);
-    // `true`: as the first builds stored it, which could store no `false`
-    if (stored === ANIMATE_ON || stored === true) return true;
-    return stored === ANIMATE_OFF ? false : null;
-  } catch (error) {
-    console.error('[Atlas] Could not read whether this device animates maps', error);
-    return null;
-  }
-}
-
-export function saveAnimateMaps(storage: DeviceStorage, on: boolean): void {
-  try {
-    storage.saveLocalStorage(ANIMATE_MAPS_STORAGE_KEY, on ? ANIMATE_ON : ANIMATE_OFF);
-  } catch (error) {
-    console.error('[Atlas] Could not save whether this device animates maps', error);
-  }
-}
-
-/** Whether this device renders the player view with up to 4K pixels; off until chosen. */
-export function loadPlayerView4k(storage: DeviceStorage): boolean {
-  try {
-    return storage.loadLocalStorage(PLAYER_VIEW_4K_STORAGE_KEY) === '4k';
-  } catch (error) {
-    console.error('[Atlas] Could not read the player view resolution of this device', error);
-    return false;
-  }
-}
-
-export function savePlayerView4k(storage: DeviceStorage, on: boolean): void {
-  try {
-    // Off removes the key: the default budget again
-    storage.saveLocalStorage(PLAYER_VIEW_4K_STORAGE_KEY, on ? '4k' : null);
-  } catch (error) {
-    console.error('[Atlas] Could not save the player view resolution of this device', error);
-  }
-}
-
-/** Whether the bar above a selection shows on this device under a mouse too: `shown`, else only under a finger. */
-export const SELECTION_BAR_STORAGE_KEY = 'atlas-vtt:selection-bar';
-
-/** Whether the bar above a selection shows on this device under a mouse too; off until chosen. */
-export function loadSelectionBarShown(storage: DeviceStorage): boolean {
-  try {
-    return storage.loadLocalStorage(SELECTION_BAR_STORAGE_KEY) === 'shown';
-  } catch (error) {
-    console.error('[Atlas] Could not read whether this device shows the selection bar', error);
-    return false;
-  }
-}
-
-export function saveSelectionBarShown(storage: DeviceStorage, shown: boolean): void {
-  try {
-    // Off removes the key: under a finger only again
-    storage.saveLocalStorage(SELECTION_BAR_STORAGE_KEY, shown ? 'shown' : null);
-  } catch (error) {
-    console.error('[Atlas] Could not save whether this device shows the selection bar', error);
-  }
-}
-
-/** The Draw tool's choices as it starts on this device: the style it was last given, the defaults where none was. */
-export function loadDrawTool(storage: DeviceStorage): DrawToolChoices {
-  try {
-    const stored: unknown = storage.loadLocalStorage(DRAW_TOOL_STORAGE_KEY);
-    return drawToolFrom(typeof stored === 'string' ? JSON.parse(stored) : null);
-  } catch (error) {
-    console.error('[Atlas] Could not read the draw tool\'s choices of this device', error);
-    return drawToolFrom(null);
-  }
-}
-
-export function saveDrawTool(storage: DeviceStorage, choices: DrawToolChoices): void {
-  try {
-    storage.saveLocalStorage(DRAW_TOOL_STORAGE_KEY, JSON.stringify(rememberedDrawTool(choices)));
-  } catch (error) {
-    console.error('[Atlas] Could not save the draw tool\'s choices of this device', error);
-  }
-}
-
-/** How opaque fog is in the GM's view on this device; the default until chosen, and where what is stored is no opacity. */
-export function loadGmFogOpacity(storage: DeviceStorage): number {
-  try {
-    return readGmFogOpacity(storage.loadLocalStorage(GM_FOG_OPACITY_STORAGE_KEY));
-  } catch (error) {
-    console.error('[Atlas] Could not read the fog opacity of this device', error);
-    return readGmFogOpacity(null);
-  }
-}
-
-export function saveGmFogOpacity(storage: DeviceStorage, opacity: number): void {
-  try {
-    storage.saveLocalStorage(GM_FOG_OPACITY_STORAGE_KEY, String(readGmFogOpacity(opacity)));
-  } catch (error) {
-    console.error('[Atlas] Could not save the fog opacity of this device', error);
-  }
-}
-
-/** A pen has touched a map on this device: `seen`, never a falsy value Obsidian would drop. */
-export const PEN_SEEN_STORAGE_KEY = 'atlas-vtt:pen-seen';
-/** What a finger does in a drawing tool on a device with a pen: `tool` or `pan`. */
-export const FINGER_USE_STORAGE_KEY = 'atlas-vtt:finger-use';
-
-/** Whether a finger in a drawing tool is the tool, as the pen is, or pans the map and leaves drawing to the pen. */
-export type FingerUse = 'tool' | 'pan';
-
-export function loadPenSeen(storage: DeviceStorage): boolean {
-  try {
-    return storage.loadLocalStorage(PEN_SEEN_STORAGE_KEY) === 'seen';
-  } catch (error) {
-    console.error('[Atlas] Could not read whether this device has a pen', error);
-    return false;
-  }
-}
-
-export function savePenSeen(storage: DeviceStorage): void {
-  try {
-    storage.saveLocalStorage(PEN_SEEN_STORAGE_KEY, 'seen');
-  } catch (error) {
-    console.error('[Atlas] Could not save that this device has a pen', error);
-  }
-}
-
-/** What fingers do on this device, or null when it was never chosen. */
-export function loadFingerUse(storage: DeviceStorage): FingerUse | null {
-  try {
-    const stored: unknown = storage.loadLocalStorage(FINGER_USE_STORAGE_KEY);
-    return stored === 'tool' || stored === 'pan' ? stored : null;
-  } catch (error) {
-    console.error('[Atlas] Could not read what fingers do on this device', error);
-    return null;
-  }
-}
-
-export function saveFingerUse(storage: DeviceStorage, use: FingerUse): void {
-  try {
-    storage.saveLocalStorage(FINGER_USE_STORAGE_KEY, use);
-  } catch (error) {
-    console.error('[Atlas] Could not save what fingers do on this device', error);
-  }
-}
-
-/** Whether the map shows its zoom buttons on this device while a mouse points: `shown`, never a falsy value Obsidian would drop. */
-export const ZOOM_BUTTONS_STORAGE_KEY = 'atlas-vtt:zoom-buttons';
-
-export function loadZoomButtons(storage: DeviceStorage): boolean {
-  try {
-    return storage.loadLocalStorage(ZOOM_BUTTONS_STORAGE_KEY) === 'shown';
-  } catch (error) {
-    console.error('[Atlas] Could not read whether this device shows the zoom buttons', error);
-    return false;
-  }
-}
-
-export function saveZoomButtons(storage: DeviceStorage, shown: boolean): void {
-  try {
-    storage.saveLocalStorage(ZOOM_BUTTONS_STORAGE_KEY, shown ? 'shown' : null);
-  } catch (error) {
-    console.error('[Atlas] Could not save whether this device shows the zoom buttons', error);
-  }
+/** Stores a change of a device preference; returns whether what reads back changed. */
+export function writeDevice<T, C>(storage: DeviceStorage, row: PreferenceRow<T, C>, change: C): boolean {
+  return applyChange(row, change, deviceStorage(storage));
 }

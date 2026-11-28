@@ -49,7 +49,7 @@ describe('what players see, as a menu', () => {
 
   const open = (leafWidth: number): HTMLElement => {
     const settings = new SettingsService({} as never);
-    settings.setExperimental('onlinePlay', true);
+    settings.set('experimental', { onlinePlay: true });
     render(h('div', { className: 'workspace-leaf', style: { width: leafWidth } },
       h('div', { className: 'atlas-vtt-plugin' },
         h('div', { className: 'atlas-player-window-bar', style: { position: 'absolute', left: 16, top: 16 } },

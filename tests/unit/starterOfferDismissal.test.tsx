@@ -59,14 +59,14 @@ describe('the sidebar offer of starter tokens', () => {
 
     await act(async () => fireEvent.click(view.getByRole('button', { name: t('am.bestiary.hide') })));
     await waitFor(() => expect(offerShown(view)).toBe(false));
-    expect(settings.isStarterOfferHidden(winter)).toBe(true);
+    expect(settings.get('hiddenStarterOffers').includes(winter)).toBe(true);
     expect(showAtlasToast).toHaveBeenCalledWith(t('am.bestiary.hidden'), expect.any(Number), expect.objectContaining({ label: t('history.undo') }));
 
     await settings.saveSettingsNow();
     expect(data.stored()).toMatchObject({ hiddenStarterOffers: [winter] });
     const reread = new SettingsService(createInMemoryApp().app, undefined, data);
     await reread.initialize();
-    expect(reread.isStarterOfferHidden(winter)).toBe(true);
+    expect(reread.get('hiddenStarterOffers').includes(winter)).toBe(true);
 
     // Another collection still offers them.
     view.rerender(<Library app={app} assets={assets} collection={assets.getDefaultCollectionId()} uid={await uidOf(assets.getDefaultCollectionId())} />);
@@ -82,14 +82,14 @@ describe('the sidebar offer of starter tokens', () => {
 
     await act(async () => lastToastAction().run());
     await waitFor(() => expect(offerShown(view)).toBe(true));
-    expect(settings.isStarterOfferHidden(winter)).toBe(false);
+    expect(settings.get('hiddenStarterOffers').includes(winter)).toBe(false);
     await settings.saveSettingsNow();
     expect(JSON.parse(JSON.stringify(data.stored()))).not.toHaveProperty('hiddenStarterOffers');
   });
 
   it('stays hidden after the collection folder is renamed, since it is kept by uid', async () => {
     const { app, assets, settings, uidOf } = await library();
-    settings.setStarterOfferHidden(await uidOf('Winter Camp'), true);
+    settings.set('hiddenStarterOffers', [await uidOf('Winter Camp')]);
     await assets.renameCollection('Winter Camp', 'Summer Camp');
 
     const view = render(<Library app={app} assets={assets} collection="Summer Camp" uid={await uidOf('Summer Camp')} />);
@@ -111,6 +111,6 @@ describe('the sidebar offer of starter tokens', () => {
   it('reads a damaged list as none', async () => {
     const settings = new SettingsService(createInMemoryApp().app, undefined, memoryPluginData({ hiddenStarterOffers: 'all' }));
     await settings.initialize();
-    expect(settings.isStarterOfferHidden('all')).toBe(false);
+    expect(settings.get('hiddenStarterOffers').includes('all')).toBe(false);
   });
 });

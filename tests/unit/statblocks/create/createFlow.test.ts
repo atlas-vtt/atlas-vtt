@@ -37,8 +37,7 @@ let link: ReturnType<typeof vi.fn>;
 /** Atlas' settings as these tests need them: the switch. */
 function settings({ editor = true } = {}): void {
   vi.spyOn(SettingsService, 'forApp').mockReturnValue({
-    getSetting: () => undefined,
-    isExperimentalOn: () => editor,
+    get: (name: string): unknown => (name === 'experimental' ? { statblockEditor: editor } : undefined),
     onChange: () => () => undefined,
   } as unknown as SettingsService);
 }

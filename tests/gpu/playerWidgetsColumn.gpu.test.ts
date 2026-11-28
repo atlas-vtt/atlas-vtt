@@ -11,6 +11,7 @@ import type { SettingsService } from '../../src/app/services/SettingsService';
 import type { PlayersListEdge } from '../../src/app/initiative/initiativeLayout';
 import type { CounterWidget } from '../../src/app/types/widgetTypes';
 import type { Character } from '../../src/app/types';
+import { preferenceReader } from '../mocks/preferenceReader';
 
 const THEME = `
   body { margin: 0; font: 13px/1.5 sans-serif; --background-primary: #1e1e1e; --background-modifier-border: #363636; --text-normal: #dadada;
@@ -23,8 +24,10 @@ const counter = (id: string, label: string, order: number): CounterWidget => ({
 
 function settingsFor(edges: PlayersListEdge[]): SettingsService {
   return {
-    getLocalPlayerViewSettings: () => ({ showWidgets: true }),
-    initiativeLayout: () => ({ fromTurn: true, dock: edges[0]!, edges, facesPlayers: edges[0] !== 'right' }),
+    get: preferenceReader({
+      localPlayerView: () => ({ showWidgets: true }),
+      initiativeLayout: () => ({ fromTurn: true, dock: edges[0]!, edges, facesPlayers: edges[0] !== 'right' }),
+    }),
     onChange: () => () => undefined,
   } as unknown as SettingsService;
 }
@@ -99,8 +102,10 @@ describe('the players\' widgets beside a horizontal initiative list', () => {
     let edges: PlayersListEdge[] = ['right'];
     const listeners: (() => void)[] = [];
     const settings = {
-      getLocalPlayerViewSettings: () => ({ showWidgets: true }),
-      initiativeLayout: () => ({ fromTurn: true, dock: edges[0]!, edges, facesPlayers: edges[0] !== 'right' }),
+      get: preferenceReader({
+        localPlayerView: () => ({ showWidgets: true }),
+        initiativeLayout: () => ({ fromTurn: true, dock: edges[0]!, edges, facesPlayers: edges[0] !== 'right' }),
+      }),
       onChange: (listener: () => void) => { listeners.push(listener); return () => undefined; },
     } as unknown as SettingsService;
     const bar = new PlayerWidgetBar(settings);

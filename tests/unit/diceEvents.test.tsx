@@ -13,6 +13,7 @@ import type { AtlasView } from '../../src/app/atlas-view';
 import { DiceToastObserver } from '../../src/app/services/DiceToastObserver';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { preferenceReader } from '../mocks/preferenceReader';
 
 const observers: DiceToastObserver[] = [];
 afterEach(() => { cleanup(); observers.splice(0).forEach(observer => observer.destroy()); vi.restoreAllMocks(); });
@@ -26,7 +27,7 @@ function setup() {
   const getTool = (): DiceTool => tool;
   const history = renderHook(() => useDiceHistory(getTool, actions, bus));
   const sound = { playDiceResult: vi.fn() };
-  observers.push(new DiceToastObserver(sound, { getDiceDisplay: () => 'card', getDiceVolume: () => 1 }, bus));
+  observers.push(new DiceToastObserver(sound, { get: preferenceReader({ diceDisplay: () => 'card', diceVolume: () => 1 }) }, bus));
   return { bus, tool, actions, history, sound };
 }
 
@@ -59,7 +60,7 @@ describe('dice events belong to one view', () => {
   it('shows a card only in the view that rolled, without broadcasting on document', () => {
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
     const { app } = createInMemoryApp();
-    new SettingsService(app).setDiceDisplay('card');
+    new SettingsService(app).set('diceDisplay', 'card');
     const a = setup();
     const b = setup();
     const cards = (bus: EventEmitter) => {

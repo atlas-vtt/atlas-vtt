@@ -111,12 +111,12 @@ describe('the tray', () => {
     const harness = renderToolbar({ stored: { hidden: ['fog'] } });
     startEditing(harness);
     fireEvent.click(screen.getByRole('button', { name: 'Reset toolbar' }));
-    expect(harness.settings.getToolbarLayout()).toEqual({});
+    expect(harness.settings.get('toolbar')).toEqual({});
     expect(trayIds(harness.container)).toEqual([]);
     expect(liveRegion(harness.container)).toBe('Toolbar reset.');
 
     fireEvent.click(screen.getByRole('button', { name: 'Undo reset' }));
-    expect(harness.settings.getToolbarLayout()).toEqual({ hidden: ['fog'] });
+    expect(harness.settings.get('toolbar')).toEqual({ hidden: ['fog'] });
     expect(trayIds(harness.container)).toEqual(['fog']);
     expect(liveRegion(harness.container)).toBe('Reset undone.');
     expect(screen.getByRole('button', { name: 'Reset toolbar' })).toBeTruthy();
@@ -155,7 +155,7 @@ describe('the editor menu', () => {
     startEditing(harness);
     fireEvent.contextMenu(handle(harness.container, 'fog'), { clientX: 10, clientY: 10 });
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Hide' }));
-    expect(harness.settings.getToolbarLayout()).toEqual({ hidden: ['fog'] });
+    expect(harness.settings.get('toolbar')).toEqual({ hidden: ['fog'] });
     expect(trayIds(harness.container)).toEqual(['fog']);
     expect(harness.container.querySelector('[data-toolbar-item="fog"]')?.hasAttribute('hidden')).toBe(true);
     expect(liveRegion(harness.container)).toBe('Fog of war hidden. F still selects it.');
@@ -163,7 +163,7 @@ describe('the editor menu', () => {
     await waitFor(() => expect(screen.queryByRole('menuitem', { name: 'Hide' })).toBeNull());
     fireEvent.contextMenu(handle(harness.container, 'fog', 'tray'), { clientX: 10, clientY: 10 });
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Show on toolbar' }));
-    expect(harness.settings.getToolbarLayout()).toEqual({});
+    expect(harness.settings.get('toolbar')).toEqual({});
     expect(liveRegion(harness.container)).toBe('Fog of war is back on the toolbar, position 2 of 10.');
   });
 
@@ -175,7 +175,7 @@ describe('the editor menu', () => {
     fireEvent.click(within(overflow).getByRole('menuitem', { name: /^Asset manager/ }));
     expect(harness.store.getState().isAssetManagerOpen).toBe(false);
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Hide' }));
-    expect(harness.settings.getToolbarLayout()).toEqual({ hidden: ['assets'] });
+    expect(harness.settings.get('toolbar')).toEqual({ hidden: ['assets'] });
     expect(harness.store.getState().isToolbarEditing).toBe(true);
   });
 });
@@ -187,7 +187,7 @@ describe('the keyboard path', () => {
     const fog = handle(harness.container, 'fog');
     act(() => { fog.focus(); });
     expect(fireEvent.keyDown(fog, { key: 'ArrowRight', altKey: true })).toBe(false);
-    expect(harness.settings.getToolbarLayout().order?.slice(0, 4)).toEqual(['move', 'draw', 'fog', 'measure']);
+    expect(harness.settings.get('toolbar').order?.slice(0, 4)).toEqual(['move', 'draw', 'fog', 'measure']);
     expect(document.activeElement).toBe(handle(harness.container, 'fog'));
     expect(liveRegion(harness.container)).toBe('Fog of war moved from position 2 to 3.');
   });
@@ -202,7 +202,7 @@ describe('the keyboard path', () => {
     expect(handle(harness.container, 'fog').tabIndex).toBe(0);
 
     expect(fireEvent.keyDown(handle(harness.container, 'fog'), { key: 'Delete' })).toBe(false);
-    expect(harness.settings.getToolbarLayout()).toEqual({ hidden: ['fog'] });
+    expect(harness.settings.get('toolbar')).toEqual({ hidden: ['fog'] });
     expect(document.activeElement).toBe(handle(harness.container, 'draw'));
   });
 
@@ -210,7 +210,7 @@ describe('the keyboard path', () => {
     const harness = renderToolbar();
     startEditing(harness);
     fireEvent.keyDown(handle(harness.container, 'palette'), { key: 'Delete' });
-    expect(harness.settings.getToolbarLayout()).toEqual({});
+    expect(harness.settings.get('toolbar')).toEqual({});
     expect(liveRegion(harness.container)).toBe('The command palette always stays on the toolbar.');
   });
 
@@ -222,7 +222,7 @@ describe('the keyboard path', () => {
     fireEvent.keyDown(move, { key: 'ArrowUp' });
     expect(document.activeElement).toBe(handle(harness.container, 'fog', 'tray'));
     fireEvent.keyDown(handle(harness.container, 'fog', 'tray'), { key: 'Enter' });
-    expect(harness.settings.getToolbarLayout()).toEqual({});
+    expect(harness.settings.get('toolbar')).toEqual({});
     // The tray is empty now, so focus follows the tool onto the bar.
     expect(document.activeElement).toBe(handle(harness.container, 'fog'));
   });
@@ -234,7 +234,7 @@ describe('the keyboard path', () => {
     act(() => { fog.focus(); });
     expect(fireEvent.keyDown(fog, { key: 'F10', shiftKey: true })).toBe(false);
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Hide' }));
-    expect(harness.settings.getToolbarLayout()).toEqual({ hidden: ['fog'] });
+    expect(harness.settings.get('toolbar')).toEqual({ hidden: ['fog'] });
     await waitFor(() => expect(screen.queryByRole('menuitem', { name: 'Hide' })).toBeNull());
     expect(document.activeElement).toBe(handle(harness.container, 'draw'));
   });

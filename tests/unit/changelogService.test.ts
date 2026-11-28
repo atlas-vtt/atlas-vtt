@@ -19,7 +19,7 @@ function setup({ last = null as unknown, enabled = true, majorOnly = false, exis
     loadLocalStorage: (key: string) => values.get(key),
     saveLocalStorage: vi.fn((key: string, value: unknown) => values.set(key, value)),
   } as unknown as App;
-  const settings = { getSetting: (key: string) => key === 'changelogMajorUpdatesOnly' ? majorOnly : enabled, setSetting: vi.fn() } as unknown as SettingsService;
+  const settings = { get: (key: string) => key === 'changelogMajorUpdatesOnly' ? majorOnly : enabled, set: vi.fn() } as unknown as SettingsService;
   const service = new ChangelogService(app, settings, { bundle: { ...releases, version: bundleVersion }, installedVersion: version, existingInstallation: existing, releaseBuild });
   return { service, values, app, settings };
 }

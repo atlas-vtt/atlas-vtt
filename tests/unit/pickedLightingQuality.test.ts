@@ -32,14 +32,14 @@ describe('the lighting quality Atlas picks for a device', () => {
     const app = new App();
     gpu.facts = INTEGRATED;
     const settings = await reloaded(app);
-    expect(settings.getLightingQuality()).toBe('balanced');
+    expect(settings.getGraphics().preset).toBe('balanced');
     expect(settings.isLightingQualityPicked()).toBe(true);
     expect(app.loadLocalStorage(PICKED_LIGHTING_QUALITY_STORAGE_KEY)).toBe('balanced');
     expect(app.loadLocalStorage(LIGHTING_QUALITY_STORAGE_KEY)).toBeNull();
 
     gpu.facts = { ...INTEGRATED, renderer: 'NVIDIA GeForce RTX 4090' };
     const later = await reloaded(app);
-    expect(later.getLightingQuality()).toBe('balanced');
+    expect(later.getGraphics().preset).toBe('balanced');
     expect(gpu.reads).toBe(1);
   });
 
@@ -54,16 +54,16 @@ describe('the lighting quality Atlas picks for a device', () => {
     expect(listener).not.toHaveBeenCalled();
     settings.setLightingQuality('high');
     expect(listener).toHaveBeenCalledOnce();
-    expect((await reloaded(app)).getLightingQuality()).toBe('high');
+    expect((await reloaded(app)).getGraphics().preset).toBe('high');
   });
 
   it('is high where the graphics cannot be read, and asked again next time', async () => {
     const app = new App();
     const settings = await reloaded(app);
-    expect(settings.getLightingQuality()).toBe('high');
+    expect(settings.getGraphics().preset).toBe('high');
     expect(app.loadLocalStorage(PICKED_LIGHTING_QUALITY_STORAGE_KEY)).toBeNull();
     gpu.facts = { ...INTEGRATED, renderer: 'llvmpipe' };
-    expect(settings.getLightingQuality()).toBe('saver');
+    expect(settings.getGraphics().preset).toBe('saver');
   });
 
   it('reads as picked until the GM chooses on the Graphics page, and again once the page is reset', async () => {

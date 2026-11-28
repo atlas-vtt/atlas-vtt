@@ -10,8 +10,8 @@ export function ExperimentalFeaturesPanel(): React.ReactElement {
   return (
     <div className="atlas-command-palette-panel">
       {EXPERIMENTAL_FEATURES.map(({ id, label, hint }) => {
-        const on = settings?.isExperimentalOn(id) ?? false;
-        return <SettingToggleRow key={id} label={label} hint={hint} value={on} onToggle={() => settings?.setExperimental(id, !on)} />;
+        const on = settings?.get('experimental')[id] === true;
+        return <SettingToggleRow key={id} label={label} hint={hint} value={on} onToggle={() => settings?.set('experimental', { [id]: !on })} />;
       })}
     </div>
   );
