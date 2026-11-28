@@ -1,0 +1,23 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the players' picture of a floor, from the GM's canvas and worked out on the CPU > gives the same answers but where a rule of one side differs (40 generated scenes of two floors) 1`] = `
+{
+  "disagreements": {
+    "ground: doors the canvas shows and the CPU does not": 1,
+    "upper: doors the canvas shows and the CPU does not": 32,
+    "upper: pins the canvas shows and the CPU does not": 57,
+    "upper: sensed the canvas shows and the CPU does not": 1,
+    "upper: tokens the canvas shows and the CPU does not": 31,
+  },
+  "shown": {
+    "ground: doors the canvas shows": 28,
+    "ground: pins the canvas shows": 36,
+    "ground: sensed the canvas shows": 2,
+    "ground: tokens the canvas shows": 57,
+    "upper: doors the canvas shows": 32,
+    "upper: pins the canvas shows": 57,
+    "upper: sensed the canvas shows": 1,
+    "upper: tokens the canvas shows": 87,
+  },
+}
+`;
