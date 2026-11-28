@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events';
-import type { WorkspaceLeaf } from 'obsidian';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { diceSourceOf } from '../../../../src/app/online/gm/atlasDice.ts';
+import type { MapView } from '../../../../src/app/online/gm/mapView.ts';
 import { setStatblockGate } from '../../../../src/app/online/gm/book/statblockGate.ts';
 import { token } from './shareHarness.ts';
 
@@ -11,11 +11,11 @@ describe('character dice in the map adapter', () => {
   it('reads the current linked sheet before the library sheet and forwards roll options to the tool', () => {
     const bus = new EventEmitter();
     const tool = { rollDice: vi.fn(() => null), getDiceRules: () => ({ defaultRoll: '1d20', crit: 'natural' }) };
-    const leaf = { view: { viewId: 'map', serviceManager: { getToolController: () => ({ getDiceTool: () => tool }), getEventBus: () => bus } } } as unknown as WorkspaceLeaf;
+    const view = { viewId: 'map', serviceManager: { getToolController: () => ({ getDiceTool: () => tool }), getEventBus: () => bus } } as unknown as MapView;
     const diceSet = vi.fn();
     const library = vi.fn(() => 'Sheets/Library.md');
     setStatblockGate({ libraryStatblock: library, diceSet, read: async () => null, write: async () => ({ applied: [], conflicts: [], problem: null }), onChange: () => () => undefined });
-    const dice = diceSourceOf(leaf);
+    const dice = diceSourceOf(view);
     const own = { ...token('hero'), kind: 'character' as const, statblockPath: 'Sheets/Hero.md' };
     dice?.setFor?.(own);
     expect(diceSet).toHaveBeenLastCalledWith('Sheets/Hero.md');

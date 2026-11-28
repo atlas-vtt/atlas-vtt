@@ -1,5 +1,6 @@
 import type { WorkspaceLeaf } from 'obsidian';
-import { ATLAS_VIEW_TYPE, sceneStoreOf } from '../atlasView.ts';
+import { ATLAS_VIEW_TYPE } from '../atlasView.ts';
+import { sceneStoreOf } from '../mapViewOf.ts';
 import { Dock, type DockDeps } from './Dock.ts';
 
 /** The part of Obsidian's workspace the mounts read. */

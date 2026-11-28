@@ -1,7 +1,7 @@
 import { showNotice } from '../../ui/notice';
 import type { WorkspaceLeaf } from 'obsidian';
 import { obsidianHttp } from '../../account/obsidianHttp.ts';
-import { sceneStoreOf } from './atlasView.ts';
+import { sceneStoreOf } from './mapViewOf.ts';
 import { CAMPAIGNS_LOADING_TEXT, campaignLink, linkRefusal, NO_CAMPAIGN_TEXT, type TableSeats } from './campaignSeats.ts';
 import type { CreatedTable } from './createdTable.ts';
 import { createTable } from './createTable.ts';

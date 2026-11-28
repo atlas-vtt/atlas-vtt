@@ -6,8 +6,8 @@ import { SettingsService } from '../../../../src/app/services/SettingsService';
 
 describe('the Atlas settings an online table follows', () => {
   it('reads whether everyone sees each other\'s cursor: off until the GM switches it on, and off when it cannot be read', () => {
-    const settingsService = new SettingsService({} as never);
-    const app = { plugins: { plugins: { 'atlas-vtt': { settingsService } } } } as unknown as App;
+    const app = {} as App;
+    const settingsService = new SettingsService(app);
     expect(atlasPlayerSettings(app).showCursors).toBe(false);
     settingsService.setLocalPlayerViewSettings({ showCursors: true });
     expect(atlasPlayerSettings(app).showCursors).toBe(true);
@@ -15,15 +15,15 @@ describe('the Atlas settings an online table follows', () => {
   });
 
   it('reads that the GM\'s initiative lists start at the turn, and reads no when it cannot', () => {
-    const settingsService = new SettingsService({ loadLocalStorage: () => null, saveLocalStorage: () => undefined } as never);
-    const app = { plugins: { plugins: { 'atlas-vtt': { settingsService } } } } as unknown as App;
+    const app = { loadLocalStorage: () => null, saveLocalStorage: () => undefined } as unknown as App;
+    new SettingsService(app);
     expect(atlasPlayerSettings(app).initiativeFromTurn).toBe(true);
     expect(atlasPlayerSettings({} as App).initiativeFromTurn).toBe(false);
   });
 
   it('reads the turn banner (on unless switched off) and moves only on the turn (off unless switched on)', () => {
-    const settingsService = new SettingsService({} as never);
-    const app = { plugins: { plugins: { 'atlas-vtt': { settingsService } } } } as unknown as App;
+    const app = {} as App;
+    const settingsService = new SettingsService(app);
     expect(atlasPlayerSettings(app)).toMatchObject({ turnBanner: true, movesOnTurn: false });
     settingsService.setInitiativeTurnOptions({ banner: false, movesOnTurn: true });
     expect(atlasPlayerSettings(app)).toMatchObject({ turnBanner: false, movesOnTurn: true });
@@ -31,15 +31,15 @@ describe('the Atlas settings an online table follows', () => {
   });
 
   it('docks the initiative lists at the right edge, the only one they stand at', () => {
-    const settingsService = new SettingsService({ loadLocalStorage: () => null, saveLocalStorage: () => undefined } as never);
-    const app = { plugins: { plugins: { 'atlas-vtt': { settingsService } } } } as unknown as App;
+    const app = { loadLocalStorage: () => null, saveLocalStorage: () => undefined } as unknown as App;
+    new SettingsService(app);
     expect(atlasPlayerSettings(app).initiativeDock).toBe('right');
     expect(atlasPlayerSettings({} as App).initiativeDock).toBe('right');
   });
 
   it('reads how the fog\'s edge looks, and nothing when it cannot', () => {
-    const settingsService = new SettingsService({} as never);
-    const app = { plugins: { plugins: { 'atlas-vtt': { settingsService } } } } as unknown as App;
+    const app = {} as App;
+    const settingsService = new SettingsService(app);
     expect(atlasPlayerSettings(app).fogEdge).toEqual({ style: 'crackle', width: 15 });
     settingsService.setFogEdge({ style: 'soft', width: 60 });
     expect(atlasPlayerSettings(app).fogEdge).toEqual({ style: 'soft', width: 60 });
@@ -47,8 +47,8 @@ describe('the Atlas settings an online table follows', () => {
   });
 
   it('tells of each change of Atlas\'s settings until stopped, and of none where they cannot be read', () => {
-    const settingsService = new SettingsService({} as never);
-    const app = { plugins: { plugins: { 'atlas-vtt': { settingsService } } } } as unknown as App;
+    const app = {} as App;
+    const settingsService = new SettingsService(app);
     let heard = 0;
     const stop = followAtlasSettings(app, () => (heard += 1));
     settingsService.setLocalPlayerViewSettings({ sharedVision: true });

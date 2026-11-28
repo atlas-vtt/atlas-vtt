@@ -1,6 +1,9 @@
 import type { WorkspaceLeaf } from 'obsidian';
-import { rendererOf, sceneStoreOf, type ObservedStore } from './atlasView.ts';
-import { findPresentedTab, showsPresented, type Presented, type PresentedTab } from './presentedScene.ts';
+import { type ObservedStore } from './atlasView.ts';
+import { mapViewOf } from './mapViewOf.ts';
+import type { MapCanvas, MapView } from './mapView.ts';
+import type { PresentedScene } from '../../services/presentedScene';
+import { findPresentedTab, showsPresented, type PresentedTab } from './presentedScene.ts';
 
 /**
  * An Atlas map tab as it was when found: its leaf, view, store and renderer. Atlas may build any of
@@ -9,21 +12,17 @@ import { findPresentedTab, showsPresented, type Presented, type PresentedTab } f
  */
 export interface AtlasTab {
   readonly leaf: WorkspaceLeaf;
-  readonly view: object;
+  readonly view: MapView;
   readonly store: ObservedStore;
-  readonly renderer: object;
+  readonly renderer: MapCanvas;
 }
 
-/** Atlas's view marks itself closing before it destroys its services (`AtlasView.isViewClosing`). */
-const isClosing = (view: object): boolean => 'isViewClosing' in view && view.isViewClosing === true;
-
-/** The leaf's Atlas tab while it can be shared: an Atlas view that is not closing, with a store and a renderer; else null. */
+/** The leaf's Atlas tab while it can be shared: an Atlas view that is not closing, with a renderer; else null. */
 export function atlasTabOf(leaf: WorkspaceLeaf): AtlasTab | null {
-  const view: unknown = leaf.view;
-  if (typeof view !== 'object' || view === null || isClosing(view)) return null;
-  const store = sceneStoreOf(leaf);
-  const renderer = store === null ? null : rendererOf(leaf);
-  return store !== null && typeof renderer === 'object' && renderer !== null ? { leaf, view, store, renderer } : null;
+  const view = mapViewOf(leaf);
+  if (view === null || view.isClosing()) return null;
+  const renderer = view.renderer;
+  return renderer === null ? null : { leaf, view, store: view.atlasStore, renderer };
 }
 
 /** Whether a tab is still open and still the same view, store and renderer. */
@@ -34,7 +33,7 @@ export function isSameTab(tab: AtlasTab, open: readonly WorkspaceLeaf[]): boolea
 }
 
 /** Whether a tab is the GM's own map, not a player view Atlas opened of it. */
-const isGmTab = (tab: AtlasTab): boolean => (tab.store.getState() as { isPlayerView?: boolean }).isPlayerView !== true;
+const isGmTab = (tab: AtlasTab): boolean => tab.store.getState().isPlayerView !== true;
 
 /** What a shared tab runs while it is shared. */
 export interface TabBinding {
@@ -53,7 +52,7 @@ export interface TabWatchPorts<B extends TabBinding> {
   /** The open Atlas leaves. */
   leaves(): readonly WorkspaceLeaf[];
   /** The scene tab Atlas presents to its player view, or null while it presents none. */
-  presented(): Presented | null;
+  presented(): PresentedScene | null;
   /** Builds what shares a tab showing the presented scene; started once it is the watch's binding. */
   bind(tab: AtlasTab, presented: PresentedTab): B;
   /** The shared tab was let go and its binding stopped. */
