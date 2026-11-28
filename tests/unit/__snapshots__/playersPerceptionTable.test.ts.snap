@@ -1,5 +1,175 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`what players are shown of a lit scene of two floors: the players' frame and each page > follows a hidden token a player owns, a roof over the party, a player without a token, fog over a door, and a view without lighting 1`] = `
+{
+  "Ana owns a hidden scout; Cara sits without a token": {
+    "ana": {
+      "doors": [
+        "door",
+      ],
+      "pins": [
+        "hall",
+        "nook",
+      ],
+      "sensed": [
+        "rat",
+      ],
+      "tokens": [
+        "ana",
+        "ogre",
+      ],
+    },
+    "ben": {
+      "doors": [],
+      "pins": [],
+      "sensed": [],
+      "tokens": [
+        "ben",
+      ],
+    },
+    "cara": {
+      "doors": [],
+      "pins": [],
+      "sensed": [],
+      "tokens": [],
+    },
+    "frame": {
+      "doors": [
+        "door",
+      ],
+      "pins": [
+        "hall",
+        "nook",
+      ],
+      "sensed": [
+        "rat",
+      ],
+      "tokens": [
+        "ana",
+        "ogre",
+      ],
+    },
+  },
+  "a roof drawn over the party's room": {
+    "ana": {
+      "doors": [
+        "door",
+      ],
+      "pins": [
+        "hall",
+        "nook",
+      ],
+      "sensed": [
+        "rat",
+      ],
+      "tokens": [],
+    },
+    "ben": {
+      "doors": [],
+      "pins": [],
+      "sensed": [],
+      "tokens": [
+        "ben",
+      ],
+    },
+    "cara": {
+      "doors": [],
+      "pins": [],
+      "sensed": [],
+      "tokens": [],
+    },
+    "frame": {
+      "doors": [
+        "door",
+      ],
+      "pins": [
+        "hall",
+        "nook",
+      ],
+      "sensed": [
+        "rat",
+      ],
+      "tokens": [],
+    },
+  },
+  "a view that builds no lighting (a player view), on a lit scene": {
+    "ana": {
+      "doors": [],
+      "pins": [],
+      "sensed": [],
+      "tokens": [],
+    },
+    "ben": {
+      "doors": [],
+      "pins": [],
+      "sensed": [],
+      "tokens": [],
+    },
+    "frame": {
+      "doors": [],
+      "pins": [
+        "hall",
+        "den",
+        "nook",
+      ],
+      "sensed": [],
+      "tokens": [
+        "ana",
+        "goblin",
+        "ogre",
+        "rat",
+      ],
+    },
+  },
+  "fog over the open door": {
+    "ana": {
+      "doors": [],
+      "pins": [
+        "hall",
+        "nook",
+      ],
+      "sensed": [
+        "rat",
+      ],
+      "tokens": [
+        "ana",
+        "goblin",
+        "ogre",
+      ],
+    },
+    "ben": {
+      "doors": [],
+      "pins": [],
+      "sensed": [],
+      "tokens": [
+        "ben",
+      ],
+    },
+    "cara": {
+      "doors": [],
+      "pins": [],
+      "sensed": [],
+      "tokens": [],
+    },
+    "frame": {
+      "doors": [],
+      "pins": [
+        "hall",
+        "nook",
+      ],
+      "sensed": [
+        "rat",
+      ],
+      "tokens": [
+        "ana",
+        "goblin",
+        "ogre",
+      ],
+    },
+  },
+}
+`;
+
 exports[`what players are shown of a lit scene of two floors: the players' frame and each page > follows the scene through fog, roofs, hidden and held tokens, the peek, shared vision, another floor and stale sight 1`] = `
 {
   "a roof drawn over the goblin's room, not over the party": {

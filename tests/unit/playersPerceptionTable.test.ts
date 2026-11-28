@@ -67,7 +67,14 @@ vi.mock('../../src/app/MapController', async (original) => {
 const ANA = 'a'.repeat(20);
 const BEN = 'b'.repeat(20);
 const OWNERS: Readonly<Record<string, string>> = { ana: ANA, ben: BEN };
+const CARA = 'c'.repeat(20);
 const SEATS: SeatSource = { onlinePlayers: () => [ANA, BEN], ownerOf: (id) => OWNERS[id], claimOf: (_map, id) => (OWNERS[id] === undefined ? null : 'taken') };
+/** Ana also owns a hidden scout, and Cara sits at the table without a token. */
+const MORE_OWNERS: Readonly<Record<string, string>> = { ...OWNERS, scout: ANA };
+const MORE_SEATS: SeatSource = { onlinePlayers: () => [ANA, BEN, CARA], ownerOf: (id) => MORE_OWNERS[id], claimOf: (_map, id) => (MORE_OWNERS[id] === undefined ? null : 'taken') };
+/** Whose pages are read, and on which floor each one's tokens stand. */
+interface Page { readonly name: string; readonly player: string; readonly floor: string | undefined }
+const PAGES: readonly Page[] = [{ name: 'ana', player: ANA, floor: undefined }, { name: 'ben', player: BEN, floor: 'upper' }];
 const IMAGES = new Map(['ground', 'upper', 'roof', 'ana', 'ben', 'goblin', 'ogre', 'rat', 'ghost', 'wight'].map((name, index) => [`art/${name}.webp`, new Uint8Array([index + 1])]));
 const LEVELS: SceneLevel[] = [
   { id: 'ground', name: 'Ground', elevation: { bottom: 0, top: 10 }, background: 'art/ground.webp' },
@@ -111,21 +118,24 @@ interface Rig { readonly view: BareMapView; readonly harness: ShareHarness; read
 let rig: Rig | undefined;
 const NO_MARKS = { source: () => null, showPlayers: () => undefined, showPlayerDrags: () => undefined, showPlayerCursors: () => undefined, showPlayerStrokes: () => undefined };
 
-/** The GM's canvas over the scene, and a table on it with Ana and Ben seated, each through their own character's eyes. */
-async function open(): Promise<Rig> {
+/** How a rig differs from the first one: who sits at the table, more tokens, and whether the view is a player view, which builds no lighting. */
+interface RigOptions { readonly seats?: SeatSource; readonly pages?: readonly Page[]; readonly tokens?: Readonly<Record<string, TokenEntity>>; readonly playerView?: boolean }
+
+/** The GM's canvas over the scene, and a table on it with Ana and Ben seated (by default), each through their own character's eyes. */
+async function open({ seats = SEATS, pages = PAGES, tokens = {}, playerView = false }: RigOptions = {}): Promise<Rig> {
   const placesSpy = vi.spyOn(PinRenderer.prototype, 'setPlayerSight');
-  const view = await bareMapView({ whole: {}, grid: { size: 70, enabled: true, color: 0xffffff } });
+  const view = await bareMapView({ whole: {}, grid: { size: 70, enabled: true, color: 0xffffff }, ...(playerView && { state: { isPlayerView: true } }) });
   const { renderer, store } = view;
   const base = scene();
-  store.setState((state) => ({ ...base, objects: { ...state.objects, ...base.objects } }));
-  await expect.poll(() => ['ana', 'ogre', 'ghost', 'goblin', 'rat'].every((id) => renderer.getTokenRenderer()?.getTokenSprites()[id])).toBeTruthy();
+  store.setState((state) => ({ ...base, objects: { ...state.objects, ...base.objects, tokens: { ...base.objects.tokens, ...tokens } } }));
+  await expect.poll(() => ['ana', 'ogre', 'ghost', 'goblin', 'rat', ...Object.keys(tokens)].every((id) => renderer.getTokenRenderer()?.getTokenSprites()[id])).toBeTruthy();
   const places = placesSpy.mock.lastCall![0];
   // Atlas's own view store, which the table reads as it reads any tab's.
   const tabStore = store as unknown as ObservedStore;
-  const harness = shareHarness(store.getState() as SceneState, IMAGES, SEATS, tabStore);
+  const harness = shareHarness(store.getState() as SceneState, IMAGES, seats, tabStore);
   const tabView = { app: view.obsidian, serviceManager: { getAssetService: () => null, getToolController: () => null, getEventBus: () => view.events } };
   harness.gmTab = gmTabOf({ leaf: { view: tabView } as unknown as WorkspaceLeaf, view: tabView as never, store: tabStore, renderer }, NO_MARKS);
-  harness.pages.join(ANA, BEN);
+  harness.pages.join(...pages.map(({ player }) => player));
   harness.settings = { ...PLAYER_SETTINGS, sharedVision: false };
   harness.presented = 'ground';
   harness.share.start();
@@ -143,7 +153,7 @@ const idAt = <T extends { x: number; y: number }>(of: Readonly<Record<string, T>
   Object.values(of).map((item) => ({ item, d: Math.hypot(item.x - x, item.y - y) })).sort((a, b) => a.d - b.d)[0]?.item['id' as keyof T] as string;
 
 /** What the players' frame shows and each page holds now. */
-function shown({ view: { renderer, store }, harness, places }: Rig): Record<string, Record<string, string[]>> {
+function shown({ view: { renderer, store }, harness, places }: Rig, pages: readonly Page[] = PAGES): Record<string, Record<string, string[]>> {
   const state = store.getState();
   const tokens = state.objects.tokens;
   const mapPath = state.mapPath!;
@@ -175,7 +185,7 @@ function shown({ view: { renderer, store }, harness, places }: Rig): Record<stri
       pins: (last('pins')?.pins ?? []).map((sent) => idAt(PINS, sent.x, sent.y)).sort(),
     };
   };
-  return { frame, ana: page(ANA, undefined), ben: page(BEN, 'upper') };
+  return { frame, ...Object.fromEntries(pages.map(({ name, player, floor }) => [name, page(player, floor)])) };
 }
 
 /** Changes the scene as Atlas would, tells whoever follows the lighting's sight, and lets the table send what follows. */
@@ -231,6 +241,25 @@ describe('what players are shown of a lit scene of two floors: the players\' fra
     rows['the lighting builds the scene again'] = shown(table);
     await change(table, (state) => ({ lighting: { ...state.lighting, enabled: false } }));
     rows['the lighting switched off'] = shown(table);
+    expect(rows).toMatchSnapshot();
+  });
+
+  it('follows a hidden token a player owns, a roof over the party, a player without a token, fog over a door, and a view without lighting', async () => {
+    const pages = [...PAGES, { name: 'cara', player: CARA, floor: undefined }];
+    const scout = creature('scout', 250, 420, { isHidden: true, vision: VISION });
+    const table = rig = await open({ seats: MORE_SEATS, pages, tokens: { scout } });
+    const rows: Record<string, ReturnType<typeof shown>> = {};
+    rows['Ana owns a hidden scout; Cara sits without a token'] = shown(table, pages);
+    table.view.renderer.getTokenRenderer()!.setRoofProvider((point) => point.x < 400);
+    await change(table, (state) => withTokens(state, {}));
+    rows['a roof drawn over the party\'s room'] = shown(table, pages);
+    table.view.renderer.getTokenRenderer()!.setRoofProvider(() => false);
+    await change(table, (state) => ({ objects: { ...state.objects, walls: { ...WALLS, door: { ...DOOR, closed: false } }, fog: { door: { ...FOG, id: 'door', x: 370, y: 250, width: 60, height: 100 } } } }));
+    rows['fog over the open door'] = shown(table, pages);
+    table.harness.share.stop();
+    table.view.destroy();
+    const unlitView = rig = await open({ playerView: true });
+    rows['a view that builds no lighting (a player view), on a lit scene'] = shown(unlitView);
     expect(rows).toMatchSnapshot();
   });
 });
