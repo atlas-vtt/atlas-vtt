@@ -31,7 +31,7 @@ type Companion = 'commandPalettePage' | 'assetManagerInitialTab' | 'assetManager
 /** A draft of a store, as far as surfaces reach into it. */
 export type SurfaceDraft = Partial<Pick<ViewAtlasState, Surface | Companion>>;
 
-interface SurfaceRow {
+export interface SurfaceRow {
   /** What its closing writes; a view starts so. */
   readonly closed: SurfaceDraft;
   readonly closes?: readonly Surface[];
@@ -43,7 +43,7 @@ interface SurfaceRow {
 type Objects = ViewAtlasState['objects'];
 
 /** A key of the state a rule reads, or one kind of its objects: a token's move is no change to a light. */
-type Read = Exclude<keyof ViewAtlasState, 'objects'> | `objects.${keyof Objects}`;
+export type Read = Exclude<keyof ViewAtlasState, 'objects'> | `objects.${keyof Objects}`;
 
 type KindOf<R> = R extends `objects.${infer Kind}` ? Kind & keyof Objects : never;
 
@@ -52,10 +52,12 @@ type ReadState<R extends Read> = Pick<ViewAtlasState, Exclude<R, `objects.${stri
   & ([KindOf<R>] extends [never] ? unknown : { objects: Pick<Objects, KindOf<R>> });
 
 /**
- * It stays open only while `rule` holds of what it `reads` (`open` is what its field holds). The
- * rule's state holds nothing else in its type, so a key it does not declare does not compile.
+ * It stays open only while `rule` holds of what it `reads` (`open` is what its field holds), and is
+ * handed nothing else. A kind of objects it does not declare does not compile; a key it does not
+ * declare may (optional keys such as `viewedLevel` read as undefined), which
+ * `tests/unit/viewSurfaces/surfaceReads.test.ts` holds instead.
  */
-interface StaysWhile {
+export interface StaysWhile {
   readonly reads: readonly Read[];
   readonly rule: (state: object, open: string) => boolean;
 }
@@ -100,7 +102,7 @@ const flag = (surface: Surface, closes?: readonly Surface[]): SurfaceRow => ({ c
 
 const ENDS_TOOLBAR_EDITING: readonly Surface[] = ['isToolbarEditing'];
 
-const SURFACES: Readonly<Record<Surface, SurfaceRow>> = {
+export const SURFACES: Readonly<Record<Surface, SurfaceRow>> = {
   isGridSettingsOpen: flag('isGridSettingsOpen'),
   isDMScreenOpen: flag('isDMScreenOpen'),
   isGridAlignmentOpen: flag('isGridAlignmentOpen'),
