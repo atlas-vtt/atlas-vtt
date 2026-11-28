@@ -181,7 +181,9 @@ describe('the glass chip', () => {
     expect(screen.getByRole('group', { name: 'Players' })).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Let the players follow you' }));
+    // Silently: the notice of the GM's pause is not the chip's
     expect(service.unfreezeCamera).toHaveBeenCalledOnce();
+    expect(fakes.notices).toEqual([]);
     expect(screen.getByRole('group', { name: 'Players · following you' })).toBeTruthy();
   });
 
