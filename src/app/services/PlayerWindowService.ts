@@ -16,7 +16,7 @@ import { LocalPlayerView, LOCAL_PLAYER_VIEW_TYPE, type PlayerCameraState } from 
 import { t } from '../i18n';
 import { cannotRender, PlayerFrameMirror, type PlayerFrameSource } from './PlayerFrameMirror';
 import { PLAYER_FRAME_4K_PIXEL_BUDGET, PLAYER_FRAME_PIXEL_BUDGET } from './playerFrame';
-import { cameraPlayersSee, FOLLOWING, nextPlayerCamera, outlinedCamera, type PlayerCamera, type PlayerCameraEvent, type PlayerCameraWorld, type PlayerGlide } from './playerCamera';
+import { cameraPlayersAreOn, FOLLOWING, nextPlayerCamera, outlinedCamera, type PlayerCamera, type PlayerCameraEvent, type PlayerCameraWorld, type PlayerGlide } from './playerCamera';
 import type { PlayerFrame, Screen, Size, WorldFrame } from '../types/playerFrame';
 import { presentedSceneOf, type PresentedScene } from './presentedScene';
 import { onMapRulesChange } from './mapRules';
@@ -199,7 +199,7 @@ export class PlayerWindowService {
 
   /** The camera players are on, moved to the world point (x, y): to present another scene framed there; null while the window is closed. */
   public playerCameraAt(x: number, y: number): PlayerCameraState | null {
-    const camera = this.isWindowOpen() ? this.camera.frozen ?? cameraPlayersSee(this.camera, this.world) : null;
+    const camera = this.isWindowOpen() ? cameraPlayersAreOn(this.camera, this.world) : null;
     return camera ? { ...camera, centerX: x, centerY: y } : null;
   }
 

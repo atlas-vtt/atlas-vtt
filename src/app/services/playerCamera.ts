@@ -85,6 +85,11 @@ export function cameraPlayersSee(camera: PlayerCamera, world: PlayerCameraWorld)
   return camera.shown ?? (world.live() ? world.view() ?? null : null);
 }
 
+/** The camera players are on: the one they are pinned on, else the one they see. */
+export function cameraPlayersAreOn(camera: PlayerCamera, world: PlayerCameraWorld): PlayerCameraState | null {
+  return camera.frozen ?? cameraPlayersSee(camera, world);
+}
+
 /**
  * The camera the glass on the GM's map is placed through: pinned, the frozen one; following, the
  * view's own, which the outline is drawn through and the next frame is rendered through (the last
@@ -134,7 +139,7 @@ function unfrozen(camera: PlayerCamera, world: PlayerCameraWorld): PlayerCameraS
 
 /** Pins players on `to`, gliding there from the camera they see, frozen or following. */
 function movedTo(camera: PlayerCamera, to: PlayerCameraState, world: PlayerCameraWorld): PlayerCameraStep {
-  const from = camera.frozen ?? cameraPlayersSee(camera, world);
+  const from = cameraPlayersAreOn(camera, world);
   const ms = from && !sameCamera(from, to) ? world.glideMs() : 0;
   if (!from || !(ms > 0)) return pinned(camera, to, world);
   // Players who followed the GM stop doing so here, not when the glide lands

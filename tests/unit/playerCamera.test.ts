@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  cameraPlayersSee, FOLLOWING, nextPlayerCamera, outlinedCamera,
+  cameraPlayersAreOn, cameraPlayersSee, FOLLOWING, nextPlayerCamera, outlinedCamera,
   type PlayerCamera, type PlayerCameraEvent, type PlayerCameraStep, type PlayerCameraWorld,
 } from '../../src/app/services/playerCamera';
 import type { PlayerCameraState } from '../../src/app/types/playerCamera';
@@ -181,6 +181,12 @@ describe('the camera players see', () => {
     expect(cameraPlayersSee(FOLLOWING, world({ view: GM }))).toBe(GM);
     expect(cameraPlayersSee(FOLLOWING, world({ view: GM, live: false }))).toBeNull();
     expect(cameraPlayersSee(FOLLOWING, world({ view: GM, held: true }))).toBeNull();
+  });
+
+  it('is, for what players are on, the pinned camera first', () => {
+    expect(cameraPlayersAreOn(PINNED, world({ view: GM }))).toBe(PINNED.frozen);
+    expect(cameraPlayersAreOn(SEEN, world({ view: GM }))).toBe(SHOWN);
+    expect(cameraPlayersAreOn(FOLLOWING, world({ view: GM, live: false }))).toBeNull();
   });
 
   it('is outlined on the GM\'s map through the frozen camera, else the view\'s own, which the next frame is rendered through', () => {
