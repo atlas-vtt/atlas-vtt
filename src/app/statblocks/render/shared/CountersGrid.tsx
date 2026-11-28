@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Minus, Plus, Settings } from 'lucide-react';
 import { t } from '../../../i18n';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
@@ -42,6 +42,10 @@ function CounterMaxInput({ row, index, onCommit }: CounterMaxInputProps): React.
   const skipCommit = useRef(false);
   const [draft, setDraft] = useState(String(row.max));
   const [invalid, setInvalid] = useState(false);
+
+  useLayoutEffect(() => {
+    inputRef.current?.focus({ preventScroll: true });
+  }, []);
 
   useEffect(() => {
     if (!focused.current) {
@@ -164,7 +168,7 @@ function CounterCell({ row, index, controls }: ShownCounter & { controls: Counte
       <div className='atlas-sb-counter__header'>
         <span className="atlas-sb-counter__name">{row.name}</span>
         {controls?.setMax && (
-          <button type="button" className="atlas-sb-counter__settings" onClick={() => setConfigMode(prev => !prev)}>
+          <button type="button" className="atlas-sb-counter__settings" onClick={() => setConfigMode((previous) => !previous)}>
             <Settings />
           </button>
         )}

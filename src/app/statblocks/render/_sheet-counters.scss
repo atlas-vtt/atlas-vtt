@@ -97,17 +97,27 @@ $cell-min: 5.5em;
     width: 4.5em;
     min-width: 0;
     min-height: $pip-hit;
-    padding: $spacing-xs;
+    height: 30px;
+
+    padding: $spacing-s;
     border: $border-width-s solid var(--background-modifier-border);
-    border-radius: $radius-s;
+    border-radius: $radius-m;
     background: var(--background-primary);
     color: var(--text-normal);
     font: inherit;
     font-variant-numeric: tabular-nums;
     text-align: center;
+    background: var(--background-modifier-form-field);
+    transition: border-color $transition-fast $transition-ease, box-shadow $transition-fast $transition-ease;
 
     &[aria-invalid='true'] {
       border-color: var(--text-error);
+    }
+
+    &:focus-within {
+      outline: none;
+      border-color: var(--interactive-accent);
+      box-shadow: 0 0 0 2px color-mix(in oklch, var(--interactive-accent) 20%, transparent);
     }
   }
 }

@@ -115,6 +115,17 @@ describe('Counters in the statblock pane', () => {
     expect(row.getByRole('spinbutton', { name: 'Maximum uses for Sorcery points' })).toBeTruthy();
   });
 
+  it('focuses the maximum input when settings open, including when reopened', async () => {
+    const harness = await pane({});
+    const row = within(block(harness));
+    await configure(harness, '1st level');
+    expect(document.activeElement).toBe(row.getByRole('spinbutton', { name: 'Maximum uses for 1st level' }));
+    await configure(harness, '1st level');
+    expect(row.queryByRole('spinbutton', { name: 'Maximum uses for 1st level' })).toBeNull();
+    await configure(harness, '1st level');
+    expect(document.activeElement).toBe(row.getByRole('spinbutton', { name: 'Maximum uses for 1st level' }));
+  });
+
   it('commits a changed maximum once when its input is left', async () => {
     const slots = [{ name: '1st level', max: 2, used: 1 }, { name: '2nd level', max: 1, used: 0 }];
     const harness = await pane({ slots });
