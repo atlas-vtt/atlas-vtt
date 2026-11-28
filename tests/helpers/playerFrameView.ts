@@ -1,6 +1,7 @@
 import type { Application, Container, Renderer } from 'pixi.js';
 import { PlayerFrameTexture } from '../../src/app/pixi/PlayerFrameTexture';
-import { captureBeforeRender, frameCamera, type CameraTarget, type LayerVisibility } from '../../src/app/pixi/playerSafeFrame';
+import { frameCamera, type CameraTarget, type LayerVisibility } from '../../src/app/pixi/playerSafeFrame';
+import { captureBeforeRender } from './layerCapture';
 import { rendersOnChange, requestRender, setBeforeRender } from '../../src/app/pixi/RenderScheduler';
 import { PlayerFrameMirror, type MirrorInputs, type PlayerFrameSource } from '../../src/app/services/PlayerFrameMirror';
 import { viewportCamera } from '../../src/app/services/playerFrame';

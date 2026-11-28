@@ -1,47 +1,64 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest';
-import { PixiRendererOrchestrator } from '../../src/app/PixiRendererOrchestrator';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { MeasureRenderer } from '../../src/app/pixi/measure/MeasureRenderer';
 import { measurePlayersView } from '../../src/app/pixi/measurePlayersView';
 import type { LayerVisibility } from '../../src/app/pixi/playerSafeFrame';
-import { computeTokenPixelSize } from '../../src/app/pixi/token-renderer/tokenSizing';
-import { createInMemoryApp } from '../mocks/inMemoryVault';
-import { viewAudience } from '../helpers/viewAudience';
+import { measuresPicture } from '../../src/app/pixi/picture/viewPictureParts';
+import { AssetService } from '../../src/app/services/AssetService';
 import type { MeasurePlayersView } from '../../src/app/pixi/measurePartsVisibility';
-import { FRAME, fakePlayerFrames, fakeViewport } from '../mocks/playerFrameSource';
+import type { SceneLightingDeps } from '../../src/app/pixi/lighting/createSceneLighting';
+import type { SceneLightingView } from '../../src/app/pixi/lighting/sceneLightingView';
+import { LIGHTING_PEEK_EVENT } from '../../src/app/lighting/lightingPeek';
+import { SEES_ALL } from '../../src/app/vision/sight';
+import { stubJsdomGraphics } from '../mocks/jsdomGraphics';
+import { computeTokenPixelSize } from '../../src/app/pixi/token-renderer/tokenSizing';
+import { bareMapView } from '../helpers/bareMapView';
+import { playersFrame, picturesOf, scenePicture } from '../helpers/pictures';
+import { FRAME } from '../mocks/playerFrameSource';
 
-const SETTINGS = { showTokenNameplates: true } as never;
+// The view's lighting draws with WebGL: a scene lighting that sees all stands in for it.
+vi.mock('../../src/app/pixi/lighting/createSceneLighting', () => ({
+  createSceneLighting: (deps: SceneLightingDeps): SceneLightingView => ({
+    modeLayer: { visible: false },
+    isEnabled: () => deps.store.getState().lighting.enabled,
+    currentSight: () => SEES_ALL,
+    sightIsCurrent: () => true,
+    lightReaches: () => [],
+    ambientLight: () => ({ ambient: 1 }),
+    refreshBounds: () => undefined,
+    resetExplored: () => undefined,
+    editExplored: () => false,
+    beforeMapUnload: () => undefined,
+    renderForFrame: (_frame, render) => render(),
+    destroy: () => undefined,
+  }),
+}));
 
-/** The orchestrator with only what a player frame and a picture of the scene read. */
-function harness(options: { tokens?: boolean; lighting?: boolean } = {}): {
-  renderer: PixiRendererOrchestrator;
-  part: { visible: boolean };
-  sight: (id: string) => 'seen' | 'unseen';
-  seenInFrame: (id: string) => boolean;
-  playersSeeInFrame: ReturnType<typeof vi.fn>;
-  getPlayerViewLayers: ReturnType<typeof vi.fn>;
-} {
+const afterTest: Array<() => void> = [];
+afterEach(() => {
+  afterTest.splice(0).forEach((cleanup) => cleanup());
+  vi.restoreAllMocks();
+});
+
+/** A view's captures with its measurements alone, whose one part shows by whether the players see the goblin. */
+function harness(options: { tokens?: boolean } = {}) {
   const part = { visible: true };
   const sight = (id: string): 'seen' | 'unseen' => (id === 'hero' ? 'seen' : 'unseen');
   const seenInFrame = (id: string): boolean => id === 'hero';
   const playersSeeInFrame = vi.fn(() => seenInFrame);
   const getPlayerViewLayers = vi.fn((seen: (id: string) => boolean): LayerVisibility[] => [{ layer: part, visible: seen('goblin') }]);
-  const renderer = Object.assign(Object.create(PixiRendererOrchestrator.prototype) as PixiRendererOrchestrator, {
-    pixiAppManager: { getApp: () => ({ renderer: { render: vi.fn() }, stage: {} }), getViewport: fakeViewport, getGestures: () => null },
-    playerFrames: fakePlayerFrames(),
-    tokenRenderer: options.tokens === false ? undefined : { getPlayerViewLayers: () => [], getGmViewLayers: () => [], playersSeeInFrame },
-    measureRenderer: { getPlayerViewLayers, getGmViewLayers: (): LayerVisibility[] => [{ layer: part, visible: true }], effects: { stillFor: () => () => undefined } },
-    dmScreenOverlays: new Set(),
-    playerFrameOnly: new Set(),
-    lighting: options.lighting ? { renderer: {}, playerSight: () => sight, playerLayers: (): LayerVisibility[] => [] } : undefined,
-  });
-  return { renderer, part, sight, seenInFrame, playersSeeInFrame, getPlayerViewLayers };
+  const measures = measuresPicture(
+    { getPlayerViewLayers, getGmViewLayers: (): LayerVisibility[] => [{ layer: part, visible: true }], effects: { stillFor: () => () => undefined } },
+    () => (options.tokens === false ? undefined : { playersSeeInFrame }),
+  );
+  return { measures, part, sight, seenInFrame, playersSeeInFrame, getPlayerViewLayers };
 }
 
-describe('withPlayerSafeFrame and the measurements', () => {
-  it('asks once per capture which tokens the players see, by the lighting\'s sight, and hides measurements by it', () => {
-    const { renderer, part, sight, seenInFrame, playersSeeInFrame, getPlayerViewLayers } = harness({ lighting: true });
+describe('a players\' frame and the measurements', () => {
+  it('asks once per capture which tokens the players see, by the frame\'s sight, and hides measurements by it', () => {
+    const { measures, part, sight, seenInFrame, playersSeeInFrame, getPlayerViewLayers } = harness();
     const during: boolean[] = [];
-    renderer.withPlayerSafeFrame(() => during.push(part.visible), SETTINGS, FRAME);
+    picturesOf({ measures }).capture(playersFrame(FRAME, { sight }), () => during.push(part.visible));
     expect(playersSeeInFrame).toHaveBeenCalledTimes(1);
     expect(playersSeeInFrame).toHaveBeenCalledWith(sight);
     expect(getPlayerViewLayers).toHaveBeenCalledWith(seenInFrame);
@@ -50,54 +67,83 @@ describe('withPlayerSafeFrame and the measurements', () => {
   });
 
   it('sees no token while there is no token renderer, so no measurement from one shows', () => {
-    const { renderer, getPlayerViewLayers } = harness({ tokens: false });
-    renderer.withPlayerSafeFrame(() => undefined, SETTINGS, FRAME);
+    const { measures, getPlayerViewLayers } = harness({ tokens: false });
+    picturesOf({ measures }).capture(playersFrame(FRAME), () => undefined);
     const seen = getPlayerViewLayers.mock.calls[0]?.[0] as (id: string) => boolean;
     expect(['hero', 'goblin'].map(seen)).toEqual([false, false]);
   });
 
   it('keeps the measurements as the GM sees them in a picture of the scene', () => {
-    const { renderer, part } = harness();
+    const { measures, part } = harness();
     part.visible = false;
-    const during = renderer.captureSceneFrame({} as never, () => part.visible);
-    expect(during).toBe(true);
+    expect(scenePicture({ measures }, { x: 0, y: 0, resolution: 1 }, () => part.visible)).toBe(true);
     expect(part.visible).toBe(false);
   });
 });
 
+const ASSET_INDEX = 'atlas-vtt/.atlas-data/assets-metadata.json';
+const DUNGEON_MAP = 'atlas-vtt/collections/dungeon/scenes/cave.atlasmap';
+const DUNGEON_INDEX = { collections: { dungeon: { id: 'dungeon', name: 'Dungeon', description: '', tags: {}, createdAt: 1, modifiedAt: 1 } }, assets: {}, version: 2 };
+
 describe('the measure renderer\'s wiring', () => {
-  it('reads the tokens and whom the canvas is drawn for when asked, and subscribes once', () => {
-    const stopHeights = vi.fn();
-    const busOn = vi.fn();
-    const busOff = vi.fn();
-    const state = { objects: { tokens: {} }, tokenSettings: { tokenRingSize: 1 }, isGMView: true, isPlayerView: false };
-    const store = { getState: () => state, subscribe: vi.fn(() => stopHeights) };
-    const { audience, peek } = viewAudience(store as never);
-    const measureRenderer = { rulesChanged: vi.fn(), followShown: vi.fn(), playersView: null as MeasurePlayersView | null, handles: { pointer: {}, leave: vi.fn() }, ranges: {}, effects: { setMode: vi.fn() } };
-    const renderer = Object.assign(Object.create(PixiRendererOrchestrator.prototype) as PixiRendererOrchestrator, {
-      obsApp: createInMemoryApp().app,
-      store,
-      audience,
-      gridSystem: { getOptions: () => ({ size: 70 }) },
-      measureRenderer,
-      // The popover of a kept measurement closes when the view is left
-      eventBus: { on: busOn, off: busOff },
-      viewId: 'view',
+  /**
+   * A view whose grid is built before it opens: opening builds the measure renderer again and wires
+   * it a second time, which must stop what the first wiring follows.
+   */
+  async function rewiredView(): Promise<{ view: Awaited<ReturnType<typeof bareMapView>>; renderers: () => readonly unknown[] }> {
+    vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: () => undefined, removeEventListener: () => undefined }));
+    const restoreGraphics = stubJsdomGraphics();
+    const built = vi.spyOn(MeasureRenderer.prototype, 'followShown');
+    const view = await bareMapView({ grid: { size: 70, enabled: true, color: 0xffffff }, vault: { files: { [ASSET_INDEX]: JSON.stringify(DUNGEON_INDEX) } } });
+    await view.renderer.init(document.createElement('div'));
+    afterTest.push(() => {
+      view.destroy();
+      restoreGraphics();
+      vi.unstubAllGlobals();
     });
-    const wire = (renderer as unknown as { wireMeasureRendererProvider(): void }).wireMeasureRendererProvider.bind(renderer);
-    wire();
-    wire();
-    // The tokens' heights are followed once, for the rulers that end on fliers
-    expect(stopHeights).toHaveBeenCalledTimes(1);
-    // And leaving the view is heard once
-    expect([busOn.mock.calls.length, busOff.mock.calls.length]).toEqual([2, 1]);
-    const view = measureRenderer.playersView!;
+    return { view, renderers: () => built.mock.contexts };
+  }
+
+  it('follows the tokens\' heights, the view\'s leaving and whom the canvas is drawn for with the measure renderer it has now', async () => {
+    const rulesChanged = vi.spyOn(MeasureRenderer.prototype, 'rulesChanged');
+    const left = vi.spyOn(MeasureRenderer.prototype, 'leave');
+    const players = vi.spyOn(MeasureRenderer.prototype, 'playersView', 'set');
+    const { view, renderers } = await rewiredView();
+    const [first, current] = renderers();
+    expect(renderers()).toHaveLength(2);
+    expect(current).not.toBe(first);
+    // Once the asset index is read, the map below is the dungeon collection's
+    await vi.waitFor(() => expect(AssetService.getInstance(view.obsidian).getCollectionForMap(DUNGEON_MAP)).toBe('dungeon'));
+    rulesChanged.mockClear();
+
+    // A token off the floor: the rulers of the measure renderer the view has now are written again, once
+    view.store.getState().addTokens([{ id: 'flier', kind: 'token', imagePath: '', size: 1, x: 100, y: 100, elevation: 30 } as never]);
+    expect(rulesChanged).toHaveBeenCalledTimes(1);
+    expect(rulesChanged.mock.contexts).toEqual([current]);
+
+    // The map's collection changes its rules: again only that renderer, once
+    rulesChanged.mockClear();
+    view.store.setState({ mapPath: DUNGEON_MAP });
+    // As the workspace tells every listener it was given, the first wiring's included
+    for (const [name, listener] of vi.mocked(view.obsidian.workspace.on).mock.calls) {
+      if (name === 'atlas-vtt:collection-settings-changed') (listener as (collectionId: string) => void)('dungeon');
+    }
+    expect(rulesChanged).toHaveBeenCalledTimes(1);
+    expect(rulesChanged.mock.contexts).toEqual([current]);
+
+    // Leaving the view is heard once, by that renderer
+    view.events.emit('map-unloading');
+    expect(left).toHaveBeenCalledTimes(1);
+    expect(left.mock.contexts).toEqual([current]);
+
+    // Whom the canvas is drawn for: nobody's sight while the GM looks, the players' while the GM peeks
+    const playersView = players.mock.lastCall?.[0] as MeasurePlayersView;
     const heard = vi.fn();
-    view.onChange(heard);
-    expect(view.seenOnCanvas()).toBeNull();
-    peek(true);
-    expect(heard).toHaveBeenCalledTimes(1);
-    expect(view.seenOnCanvas()).not.toBeNull();
+    playersView.onChange(heard);
+    expect(playersView.seenOnCanvas()).toBeNull();
+    view.events.emit(LIGHTING_PEEK_EVENT, true);
+    expect(heard).toHaveBeenCalled();
+    expect(playersView.seenOnCanvas()).not.toBeNull();
   });
 });
 

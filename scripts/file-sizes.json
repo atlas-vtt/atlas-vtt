@@ -1,7 +1,7 @@
 {
   "allowances": {
     "main.ts": 450,
-    "src/app/PixiRendererOrchestrator.ts": 1600,
+    "src/app/PixiRendererOrchestrator.ts": 1550,
     "src/app/annotations/annotationList.ts": 350,
     "src/app/atlas-view.ts": 900,
     "src/app/audio/SpatialAudioEngine.ts": 350,

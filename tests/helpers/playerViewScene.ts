@@ -12,9 +12,11 @@ import { MapPointer } from '../../src/app/pixi/pointer/MapPointer';
 import { listenToViewport } from '../../src/app/pixi/pointer/viewportPointer';
 import { FogOfWarRenderer } from '../../src/app/pixi/fog/FogOfWarRenderer';
 import { MeasureRenderer } from '../../src/app/pixi/measure/MeasureRenderer';
-import { captureWithLayerVisibility, type LayerVisibility } from '../../src/app/pixi/playerSafeFrame';
-import { captureSceneFrame } from '../../src/app/pixi/sceneFrameCapture';
-import { gmPictureLayers, playerFrameLayers, wirePlayerMeasurements } from './playerMeasureWiring';
+import type { LayerVisibility } from '../../src/app/pixi/playerSafeFrame';
+import { captureWithLayerVisibility } from './layerCapture';
+import { fogPicture, measuresPicture, tokensPicture } from '../../src/app/pixi/picture/viewPictureParts';
+import { scenePicture } from './pictures';
+import { playerFrameLayers, wirePlayerMeasurements } from './playerMeasureWiring';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { createTestRenderer } from '../../src/app/pixi/lighting/engine/__tests__/gpuTestUtils';
@@ -178,7 +180,7 @@ export function playerViewScenes(): { scene: (options?: PlayerViewSceneOptions) 
       frame(): Uint8ClampedArray { return read(this.frameLayers()); },
       thumbnail(): Uint8ClampedArray {
         let result: Uint8ClampedArray = new Uint8ClampedArray();
-        captureSceneFrame({ gmViewLayers: gmPictureLayers({ measure, tokens, fog }), markerLayers: [], lighting: undefined }, { x: 0, y: 0, width: SIZE, height: SIZE } as never, () => {
+        scenePicture({ tokens: tokensPicture(tokens), measures: measuresPicture(measure, () => tokens), fog: fogPicture(fog) }, { x: 0, y: 0, width: SIZE, height: SIZE } as never, () => {
           renderer.render({ container: app.stage, target, clear: true });
           result = renderer.extract.pixels({ target }).pixels;
         });

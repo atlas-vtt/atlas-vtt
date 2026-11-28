@@ -5,7 +5,7 @@ import { EventEmitter } from 'eventemitter3';
 import { createStore } from 'zustand/vanilla';
 import { DEFAULT_FOG_TOOL } from '../../src/app/fog/fogToolChoices';
 import { FogOfWarRenderer } from '../../src/app/pixi/fog/FogOfWarRenderer';
-import { captureWithLayerVisibility } from '../../src/app/pixi/playerSafeFrame';
+import { captureWithLayerVisibility } from '../helpers/layerCapture';
 import { viewAudience } from '../helpers/viewAudience';
 
 afterEach(() => vi.restoreAllMocks());

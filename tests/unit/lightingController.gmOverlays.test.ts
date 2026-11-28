@@ -3,7 +3,8 @@
 import { event, setup } from './lightingControllerHarness';
 import { describe, expect, it } from 'vitest';
 import type { LightingController } from '../../src/app/pixi/lighting/LightingController';
-import { captureSceneFrame } from '../../src/app/pixi/sceneFrameCapture';
+import { lightingPicture } from '../../src/app/pixi/picture/viewPictureParts';
+import { scenePicture } from '../helpers/pictures';
 import { getHistoryStore } from '../../src/app/stores/history';
 
 describe('the range rings', () => {
@@ -49,7 +50,7 @@ describe('a picture of the scene (a thumbnail)', () => {
   function picture(controller: LightingController): Record<'before' | 'during' | 'after', Record<string, boolean>> {
     const shown = (): Record<string, boolean> => Object.fromEntries(Object.entries(controller.gmOverlays()).map(([name, layer]) => [name, layer.visible]));
     const before = shown();
-    const during = captureSceneFrame({ gmViewLayers: [], markerLayers: [], lighting: controller }, FRAME, shown);
+    const during = scenePicture({ lighting: lightingPicture(controller) }, FRAME, shown);
     return { before, during, after: shown() };
   }
   const NONE = { wallEditor: false, lightZones: false, levelSurfaces: false, exploredMemory: false, rooms: false, doorBadges: false, lightMarkers: false, rangeRings: false, sightAids: false };

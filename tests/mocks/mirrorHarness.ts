@@ -2,7 +2,7 @@ import { vi } from 'vitest';
 import type { Ticker } from 'pixi.js';
 import type { PlayerCameraState } from '../../src/app/local-player-view';
 import { RenderScheduler, requestRender, setBeforeRender } from '../../src/app/pixi/RenderScheduler';
-import { captureBeforeRender, captureWithLayerVisibility, type LayerVisibility } from '../../src/app/pixi/playerSafeFrame';
+import { picturesOf, playersFrame } from '../helpers/pictures';
 import { PlayerFrameMirror, type PlayerFrameSource } from '../../src/app/services/PlayerFrameMirror';
 import type { AtlasSettings } from '../../src/app/services/SettingsService';
 import type { FramePiece, Screen } from '../../src/app/types/playerFrame';
@@ -82,7 +82,8 @@ export function setupMirror(): MirrorHarness {
     };
     const { app, ticker } = fakeApp(group, render);
     const scheduler = new RenderScheduler(app);
-    const layers: LayerVisibility[] = [{ layer: pins, visible: false }];
+    // The view's capture with one part, its pins, hidden from players: the frame's render, then the DM's where none follows
+    const pictures = picturesOf({ pins: { layersFor: () => [{ layer: pins, visible: false }] } }, { renderGmFrame: render });
     const canvas = document.createElement('canvas');
     let loading = false;
     const store = { getState: () => ({ isMapLoading: loading }) } as unknown as NonNullable<PlayerFrameSource['store']>;
@@ -90,11 +91,17 @@ export function setupMirror(): MirrorHarness {
       store,
       getCamera: () => DM_CAMERA,
       getScreen: () => DM_SCREEN,
-      withPlayerSafeFrame: (copy, _settings, frame) => captureWithLayerVisibility(layers, render, () => copy(wholeFrame(canvas, frame.width, frame.height))),
+      withPlayerSafeFrame: (copy, settings, frame) => pictures.capture(playersFrame(frame, { settings }), () => {
+        render();
+        copy(wholeFrame(canvas, frame.width, frame.height));
+      }),
       beforeRender: {
         listen: (listener) => setBeforeRender(app, listener),
         requestRender: () => requestRender(app),
-        withPlayerSafeFrame: (copy, _settings, frame) => captureBeforeRender(layers, render, () => copy(wholeFrame(canvas, frame.width, frame.height))),
+        withPlayerSafeFrame: (copy, settings, frame) => pictures.capture(playersFrame(frame, { settings, renderFollows: true }), () => {
+          render();
+          copy(wholeFrame(canvas, frame.width, frame.height));
+        }),
       },
     };
     return {

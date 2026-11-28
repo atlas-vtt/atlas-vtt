@@ -3,7 +3,7 @@ import { RenderTexture, Sprite, Texture, type WebGLRenderer } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
 import { afterEach, describe, expect, it } from 'vitest';
 import { LevelLinkEditor } from '../../src/app/pixi/levelLinks/LevelLinkEditor';
-import { captureWithLayerVisibility } from '../../src/app/pixi/playerSafeFrame';
+import { captureWithLayerVisibility } from '../helpers/layerCapture';
 import { createTestRenderer, readRgba } from '../../src/app/pixi/lighting/engine/__tests__/gpuTestUtils';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import type { LevelLinkFlight, SceneLevel } from '../../src/app/types/sceneLevelTypes';
