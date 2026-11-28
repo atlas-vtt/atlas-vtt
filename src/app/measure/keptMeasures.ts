@@ -7,7 +7,9 @@
  * every time, so whoever compares measurements finds unchanged ones unchanged.
  */
 
+import { levelObjects } from '../levels/levelObjects';
 import { readEmission } from '../lighting/lightingObjects';
+import type { ViewState } from '../types/viewState';
 import type { Point } from '../types/visionTypes';
 import { isRecord } from '../utils/guards';
 import { isHexColor } from '../utils/hexColor';
@@ -167,4 +169,17 @@ export function measureMovedWithMap<T>(measure: T, move: (point: Point) => Point
   if (!Array.isArray(points) || !points.every(isPoint)) return measure;
   // A grouped measurement's anchor moves with it, or its token's move would move it a second time.
   return { ...measure, points: points.map(move), ...(isAnchor(anchor) && { anchor: { ...move(anchor), rotation: anchor.rotation } }) };
+}
+
+/** What says whether a kept measurement can be edited. */
+export type MeasureEditState = Pick<ViewState, 'objects' | 'levels' | 'viewedLevel' | 'isGMView' | 'isMapLoading' | 'isPlayerView'>;
+
+/** The kept measurement `id` on the level shown, as it is read; null when it is gone or is none. */
+export function keptMeasure(state: Pick<MeasureEditState, 'objects' | 'levels' | 'viewedLevel'>, id: string): KeptMeasure | null {
+  return readMeasure(id, levelObjects(state).measures?.[id]);
+}
+
+/** A kept measurement's handle and popover need the measurement on the level shown, and the GM's view of a loaded scene. */
+export function mayEditMeasure(state: MeasureEditState, id: string): boolean {
+  return !!keptMeasure(state, id) && state.isGMView && !state.isPlayerView && !state.isMapLoading;
 }

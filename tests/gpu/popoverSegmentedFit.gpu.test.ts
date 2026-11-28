@@ -44,6 +44,7 @@ const POPOVERS: readonly Popover[] = [
     host: async () => (await import('../../src/app/react/components/levels/LevelLinkPopover')).LevelLinkPopoverHost,
     open: (store) => {
       store.setState({ objects: { ...store.getState().objects, levelLinks: { stairs: { id: 'stairs', kind: 'level-link', polygon: AREA, levels: ['ground', 'upper'] } } } });
+      store.getState().setActiveTool('stairs');
       store.getState().openLevelLinkPopover('stairs');
     },
   },
@@ -53,6 +54,7 @@ const POPOVERS: readonly Popover[] = [
     host: async () => (await import('../../src/app/pixi/levelSurfaces/LevelSurfacePopover')).LevelSurfacePopoverHost,
     open: (store) => {
       store.setState({ objects: { ...store.getState().objects, levelSurfaces: { hole: { id: 'hole', kind: 'level-surface', polygon: AREA, open: true } } } });
+      store.getState().setActiveTool('wall');
       store.getState().openLevelSurfacePopover('hole');
     },
   },
@@ -62,6 +64,7 @@ const POPOVERS: readonly Popover[] = [
     host: async () => (await import('../../src/app/pixi/lighting/LightZonePopover')).LightZonePopoverHost,
     open: (store) => {
       store.getState().setSceneLighting({ enabled: true, ambient: 1 });
+      store.getState().setActiveTool('wall');
       store.getState().openLightZonePopover(store.getState().addObject('lightZones', { polygon: AREA, ambient: 0 }));
     },
   },
@@ -89,7 +92,7 @@ async function misfitsOf(mount: (popover: Popover) => Element | Promise<Element>
   return found;
 }
 
-/** The popover as the map opens it; its module loads in the language set now. */
+/** The popover as the map opens it, with the tool it is opened with; its module loads in the language set now. */
 async function mountPopover(popover: Popover): Promise<Element> {
   const Host = await popover.host();
   const { createViewAtlasStore } = await import('../../src/app/storeFactory');

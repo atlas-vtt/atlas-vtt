@@ -28,6 +28,8 @@ function renderPopover(): { store: ViewAtlasStore; cave: string; zone: () => Lig
   store.getState().setPersistenceEnabled(false);
   store.getState().setMapPath('maps/zones.atlasmap');
   store.getState().setSceneLighting({ enabled: true, ambient: 1 });
+  // A zone's popover opens with the lighting tool.
+  store.getState().setActiveTool('wall');
   const cave = store.getState().addObject('lightZones', { polygon: SQUARE, ambient: 0 });
   const history = getHistoryStore(store)!;
   history.getState().clear();

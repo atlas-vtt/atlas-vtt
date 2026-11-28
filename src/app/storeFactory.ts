@@ -22,13 +22,14 @@ import type { FightBinding } from './stores/initiativeFightStart';
 import { followTokensInTracker } from './stores/combatantTokens';
 import { createSceneObjectsActions, type SceneObjectsSlice } from './stores/sceneObjectsSlice';
 import type { InitiativeTurnActions } from './stores/initiativeTurnActions';
-import { createInitialUIState, createUIActions, type UISlice } from './stores/uiSlice';
+import { createInitialUIState, createUIActions, type UIActions } from './stores/uiSlice';
 import { loadDrawTool, saveDrawTool } from './services/deviceSettings';
 import { loadStabilizer, saveStabilizer } from './services/roomToolMemory';
 import { createPinnedNotePreviewActions, type PinnedNotePreviewSlice } from './stores/pinnedNotePreviewSlice';
 import { createLootRollerActions, type LootRollerSlice } from './stores/lootRollerSlice';
 import { newId } from './utils/ids';
 import { withHistory } from './stores/history';
+import { withSurfaces } from './stores/viewSurfaces';
 import { withWidgetOff } from './utils/widgetActivation';
 import type { TimerState } from './utils/timerWidget';
 import { createMapObjectsActions, type MapObjectsSlice } from './stores/mapObjectsSlice';
@@ -66,7 +67,7 @@ import { clearedScene, initialBranches, loadedBranches, savedBranches, UNDO_DEPT
 import { levelsCarriedWithGrid, type CarriedLevels, type GridCarryScene } from './levels/levelGridCarry';
 
 // Individual store state interface (same as AtlasState but isolated)
-export interface ViewAtlasState extends ViewState {
+export interface ViewAtlasState extends ViewState, UIActions {
   setMapPath: (path: string | null) => void;
   setPersistenceEnabled: (enabled: boolean) => void;
   setMapLoaded: (loaded: boolean) => void;
@@ -276,44 +277,6 @@ export interface ViewAtlasState extends ViewState {
   setLootRollerOpen: LootRollerSlice['setLootRollerOpen'];
   updateLootRoller: LootRollerSlice['updateLootRoller'];
   showLootRoll: LootRollerSlice['showLootRoll'];
-  openLightPopover: UISlice['openLightPopover'];
-  closeLightPopover: UISlice['closeLightPopover'];
-  openLightZonePopover: UISlice['openLightZonePopover'];
-  closeLightZonePopover: UISlice['closeLightZonePopover'];
-  openLevelLinkPopover: UISlice['openLevelLinkPopover'];
-  closeLevelLinkPopover: UISlice['closeLevelLinkPopover'];
-  openLevelSurfacePopover: UISlice['openLevelSurfacePopover'];
-  closeLevelSurfacePopover: UISlice['closeLevelSurfacePopover'];
-  openMeasurePopover: UISlice['openMeasurePopover'];
-  closeMeasurePopover: UISlice['closeMeasurePopover'];
-  setMeasureTool: UISlice['setMeasureTool'];
-  setDrawTool: UISlice['setDrawTool'];
-  setFogTool: UISlice['setFogTool'];
-  setLightingTool: UISlice['setLightingTool'];
-  setToolSwitch: UISlice['setToolSwitch'];
-  setHeldTokens: UISlice['setHeldTokens'];
-  setExploredBrush: UISlice['setExploredBrush'];
-  setToolbarEditing: UISlice['setToolbarEditing'];
-  openDungeonGenerator: UISlice['openDungeonGenerator'];
-  closeDungeonGenerator: UISlice['closeDungeonGenerator'];
-  setRoofsHidden: UISlice['setRoofsHidden'];
-  setSelectMore: UISlice['setSelectMore'];
-  showCombatantConditions: UISlice['showCombatantConditions'];
-  hideCombatantConditions: UISlice['hideCombatantConditions'];
-  setGridSettingsOpen: UISlice['setGridSettingsOpen'];
-  setDMScreenOpen: UISlice['setDMScreenOpen'];
-  setDMScreenPage: UISlice['setDMScreenPage'];
-  setGridAlignmentOpen: UISlice['setGridAlignmentOpen'];
-  setFloorPositioning: UISlice['setFloorPositioning'];
-  setDiceLogOpen: UISlice['setDiceLogOpen'];
-  setHotkeyHelpOpen: UISlice['setHotkeyHelpOpen'];
-  setDocsOpen: UISlice['setDocsOpen'];
-  openAssetManager: UISlice['openAssetManager'];
-  openArmarium: UISlice['openArmarium'];
-  closeAssetManager: UISlice['closeAssetManager'];
-  setCommandPaletteOpen: UISlice['setCommandPaletteOpen'];
-  setDiceTrayOpen: UISlice['setDiceTrayOpen'];
-
   // Note: Undo/Redo is added by the history middleware (`store.temporal`, stores/history.ts)
 }
 
@@ -442,7 +405,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
   const fight: FightBinding = { rules: rulesLookup(app), random: diceRandom };
 
   const store = create<ViewAtlasState>()(
-    withHistory(UNDO_DEPTHS)(
+    withSurfaces(withHistory(UNDO_DEPTHS)(
       subscribeWithSelector(
         persist(
           immer<ViewAtlasState>((set, get) => ({
@@ -992,7 +955,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
         }
       )
     )
-  )
+  ))
 );
 
   // Set the store reference after creation

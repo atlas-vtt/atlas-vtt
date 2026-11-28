@@ -14,6 +14,7 @@ import { DEFAULT_LIGHTING_TOOL, type LightingToolOptions } from '../lighting/lig
 import { DEFAULT_MEASURE_TOOL, type MeasureToolOptions } from '../measure/measureTypes';
 import { DEFAULT_TOOL_SWITCHES, type ToolSwitchId } from '../types/toolSwitches';
 import type { DMScreenPage, DungeonGeneratorRequest, HeldTokens, ViewUIState } from '../types/viewUIState';
+import { closedSurfaces, closeIn, openIn, setOpenIn } from './viewSurfaces';
 
 /** State fields added to ViewAtlasState */
 export interface UISlice extends ViewUIState {
@@ -55,7 +56,6 @@ export interface UISlice extends ViewUIState {
   setToolSwitch: (id: ToolSwitchId, on: boolean) => void;
   setHeldTokens: (held: HeldTokens) => void;
   setExploredBrush: (changes: Partial<ExploredBrushOptions>) => void;
-  /** Starting the toolbar editor closes the dice tray, which hangs where the tray goes. */
   setToolbarEditing: (on: boolean) => void;
   /** Opens the dungeon generator over the map, in place of one open already. */
   openDungeonGenerator: (request: DungeonGeneratorRequest) => void;
@@ -69,63 +69,17 @@ export interface UISlice extends ViewUIState {
   hideCombatantConditions: (entryId: string) => void;
 }
 
-/** Default state — all panels closed. `drawTool` is what the Draw tool starts with: its defaults, or what the device remembered. */
-export function createInitialUIState(drawTool: DrawToolChoices = DEFAULT_DRAW_TOOL): Pick<
-  UISlice,
-  | 'isGridSettingsOpen'
-  | 'isDMScreenOpen'
-  | 'dmScreenPage'
-  | 'isGridAlignmentOpen'
-  | 'isFloorPositioning'
-  | 'isDiceLogOpen'
-  | 'isHotkeyHelpOpen'
-  | 'isDocsOpen'
-  | 'isAssetManagerOpen'
-  | 'assetManagerInitialTab'
-  | 'assetManagerAddsCombatants'
-  | 'assetManagerArmarium'
-  | 'isCommandPaletteOpen'
-  | 'commandPalettePage'
-  | 'isDiceTrayOpen'
-  | 'lightPopover'
-  | 'lightZonePopover'
-  | 'levelLinkPopover'
-  | 'levelSurfacePopover'
-  | 'measurePopover'
-  | 'measureTool'
-  | 'drawTool'
-  | 'fogTool'
-  | 'lightingTool'
-  | 'toolSwitches'
-  | 'heldTokens'
-  | 'exploredBrush'
-  | 'isToolbarEditing'
-  | 'dungeonGenerator'
-  | 'roofsHidden'
-  | 'selectMore'
-  | 'conditionsShownEntry'
-> {
+/** What a view's state holds of the UI slice; `viewedLevel` is the levels' (`sceneLevelsSlice.ts`). */
+type UIInitialState = Omit<ViewUIState, 'viewedLevel'>;
+
+/** The slice's actions. */
+export type UIActions = Omit<UISlice, keyof ViewUIState>;
+
+/** Default state — every surface closed (`viewSurfaces.ts`). `drawTool` is what the Draw tool starts with: its defaults, or what the device remembered. */
+export function createInitialUIState(drawTool: DrawToolChoices = DEFAULT_DRAW_TOOL): UIInitialState {
   return {
-    isGridSettingsOpen: false,
-    isDMScreenOpen: false,
+    ...closedSurfaces(),
     dmScreenPage: 'statblocks',
-    isGridAlignmentOpen: false,
-    isFloorPositioning: false,
-    isDiceLogOpen: false,
-    isHotkeyHelpOpen: false,
-    isDocsOpen: false,
-    isAssetManagerOpen: false,
-    assetManagerInitialTab: undefined,
-    assetManagerAddsCombatants: false,
-    assetManagerArmarium: 0,
-    isCommandPaletteOpen: false,
-    commandPalettePage: null,
-    isDiceTrayOpen: false,
-    lightPopover: null,
-    lightZonePopover: null,
-    levelLinkPopover: null,
-    levelSurfacePopover: null,
-    measurePopover: null,
     measureTool: DEFAULT_MEASURE_TOOL,
     drawTool,
     fogTool: DEFAULT_FOG_TOOL,
@@ -133,8 +87,6 @@ export function createInitialUIState(drawTool: DrawToolChoices = DEFAULT_DRAW_TO
     toolSwitches: DEFAULT_TOOL_SWITCHES,
     heldTokens: {},
     exploredBrush: DEFAULT_EXPLORED_BRUSH,
-    isToolbarEditing: false,
-    dungeonGenerator: null,
     roofsHidden: false,
     selectMore: false,
     conditionsShownEntry: null,
@@ -143,109 +95,47 @@ export function createInitialUIState(drawTool: DrawToolChoices = DEFAULT_DRAW_TO
 
 /**
  * Action creators — `set` comes from the immer middleware in the store. `rememberDrawTool` is
- * handed the Draw tool's choices whenever their style changed, to keep them for the device.
+ * handed the Draw tool's choices whenever their style changed, to keep them for the device. What
+ * opening or closing a surface does besides is its row's (`viewSurfaces.ts`).
  */
 export function createUIActions(
   set: (fn: (draft: UISlice) => void) => void,
   rememberDrawTool?: (choices: DrawToolChoices) => void,
-): Pick<
-  UISlice,
-  | 'setGridSettingsOpen'
-  | 'setDMScreenOpen'
-  | 'setDMScreenPage'
-  | 'setGridAlignmentOpen'
-  | 'setFloorPositioning'
-  | 'setDiceLogOpen'
-  | 'setHotkeyHelpOpen'
-  | 'setDocsOpen'
-  | 'openAssetManager'
-  | 'openArmarium'
-  | 'closeAssetManager'
-  | 'setCommandPaletteOpen'
-  | 'setDiceTrayOpen'
-  | 'openLightPopover'
-  | 'closeLightPopover'
-  | 'openLightZonePopover'
-  | 'closeLightZonePopover'
-  | 'openLevelLinkPopover'
-  | 'closeLevelLinkPopover'
-  | 'openLevelSurfacePopover'
-  | 'closeLevelSurfacePopover'
-  | 'openMeasurePopover'
-  | 'closeMeasurePopover'
-  | 'setMeasureTool'
-  | 'setDrawTool'
-  | 'setFogTool'
-  | 'setLightingTool'
-  | 'setToolSwitch'
-  | 'setHeldTokens'
-  | 'setExploredBrush'
-  | 'setToolbarEditing'
-  | 'openDungeonGenerator'
-  | 'closeDungeonGenerator'
-  | 'setRoofsHidden'
-  | 'setSelectMore'
-  | 'showCombatantConditions'
-  | 'hideCombatantConditions'
-> {
+): UIActions {
   return {
-    setGridSettingsOpen: (open) => set((draft) => { draft.isGridSettingsOpen = open; }),
-    setDMScreenOpen: (open) => set((draft) => { draft.isDMScreenOpen = open; }),
+    setGridSettingsOpen: (open) => set((draft) => setOpenIn(draft, 'isGridSettingsOpen', open)),
+    setDMScreenOpen: (open) => set((draft) => setOpenIn(draft, 'isDMScreenOpen', open)),
     setDMScreenPage: (page) => set((draft) => { draft.dmScreenPage = page; }),
-    setGridAlignmentOpen: (open) => set((draft) => { draft.isGridAlignmentOpen = open; }),
-    setFloorPositioning: (on) => set((draft) => { draft.isFloorPositioning = on; }),
-    setDiceLogOpen: (open) => set((draft) => { draft.isDiceLogOpen = open; }),
-    setHotkeyHelpOpen: (open) => set((draft) => { draft.isHotkeyHelpOpen = open; }),
-    setDocsOpen: (open) => set((draft) => { draft.isDocsOpen = open; }),
-    // The palette, the dice tray and the asset manager open where the toolbar editor's tray sits, or over the map: each ends edit mode.
+    setGridAlignmentOpen: (open) => set((draft) => setOpenIn(draft, 'isGridAlignmentOpen', open)),
+    setFloorPositioning: (on) => set((draft) => setOpenIn(draft, 'isFloorPositioning', on)),
+    setDiceLogOpen: (open) => set((draft) => setOpenIn(draft, 'isDiceLogOpen', open)),
+    setHotkeyHelpOpen: (open) => set((draft) => setOpenIn(draft, 'isHotkeyHelpOpen', open)),
+    setDocsOpen: (open) => set((draft) => setOpenIn(draft, 'isDocsOpen', open)),
     openAssetManager: (tab, addsCombatants = false) => set((draft) => {
-      draft.isAssetManagerOpen = true;
+      openIn(draft, 'isAssetManagerOpen', true);
       draft.assetManagerInitialTab = tab;
       draft.assetManagerAddsCombatants = addsCombatants;
-      draft.isToolbarEditing = false;
     }),
     openArmarium: () => set((draft) => {
-      draft.isAssetManagerOpen = true;
+      openIn(draft, 'isAssetManagerOpen', true);
       draft.assetManagerArmarium += 1;
-      draft.isToolbarEditing = false;
     }),
-    closeAssetManager: () => set((draft) => {
-      draft.isAssetManagerOpen = false;
-      draft.assetManagerInitialTab = undefined;
-      draft.assetManagerAddsCombatants = false;
-      draft.assetManagerArmarium = 0;
-    }),
+    closeAssetManager: () => set((draft) => closeIn(draft, 'isAssetManagerOpen')),
     setCommandPaletteOpen: (open, page) => set((draft) => {
-      draft.isCommandPaletteOpen = open;
-      draft.commandPalettePage = open ? page ?? null : null;
-      if (open) draft.isToolbarEditing = false;
+      setOpenIn(draft, 'isCommandPaletteOpen', open);
+      if (open) draft.commandPalettePage = page ?? null;
     }),
-    setDiceTrayOpen: (open) => set((draft) => {
-      draft.isDiceTrayOpen = open;
-      if (open) draft.isToolbarEditing = false;
-    }),
-    openLightPopover: (lightId) => set((draft) => {
-      draft.lightPopover = lightId;
-      draft.lightZonePopover = null;
-      draft.measurePopover = null;
-    }),
-    openLightZonePopover: (zoneId) => set((draft) => {
-      draft.lightZonePopover = zoneId;
-      draft.lightPopover = null;
-      draft.measurePopover = null;
-    }),
-    closeLightZonePopover: () => set((draft) => { draft.lightZonePopover = null; }),
-    openLevelLinkPopover: (linkId) => set((draft) => { draft.levelLinkPopover = linkId; }),
-    closeLevelLinkPopover: () => set((draft) => { draft.levelLinkPopover = null; }),
-    openLevelSurfacePopover: (surfaceId) => set((draft) => { draft.levelSurfacePopover = surfaceId; }),
-    closeLevelSurfacePopover: () => set((draft) => { draft.levelSurfacePopover = null; }),
-    closeLightPopover: () => set((draft) => { draft.lightPopover = null; }),
-    openMeasurePopover: (measureId) => set((draft) => {
-      draft.measurePopover = measureId;
-      draft.lightPopover = null;
-      draft.lightZonePopover = null;
-    }),
-    closeMeasurePopover: () => set((draft) => { draft.measurePopover = null; }),
+    setDiceTrayOpen: (open) => set((draft) => setOpenIn(draft, 'isDiceTrayOpen', open)),
+    openLightPopover: (lightId) => set((draft) => openIn(draft, 'lightPopover', lightId)),
+    closeLightPopover: () => set((draft) => closeIn(draft, 'lightPopover')),
+    openLightZonePopover: (zoneId) => set((draft) => openIn(draft, 'lightZonePopover', zoneId)),
+    closeLightZonePopover: () => set((draft) => closeIn(draft, 'lightZonePopover')),
+    openLevelLinkPopover: (linkId) => set((draft) => openIn(draft, 'levelLinkPopover', linkId)),
+    closeLevelLinkPopover: () => set((draft) => closeIn(draft, 'levelLinkPopover')),
+    openLevelSurfacePopover: (surfaceId) => set((draft) => openIn(draft, 'levelSurfacePopover', surfaceId)),
+    closeLevelSurfacePopover: () => set((draft) => closeIn(draft, 'levelSurfacePopover')),
+    openMeasurePopover: (measureId) => set((draft) => openIn(draft, 'measurePopover', measureId)),
+    closeMeasurePopover: () => set((draft) => closeIn(draft, 'measurePopover')),
     setMeasureTool: (changes) => set((draft) => { draft.measureTool = { ...draft.measureTool, ...changes }; }),
     setDrawTool: (changes) => {
       let styled: DrawToolChoices | null = null;
@@ -263,16 +153,10 @@ export function createUIActions(
     setToolSwitch: (id, on) => set((draft) => { draft.toolSwitches = { ...draft.toolSwitches, [id]: on }; }),
     setHeldTokens: (held) => set((draft) => { draft.heldTokens = held; }),
     setExploredBrush: (changes) => set((draft) => { draft.exploredBrush = { ...draft.exploredBrush, ...changes }; }),
-    setToolbarEditing: (on) => set((draft) => {
-      draft.isToolbarEditing = on;
-      if (on) draft.isDiceTrayOpen = false;
-    }),
-    openDungeonGenerator: (request) => set((draft) => {
-      draft.dungeonGenerator = request;
-      draft.isToolbarEditing = false;
-    }),
+    setToolbarEditing: (on) => set((draft) => setOpenIn(draft, 'isToolbarEditing', on)),
+    openDungeonGenerator: (request) => set((draft) => openIn(draft, 'dungeonGenerator', request)),
     closeDungeonGenerator: (id) => set((draft) => {
-      if (draft.dungeonGenerator?.id === id) draft.dungeonGenerator = null;
+      if (draft.dungeonGenerator?.id === id) closeIn(draft, 'dungeonGenerator');
     }),
     setRoofsHidden: (hidden) => set((draft) => { draft.roofsHidden = hidden; }),
     setSelectMore: (on) => set((draft) => { draft.selectMore = on; }),

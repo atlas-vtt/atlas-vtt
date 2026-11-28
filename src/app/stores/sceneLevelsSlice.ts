@@ -10,6 +10,7 @@ import type { MapMove } from '../grid/mapStretch';
 import { objectsMovedWithMap } from '../grid/mapStretchObjects';
 import { aurasToTokenLevels } from '../measure/auraUpkeep';
 import type { ViewState } from '../types/viewState';
+import { leaveLevelIn, type SurfaceDraft } from './viewSurfaces';
 
 export interface SceneLevelsSlice {
   /** Shows level `id` (null: the first). Never an undo step: the selection and open popovers belong to the level left. */
@@ -35,7 +36,7 @@ export interface SceneLevelsSlice {
   restoreLevelsExplored: (masks: Readonly<Record<string, string>>) => void;
 }
 
-type LevelsDraft = Pick<ViewState, 'levels' | 'viewedLevel' | 'objects' | 'background' | 'exploredMask' | 'exploredMasks' | 'exploredForgotten' | 'levelAlignments' | 'selectedIds' | 'lightPopover' | 'lightZonePopover' | 'levelLinkPopover' | 'measurePopover'>;
+type LevelsDraft = Pick<ViewState, 'levels' | 'viewedLevel' | 'objects' | 'background' | 'exploredMask' | 'exploredMasks' | 'exploredForgotten' | 'levelAlignments' | 'selectedIds'> & SurfaceDraft;
 
 type ImmerSet = (fn: (draft: LevelsDraft) => void) => void;
 
@@ -60,10 +61,7 @@ export function createSceneLevelsActions(set: ImmerSet, get: () => LevelsDraft):
       if ((draft.viewedLevel ?? null) === id) return;
       draft.viewedLevel = id;
       draft.selectedIds = [];
-      draft.lightPopover = null;
-      draft.lightZonePopover = null;
-      draft.levelLinkPopover = null;
-      draft.measurePopover = null;
+      leaveLevelIn(draft);
     }),
 
     setLevels: (levels) => set((draft) => {

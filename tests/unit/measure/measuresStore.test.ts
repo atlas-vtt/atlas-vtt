@@ -183,13 +183,14 @@ describe('the measure tool\'s choices and popover', () => {
     expect(store.getState().measurePopover).toBeNull();
   });
 
-  it('closes the popover when the view shows another level, and keeps it through a clear of another level', () => {
-    const { store } = setup(LEVELS, 'upper');
+  it('closes the popover when the view shows another level, and keeps it while other measurements go', () => {
+    const { store } = setup(LEVELS, 'ground');
     const low = store.getState().addMeasure({ ...RULER, level: 'ground' })!;
+    const other = store.getState().addMeasure({ ...RULER, level: 'ground' })!;
     store.getState().openMeasurePopover(low);
-    store.getState().clearMeasures();
+    store.getState().removeObjects([other]);
     expect(store.getState().measurePopover).toBe(low);
-    store.getState().setViewedLevel('ground');
+    store.getState().setViewedLevel('upper');
     expect(store.getState().measurePopover).toBeNull();
   });
 });
