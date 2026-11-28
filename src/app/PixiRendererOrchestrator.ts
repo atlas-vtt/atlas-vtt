@@ -101,8 +101,7 @@ import { PlacementHand } from './pixi/tokenPlacement/placementHand';
 import { MapPointer } from './pixi/pointer/MapPointer';
 import { listenToViewport } from './pixi/pointer/viewportPointer';
 import { CanvasAudience } from './pixi/audience/CanvasAudience';
-import { canvasSightSource } from './perception/canvasSight';
-import { PlayersPerception, type SightSource } from './perception/playersPerception';
+import { canvasSightSource, PlayersPerception, type SightSource } from './perception/playersPerception';
 import { PerceptionMemo } from './vision/tokenPerception';
 import { PLAYER_SIGHT_POLICY } from './vision/tokenSightPolicy';
 

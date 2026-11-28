@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { fogCoverage, type FogCoverage } from '../../../src/app/fog/fogCoverage';
 import { resolveMeasurementSettings } from '../../../src/app/grid/measurementFormat';
-import { canvasSightSource } from '../../../src/app/perception/canvasSight';
 import { framePerception, type PictureRoof } from '../../../src/app/perception/framePerception';
-import { PlayersPerception, type PerceivedState, type SightSource } from '../../../src/app/perception/playersPerception';
+import { canvasSightSource, PlayersPerception, type PerceivedState, type SightSource } from '../../../src/app/perception/playersPerception';
 import type { FogOperation } from '../../../src/app/types/fogTypes';
 import type { WallSegment } from '../../../src/app/types/wallTypes';
 import type { TokenEntity } from '../../../src/app/types';

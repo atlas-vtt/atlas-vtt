@@ -4,8 +4,7 @@ import type { CollectionLookup } from '../../../../src/app/gameSystems/mapRules'
 import { fogCoverage } from '../../../../src/app/fog/fogCoverage';
 import type { TokenPerception } from '../../../../src/app/vision/tokenPerception';
 import { PLAYER_SIGHT_POLICY } from '../../../../src/app/vision/tokenSightPolicy';
-import { canvasSightSource } from '../../../../src/app/perception/canvasSight';
-import { PlayersPerception } from '../../../../src/app/perception/playersPerception';
+import { canvasSightSource, PlayersPerception } from '../../../../src/app/perception/playersPerception';
 import type { MapBounds } from '../../../../src/app/vision/visibility';
 import type { App } from 'obsidian';
 import { NO_MOVEMENT_RULES } from '../../../../src/app/measure/movementRules';
