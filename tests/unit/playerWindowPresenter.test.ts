@@ -36,6 +36,7 @@ const serviceMock = vi.hoisted(() => ({
   getWindow: vi.fn(() => null),
   releaseSource: vi.fn(),
   awaitsSource: vi.fn(() => false),
+  mirrors: vi.fn(() => false),
 }));
 
 vi.mock('../../src/app/services/PlayerWindowService', async () => {
@@ -55,6 +56,7 @@ vi.mock('../../src/app/services/PlayerWindowService', async () => {
     releaseHeldFrame = serviceMock.releaseHeldFrame;
     releaseSource = serviceMock.releaseSource;
     awaitsSource = serviceMock.awaitsSource;
+    mirrors = serviceMock.mirrors;
     presentCanvas(source: PlayerFrameSource, tabId: string): void {
       serviceMock.presentCanvas(source, tabId);
       store.setState({ shownTabId: tabId });
@@ -292,6 +294,19 @@ describe('PlayerWindowPresenter', () => {
       fake.atlasStore.setState({ mapLoaded: true, isMapLoading: false });
       return { ...fake, tavern, dungeon };
     }
+
+    test('leaves a window that still shows the tab live on its frame source when the tab loads again', async () => {
+      const fake = createFakeView();
+      const tavern = fake.view.tabMetaStore.getState().addTab(TAVERN, 'Tavern');
+      fake.atlasStore.setState({ mapPath: TAVERN });
+      await presentTab(app, fake.view, tavern);
+      serviceMock.mirrors.mockReturnValue(true);
+      fake.atlasStore.setState({ isMapLoading: true });
+      fake.atlasStore.setState({ isMapLoading: false });
+      await flush();
+      serviceMock.mirrors.mockReturnValue(false);
+      expect(serviceMock.releaseHeldFrame).not.toHaveBeenCalled();
+    });
 
     test('shows players the live scene again once the presented tab has loaded', async () => {
       const { view, atlasStore, tavern } = await presentTavernThenBrowse();

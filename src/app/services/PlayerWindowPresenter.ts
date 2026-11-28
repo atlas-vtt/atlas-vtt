@@ -290,8 +290,8 @@ function watchPresentedTab(view: AtlasView, service: PlayerWindowService, resume
   });
   function resume(): void {
     void waitForRenderedFrameSource(view).then((source) => {
-      // The DM may have moved on while the frames were drawn
-      if (source && tracker.standing === 'shown') service.releaseHeldFrame(source);
+      // The DM may have moved on while the frames were drawn; a window still live on this view keeps its frame source
+      if (source && tracker.standing === 'shown' && !service.mirrors(view.atlasStore)) service.releaseHeldFrame(source);
     });
   }
   stopWatchingPresentedTab = (): void => {
