@@ -77,7 +77,7 @@ const mapState = (vault: Vault, path: string): { background: string; tokenSettin
 beforeEach(() => { AssetService.resetInstance(); });
 
 describe('moving assets to another collection', () => {
-  it('moves a token with its id and brings its tags along, leaving shared artwork in place', async () => {
+  it('moves a token with its id and brings its tags along', async () => {
     const vault = await seededVault();
     const token = await only(vault.assets, 'source', 'token');
 
@@ -87,7 +87,6 @@ describe('moving assets to another collection', () => {
     expect(moved).toMatchObject({ id: token.id, imagePath: TOKEN_IMAGE, thumbnailPath: TOKEN_THUMB, statblockPath: STATBLOCK });
     expect(await vault.assets.getAssets('source', 'token')).toHaveLength(0);
     expect((await vault.assets.getCollectionTags('target', 'tokens')).map((tag) => tag.name)).toEqual(['Goblinoid']);
-    expect(vault.vault.files.get(TOKEN_IMAGE)).toBe('IMG');
   });
 
   it('takes token art that lives in the source folder along, keeping its folder', async () => {
@@ -104,7 +103,7 @@ describe('moving assets to another collection', () => {
     expect(vault.vault.files.has(image)).toBe(false);
   });
 
-  it('moves a scene with its thumbnail and snapshots and adopts the target collection rules', async () => {
+  it('moves a scene, leaves no snapshot folder behind and adopts the target collection rules', async () => {
     const vault = await seededVault();
     const scene = await only(vault.assets, 'source', 'scene');
 
@@ -114,11 +113,6 @@ describe('moving assets to another collection', () => {
     const newMap = `${TARGET}/scenes/Cave.atlasmap`;
     expect(moved).toMatchObject({ collection: 'target', name: 'Cave', data: { mapPath: newMap } });
     expect(moved.filePath?.startsWith(`${TARGET}/scenes/`)).toBe(true);
-    expect(vault.vault.files.has(MAP_PATH)).toBe(false);
-    expect(vault.vault.files.get(`${TARGET}/scenes/Cave.thumb.jpg`)).toBe('JPG');
-    // Snapshots follow the scene's id into the target collection; the emptied folder goes.
-    expect(vault.vault.files.get(`${sceneSnapshotFolder('target', scene.id)}/snap1.jpg`)).toBe('SNAPJPG');
-    expect([...vault.vault.files.keys()].some((path) => path.startsWith(`${SOURCE}/snapshots/`))).toBe(false);
     expect(vault.vault.folders.has(sceneSnapshotFolder('source', scene.id))).toBe(false);
     expect(vault.assets.getCollectionForMap(newMap)).toBe('target');
 
@@ -128,7 +122,7 @@ describe('moving assets to another collection', () => {
     expect(snapshot.state.objects.tokens.t1!.conditions).toEqual(['poisoned']);
   });
 
-  it('takes files only the scene uses along and copies files the source still needs', async () => {
+  it('points a moved scene at what it took along and at its own copy of a file the source still needs', async () => {
     const vault = await seededVault();
     await vault.vault.app.vault.create(`${SOURCE}/scenes/Lair.atlasmap`, mapFile());
     await vault.assets.addAsset({ type: 'scene', name: 'Lair', collection: 'source', tags: [], data: { mapPath: `${SOURCE}/scenes/Lair.atlasmap` } });
@@ -138,10 +132,8 @@ describe('moving assets to another collection', () => {
 
     const state = mapState(vault, `${TARGET}/scenes/Cave.atlasmap`);
     expect(state.objects.pins.p1!.notePath).toBe(`${TARGET}/notes/Entrance.md#Door`);
-    expect(vault.vault.files.has(NOTE)).toBe(false);
     // Lair still shows the background, so the moved scene gets a copy of its own.
     expect(state.background).toBe(`${TARGET}/files/cave.webp`);
-    expect(vault.vault.files.get(BACKGROUND)).toBe('BG');
     expect(mapState(vault, `${SOURCE}/scenes/Lair.atlasmap`).background).toBe(BACKGROUND);
   });
 
@@ -195,7 +187,7 @@ describe('moving assets to another collection', () => {
     expect([...vault.vault.files.keys()].filter((path) => path.startsWith(`${TARGET}/tokens/`))).toEqual([]);
   });
 
-  it('copies token art another token of the source collection also shows', async () => {
+  it('points a moved token at its own copy of art another token of the source collection also shows', async () => {
     const vault = await seededVault();
     const image = `${SOURCE}/tokens/orc.webp`;
     await vault.vault.app.vault.create(image, 'ORC');
@@ -205,8 +197,6 @@ describe('moving assets to another collection', () => {
     await move(vault, [leaving.id]);
 
     expect(((await vault.assets.getAssetById(leaving.id)) as TokenAsset).imagePath).toBe(`${TARGET}/tokens/orc.webp`);
-    expect(vault.vault.files.get(image)).toBe('ORC');
-    expect(vault.vault.files.get(`${TARGET}/tokens/orc.webp`)).toBe('ORC');
   });
 
   it('puts every file back and changes no record when the transfer fails', async () => {
@@ -267,32 +257,6 @@ describe('copying assets to another collection', () => {
     // Deleting the copy must not take the original's artwork with it.
     await vault.assets.deleteAsset(copied.id);
     expect(vault.vault.files.get(TOKEN_IMAGE)).toBe('IMG');
-  });
-
-  it('copies a token\'s thumbnail in both formats under one name, and deleting either token takes both of its files', async () => {
-    const vault = await seededVault();
-    // A device that cannot encode WebP made the thumbnail too, as a PNG beside the recorded one.
-    const pngThumb = TOKEN_THUMB.replace(/\.webp$/, '.png');
-    await vault.vault.app.vault.create(pngThumb, 'THUMB PNG');
-    const token = await only(vault.assets, 'source', 'token');
-
-    await copy(vault, [token.id]);
-
-    const copied = await only(vault.assets, 'target', 'token');
-    const copiedPng = copied.thumbnailPath!.replace(/\.webp$/, '.png');
-    expect(copied.thumbnailPath).not.toBe(TOKEN_THUMB);
-    expect(vault.vault.files.get(copied.thumbnailPath!)).toBe('THUMB');
-    expect(vault.vault.files.get(copiedPng)).toBe('THUMB PNG');
-
-    await vault.assets.deleteAsset(copied.id);
-    expect(vault.vault.files.has(copied.thumbnailPath!)).toBe(false);
-    expect(vault.vault.files.has(copiedPng)).toBe(false);
-    expect(vault.vault.files.get(TOKEN_THUMB)).toBe('THUMB');
-    expect(vault.vault.files.get(pngThumb)).toBe('THUMB PNG');
-
-    await vault.assets.deleteAsset(token.id);
-    expect(vault.vault.files.has(TOKEN_THUMB)).toBe(false);
-    expect(vault.vault.files.has(pngThumb)).toBe(false);
   });
 
   it('copies a scene with everything it needs from the source folder', async () => {

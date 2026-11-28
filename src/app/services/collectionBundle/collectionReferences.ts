@@ -6,7 +6,7 @@ import { snapshotFolderOf } from '../../snapshots/sceneSnapshotFolders';
 import { isRecord } from '../../utils/guards';
 import { localImage, statblockImageField } from '../statblockImportCandidates';
 import { linkedFilePath } from '../sceneLinks';
-import { thumbnailFiles } from '../thumbnailFiles';
+import { belongingsOf } from '../assetBelongings';
 import { readLootBaseItems } from '../../loot/lootBaseItems';
 import { withTemplateFiles } from '../../statblocks/bundles/bundleTemplates';
 import { collectionStatblockRoles } from '../../statblocks/roles/collectionStatblockRoles';
@@ -14,9 +14,6 @@ import type { CollectionSettings } from '../../types/collectionSettingsTypes';
 import { systemPresetsOf } from '../mapCollectionRules';
 import { sceneImagePaths } from '../../levels/levelFile';
 import type { BundleFile, BundleFileRole } from './bundleFormat';
-
-/** The scene thumbnail lives next to its map file. */
-export const sceneThumbnailPath = (mapPath: string): string => mapPath.replace(/\.atlasmap$/, '.thumb.jpg');
 
 /** A file the collection refers to that is no longer in the vault. */
 export interface MissingReference {
@@ -118,18 +115,16 @@ export class CollectionReferenceCollector {
   }
 
   private async collectAsset(asset: Asset): Promise<void> {
-    this.add(this.assets.getAssetFilePath(asset), asset.type === 'token' ? 'token-image' : 'asset-file');
+    const mapPath = asset.type === 'scene' ? asset.data?.mapPath ?? await mapPathInRecord(this.app, this.assets.getAssetFilePath(asset)) : undefined;
+    const mapFile = mapPath ? this.app.vault.getAbstractFileByPath(mapPath) : null;
+    const sceneMap = mapFile instanceof TFile ? mapFile : null;
+    for (const file of belongingsOf(asset, { mapPath: sceneMap ? mapPath : undefined })) this.add(file.path, file.role);
     switch (asset.type) {
       case 'token':
-        this.addThumbnail(asset.thumbnailPath);
         this.addStatblockNote(asset.statblockPath);
         break;
-      case 'map':
-        this.add(asset.mapFilePath, 'background');
-        this.addThumbnail(asset.thumbnailPath);
-        break;
       case 'scene':
-        await this.collectScene(asset, asset.data?.mapPath ?? await this.readSceneMapPath(asset));
+        await this.collectScene(asset, sceneMap);
         break;
       case 'encounter':
       case 'player':
@@ -147,26 +142,12 @@ export class CollectionReferenceCollector {
     }
   }
 
-  /** Older scene records keep the map path only inside their JSON file. */
-  private async readSceneMapPath(asset: Asset): Promise<string | undefined> {
-    const file = this.app.vault.getAbstractFileByPath(this.assets.getAssetFilePath(asset));
-    if (!(file instanceof TFile)) return undefined;
-    try {
-      const parsed: unknown = JSON.parse(await this.app.vault.read(file));
-      return isRecord(parsed) && typeof parsed.mapPath === 'string' ? parsed.mapPath : undefined;
-    } catch {
-      return undefined;
-    }
-  }
-
-  private async collectScene(scene: SceneAsset, mapPath: string | undefined): Promise<void> {
-    const mapFile = mapPath ? this.app.vault.getAbstractFileByPath(mapPath) : null;
-    if (!mapPath || !(mapFile instanceof TFile)) {
+  /** What a scene's map and snapshots show; a scene whose map file is gone or unreadable is reported instead. */
+  private async collectScene(scene: SceneAsset, mapFile: TFile | null): Promise<void> {
+    if (!mapFile) {
       this.unreadScenes.push(scene);
       return;
     }
-    this.add(mapPath, 'scene-map');
-    this.add(sceneThumbnailPath(mapPath), 'scene-thumbnail');
 
     let envelope: unknown;
     try {
@@ -219,11 +200,6 @@ export class CollectionReferenceCollector {
     entry.statblockImage = { key: field.key, path: image.path };
   }
 
-  /** An asset's thumbnail in every format the vault holds it in (`thumbnailFiles`): a device of the other kind may have made one too. */
-  private addThumbnail(path: string | undefined): void {
-    for (const file of thumbnailFiles(path)) this.add(file, 'thumbnail');
-  }
-
   /** Records `path` for the current asset (or `owners`); returns whether it was newly added. */
   private add(path: string | undefined, role: BundleFileRole, owners: readonly string[] = this.owner ? [this.owner.id] : []): boolean {
     if (!path) return false;
@@ -241,6 +217,18 @@ export class CollectionReferenceCollector {
     }
     this.files.set(path, { vaultPath: path, role, owners: [...owners] });
     return true;
+  }
+}
+
+/** The map a scene's record file names; older scene records keep it only there. */
+export async function mapPathInRecord(app: App, recordPath: string | undefined): Promise<string | undefined> {
+  const file = recordPath ? app.vault.getAbstractFileByPath(recordPath) : null;
+  if (!(file instanceof TFile)) return undefined;
+  try {
+    const parsed: unknown = JSON.parse(await app.vault.read(file));
+    return isRecord(parsed) && typeof parsed.mapPath === 'string' ? parsed.mapPath : undefined;
+  } catch {
+    return undefined;
   }
 }
 
