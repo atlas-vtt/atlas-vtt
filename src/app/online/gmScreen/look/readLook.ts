@@ -6,7 +6,7 @@ import { travellingColour } from './lookColour.ts';
  * browser resolves it there, so a theme's `var()` chains, mixes and `hsl()` arrive as one plain colour each, with the
  * body's classes (the scheme, Atlas's look, a picked accent) and the accent Obsidian writes on it. Each colour is
  * read through a mix of itself in sRGB, which the browser computes to one sRGB form whatever the colour's own
- * (`oklch`, `lab`, a mix), on a hidden probe. A value that is no colour is left out. Null where the body defines none.
+ * (`oklch`, `lab`, a mix), on a hidden probe (`look-probe.scss`). A value that is no colour is left out. Null where the body defines none.
  */
 export function readLook(doc: Document): LookMessage | null {
   const view = doc.defaultView;
@@ -17,8 +17,8 @@ export function readLook(doc: Document): LookMessage | null {
   const holder = body.createDiv();
   holder.hide();
   const probes = defined.map((name) => {
-    const probe = holder.createSpan();
-    probe.setCssProps({ 'background-color': `color-mix(in srgb, var(${name}), var(${name}))` });
+    const probe = holder.createSpan({ cls: 'atlas-look-probe' });
+    probe.setCssProps({ '--atlas-look-probe': `var(${name})` });
     return [name, probe] as const;
   });
   const colours: Partial<Record<LookColour, string>> = {};
