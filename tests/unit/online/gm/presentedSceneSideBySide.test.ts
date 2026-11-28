@@ -286,6 +286,22 @@ describe('the presented scene, in the player window and at a running table', () 
     expect(table.rows).toMatchSnapshot();
   });
 
+  it('follows the GM replacing the presented level\'s map, on the first level, an upper level and a scene without levels', async () => {
+    const v1 = openView('v1', [CAVE, HALL], CAVE);
+    const table = await sideBySide();
+    await table.step('the eye on the Cave', () => eye(v1, CAVE));
+    await table.step('the GM replaces the ground level\'s map, the new one still loading', () => { v1.loadImagesSlowly(); v1.replaceMap('maps/crypt.png'); });
+    await table.step('the new map has loaded', () => v1.finishImages());
+    await table.step('the eye on the upper level', () => eye(v1, CAVE, 'upper'));
+    await table.step('the GM replaces the upper level\'s map, the new one still loading', () => { v1.loadImagesSlowly(); v1.replaceMap('maps/hall.png'); });
+    await table.step('the new map has loaded', () => v1.finishImages());
+    await table.step('the eye on the Hall', () => eye(v1, HALL));
+    await table.step('the GM replaces the Hall\'s map, the new one still loading', () => { v1.loadImagesSlowly(); v1.replaceMap('maps/crypt.png'); });
+    await table.step('the new map has loaded', () => v1.finishImages());
+    table.stop();
+    expect(table.rows).toMatchSnapshot();
+  });
+
   it('answers generated walks as recorded', async () => {
     const walks: string[][] = [];
     for (let seed = 1; seed <= 16; seed++) {

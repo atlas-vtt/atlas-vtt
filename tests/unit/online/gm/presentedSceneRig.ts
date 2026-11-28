@@ -63,6 +63,8 @@ export interface RigView {
   reload(): Promise<void>;
   /** The GM closes the view's tab of `file`; the view shows the tab beside it. */
   closeTab(file: string): Promise<void>;
+  /** The GM gives the level the view shows another map image: the scene's own on the first level or a scene without levels. */
+  replaceMap(background: string): void;
   /** Holds the map image's background loads until `finishImages`: a level's map still loads. */
   loadImagesSlowly(): void;
   finishImages(): void;
@@ -155,6 +157,15 @@ function mapView(name: string, files: readonly string[], active: string, leaf: {
       tabs.getState().removeTab(tabOf(file));
       const { activeTabId } = tabs.getState();
       if (activeTabId !== null) await view.switchToTab(activeTabId);
+    },
+    replaceMap: (background) => {
+      const { levels, viewedLevel } = store.getState();
+      const shown = levels?.find(({ id }) => id === viewedLevel) ?? levels?.[0];
+      const first = !levels || shown === levels[0];
+      store.setState({
+        ...(first ? { background } : {}),
+        ...(levels ? { levels: levels.map((level) => (level === shown ? { ...level, background } : level)) } : {}),
+      });
     },
     loadImagesSlowly: () => { slowImages = true; },
     finishImages: () => {

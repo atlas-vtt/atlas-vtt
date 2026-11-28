@@ -192,6 +192,20 @@ exports[`the presented scene, in the player window and at a running table > foll
 ]
 `;
 
+exports[`the presented scene, in the player window and at a running table > follows the GM replacing the presented level's map, on the first level, an upper level and a scene without levels 1`] = `
+[
+  "the eye on the Cave | window: live v1 v1:Cave | table: live v1, sent scene maps/cave.png, scene maps/cave.png",
+  "the GM replaces the ground level's map, the new one still loading | window: live v1 v1:Cave | table: live v1, sent scene maps/crypt.png, scene maps/crypt.png",
+  "the new map has loaded | window: live v1 v1:Cave | table: live v1, sent nothing",
+  "the eye on the upper level | window: live v1 v1:Cave | table: live v1, sent scene maps/upper.png",
+  "the GM replaces the upper level's map, the new one still loading | window: live v1 v1:Cave | table: live v1, sent scene maps/hall.png, scene maps/hall.png",
+  "the new map has loaded | window: live v1 v1:Cave | table: live v1, sent nothing",
+  "the eye on the Hall | window: live v1 v1:Hall | table: live v1, sent scene maps/hall.png",
+  "the GM replaces the Hall's map, the new one still loading | window: live v1 v1:Hall | table: live v1, sent scene maps/crypt.png",
+  "the new map has loaded | window: live v1 v1:Hall | table: live v1, sent nothing",
+]
+`;
+
 exports[`the presented scene, in the player window and at a running table > holds a restored window on another level while the presented level's map still loads 1`] = `
 [
   "Obsidian restores the player window, the upper level's map still loading | window: live v1 v1:Cave | table: live v1, sent nothing",
