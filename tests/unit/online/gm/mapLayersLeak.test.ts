@@ -166,6 +166,7 @@ describe("what players are sent of the map's layers", () => {
         texts = textsAt(step);
         current = scene();
         table.perception = gmPerception(current, GENERIC_SOURCE, MAP);
+        const stepStart = table.sent.length;
         await table.set(current);
         await table.advance(MAP_LAYER_INTERVAL_MS);
         underWay.begin();
@@ -174,6 +175,16 @@ describe("what players are sent of the map's layers", () => {
         if (step % 2 === 0) underWay.made();
         else underWay.drop();
         await table.advance(MARKS_INTERVAL_MS);
+        // Every door and outline players are sent is what the players' perception answers at that step (tests/unit/perception/), nothing else.
+        const objects = levelObjects(current);
+        const seenDoors = table.layers!.doorsSeen(objects.walls, fogCoverage(objects.fog));
+        const doors = seenDoors === null ? null : sharedDoors(objects.walls, seenDoors);
+        const sensed = table.layers!.sensed(mapTokens(objects));
+        const label = `trial ${trial} step ${step}`;
+        for (const message of ofKind(table.sent.slice(stepStart), 'doors')) expect(message.doors, `${label}: the doors players see`).toEqual(doors);
+        for (const message of ofKind(table.sent.slice(stepStart), 'sensed')) expect(message.tokens, `${label}: the tokens players sense`).toEqual(sensed);
+        expect(ofKind(table.sent, 'doors').at(-1)?.doors ?? null, `${label}: the doors players last got`).toEqual(doors);
+        expect(ofKind(table.sent, 'sensed').at(-1)?.tokens ?? null, `${label}: the tokens players last got`).toEqual(sensed);
       }
 
       const sent = traffic(table.sent);
@@ -254,12 +265,6 @@ describe("what players are sent of the map's layers", () => {
           expect(sent, `${label}: a listed portrait named`).toContain(artIds.get(entry.id));
         }
       }
-      // The doors and outlines players see are what the players' perception answers (tests/unit/perception/), nothing else.
-      const layers = table.layers!;
-      const objects = levelObjects(current);
-      const seenDoors = layers.doorsSeen(objects.walls, fogCoverage(objects.fog));
-      expect(ofKind(table.sent, 'doors').at(-1)?.doors ?? null, `${label}: the doors players see`).toEqual(seenDoors === null ? null : sharedDoors(objects.walls, seenDoors));
-      expect(ofKind(table.sent, 'sensed').at(-1)?.tokens ?? null, `${label}: the tokens players sense`).toEqual(layers.sensed(mapTokens(objects)));
     }
   });
 
