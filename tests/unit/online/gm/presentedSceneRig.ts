@@ -1,14 +1,17 @@
 import { createHash } from 'node:crypto';
-import type { App, WorkspaceLeaf } from 'obsidian';
-import type { AtlasView } from '../../../../src/app/atlas-view';
+import { TFile, type App, type WorkspaceLeaf } from 'obsidian';
+import { subscribeWithSelector } from 'zustand/middleware';
 import { createStore, type StoreApi } from 'zustand/vanilla';
+import type { AtlasView } from '../../../../src/app/atlas-view';
+import { NO_STRETCH } from '../../../../src/app/grid/mapStretch';
+import { MapController } from '../../../../src/app/MapController';
 import type { SceneState } from '../../../../src/app/online/gm/atlasView.ts';
 import type { MapCanvas } from '../../../../src/app/online/gm/mapView.ts';
 import { followPresentedScene } from '../../../../src/app/services/PlayerWindowPresenter';
 import { createTabMetaStore, type TabMetaStore } from '../../../../src/app/stores/tabMetaStore';
 import type { SceneLevel } from '../../../../src/app/types/sceneLevelTypes';
 import { EventEmitter } from '../../../../src/app/utils/typedEmitter';
-import { app, png, workspace } from './fakeTable.ts';
+import { app, png, trigger, workspace } from './fakeTable.ts';
 import { fakeTokenSource } from './fakeTokenSource.ts';
 import type { PlayerPages } from './playerPages.ts';
 import { sceneState } from './shareHarness.ts';
@@ -16,11 +19,13 @@ import { sceneState } from './shareHarness.ts';
 /*
  * Atlas map views as both readers of the presented scene take them: the player window's presenter (an `AtlasView`:
  * its tab and scene stores, renderer service, `switchToTab`, `register`) and the running table (a `MapView`). Each
- * view loads a scene the way Atlas does: the tab first, then the store loading, then the scene loaded.
+ * view loads a scene the way Atlas does: the tab first, then the store loading, then the scene loaded; its map image
+ * loads the background of the level it shows as Atlas's does (`MapController.followBackground`), at once or when a test says.
  */
 
 export const CAVE = 'Scenes/Cave.atlasmap';
 export const HALL = 'Scenes/Hall.atlasmap';
+export const CRYPT = 'Scenes/Crypt.atlasmap';
 
 const LEVELS: SceneLevel[] = [
   { id: 'ground', name: 'Ground', elevation: { bottom: 0, top: 10 }, background: 'maps/cave.png' },
@@ -31,11 +36,14 @@ const LEVELS: SceneLevel[] = [
 export type RigState = SceneState & { levels?: SceneLevel[]; viewedLevel?: string; setViewedLevel(levelId: string): void };
 
 /** The vault's images, as the table reads them. */
-export const FILES: ReadonlyMap<string, Uint8Array> = new Map([['maps/cave.png', png(70, 70)], ['maps/upper.png', png(35, 35)], ['maps/hall.png', png(140, 140)]]);
+export const FILES: ReadonlyMap<string, Uint8Array> = new Map([['maps/cave.png', png(70, 70)], ['maps/upper.png', png(35, 35)], ['maps/hall.png', png(140, 140)], ['maps/crypt.png', png(105, 105)]]);
 
 const loaded = (file: string): SceneState => (file === CAVE
   ? { ...sceneState({ mapPath: CAVE, background: 'maps/cave.png' }), levels: LEVELS, viewedLevel: 'ground' } as SceneState
-  : { ...sceneState({ mapPath: file, background: 'maps/hall.png' }), levels: undefined, viewedLevel: undefined } as SceneState);
+  : { ...sceneState({ mapPath: file, background: file === CRYPT ? 'maps/crypt.png' : 'maps/hall.png' }), levels: undefined, viewedLevel: undefined } as SceneState);
+
+/** The vault as a map image asks it for its background's file. */
+const vault = { vault: { getAbstractFileByPath: (path: string) => new TFile(path) } } as unknown as App;
 
 export interface RigView {
   readonly name: string;
@@ -51,6 +59,13 @@ export interface RigView {
   /** Holds the next scene load until `finishLoad`: Atlas still loads it. */
   loadSlowly(): void;
   finishLoad(): void;
+  /** Atlas loads the active tab's scene again (a retry, or the file changed on disk). */
+  reload(): Promise<void>;
+  /** The GM closes the view's tab of `file`; the view shows the tab beside it. */
+  closeTab(file: string): Promise<void>;
+  /** Holds the map image's background loads until `finishImages`: a level's map still loads. */
+  loadImagesSlowly(): void;
+  finishImages(): void;
 }
 
 const views = new Map<unknown, RigView>();
@@ -73,12 +88,19 @@ function mapView(name: string, files: readonly string[], active: string, leaf: {
   const tabs = createTabMetaStore();
   for (const file of files) tabs.getState().addTab(file, file);
   // A view opens loading its scene, as Atlas's does; `load` below finishes it once the view follows the presented scene.
-  const store: StoreApi<RigState> = createStore<RigState>()(() => ({ ...loaded(active), mapLoaded: false, isMapLoading: true, setViewedLevel: (levelId: string) => store.setState({ viewedLevel: levelId }) }));
+  const store: StoreApi<RigState> = createStore<RigState>()(subscribeWithSelector(() => ({ ...loaded(active), background: null, mapLoaded: false, isMapLoading: true, setViewedLevel: (levelId: string) => store.setState({ viewedLevel: levelId }) })));
   let slow = false;
   /** A slow load under way: it ends loaded, or not at all where another load took its place. */
   let pending: { end(loads: boolean): void } | null = null;
   const tabOf = (file: string): string => tabs.getState().tabs.find(({ filePath }) => filePath === file)?.id ?? 'none';
   tabs.getState().setActiveTab(tabOf(active));
+  let slowImages = false;
+  const images: (() => void)[] = [];
+  const mapImage = {
+    load: (): Promise<void> => (slowImages ? new Promise<void>((done) => void images.push(done)) : Promise.resolve()),
+    mapStretch: NO_STRETCH,
+    setStretch: () => undefined,
+  };
   const canvas = fakeTokenSource(() => store.getState(), () => undefined, () => 70);
   const renderer: MapCanvas & Record<string, unknown> = Object.assign(canvas, {
     getAppInstance: () => ({ canvas: document.createElement('canvas') }),
@@ -86,7 +108,7 @@ function mapView(name: string, files: readonly string[], active: string, leaf: {
     playerBadgeNumbers: () => null,
     canRenderPlayerFrame: () => true,
     releasePlayerFrame: () => undefined,
-    getMapImage: () => null,
+    getMapImage: () => mapImage,
   });
   const events = new EventEmitter();
   const own: (() => void)[] = [];
@@ -106,17 +128,21 @@ function mapView(name: string, files: readonly string[], active: string, leaf: {
       const tab = tabs.getState().tabs.find(({ id }) => id === tabId);
       const state = store.getState();
       if (tab === undefined || (tabs.getState().activeTabId === tabId && ((state.mapLoaded && state.mapPath === tab.filePath) || state.isMapLoading))) return;
-      pending?.end(false);
       tabs.getState().setActiveTab(tabId);
-      store.setState({ isMapLoading: true });
-      if (slow) {
-        slow = false;
-        const loads = await new Promise<boolean>((end) => { pending = { end }; });
-        pending = null;
-        if (!loads) return;
-      }
-      store.setState(loaded(tab.filePath));
+      await load(tab.filePath);
     },
+  };
+  /** The store loads `file`'s scene: loading, then loaded, where a slow load ends loaded; a later load drops it. */
+  const load = async (file: string): Promise<void> => {
+    pending?.end(false);
+    store.setState({ isMapLoading: true });
+    if (slow) {
+      slow = false;
+      const loads = await new Promise<boolean>((end) => { pending = { end }; });
+      pending = null;
+      if (!loads) return;
+    }
+    store.setState(loaded(file));
   };
   leaf.view = view;
   const rig: RigView = {
@@ -124,10 +150,23 @@ function mapView(name: string, files: readonly string[], active: string, leaf: {
     open: (file) => view.switchToTab(tabOf(file)),
     loadSlowly: () => { slow = true; },
     finishLoad: () => pending?.end(true),
+    reload: () => load(tabs.getState().tabs.find(({ id }) => id === tabs.getState().activeTabId)?.filePath ?? active),
+    closeTab: async (file) => {
+      tabs.getState().removeTab(tabOf(file));
+      const { activeTabId } = tabs.getState();
+      if (activeTabId !== null) await view.switchToTab(activeTabId);
+    },
+    loadImagesSlowly: () => { slowImages = true; },
+    finishImages: () => {
+      slowImages = false;
+      for (const done of images.splice(0)) done();
+    },
   };
   views.set(store, rig);
   // As `AtlasView.onOpen` does.
-  closers.set(rig, { stopFollowing: followPresentedScene(app, view as never), registered: own });
+  const stopImages = MapController.followBackground(vault, store as never, mapImage as never);
+  const stopPresented = followPresentedScene(app, view as never);
+  closers.set(rig, { stopFollowing: () => { stopPresented(); stopImages(); }, registered: own });
   store.setState(loaded(active));
   return rig;
 }
@@ -156,6 +195,17 @@ export function closeView(view: RigView): void {
   for (const close of closing?.registered ?? []) close();
   closers.delete(view);
   views.delete(view.store);
+}
+
+/** The GM opens a note, Obsidian's most recent leaf from now on; the call returns going back to the map. */
+export function openNote(): () => void {
+  const note = { view: { getViewType: () => 'markdown' } } as unknown as WorkspaceLeaf;
+  workspace.leaves = [note, ...workspace.leaves];
+  trigger('active-leaf-change', note);
+  return () => {
+    workspace.leaves = workspace.leaves.filter((leaf) => leaf !== note);
+    trigger('active-leaf-change', workspace.leaves[0] ?? null);
+  };
 }
 
 /** Forgets every view of the last test. */

@@ -62,6 +62,11 @@ export class FakePlayerWindow {
     window.source = CLOSED;
   }
 
+  mirrors(store: unknown): boolean {
+    const { open, source, held } = FakePlayerWindow.window;
+    return open && !held && source !== null && source.store === store;
+  }
+
   awaitsSource(): boolean {
     return FakePlayerWindow.window.open && FakePlayerWindow.window.source === CLOSED;
   }

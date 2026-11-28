@@ -9,7 +9,7 @@ import { FakePlayerWindow } from './fakePlayerWindow.ts';
 import { FakeRelay } from './fakeRelay.ts';
 import { boundOwnership, fakeCampaigns } from './fakeSeats.ts';
 import { storedAccount, workspace } from './fakeTable.ts';
-import { CAVE, closeView, deferredView, FILES, HALL, openView, resetViews, rigApp, tableSent, tabNamed, viewNamed, type RigView } from './presentedSceneRig.ts';
+import { CAVE, closeView, CRYPT, deferredView, FILES, HALL, openNote, openView, resetViews, rigApp, tableSent, tabNamed, viewNamed, type RigView } from './presentedSceneRig.ts';
 import { advanceSettled as advance } from './settled.ts';
 
 /*
@@ -98,7 +98,7 @@ function randomStep(random: () => number, views: RigView[], made: { count: numbe
   const file = pick([CAVE, HALL]);
   const short = file === CAVE ? 'Cave' : 'Hall';
   const view = views.length > 0 ? pick(views) : null;
-  const kind = view === null ? 'reopen' : pick(['eye', 'open', 'open', 'slow', 'finish', 'level', 'eye level', 'close', 'reopen', 'unpresent']);
+  const kind = view === null ? 'reopen' : pick(['eye', 'open', 'open', 'slow', 'finish', 'level', 'level', 'eye level', 'slow images', 'images', 'reload', 'close tab', 'close', 'reopen', 'unpresent']);
   if (view === null || kind === 'reopen') {
     const name = `v${++made.count}`;
     return [`${name} opens on the ${short}`, () => views.push(openView(name, [CAVE, HALL], file))];
@@ -111,6 +111,10 @@ function randomStep(random: () => number, views: RigView[], made: { count: numbe
     case 'finish': return [`${view.name} finishes its load`, () => view.finishLoad()];
     case 'level': return [`${view.name} shows the ${level} level`, () => view.store.getState().setViewedLevel(level)];
     case 'eye level': return [`the eye on ${view.name}'s Cave, ${level} level`, () => eye(view, CAVE, level)];
+    case 'slow images': return [`${view.name}'s map image starts loading slowly`, () => view.loadImagesSlowly()];
+    case 'images': return [`${view.name}'s map image finishes its loads`, () => view.finishImages()];
+    case 'reload': return [`${view.name} loads its scene again`, () => void view.reload()];
+    case 'close tab': return [`${view.name} closes its ${short} tab`, () => void view.closeTab(file)];
     case 'close': return [`${view.name} closes`, () => { closeView(view); views.splice(views.indexOf(view), 1); }];
     default: return ['Atlas presents nothing', () => { presentedSceneOf(app).set(null); }];
   }
@@ -222,6 +226,64 @@ describe('the presented scene, in the player window and at a running table', () 
       "the table runs beside the tab not loaded | window: closed | table: none, sent nothing",
       "Obsidian restores the player window | window: live v1 v1:Cave | table: live v1, sent scene maps/cave.png, scene maps/cave.png",
     ]);
+  });
+
+  it('holds the window on another level while the presented level\'s map still loads', async () => {
+    const v1 = openView('v1', [CAVE, HALL], CAVE);
+    const table = await sideBySide();
+    await table.step('the eye on the Cave', () => eye(v1, CAVE));
+    await table.step('the eye on the upper level, whose map still loads', () => { v1.loadImagesSlowly(); eye(v1, CAVE, 'upper'); });
+    await table.step('the GM looks at the ground level', () => v1.store.getState().setViewedLevel('ground'));
+    await table.step('the maps finish loading', () => v1.finishImages());
+    await table.step('the GM looks at the upper level again', () => v1.store.getState().setViewedLevel('upper'));
+    table.stop();
+    expect(table.rows).toMatchSnapshot();
+  });
+
+  it('holds the window at the next tab change after the GM left the tab while it was being presented', async () => {
+    const v1 = openView('v1', [CAVE, HALL, CRYPT], CAVE);
+    const table = await sideBySide();
+    await table.step('the eye on the Cave', () => eye(v1, CAVE));
+    await table.step('the eye on the Hall, the GM opening the Crypt before it is drawn', async () => {
+      eye(v1, HALL);
+      await vi.advanceTimersByTimeAsync(1);
+      void v1.open(CRYPT);
+    });
+    await table.step('the GM opens the Cave tab', () => v1.open(CAVE));
+    await table.step('the GM opens the Hall tab', () => v1.open(HALL));
+    table.stop();
+    expect(table.rows).toMatchSnapshot();
+  });
+
+  it('follows a reload of the presented tab, a note and back, and the presented tab closed', async () => {
+    const v1 = openView('v1', [CAVE, HALL], CAVE);
+    const table = await sideBySide();
+    let back = (): void => undefined;
+    await table.step('the eye on the Cave', () => eye(v1, CAVE));
+    await table.step('Atlas loads the Cave again, slowly', () => { v1.loadSlowly(); void v1.reload(); });
+    await table.step('the load ends', () => v1.finishLoad());
+    await table.step('the GM opens a note', () => { back = openNote(); });
+    await table.step('the GM goes back to the map', () => back());
+    await table.step('the GM closes the Cave tab', () => v1.closeTab(CAVE));
+    table.stop();
+    expect(table.rows).toMatchSnapshot();
+  });
+
+  it('holds a restored window on another level while the presented level\'s map still loads', async () => {
+    const v1 = openView('v1', [CAVE, HALL], CAVE);
+    presentedSceneOf(app).set({ tabId: v1.tabOf(CAVE), filePath: CAVE, levelId: 'upper' });
+    FakePlayerWindow.window.open = false;
+    const table = await sideBySide();
+    await table.step('Obsidian restores the player window, the upper level\'s map still loading', () => {
+      FakePlayerWindow.window.open = true;
+      v1.loadImagesSlowly();
+      void restorePlayerWindow(app, savedWindow({ tabId: v1.tabOf(CAVE), filePath: CAVE }));
+    });
+    await table.step('the GM looks at the ground level', () => v1.store.getState().setViewedLevel('ground'));
+    await table.step('the maps finish loading', () => v1.finishImages());
+    await table.step('the GM looks at the upper level again', () => v1.store.getState().setViewedLevel('upper'));
+    table.stop();
+    expect(table.rows).toMatchSnapshot();
   });
 
   it('answers generated walks as recorded', async () => {
