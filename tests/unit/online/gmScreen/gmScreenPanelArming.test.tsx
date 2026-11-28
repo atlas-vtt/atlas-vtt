@@ -30,7 +30,7 @@ describe('the panel\'s Stop and New link under a resting pointer', () => {
   it('take no press in the moment the panel opened itself for a device that asks, and do once it stood', async () => {
     const rig = await shown();
     await startedFromPanel(rig);
-    fireEvent.click(within(panel()).getByRole('button', { name: 'Close' }));
+    fireEvent.keyDown(document.body, { key: 'Escape' });
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     await knocks(rig, PHONE, 'Phone');
     fireEvent.click(stop());
@@ -61,7 +61,7 @@ describe('the panel\'s Stop and New link under a resting pointer', () => {
   it('wait only once in an opening for a device that asks: a connection that comes and goes then locks nothing', async () => {
     const rig = await shown();
     await startedFromPanel(rig);
-    fireEvent.click(within(panel()).getByRole('button', { name: 'Close' }));
+    fireEvent.keyDown(document.body, { key: 'Escape' });
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     await knocks(rig, PHONE, 'Phone');
     expect(stop().getAttribute('aria-disabled')).toBe('true');

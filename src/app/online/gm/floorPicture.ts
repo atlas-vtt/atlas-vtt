@@ -83,6 +83,7 @@ export function openPicture(store: SceneStore, ports: FloorPicturePorts, floor: 
   const explored = new ExploredShare(ports);
   const layers = new MapLayerShare(store, {
     ...ports, mapLayers: () => ports.mapLayers?.() ?? null, badgeOf: (tokenId) => tokens.badgeOf(tokenId), tokenAlias: (tokenId) => tokens.listedAlias(tokenId),
+    besideAlias: (tokenId) => tokens.besideAlias(tokenId),
     // Each player of the picture is told what is theirs after each change, so a page knows which message its own are counted in.
     drawnBy: (above) => new Map(ports.members().flatMap((player) => {
       const own = floor.drawnBy(player, above);

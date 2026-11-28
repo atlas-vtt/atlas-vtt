@@ -10,6 +10,7 @@ export const gmScreen: Translation = {
   'gmScreen.connecting': 'Подключение…',
   'gmScreen.scan': 'Отсканируйте телефоном или планшетом.',
   'gmScreen.qrLabel': 'QR-код ссылки {name}',
+  'gmScreen.showQr': 'Показать QR-код',
   'gmScreen.copyLink': 'Копировать ссылку',
   'gmScreen.linkCopied': 'Ссылка скопирована',
   'gmScreen.newLink': 'Новая ссылка',

@@ -2,6 +2,7 @@ import {
   DRAWN_CLASSES, DRAWN_DATA, DRAWN_ELEMENTS, DRAWN_STYLES, MAX_DRAWN_CLASSES, MAX_DRAWN_DEPTH, MAX_DRAWN_DICE, MAX_DRAWN_NODES,
   MAX_DRAWN_TEXT, MAX_GM_SCREEN_MESSAGE, type DrawnElement, type DrawnElementName, type DrawnNode,
 } from '../../protocol/index.ts';
+import { isPressableControl } from './pressableControl.ts';
 import { isPressableRoll } from './pressableRoll.ts';
 
 /**
@@ -12,7 +13,7 @@ import { isPressableRoll } from './pressableRoll.ts';
  * their text, controls become plain elements that show their state, a picture is kept only as the hash of a
  * vault image (`PortraitOf`), and scripts, styles, embedded content and form fields are left out with all
  * they hold. Only a roll a device may press (`isPressableRoll`) is sent as one, numbered; any other roll link is
- * sent as its text.
+ * sent as its text. The token controls a device may press now (`isPressableControl`) are numbered too.
  */
 export interface DrawnTree {
   readonly nodes: readonly DrawnNode[];
@@ -20,6 +21,8 @@ export interface DrawnTree {
   readonly cut: boolean;
   /** The roll links sent, each at the place of its number (`DrawnElement.roll`): what a device's press on one names. */
   readonly rolls: readonly Element[];
+  /** The token controls sent, each at the place of its number (`DrawnElement.press`). */
+  readonly presses: readonly Element[];
 }
 
 /** The hash of the portrait an `<img>` shows, which the device asks for by it; null to leave the picture out. */
@@ -128,6 +131,7 @@ class TreeWriter {
   private bytes = 0;
   cut = false;
   readonly rolls: Element[] = [];
+  readonly presses: Element[] = [];
 
   constructor(private readonly portraitOf: PortraitOf) {}
 
@@ -154,9 +158,14 @@ class TreeWriter {
       return;
     }
     const drawn = attributesOf(element, treatment.as, this.portraitOf);
-    const attributes = drawn?.dice === undefined ? drawn : { ...drawn, roll: this.rolls.length };
+    const attributes = drawn === null ? null : {
+      ...drawn,
+      ...(drawn.dice !== undefined && { roll: this.rolls.length }),
+      ...(isPressableControl(element) && { press: this.presses.length }),
+    };
     if (attributes === null || !this.take(utf8Length(JSON.stringify(attributes)) + ',"k":[]'.length + 1)) return;
     if (attributes.roll !== undefined) this.rolls.push(element);
+    if (attributes.press !== undefined) this.presses.push(element);
     if (treatment.empty || treatment.as === 'br' || treatment.as === 'hr' || treatment.as === 'img' || !element.hasChildNodes()) {
       out.push(attributes);
       return;
@@ -218,5 +227,5 @@ class TreeWriter {
 export function drawnTree(root: Node, portraitOf: PortraitOf): DrawnTree {
   const writer = new TreeWriter(portraitOf);
   const nodes = writer.children(root, 1);
-  return { nodes, cut: writer.cut, rolls: writer.rolls };
+  return { nodes, cut: writer.cut, rolls: writer.rolls, presses: writer.presses };
 }

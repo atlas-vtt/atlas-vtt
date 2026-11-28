@@ -29,6 +29,8 @@ export interface InitiativeInputs {
   badge?(tokenId: string): number | null;
   /** The id players know a token by while it is in their token list (`TokenShare.listedAlias`); none for any other. */
   tokenAlias?(tokenId: string): string | undefined;
+  /** The id players know a combatant beside the map by (`TokenShare.besideAlias`), so its owner finds it among their own; none for any other. */
+  besideAlias?(tokenId: string): string | undefined;
   /** Where the map's rules are looked up; without it the default rules and no hit points. */
   readonly rules: RulesLookup | null;
   /** The game system presets the map's rules may name (`systemPresetsOf`), the user's among them, as the player window reads them. */
@@ -48,6 +50,11 @@ function instanceOf(badge: number | null): { instance?: number } {
 /** The token a card brings into view, where the players know it. */
 function aliasOf(alias: string | undefined): { token?: string } {
   return alias === undefined ? {} : { token: alias };
+}
+
+/** The token of a combatant beside the map, where the players know it. */
+function besideOf(alias: string | undefined): { beside?: string } {
+  return alias === undefined ? {} : { beside: alias };
 }
 
 /** The side older pages group a combatant under: the players', or the opponents' for every other side. */
@@ -109,6 +116,7 @@ export function sharedInitiative(inputs: InitiativeInputs): SharedInitiative | n
       // A player at the table has no token: no badge, no alias
       ...instanceOf(entry.tokenId === undefined ? null : inputs.badge?.(entry.tokenId) ?? null),
       ...aliasOf(entry.tokenId === undefined ? undefined : inputs.tokenAlias?.(entry.tokenId)),
+      ...besideOf(entry.tokenId === undefined ? undefined : inputs.besideAlias?.(entry.tokenId)),
     };
   });
   return {

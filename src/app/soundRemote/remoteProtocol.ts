@@ -29,6 +29,8 @@ export type RemoteCommand =
   | { type: 'rollInitiative' }
   /** Presents the map the GM has in front to the players, opening the player window where it is closed. */
   | { type: 'present' }
+  /** Opens the player window where it is closed, on the presented scene or else the map in front, and closes it where it is open. */
+  | { type: 'playerWindow' }
   /** Pauses play (the player window's camera freezes, online players' moves wait), or lets it go on. */
   | { type: 'freeze' }
   /** Lowers the curtain (players see black, in the player window and online), or lifts it. */
@@ -139,7 +141,7 @@ export interface RemoteState {
   rollsShown: boolean;
 }
 
-const SIMPLE = new Set(['nextMood', 'stopAll', 'pause', 'nextTrack', 'previousTrack', 'shuffle', 'repeat', 'muteMusic', 'combat', 'rollInitiative', 'present', 'freeze', 'curtain', 'takeBackHandout', 'showHoveredImage', 'shareRolls']);
+const SIMPLE = new Set(['nextMood', 'stopAll', 'pause', 'nextTrack', 'previousTrack', 'shuffle', 'repeat', 'muteMusic', 'combat', 'rollInitiative', 'present', 'playerWindow', 'freeze', 'curtain', 'takeBackHandout', 'showHoveredImage', 'shareRolls']);
 const MAX_ID = 200;
 /** Longer than the dice tool rolls, so a formula over its limits is refused by the dice tool and says why. */
 const MAX_FORMULA = 200;

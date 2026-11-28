@@ -11,6 +11,7 @@ export const gmScreen = {
   'gmScreen.connecting': 'Connecting…',
   'gmScreen.scan': 'Scan with your phone or tablet.',
   'gmScreen.qrLabel': 'QR code of the {name} link',
+  'gmScreen.showQr': 'Show QR code',
   'gmScreen.copyLink': 'Copy link',
   'gmScreen.linkCopied': 'Link copied',
   'gmScreen.newLink': 'New link',

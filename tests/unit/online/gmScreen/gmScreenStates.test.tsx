@@ -27,16 +27,19 @@ afterEach(() => {
 });
 
 describe('Sidekick\'s panel in each of its states', () => {
-  it('names itself beside its icon, in the control and the panel\'s heading, and draws the icon in the code', async () => {
+  it('names itself beside its icon in the control, names the panel without a heading or a cross of its own, and draws the icon in the code', async () => {
     const rig = await shown();
     const control = screen.getByRole('button', { name: 'Start Sidekick' });
     expect(control.querySelector('img.atlas-sidekick-icon')?.getAttribute('alt')).toBe('');
     expect(control.querySelector('svg')).toBeNull();
     await startedFromPanel(rig);
-    const heading = within(panel()).getByRole('heading', { name: 'Sidekick' });
-    expect(heading.querySelector('img.atlas-sidekick-icon')).not.toBeNull();
-    const icon = heading.querySelector('img')!.getAttribute('src');
+    // Its control names it right above it, and a press outside or Escape closes it
+    expect(panel().getAttribute('aria-label')).toBe('Sidekick');
+    expect(within(panel()).queryByRole('heading', { name: 'Sidekick' })).toBeNull();
+    expect(within(panel()).queryByRole('button', { name: 'Close' })).toBeNull();
+    const icon = control.querySelector('img')!.getAttribute('src');
     expect(icon).toMatch(/^data:image\/webp;base64,/);
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Show QR code' }));
     expect(within(panel()).getByRole('img', { name: 'QR code of the Sidekick link' }).querySelector('image')?.getAttribute('href')).toBe(icon);
   });
 
