@@ -7,7 +7,9 @@ import { NO_STRETCH } from '../../../../src/app/grid/mapStretch';
 import { MapController } from '../../../../src/app/MapController';
 import type { SceneState } from '../../../../src/app/online/gm/atlasView.ts';
 import type { MapCanvas } from '../../../../src/app/online/gm/mapView.ts';
+import { viewedLevelId } from '../../../../src/app/levels/sceneLevels';
 import { followPresentedScene } from '../../../../src/app/services/PlayerWindowPresenter';
+import { presentLevelInsteadOf } from '../../../../src/app/services/presentedLevel';
 import { createTabMetaStore, type TabMetaStore } from '../../../../src/app/stores/tabMetaStore';
 import type { SceneLevel } from '../../../../src/app/types/sceneLevelTypes';
 import { EventEmitter } from '../../../../src/app/utils/typedEmitter';
@@ -26,6 +28,8 @@ import { sceneState } from './shareHarness.ts';
 export const CAVE = 'Scenes/Cave.atlasmap';
 export const HALL = 'Scenes/Hall.atlasmap';
 export const CRYPT = 'Scenes/Crypt.atlasmap';
+/** A scene of three levels. */
+export const TOWER = 'Scenes/Tower.atlasmap';
 
 const LEVELS: SceneLevel[] = [
   { id: 'ground', name: 'Ground', elevation: { bottom: 0, top: 10 }, background: 'maps/cave.png' },
@@ -38,8 +42,14 @@ export type RigState = SceneState & { levels?: SceneLevel[]; viewedLevel?: strin
 /** The vault's images, as the table reads them. */
 export const FILES: ReadonlyMap<string, Uint8Array> = new Map([['maps/cave.png', png(70, 70)], ['maps/upper.png', png(35, 35)], ['maps/hall.png', png(140, 140)], ['maps/crypt.png', png(105, 105)]]);
 
-const loaded = (file: string): SceneState => (file === CAVE
-  ? { ...sceneState({ mapPath: CAVE, background: 'maps/cave.png' }), levels: LEVELS, viewedLevel: 'ground' } as SceneState
+const TOWER_LEVELS: SceneLevel[] = [
+  { id: 'ground', name: 'Ground', elevation: { bottom: 0, top: 10 }, background: 'maps/crypt.png' },
+  { id: 'upper', name: 'Upper', elevation: { bottom: 10, top: 20 }, background: 'maps/upper.png' },
+  { id: 'attic', name: 'Attic', elevation: { bottom: 20, top: 30 }, background: 'maps/hall.png' },
+];
+
+const loaded = (file: string): SceneState => (file === CAVE || file === TOWER
+  ? { ...sceneState({ mapPath: file, background: file === CAVE ? 'maps/cave.png' : 'maps/crypt.png' }), levels: file === CAVE ? LEVELS : TOWER_LEVELS, viewedLevel: 'ground' } as SceneState
   : { ...sceneState({ mapPath: file, background: file === CRYPT ? 'maps/crypt.png' : 'maps/hall.png' }), levels: undefined, viewedLevel: undefined } as SceneState);
 
 /** The vault as a map image asks it for its background's file. */
@@ -65,6 +75,11 @@ export interface RigView {
   closeTab(file: string): Promise<void>;
   /** The GM gives the level the view shows another map image: the scene's own on the first level or a scene without levels. */
   replaceMap(background: string): void;
+  /**
+   * The GM deletes a level above the first from the level panel, moving its objects to the level below: a view on it
+   * shows that level, and so are players shown it where it was the presented one (`presentLevelInsteadOf`).
+   */
+  deleteLevel(levelId: string): void;
   /** Holds the map image's background loads until `finishImages`: a level's map still loads. */
   loadImagesSlowly(): void;
   finishImages(): void;
@@ -166,6 +181,17 @@ function mapView(name: string, files: readonly string[], active: string, leaf: {
         ...(first ? { background } : {}),
         ...(levels ? { levels: levels.map((level) => (level === shown ? { ...level, background } : level)) } : {}),
       });
+    },
+    deleteLevel: (levelId) => {
+      const state = store.getState();
+      const levels = state.levels ?? [];
+      const index = levels.findIndex(({ id }) => id === levelId);
+      const target = levels[index - 1];
+      if (index < 1 || target === undefined) return;
+      const wasShown = viewedLevelId(state) === levelId;
+      store.setState({ levels: levels.filter(({ id }) => id !== levelId) });
+      if (wasShown) store.getState().setViewedLevel(target.id);
+      presentLevelInsteadOf(view as unknown as AtlasView, levelId, target.id);
     },
     loadImagesSlowly: () => { slowImages = true; },
     finishImages: () => {

@@ -9,7 +9,7 @@ import { FakePlayerWindow } from './fakePlayerWindow.ts';
 import { FakeRelay } from './fakeRelay.ts';
 import { boundOwnership, fakeCampaigns } from './fakeSeats.ts';
 import { storedAccount, workspace } from './fakeTable.ts';
-import { CAVE, closeView, CRYPT, deferredView, FILES, HALL, openNote, openView, resetViews, rigApp, tableSent, tabNamed, viewNamed, type RigView } from './presentedSceneRig.ts';
+import { CAVE, closeView, CRYPT, deferredView, FILES, HALL, openNote, openView, resetViews, rigApp, tableSent, tabNamed, TOWER, viewNamed, type RigView } from './presentedSceneRig.ts';
 import { advanceSettled as advance } from './settled.ts';
 
 /*
@@ -98,7 +98,7 @@ function randomStep(random: () => number, views: RigView[], made: { count: numbe
   const file = pick([CAVE, HALL]);
   const short = file === CAVE ? 'Cave' : 'Hall';
   const view = views.length > 0 ? pick(views) : null;
-  const kind = view === null ? 'reopen' : pick(['eye', 'open', 'open', 'slow', 'finish', 'level', 'level', 'eye level', 'slow images', 'images', 'replace map', 'reload', 'close tab', 'close', 'reopen', 'unpresent']);
+  const kind = view === null ? 'reopen' : pick(['eye', 'open', 'open', 'slow', 'finish', 'level', 'level', 'eye level', 'slow images', 'images', 'replace map', 'delete level', 'reload', 'close tab', 'close', 'reopen', 'unpresent']);
   if (view === null || kind === 'reopen') {
     const name = `v${++made.count}`;
     return [`${name} opens on the ${short}`, () => views.push(openView(name, [CAVE, HALL], file))];
@@ -116,6 +116,11 @@ function randomStep(random: () => number, views: RigView[], made: { count: numbe
     case 'replace map': {
       const image = pick(['maps/crypt.png', 'maps/hall.png', 'maps/upper.png']);
       return [`${view.name} replaces the map of the level it shows with ${image}`, () => view.replaceMap(image)];
+    }
+    case 'delete level': {
+      const above = (view.store.getState().levels ?? []).slice(1).map(({ id }) => id);
+      const deleted = above.length > 0 ? pick(above) : 'upper';
+      return [`${view.name} deletes its ${deleted} level`, () => view.deleteLevel(deleted)];
     }
     case 'reload': return [`${view.name} loads its scene again`, () => void view.reload()];
     case 'close tab': return [`${view.name} closes its ${short} tab`, () => void view.closeTab(file)];
@@ -313,6 +318,19 @@ describe('the presented scene, in the player window and at a running table', () 
     await table.step('the GM looks at the upper level', () => v1.store.getState().setViewedLevel('upper'));
     await table.step('Atlas presents nothing', () => { presentedSceneOf(app).set(null); });
     await table.step('the GM edits the map', () => v1.store.setState({}));
+    table.stop();
+    expect(table.rows).toMatchSnapshot();
+  });
+
+  it('follows the presented level deleted, while the window is held on another level and while the GM is on it', async () => {
+    const v1 = openView('v1', [TOWER, HALL], TOWER);
+    const table = await sideBySide();
+    await table.step('the eye on the Tower, attic level', () => eye(v1, TOWER, 'attic'));
+    await table.step('the GM looks at the upper level', () => v1.store.getState().setViewedLevel('upper'));
+    await table.step('the presented attic is deleted while the window is held on the upper level, players shown the upper level instead', () => v1.deleteLevel('attic'));
+    await table.step('the GM looks at the ground level', () => v1.store.getState().setViewedLevel('ground'));
+    await table.step('the GM looks at the upper level again', () => v1.store.getState().setViewedLevel('upper'));
+    await table.step('the presented upper level is deleted while the GM is on it', () => v1.deleteLevel('upper'));
     table.stop();
     expect(table.rows).toMatchSnapshot();
   });
