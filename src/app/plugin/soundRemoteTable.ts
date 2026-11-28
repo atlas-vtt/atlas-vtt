@@ -9,12 +9,13 @@ import { rollSavedRoll } from '../react/components/dice/rollSavedRoll';
 import { AssetService } from '../services/AssetService';
 import { mapInitiativeRules } from '../services/mapInitiativeRules';
 import { SettingsService } from '../services/SettingsService';
-import { presentTab } from '../services/PlayerWindowPresenter';
+import { openPlayerWindow, presentTab } from '../services/PlayerWindowPresenter';
 import { ImageDisplayService } from '../services/ImageDisplayService';
 import { PlayerWindowService } from '../services/PlayerWindowService';
 import { isTablePaused, setTableCurtain, toggleTablePause } from '../services/tableControls';
 import { tableControlsStore } from '../stores/tableControlsStore';
 import { presentedSceneOf } from '../services/presentedScene';
+import { isDesktopApp } from '../platform/desktopOnly';
 import type { HoveredElement } from '../soundRemote/hoveredElement';
 import { remoteMapView } from '../soundRemote/remoteMapView';
 import type { TableMap, TablePlayerWindow, TableShareRolls, TableSource } from '../soundRemote/remoteTable';
@@ -60,9 +61,16 @@ function shareRolls(app: App): TableShareRolls {
 }
 
 /** The player window and the online table as the bar reads them (`PlayerWindowBar`) and presses them, and the image menus' "Display on player view". */
-function playerWindow(hovered: HoveredElement): TablePlayerWindow {
+function playerWindow(app: App, hovered: HoveredElement): TablePlayerWindow {
   return {
     isOpen: () => PlayerWindowService.getInstance()?.isWindowOpen() ?? false,
+    opens: isDesktopApp,
+    open: () => {
+      if (presentedSceneOf(app).get() === null && remoteMapView(app.workspace) === null) return false;
+      void openPlayerWindow(app);
+      return true;
+    },
+    close: () => PlayerWindowService.getInstance()?.destroy(),
     isOnline: () => tableControlsStore.getState().online,
     // Without an online table the key shows the window's own freeze, as it always did
     isPaused: () => (tableControlsStore.getState().online ? isTablePaused() : PlayerWindowService.getInstance()?.isFrozen() ?? false),
@@ -93,7 +101,7 @@ export function remoteTableOf(app: App, hovered: HoveredElement): TableSource {
       const view = remoteMapView(app.workspace);
       return view ? tableMap(app, view) : null;
     },
-    player: playerWindow(hovered),
+    player: playerWindow(app, hovered),
     shareRolls: shareRolls(app),
   };
 }

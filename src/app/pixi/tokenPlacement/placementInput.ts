@@ -3,7 +3,7 @@ import type { Viewport } from 'pixi-viewport';
 import { watchClick } from '../utils/clickRelease';
 import { isPrimaryPress, isSecondaryPress } from '../utils/pointerButtons';
 import { isFinger } from '../utils/pointerReach';
-import { setCanvasCursor } from '../utils/canvasCursor';
+import { clearToolCursor, setToolCursor } from '../utils/canvasCursor';
 import { canRunMapHotkeys, matchesMapHotkey } from '../../keyboard/mapHotkeys';
 import type { SettingsService } from '../../services/SettingsService';
 import type { PlacementSession } from './PlacementSession';
@@ -51,7 +51,7 @@ export function bindPlacementInput(deps: PlacementInputDeps, session: PlacementS
   const onMove = (event: FederatedPointerEvent): void => {
     session.moveTo({ x: event.global.x, y: event.global.y }, event.shiftKey);
     // After PIXI's own cursor write for this event
-    queueMicrotask(() => { if (session.active) setCanvasCursor(canvas, cursor()); });
+    queueMicrotask(() => { if (session.active) setToolCursor(canvas, 'placement', cursor()); });
   };
   const onPress = (event: PointerEvent): void => {
     if (event.target !== canvas || !isPrimaryPress(event)) return;
@@ -61,7 +61,7 @@ export function bindPlacementInput(deps: PlacementInputDeps, session: PlacementS
     event.preventDefault();
     carried = isFinger(event);
     session.pressAt(screenOf(event), event.shiftKey);
-    setCanvasCursor(canvas, cursor());
+    setToolCursor(canvas, 'placement', cursor());
   };
   const onPressMove = (event: PointerEvent): void => {
     if (!session.pressing) return;
@@ -71,11 +71,11 @@ export function bindPlacementInput(deps: PlacementInputDeps, session: PlacementS
   const onRelease = (event: PointerEvent): void => {
     if (event.button !== 0 || !session.pressing) return;
     session.release();
-    if (session.active) setCanvasCursor(canvas, cursor());
+    if (session.active) setToolCursor(canvas, 'placement', cursor());
   };
   const onPressLost = (): void => {
     session.cancelPress();
-    if (session.active) setCanvasCursor(canvas, cursor());
+    if (session.active) setToolCursor(canvas, 'placement', cursor());
   };
   const onWheel = (event: WheelEvent): void => {
     if (event.target !== canvas || !event.shiftKey) return;
@@ -125,7 +125,7 @@ export function bindPlacementInput(deps: PlacementInputDeps, session: PlacementS
   win.addEventListener('keydown', onKey, { capture: true });
   win.addEventListener('keyup', onKey, { capture: true });
   win.addEventListener('blur', onBlur);
-  setCanvasCursor(canvas, 'none');
+  setToolCursor(canvas, 'placement', 'none');
 
   return (): void => {
     viewport.off('pointermove', onMove);
@@ -142,7 +142,7 @@ export function bindPlacementInput(deps: PlacementInputDeps, session: PlacementS
     win.removeEventListener('keydown', onKey, { capture: true });
     win.removeEventListener('keyup', onKey, { capture: true });
     win.removeEventListener('blur', onBlur);
-    setCanvasCursor(canvas, 'default');
+    clearToolCursor(canvas, 'placement');
     // The second click of a double click that put the last token down must not open it
     win.setTimeout(() => host.removeEventListener('dblclick', onDoubleClick, { capture: true }), DOUBLE_CLICK_GUARD_MS);
   };

@@ -27,7 +27,7 @@ afterEach(() => {
 });
 
 describe('the panel\'s controls when something moved them', () => {
-  it('Stop and New link take a press at once as the devices fold opens for a known device that connects again', async () => {
+  it('Stop and New link take a press at once as a known device connects again in the devices fold the GM opened', async () => {
     const rig = await shown();
     await startedFromPanel(rig);
     await connects(rig, PHONE, 'Phone');

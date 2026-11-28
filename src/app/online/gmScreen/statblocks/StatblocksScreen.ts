@@ -14,6 +14,7 @@ import type { Drawing } from './StatblockDrawing.ts';
 import { listedStatblocks, type ListedStatblock } from './statblockList.ts';
 import { ScreenIds } from './screenIds.ts';
 import { RollPresses } from './rollPresses.ts';
+import { ControlPresses, pressControl } from './statblockPresses.ts';
 import { loadedFront, pressRoll, sentRolls, type SentDrawing } from './statblockRolls.ts';
 
 /** How soon after a change of the scene the list is read again; a token dragged changes it on every step. */
@@ -50,11 +51,12 @@ const utf8Length = (text: string): number => new TextEncoder().encode(text).leng
  * Pictures go by hash, and only to the device that asks. Nothing is sent twice to a device that has it.
  */
 export class StatblocksScreen implements GmScreen {
-  readonly takes = ['statblock-view', 'portrait-ask', 'statblock-roll'] as const;
+  readonly takes = ['statblock-view', 'portrait-ask', 'statblock-roll', 'statblock-press'] as const;
   private readonly load = `s${Date.now().toString(36)}`;
   private readonly statblockIds = new ScreenIds(`${this.load}-`);
   private readonly fightRows = new FightRows(`${this.load}-c`);
   private readonly presses = new RollPresses();
+  private readonly controls = new ControlPresses();
   /** Drawings are numbered across the screen, so a number never names two drawings in one load. */
   private drawings = 0;
   private listed = new Map<string, ListedStatblock>();
@@ -89,9 +91,13 @@ export class StatblocksScreen implements GmScreen {
       const portrait = this.ports.portraits.portrait(message.hash);
       if (portrait) this.ports.outlet.send(portrait, device);
     } else if (message.t === 'statblock-view') this.view(device, message.id);
-    else if (message.t === 'statblock-roll') {
+    else if (message.t === 'statblock-roll' || message.t === 'statblock-press') {
       const shown = message.statblock === this.views.get(device) ? this.shown.get(message.statblock) : undefined;
-      this.ports.outlet.send(this.presses.answer(device, message.id, (pace) => pressRoll(shown?.sent, message, loadedFront(this.ports.scenes, this.scene?.viewId), pace)), device);
+      const front = loadedFront(this.ports.scenes, this.scene?.viewId);
+      const answer = message.t === 'statblock-roll'
+        ? this.presses.answer(device, message.id, (pace) => pressRoll(shown?.sent, message, front, pace))
+        : this.controls.answer(device, message.id, (pace) => pressControl(shown?.sent, message, front, pace));
+      this.ports.outlet.send(answer, device);
     }
   }
 
@@ -102,6 +108,7 @@ export class StatblocksScreen implements GmScreen {
 
   forgotten(device?: string): void {
     this.presses.forget(device);
+    this.controls.forget(device);
   }
 
   dispose(): void {
@@ -281,7 +288,7 @@ export class StatblocksScreen implements GmScreen {
     shown.message = utf8Length(json) <= MAX_GM_SCREEN_MESSAGE ? message : { t: 'statblock-gone', id, reason: 'too-large' };
     shown.json = JSON.stringify(shown.message);
     // The links of a drawing read again stand for the same rolls, though the DM screen may have drawn them anew.
-    shown.sent = shown.message.t === 'statblock' ? { drawing, rolls: sentRolls(tree.rolls), rollsOn: () => shown.drawing.rollsOn() } : undefined;
+    shown.sent = shown.message.t === 'statblock' ? { drawing, rolls: sentRolls(tree.rolls), presses: tree.presses, rollsOn: () => shown.drawing.rollsOn() } : undefined;
     for (const device of shown.viewers) this.sendTree(device, shown);
   }
 

@@ -15,7 +15,7 @@ const token = (id: string, changes: Partial<TokenEntity> = {}): TokenEntity =>
   ({ id, kind: 'character', x: 0, y: 0, name: id, imagePath: `Art/${id}.png`, statblockPath: `Bestiary/${id}.md`, resources: { hp: { current: 5, max: 5 } }, ...changes }) as unknown as TokenEntity;
 const TOKENS: Record<string, TokenEntity> = {
   ilsa: token('ilsa', { vision: { enabled: true }, ringColor: '#3a7' } as Partial<TokenEntity>),
-  'goblin-a': token('goblin-a', { name: 'Goblin', imagePath: GOBLIN_ART, statblockPath: 'Bestiary/Goblin.md', instanceNumber: 1 } as Partial<TokenEntity>),
+  'goblin-a': token('goblin-a', { name: 'Goblin', imagePath: GOBLIN_ART, statblockPath: 'Bestiary/Goblin.md', instanceNumber: 1, resources: { hp: { current: 2, max: 3 } } } as Partial<TokenEntity>),
   'goblin-b': token('goblin-b', { name: 'Goblin', imagePath: GOBLIN_ART, statblockPath: 'Bestiary/Goblin.md', instanceNumber: 2, isHidden: true } as Partial<TokenEntity>),
   ogre: token('ogre', { showRing: false, resources: { hp: { current: 0, max: 30 } } } as Partial<TokenEntity>),
 };
@@ -49,9 +49,10 @@ describe('the fight a GM screen device is sent', () => {
     expect(shape(fight)).toEqual(['order: k-goblin-a k-goblin-b k-ogre', 'round 3', 'next: k-ilsa']);
     expect(rows(fight).filter((each) => each.turn).map((each) => each.key)).toEqual(['k-goblin-a']);
     const [goblinA, goblinB, ogre, ilsa] = rows(fight);
-    expect(goblinA).toEqual({ key: 'k-goblin-a', name: 'Goblin', statblock: 'sb-goblin', portrait: 'a'.repeat(64), ring: '#ffffff', turnColour: null, badge: 1, turn: true });
-    expect(goblinB).toEqual({ key: 'k-goblin-b', name: 'Goblin', statblock: 'sb-goblin', portrait: 'a'.repeat(64), ring: '#ffffff', turnColour: null, badge: 2, hidden: true });
-    expect(ogre).toEqual({ key: 'k-ogre', name: 'ogre', statblock: null, portrait: null, ring: null, turnColour: null, defeated: true });
+    // Its red as its card shows it: a third of its life lost, to a thousandth
+    expect(goblinA).toEqual({ key: 'k-goblin-a', name: 'Goblin', statblock: 'sb-goblin', portrait: 'a'.repeat(64), ring: '#ffffff', turnColour: null, badge: 1, wound: 0.333, turn: true });
+    expect(goblinB).toEqual({ key: 'k-goblin-b', name: 'Goblin', statblock: 'sb-goblin', portrait: 'a'.repeat(64), ring: '#ffffff', turnColour: null, badge: 2, wound: 0, hidden: true });
+    expect(ogre).toEqual({ key: 'k-ogre', name: 'ogre', statblock: null, portrait: null, ring: null, turnColour: null, wound: 1, defeated: true });
     expect(ilsa).toMatchObject({ ring: '#33aa77', turnColour: '#33aa77', ally: true });
     // A device reads it back whole.
     expect(parseFight(JSON.parse(JSON.stringify(fight)))).toEqual(fight);

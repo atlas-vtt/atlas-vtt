@@ -52,6 +52,11 @@ export interface SharedCombatant {
    * brings into view; absent for a token they are not sent (beside the map, out of sight). Absent from older GMs.
    */
   readonly token?: string;
+  /**
+   * The id the players know the combatant's token by while the GM keeps it beside the map, so its owner
+   * finds it among their own (`mine`); no card brings it into view. Absent for a token on the map and from older GMs.
+   */
+  readonly beside?: string;
 }
 
 /** A side of a fight by sides as the players' list heads its group. */
@@ -132,6 +137,7 @@ function parseCombatant(value: unknown): SharedCombatant | null {
     ...(isSideId(value.sideId) ? { sideId: value.sideId } : {}),
     ...(isInstance(value.instance) ? { instance: value.instance } : {}),
     ...(typeof value.token === 'string' && TOKEN_ID_PATTERN.test(value.token) ? { token: value.token } : {}),
+    ...(typeof value.beside === 'string' && TOKEN_ID_PATTERN.test(value.beside) ? { beside: value.beside } : {}),
   };
 }
 

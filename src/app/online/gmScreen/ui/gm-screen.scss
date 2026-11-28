@@ -71,33 +71,12 @@
   transform-origin: top left;
 }
 
-// The title starts where the body's content does.
-.atlas-gm-screen-panel__header {
-  @include atlas-close-header($spacing-m);
-  display: flex;
-  justify-content: space-between;
-  gap: $spacing-s;
-}
-
-.atlas-gm-screen-panel__title {
-  display: flex;
-  align-items: center;
-  gap: $spacing-s;
-  margin: 0;
-  font-size: $font-ui-medium;
-  font-weight: $font-weight-semibold;
-}
-
-.atlas-gm-screen-panel__icon {
-  width: 22px;
-  height: 22px;
-}
-
+// One inset on every side: what the panel holds stands as far from its edge as its buttons do.
 .atlas-gm-screen-panel__body {
   display: flex;
   flex-direction: column;
   gap: $spacing-m;
-  padding: 0 $spacing-m $spacing-m;
+  padding: $spacing-m;
 }
 
 .atlas-gm-screen-help {
@@ -119,13 +98,13 @@
 }
 
 // Dark on white in both themes (cameras read an inverted code badly), and no padding of its own: the drawing
-// holds the quiet zone the standard asks for. In the light theme a hairline keeps the white card's edge.
+// holds the quiet zone the standard asks for. As wide as the panel's content, its corner concentric with the
+// panel's as the buttons' are. In the light theme a hairline keeps the white card's edge.
 .atlas-gm-screen-qr {
-  width: 264px;
-  max-width: 100%;
+  @include atlas-panel-inset-radius($spacing-m);
+  width: 100%;
   aspect-ratio: 1;
   overflow: hidden;
-  border-radius: $radius-m;
   background: #fff;
   color: #000;
   transition: opacity $transition-normal $transition-ease;
@@ -134,11 +113,66 @@
     box-shadow: 0 0 0 $border-width-s rgba(0, 0, 0, 0.1);
   }
 
-  svg {
+  > svg {
     display: block;
     width: 100%;
     height: 100%;
     fill: currentColor;
+    transition: filter $transition-normal $transition-ease, opacity $transition-normal $transition-ease;
+  }
+
+  // Hidden: the stand-in code blurred past reading, so it only says that a code waits there
+  &[data-hidden] > svg {
+    filter: blur(12px);
+    opacity: 0.55;
+  }
+}
+
+// The press that shows the code: the whole card, its word on a dark pill in the middle
+.atlas-gm-screen-qr {
+  position: relative;
+}
+
+.atlas-gm-screen-qr__reveal {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: inherit;
+  background: none;
+  box-shadow: none;
+  cursor: pointer;
+
+  &:hover {
+    background: none;
+    box-shadow: none;
+  }
+}
+
+.atlas-gm-screen-qr__reveal-label {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-xs;
+  padding: $spacing-xs $spacing-m;
+  border-radius: $radius-full;
+  background: rgb(0 0 0 / 0.78);
+  color: #fff;
+  font-size: $font-ui-small;
+  font-weight: $font-weight-semibold;
+  transition: transform $transition-press $transition-ease-out;
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
+
+  .atlas-gm-screen-qr__reveal:active & {
+    transform: scale(0.96);
   }
 }
 
@@ -194,7 +228,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .atlas-gm-screen-qr {
+  .atlas-gm-screen-qr,
+  .atlas-gm-screen-qr > svg {
     transition: none;
   }
 }
